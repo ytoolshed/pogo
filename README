@@ -1,3 +1,5 @@
 Pogo is an agent-based system for running interruptive commands safely on
 thousands of machines in parallel.
 
+Pogo consists of five components: client, dispatcher and worker, API and UI.
+
