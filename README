@@ -1,1 +1,3 @@
-hi
+Pogo is an agent-based system for running interruptive commands safely on
+thousands of machines in parallel.
+
