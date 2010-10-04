@@ -1,5 +1,14 @@
-Pogo is an agent-based system for running interruptive commands safely on
-thousands of machines in parallel.
+Pogo is an agent-based system for running interruptive commands safely
+on thousands of machines in parallel.
 
-Pogo consists of five components: client, dispatcher and worker, API and UI.
+Users request that a command (or recipe, or script) be executed on a
+group of target nodes by issuing new pogo jobs via the pogo(1)
+command-line utility.  If the job is successfully created on the
+dispatcher, the user will receive a job id and a URL in response.
+
+The pogo dispatcher then divides the job up into tasks, one task per
+target host.  The dispatcher computes a task run order and distributes
+tasks to worker processes.  Workers ssh to the target nodes and run the
+commands specified by the user, reporting progress and status back to
+the dispatcher.
 
