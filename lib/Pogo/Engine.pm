@@ -4,11 +4,8 @@ use strict;
 use warnings;
 
 use Log::Log4perl qw(:easy);
-our $instance;
 
-use constant VERSION         => 0.2;
-use constant PORT            => 7061;
-use constant DEFAULT_API_URI => 'http://localhost:4080/pogo/v3';
+our $instance;
 
 sub instance
 {
@@ -18,7 +15,6 @@ sub instance
   DEBUG "new Pogo::Engine instance";
 
   $instance = {
-    api_uri    => $opts->{api_uri}    || DEFAULT_API_URI,
     client_min => $opts->{client_min} || '0.0.0',
     start_time => time(),
   };
@@ -29,6 +25,7 @@ sub instance
 # i guess we don't do anything yet.
 sub start
 {
+  DEBUG "starting..";
   return;
 }
 

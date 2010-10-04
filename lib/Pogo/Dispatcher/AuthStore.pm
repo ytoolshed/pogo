@@ -177,7 +177,7 @@ sub start_client
           ERROR "tls handshake to $server failed: $errmsg";
           return;
         }
-        DEBUG "tls handshake successful - exchanging passwords";
+        DEBUG "tls handshake successful, exchanging passwords";
         $self->{clients}->{$server} = $handle;
 
         # send over all the goods
