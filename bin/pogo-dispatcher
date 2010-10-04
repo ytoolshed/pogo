@@ -1,0 +1,94 @@
+#!/usr/local/bin/perl -w
+
+use strict;
+use warnings;
+
+use Log::Log4perl qw(:easy);
+use YAML::Syck qw(LoadFile);
+use Getopt::Long qw(GetOptions);
+
+use Pogo::Dispatcher;
+
+use constant POGO_ROOT => $ENV{POGO_ROOT} || '/usr/local';
+use constant POGO_CONF => POGO_ROOT . '/etc/pogo/dispatcher.conf';
+use constant PIDFILE   => POGO_ROOT . '/var/run/pogo-dispatcher.pid';
+
+sub main
+{
+  my $opts = {};
+  GetOptions( $opts, 'f=s' );
+
+  my $conf;
+  eval { $conf = LoadFile( $opts->{f} || POGO_CONF ) };
+  if ($@)
+  {
+    LOGDIE "couldn't open config: $@\n";
+  };
+
+  if ( defined $conf->{log4perl} && -r $conf->{log4perl} )
+  {
+    Log::Log4perl::init( $conf->{log4perl} );
+    if ( defined $conf->{loglevel} )
+    {
+      Log::Log4perl->get_logger->level( $conf->{loglevel} );
+    }
+  }
+
+  my $pidfile = $conf->{pidfile} || PIDFILE;
+  open my $fd, '>', $pidfile
+    or LOGDIE "couldn't open pid file: $!\n";
+
+  print $fd $$;
+  close $fd or LOGDIE "problems with $pidfile: $!\n";
+
+  # here we go
+  Pogo::Dispatcher->instance($conf)->start();
+
+  unlink $pidfile or LOGDIE "couldn't unlink $pidfile: $!\n";
+}
+
+exit main();
+
+1;
+
+=pod
+
+=head1 NAME
+
+  pogo-dispatcher - parallel task execution server
+
+=head1 SYNOPSIS
+
+pogo-dispatcher [ -f configfile ]
+
+=head1 DESCRIPTION
+
+B<pogo-dispatcher> starts the dispatcher process in the foreground
+
+=head1 OPTIONS
+
+B<-f> file
+
+=over 2
+
+read configuration from C<file> rather than the default of C</usr/local/etc/pogo/dispatcher.conf>
+
+=back
+
+=head1 SEE ALSO
+
+L<Pogo::Dispatcher>
+
+=head1 COPYRIGHT
+
+Apache 2.0
+
+=head1 AUTHORS
+
+  Andrew Sloane <asloane@yahoo-inc.com>
+  Michael Fischer <mfischer@yahoo-inc.com>
+  Nicholas Harteau <nrh@yahoo-inc.com>
+  Nick Purvis <nep@yahoo-inc.com>
+  Robert Phan <rphan@yahoo-inc.com>
+
+=cut
