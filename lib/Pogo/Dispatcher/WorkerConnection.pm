@@ -77,6 +77,10 @@ sub accept_handler
         LOGDIE "nonexistant job $jobid sent from worker " . $self->id unless $job;
         $job->finish_host( $host, $exitcode, $msg );
       }
+      elsif ( $cmd eq 'ping' )
+      {
+        $h->push_write( json => ["pong"] );
+      }
       $h->push_read( json => $on_json );
     };
     $self->{handle}->push_read( json => $on_json );

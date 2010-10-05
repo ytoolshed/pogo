@@ -112,6 +112,10 @@ sub start_server
           my ($job) = @args;
           delete $self->{passwords}->{$job};
         }
+        elsif ( $cmd eq 'ping' )
+        {
+          $h->push_write( json => ['pong'] );
+        }
         $h->push_read( json => $on_json );
       };
 
@@ -120,6 +124,13 @@ sub start_server
         fh      => $fh,
         tls     => 'accept',
         tls_ctx => Pogo::Dispatcher->ssl_ctx,
+        on_error => sub {
+          my $fatal = $_[1];
+          ERROR sprintf( "%s error reported while talking to authstore at %s:%s: $!",
+          $fatal ? 'fatal' : 'non-fatal', $remote_ip, $remote_port );
+          undef $self->{handle};
+        },
+
         on_eof  => sub {
           INFO "peer connection closed from $remote_ip:$remote_port";
           undef $handle;

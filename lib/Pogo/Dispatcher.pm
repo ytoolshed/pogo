@@ -19,6 +19,8 @@ use Pogo::Dispatcher::AuthStore;
 use Pogo::Dispatcher::RPCConnection;
 use Pogo::Dispatcher::WorkerConnection;
 
+use constant MAX_WORKER_TASKS => 50;
+
 our $instance;
 
 sub instance
@@ -134,6 +136,29 @@ sub ssl_ctx
   LOGDIE "dispatcher not yet initialized" unless defined $instance;
   return $instance->{ssl_ctx};
 }
+
+sub idle_worker
+{
+  LOGDIE "dispatcher not yet initialized" unless defined $instance;
+  my ($class, $worker) = @_;
+  $worker->{tasks}--;
+  if ($worker->{tasks} < MAX_WORKER_TASKS) {
+    delete $instance->{workers}->{busy}->{ $worker->id };
+    $instance->{workers}->{idle} ||= {};
+    $instance->{workers}->{idle}->{ $worker->id } = $worker;
+    DEBUG "marked worker idle: " . $worker->id;
+  }
+}
+
+sub retire_worker
+{
+  LOGDIE "dispatcher not yet initialized" unless defined $instance;
+  my ($class, $worker) = @_;
+  delete $instance->{workers}->{idle}->{ $worker->id };
+  delete $instance->{workers}->{busy}->{ $worker->id };
+  DEBUG "retired worker: " . $worker->id;
+}
+
 
 1;
 

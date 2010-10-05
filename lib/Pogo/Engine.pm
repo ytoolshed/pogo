@@ -6,6 +6,7 @@ use warnings;
 use Log::Log4perl qw(:easy);
 
 our $instance;
+our %nscache;
 
 sub instance
 {
@@ -19,13 +20,30 @@ sub instance
     start_time => time(),
   };
 
+  LOGDIE "must define a datastore" unless $opts->{store};
+
+  if ($opts->{store} eq 'zookeeper')
+  {
+    use Pogo::Engine::Store::ZooKeeper;
+    $instance->{store} = Pogo::Engine::Store::ZooKeeper->new();
+  }
+  else
+  {
+    LOGDIE "invalid storage engine '" . $opts->{store} . "', bye";
+  }
+
   return bless $instance, $class;
+}
+
+sub store
+{
+  LOGDIE "not yet initialized" unless defined $instance;
+  return $instance->{store};
 }
 
 # i guess we don't do anything yet.
 sub start
 {
-  DEBUG "starting..";
   return;
 }
 

@@ -52,9 +52,13 @@ sub accept_handler
       {
         $h->push_write( json => ['whatever'] );
       }
+      elsif ( $cmd eq 'ping' )
+      {
+        $h->push_write( json => ['pong'] );
+      }
       else
       {
-        $h->psuh_write( json => [ undef, "no such command" ] );
+        $h->push_write( json => [ undef, "no such command" ] );
       }
       $h->push_read( json => $on_json );
     };
@@ -64,8 +68,11 @@ sub accept_handler
       tls      => 'accept',
       tls_ctx  => Pogo::Dispatcher->instance->ssl_ctx,
       on_error => sub {
-        ERROR "rpc connection error from " . $self->id;
+        my $fatal = $_[1];
+        ERROR sprintf( "%s error reported while talking rpc to %s: $!",
+          $fatal ? 'fatal' : 'non-fatal', $self->id );
         undef $self->{handle};
+
       },
       on_eof => sub {
         INFO "rpc connection closed from " . $self->id;
