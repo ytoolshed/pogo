@@ -6,16 +6,16 @@ use warnings;
 use Log::Log4perl qw(:easy);
 use Net::ZooKeeper qw(:node_flags :acls :errors);
 
-use constant ZK_ACL => ZOO_OPEN_ACL_UNSAFE;
+use constant ZK_ACL        => ZOO_OPEN_ACL_UNSAFE;
 use constant ZK_SERVERLIST => qw(localhost:2181);
 
 sub new
 {
   my ( $class, %args ) = @_;
-  my $serverlist = join(',', $args{serverlist} || ZK_SERVERLIST );
+  my $serverlist = join( ',', $args{serverlist} || ZK_SERVERLIST );
   DEBUG "using serverlist '$serverlist'";
 
-  my $self = { handle => Net::ZooKeeper->new( $serverlist ), };
+  my $self = { handle => Net::ZooKeeper->new($serverlist), };
   LOGDIE "couldn't init zookeeper: $!" unless defined $self->{handle};
 
   $self->{handle}->{data_read_len} = 1048576;
@@ -68,13 +68,12 @@ sub ping
   return 1;
 }
 
-sub exists { return shift->{handle}->exists(@_); };
-sub create { return shift->{handle}->create(@_); };
-sub get_error { return shift->{handle}->get_error(@_); };
-sub get { return shift->{handle}->get(@_); };
-sub set { return shift->{handle}->set(@_); };
-sub delete { return shift->{handle}->delete(@_); };
-
+sub exists    { return shift->{handle}->exists(@_); }
+sub create    { return shift->{handle}->create(@_); }
+sub get_error { return shift->{handle}->get_error(@_); }
+sub get       { return shift->{handle}->get(@_); }
+sub set       { return shift->{handle}->set(@_); }
+sub delete    { return shift->{handle}->delete(@_); }
 
 1;
 
