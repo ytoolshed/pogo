@@ -5,6 +5,9 @@ use warnings;
 
 use Log::Log4perl qw(:easy);
 
+use Pogo::Engine::Job;
+use Pogo::Engine::Namespace;
+
 our $instance;
 our %nscache;
 
@@ -22,7 +25,7 @@ sub instance
 
   LOGDIE "must define a datastore" unless $opts->{store};
 
-  if ($opts->{store} eq 'zookeeper')
+  if ( $opts->{store} eq 'zookeeper' )
   {
     use Pogo::Engine::Store::ZooKeeper;
     $instance->{store} = Pogo::Engine::Store::ZooKeeper->new();
@@ -46,7 +49,6 @@ sub start
 {
   return;
 }
-
 
 1;
 

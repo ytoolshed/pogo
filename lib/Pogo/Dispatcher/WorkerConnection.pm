@@ -73,7 +73,7 @@ sub accept_handler
       elsif ( $cmd eq 'finish' )
       {
         my ( $jobid, $host, $exitcode, $msg ) = @args;
-        my $job = Pogo::Server->job($jobid);
+        my $job = Pogo::Engine->job($jobid);
         LOGDIE "nonexistant job $jobid sent from worker " . $self->id unless $job;
         $job->finish_host( $host, $exitcode, $msg );
       }
