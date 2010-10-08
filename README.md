@@ -3,6 +3,8 @@
 Pogo is an agent-based system for running interruptive commands safely
 on thousands of machines in parallel.
 
+[[/docs/resources/server-arch.png|float|align=right]]
+
 Users request that a command (or recipe, or script) be executed on a
 group of target nodes by issuing new pogo jobs via the pogo(1)
 command-line utility.  If the job is successfully created on the
@@ -14,7 +16,7 @@ tasks to worker processes.  Workers ssh to the target nodes and run the
 commands specified by the user, reporting progress and status back to
 the dispatcher.
 
-For more information see the Pogo wiki: http://github.com/nrh/pogo/wiki
+For more information see the Pogo wiki: [[http://github.com/nrh/pogo/wiki]]
 
 Copyright (c) 2010, Yahoo! Inc. All rights reserved.
 
