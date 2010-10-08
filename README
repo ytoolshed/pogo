@@ -12,41 +12,7 @@ tasks to worker processes.  Workers ssh to the target nodes and run the
 commands specified by the user, reporting progress and status back to
 the dispatcher.
 
-Task run order can be computed four ways:
-  . Unconstrained
-  . N Parallel
-  . N% Parallel
-  . App/Env Constraints
-
-The first three methods are pretty self-explanatory, unconstrained jobs
-execute as many tasks in parallel as there are available worker
-processes.  N parallel allows N tasks to run simultaneously; a job with
-100 target hosts and N=10 allows 10 tasks to run in parallel.  N%
-parallel computes a percentage based on the total supplied host count; a
-job with 150 target hosts and N=25% allows 37 hosts to run in parallel.
-
-The last run option is more complicated but much more powerful.  With
-this method, hosts are grouped by at least two dimensions, 'application'
-and 'environments'.  Constraints are applied based on intersections of
-application and environment.  Environments and applications may overlap,
-allowing complex modeling of production deployments.  
-
-Here's a simple example with two application and two environments:
-
-members of application 'frontend':
-  fe{1-10}.east.example.com
-  fe{1-10}.west.example.com
-
-members of environment 'east':
-  fe{1-10}.east.example.com
-
-members of environment 'west':
-  fe{1-10}.west.example.com
-
-members of application 'backend':
-  be{1-5}.east.example.com
-  be{1-5}.west.example.com
-
+For more information see the Pogo wiki: http://github.com/nrh/pogo/wiki
 
 Copyright (c) 2010, Yahoo! Inc. All rights reserved.
 
