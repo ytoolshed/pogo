@@ -17,9 +17,45 @@ package PogoTester;
 use strict;
 use warnings;
 
+use Time::HiRes qw(sleep);
+
+use FindBin qw($Bin);
+
+our $serverpid;
+
 sub start_dispatcher
 {
+  my (%opts) = @_;
+  my $conf = $opts{conf} || "$Bin/conf/dispatcher.conf";
+  $serverpid = fork();
+
+  if ( $serverpid == 0 )
+  {
+    exec( "/usr/local/bin/perl", "-I$Bin/../lib", "-I$Bin/lib", "$Bin/../bin/pogo-dispatcher", '-f',
+      $conf )
+      or die $!;
+  }
+
+  # wait for server startup
+  sleep(3.5);
   return 1;
+}
+
+sub stop_dispatcher
+{
+  sleep(0.2);
+  kill( 15, $serverpid );
+  return 1;
+}
+
+sub start_zookeeper
+{
+  return 1;
+}
+
+sub bin
+{
+  print $Bin;
 }
 
 1;

@@ -18,9 +18,11 @@ use strict;
 use warnings;
 
 use Log::Log4perl qw(:easy);
+use JSON qw(from_json);
 
 use Pogo::Engine::Job;
 use Pogo::Engine::Namespace;
+use Pogo::Engine::Store;
 
 our $instance;
 our %nscache;
@@ -37,17 +39,7 @@ sub instance
     start_time => time(),
   };
 
-  LOGDIE "must define a datastore" unless $opts->{store};
-
-  if ( $opts->{store} eq 'zookeeper' )
-  {
-    use Pogo::Engine::Store::ZooKeeper;
-    $instance->{store} = Pogo::Engine::Store::ZooKeeper->new();
-  }
-  else
-  {
-    LOGDIE "invalid storage engine '" . $opts->{store} . "', bye";
-  }
+  $instance->{store} = Pogo::Engine::Store->new($opts);
 
   return bless $instance, $class;
 }
@@ -62,6 +54,75 @@ sub store
 sub start
 {
   return;
+}
+
+# these are methods that can either be called on the engine instance, or via RPC
+sub stats
+{
+  my @total_stats;
+  foreach my $host ( $instance->store->get_children('/pogo/stats') )
+  {
+    my $path = '/pogo/stats/' . $host . '/current';
+    if ( !$instance->store->exists($path) )
+    {
+      push( @total_stats, { hostname => $host, state => 'not connected' } );
+      next;
+    }
+
+    my $raw_stats = $instance->store->get($path)
+      or WARN "race condition? $path should exist but doesn't: " . $instance->store->get_error;
+
+    my $host_stats;
+    eval { $host_stats = from_json($raw_stats) };
+    if ($@)
+    {
+      WARN "json decode of $path failed: $@";
+      next;
+    }
+    push( @total_stats, $host_stats );
+  }
+
+  return \@total_stats;
+}
+
+sub lastjob
+{
+  my ( $self, $matchopts ) = @_;
+  $matchopts->{limit} = 1;
+  my @jobs = $self->listjobs($matchopts);
+
+  return if ( !@jobs );
+  my $lastjob = pop(@jobs);
+
+  return $lastjob->{jobid};
+}
+
+sub listjobs
+{
+  my ( $self, $matchopts ) = @_;
+
+  my @jobs;
+
+  my $limit  = delete $matchopts->{limit}  || 100;
+  my $offset = delete $matchopts->{offset} || 0;
+  my $jobidx = _get_children_version("/pogo/job") - 1 - $offset;
+
+JOB: for ( ; $jobidx >= 0 && $limit > 0; $jobidx-- )
+  {
+    my $jobid = sprintf( "p%010d", $jobidx );
+    my $jobinfo = $self->job($jobid)->info;
+    last unless defined $jobinfo;
+
+    foreach my $k ( keys %$matchopts )
+    {
+      next JOB if ( !exists $jobinfo->{$k} );
+      next JOB if ( $matchopts->{$k} ne $jobinfo->{$k} );
+    }
+    $jobinfo->{jobid} = $jobid;
+    push @jobs, $jobinfo;
+    $limit--;
+  }
+  return @jobs;
 }
 
 1;

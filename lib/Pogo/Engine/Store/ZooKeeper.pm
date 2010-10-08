@@ -25,8 +25,8 @@ use constant ZK_SERVERLIST => qw(localhost:2181);
 
 sub new
 {
-  my ( $class, %args ) = @_;
-  my $serverlist = join( ',', $args{serverlist} || ZK_SERVERLIST );
+  my ( $class, $opts ) = @_;
+  my $serverlist = join( ',', $opts->{serverlist} || ZK_SERVERLIST );
   DEBUG "using serverlist '$serverlist'";
 
   my $self = { handle => Net::ZooKeeper->new($serverlist), };
