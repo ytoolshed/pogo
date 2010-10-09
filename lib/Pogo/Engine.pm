@@ -25,7 +25,7 @@ use Pogo::Engine::Namespace;
 use Pogo::Engine::Store;
 
 our $instance;
-our %nscache;
+our $nscache;
 
 sub instance
 {
@@ -49,6 +49,22 @@ sub store
   LOGDIE "not yet initialized" unless defined $instance;
   return $instance->{store};
 }
+
+# convenience interfaces into Engine sublcasses
+
+sub namespace
+{
+  my ( $class, $nsname ) = @_;
+  $nscache->{$nsname} ||= Pogo::Engine::Namespace->new($nsname);
+  return $nscache->{$nsname};
+}
+
+sub job
+{
+  my ( $class, $jobid) = @_;
+  return Pogo::Server::Job->get($jobid);
+}
+
 
 # i guess we don't do anything yet.
 sub start
@@ -123,6 +139,10 @@ JOB: for ( ; $jobidx >= 0 && $limit > 0; $jobidx-- )
     $limit--;
   }
   return @jobs;
+}
+
+sub add_task # hmm, is this still used?
+{
 }
 
 1;

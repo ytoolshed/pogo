@@ -41,7 +41,7 @@ sub new
   {
     if ( !$self->exists($path) )
     {
-      $self->create( $path, '', acl => ZK_ACL )
+      $self->create( $path, '' )
         or LOGDIE "unable to create path '$path': " . $self->get_error;
       DEBUG "created zk path '$path'";
     }
@@ -69,11 +69,8 @@ sub ping
   my $self     = shift;
   my $testdata = 0xDEADBEEF;
 
-  my $node = $self->create(
-    '/pogo/lock/ping', '',
-    flags => ZOO_SEQUENCE | ZOO_EPHEMERAL,
-    acl   => ZK_ACL,
-  ) or LOGDIE "unable to create ping node: " . $self->get_error;
+  my $node = $self->create( '/pogo/lock/ping', '', flags => ZOO_SEQUENCE | ZOO_EPHEMERAL, )
+    or LOGDIE "unable to create ping node: " . $self->get_error;
 
   $self->set( $node, $testdata ) or LOGDIE "unable to set data: " . $self->get_error;
   my $probe = $self->get($node) or LOGDIE "unable to get data: " . $self->get_error;
@@ -82,8 +79,14 @@ sub ping
   return 1;
 }
 
+sub create
+{
+  my ( $self, $path, $contents, %opts ) = @_;
+  $opts{acl} ||= ZK_ACL;
+  return $self->{handle}->create( $self, $path, $contents, %opts );
+}
+
 sub exists    { return shift->{handle}->exists(@_); }
-sub create    { return shift->{handle}->create(@_); }
 sub get_error { return shift->{handle}->get_error(@_); }
 sub get       { return shift->{handle}->get(@_); }
 sub set       { return shift->{handle}->set(@_); }
