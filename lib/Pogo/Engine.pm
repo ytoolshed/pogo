@@ -19,6 +19,7 @@ use warnings;
 
 use Log::Log4perl qw(:easy);
 use JSON qw(from_json);
+use YAML::XS qw(LoadFile);
 
 use Pogo::Engine::Job;
 use Pogo::Engine::Namespace;
@@ -44,6 +45,25 @@ sub instance
   return bless $instance, $class;
 }
 
+# init is called from the API handler and we need to load the config that
+# we'd normally load in pogo-dispatcher
+sub init
+{
+  my ($class, %opts) = @_;
+  LOGDIE "no configuration?" unless $opts{conf};
+
+  my $conf;
+  eval { $conf = LoadFile( $opts{conf} ); };
+
+  if ($@)
+  {
+    LOGDIE "couldn't open config: $@\n";
+  }
+
+  return $class->instance($conf);
+}
+
+
 sub store
 {
   LOGDIE "not yet initialized" unless defined $instance;
@@ -65,6 +85,10 @@ sub job
   return Pogo::Server::Job->get($jobid);
 }
 
+sub ping
+{
+  return shift->instance->store->ping(@_);
+}
 
 # i guess we don't do anything yet.
 sub start
