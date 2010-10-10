@@ -19,9 +19,39 @@ use warnings;
 
 use Log::Log4perl qw(:easy);
 use Net::ZooKeeper qw(:node_flags :acls :errors);
+use Data::Dumper;
 
 use constant ZK_ACL        => ZOO_OPEN_ACL_UNSAFE;
 use constant ZK_SERVERLIST => qw(localhost:2181);
+my @ZOO_ERRORS = (
+  [ 0,    'ZOK',                      'Everything is OK' ],
+  [ -1,   'ZSYSTEMERROR',             'ZSYSTEMERROR' ],
+  [ -2,   'ZRUNTIMEINCONSISTENCY',    'A runtime inconsistency was found', ],
+  [ -3,   'ZDATAINCONSISTENCY',       'A data inconsistency was found', ],
+  [ -4,   'ZCONNECTIONLOSS',          'Connection to the server has been lost', ],
+  [ -5,   'ZMARSHALLINGERROR',        'Error while marshalling or unmarshalling data', ],
+  [ -6,   'ZUNIMPLEMENTED',           'Operation is unimplemented', ],
+  [ -7,   'ZOPERATIONTIMEOUT',        'Operation timeout', ],
+  [ -8,   'ZBADARGUMENTS',            'Invalid arguments', ],
+  [ -9,   'ZINVALIDSTATE',            'Invalid zhandle state', ],
+  [ -100, 'ZAPIERROR',                'ZAPIERROR' ],
+  [ -101, 'ZNONODE',                  'Node does not exist' ],
+  [ -102, 'ZNOAUTH',                  'Not authenticated' ],
+  [ -103, 'ZBADVERSION',              'Version conflict' ],
+  [ -108, 'ZNOCHILDRENFOREPHEMERALS', 'Ephemeral nodes may not have children', ],
+  [ -110, 'ZNODEEXISTS',              'The node already exists', ],
+  [ -111, 'ZNOTEMPTY',                'The node has children', ],
+  [ -112, 'ZSESSIONEXPIRED',          'The session has been expired by the server', ],
+  [ -113, 'ZINVALIDCALLBACK',         'Invalid callback specified', ],
+  [ -114, 'ZINVALIDACL',              'Invalid ACL specified', ],
+  [ -115, 'ZAUTHFAILED',              'Client authentication failed', ],
+  [ -116, 'ZCLOSING',                 'ZooKeeper is closing', ],
+  [ -117, 'ZNOTHING',                 '(not error) no server responses to process', ],
+  [ -118, 'ZSESSIONMOVED',            'session moved to another server, so operation is ignored', ],
+);
+
+my %ZOO_ERROR_NUMBER = map { $_->[0] => $_->[2] } @ZOO_ERRORS;
+my %ZOO_ERROR_NAME   = map { $_->[1] => $_->[0] } @ZOO_ERRORS;
 
 sub new
 {
@@ -69,8 +99,10 @@ sub ping
   my $self     = shift;
   my $testdata = 0xDEADBEEF;
 
+  DEBUG "got here";
   my $node = $self->create( '/pogo/lock/ping', '', flags => ZOO_SEQUENCE | ZOO_EPHEMERAL, )
     or LOGDIE "unable to create ping node: " . $self->get_error;
+  DEBUG "got here too";
 
   $self->set( $node, $testdata ) or LOGDIE "unable to set data: " . $self->get_error;
   my $probe = $self->get($node) or LOGDIE "unable to get data: " . $self->get_error;
@@ -83,14 +115,23 @@ sub create
 {
   my ( $self, $path, $contents, %opts ) = @_;
   $opts{acl} ||= ZK_ACL;
-  return $self->{handle}->create( $path, $contents, %opts );
+  DEBUG Dumper [ $self, $path, $contents, \%opts ];
+  my $ret = $self->{handle}->create( $path, $contents, %opts );
+  DEBUG Dumper $ret;
+  return $ret;
 }
 
-sub exists    { return shift->{handle}->exists(@_); }
-sub get_error { return shift->{handle}->get_error(@_); }
-sub get       { return shift->{handle}->get(@_); }
-sub set       { return shift->{handle}->set(@_); }
-sub delete    { return shift->{handle}->delete(@_); }
+sub get_error
+{
+  my ( $self, @opts ) = @_;
+  my $err = $self->{handle}->get_error(@opts);
+  return $ZOO_ERROR_NUMBER{$err} || $err;
+}
+
+sub exists { return shift->{handle}->exists(@_); }
+sub get    { return shift->{handle}->get(@_); }
+sub set    { return shift->{handle}->set(@_); }
+sub delete { return shift->{handle}->delete(@_); }
 
 1;
 

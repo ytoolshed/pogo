@@ -20,6 +20,7 @@ use warnings;
 use Log::Log4perl qw(:easy);
 use JSON qw(from_json);
 use YAML::XS qw(LoadFile);
+use Data::Dumper qw(Dumper);
 
 use Pogo::Engine::Job;
 use Pogo::Engine::Namespace;
@@ -30,7 +31,8 @@ our $nscache;
 
 sub instance
 {
-  return $instance if defined $instance;
+  return $instance
+    if defined $instance;
 
   my ( $class, $opts ) = @_;
   DEBUG "new Pogo::Engine instance";
@@ -49,7 +51,7 @@ sub instance
 # we'd normally load in pogo-dispatcher
 sub init
 {
-  my ($class, %opts) = @_;
+  my ( $class, %opts ) = @_;
   LOGDIE "no configuration?" unless $opts{conf};
 
   my $conf;
@@ -62,7 +64,6 @@ sub init
 
   return $class->instance($conf);
 }
-
 
 sub store
 {
@@ -81,7 +82,7 @@ sub namespace
 
 sub job
 {
-  my ( $class, $jobid) = @_;
+  my ( $class, $jobid ) = @_;
   return Pogo::Server::Job->get($jobid);
 }
 
@@ -165,7 +166,7 @@ JOB: for ( ; $jobidx >= 0 && $limit > 0; $jobidx-- )
   return @jobs;
 }
 
-sub add_task # hmm, is this still used?
+sub add_task    # hmm, is this still used?
 {
 }
 

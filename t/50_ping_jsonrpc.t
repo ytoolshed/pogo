@@ -21,7 +21,7 @@ use Test::More 'no_plan';
 use Net::SSLeay qw/sslcat/;
 use Log::Log4perl qw/:easy/;
 
-use YAML::Syck qw/LoadFile/;
+use YAML::XS qw/LoadFile/;
 use FindBin qw/$Bin/;
 use JSON;
 use IO::Socket::INET;
