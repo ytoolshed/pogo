@@ -24,6 +24,30 @@ use Log::Log4perl qw(:easy);
 use Pogo::Engine;
 use Pogo::Dispatcher::AuthStore;
 
+our %ALLOWED_RPC_METHODS = (
+  err           => 1,
+  globalstatus  => 1,
+  hostinfo      => 1,
+  hostlog_url   => 1,
+  jobalter      => 1,
+  jobhalt       => 1,
+  jobhoststatus => 1,
+  jobinfo       => 1,
+  joblog        => 1,
+  jobresume     => 1,
+  jobretry      => 1,
+  jobskip       => 1,
+  jobsnapshot   => 1,
+  jobstatus     => 1,
+  lastjob       => 1,
+  listjobs      => 1,
+  loadconf      => 1,
+  ping          => 1,
+  run           => 1,
+  stats         => 1,
+  add_task      => 1,
+);
+
 sub accept_handler
 {
   my $class = shift;
@@ -54,7 +78,13 @@ sub accept_handler
       my ( $cmd, @args ) = @$req;
 
       # $cmd is either store or expire
+
       DEBUG "RPC $cmd from " . $self->id;
+      if ( !exists $ALLOWED_RPC_COMMANDS{$cmd} )
+      {
+        my $resp = new Pogo::Engine::Response; # we're gonna fake it here.
+        $resp->set_error("unknown rpc command '$cmd'");
+        $h->push_write( json => $resp );
       if ( $cmd eq 'storepw' )
       {
         my ( $jobid, $pw, $passphrase, $expire ) = @args;
