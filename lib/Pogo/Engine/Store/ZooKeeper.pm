@@ -83,7 +83,7 @@ sub create
 {
   my ( $self, $path, $contents, %opts ) = @_;
   $opts{acl} ||= ZK_ACL;
-  return $self->{handle}->create( $self, $path, $contents, %opts );
+  return $self->{handle}->create( $path, $contents, %opts );
 }
 
 sub exists    { return shift->{handle}->exists(@_); }
