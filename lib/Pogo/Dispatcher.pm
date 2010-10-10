@@ -77,8 +77,8 @@ sub start
   LOGDIE "dispatcher not yet initialized" unless defined $instance;
 
   # start these puppies up
-  Pogo::Engine->instance($self)->start;
-  Pogo::Dispatcher::AuthStore->instance($self)->start;
+  Pogo::Engine->init($self);
+  Pogo::Dispatcher::AuthStore->init($self);
 
   # handle workers
   tcp_server(

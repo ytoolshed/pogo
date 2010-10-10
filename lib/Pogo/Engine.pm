@@ -17,6 +17,7 @@ package Pogo::Engine;
 use strict;
 use warnings;
 
+use AnyEvent;
 use Log::Log4perl qw(:easy);
 use JSON qw(from_json);
 use YAML::XS qw(LoadFile);
@@ -25,6 +26,7 @@ use Data::Dumper qw(Dumper);
 use Pogo::Engine::Job;
 use Pogo::Engine::Namespace;
 use Pogo::Engine::Store;
+use Pogo::Roles;
 
 our $instance;
 our $nscache;
@@ -83,21 +85,395 @@ sub namespace
 sub job
 {
   my ( $class, $jobid ) = @_;
-  return Pogo::Server::Job->get($jobid);
+  return Pogo::Engine::Job->get($jobid);
 }
 
-sub ping
+# these should be available via the http api and the json-rpc connection handler
+
+sub err
 {
-  return shift->instance->store->ping(@_);
+  return LOGDIE "@_";
+
 }
 
-# i guess we don't do anything yet.
-sub start
+sub globalstatus
 {
-  return;
+  my ($ns, @args) = @_;
+  my $resp = new Pogo::Engine::Respone;
+  $resp->add_header( action => 'globalstatus' );
+
+  $resp->set_records( Pogo::Engine->namespace($ns)->global_get_locks(@args) );
+  $resp->set_ok;
+
+  return $resp;
 }
 
-# these are methods that can either be called on the engine instance, or via RPC
+sub hostinfo
+{
+  my $range = shift;
+  my $ns = shift;
+
+  my $resp = new Pogo::Engine::Response;
+  $resp->add_header( action => 'hostinfo' );
+
+  my $error;
+  my $w = AnyEvent->condvar;
+
+  # call this asyncronously as it may be ugly
+  Pogo::Roles->instance->fetch_all(
+    $range, $ns,
+    sub {
+      $resp->set_error(shift);
+      $w->send;
+    },
+    sub {
+      my ($results, $hosts) = @_;
+      $resp->add_header( hosts => join( ',', @$hosts ));
+      $resp->set_ok;
+      $resp->set_records($results);
+      $w->send;
+    },
+    );
+
+  $w->recv;
+
+  return $resp;
+}
+
+sub hostlog_url
+{
+  my ($jobid, @hostnames) = @_;
+  my $job = Pogo::Engine->job($jobid);
+  my $resp = new Pogo::Engine::Response;
+  $resp->add_header( action => 'hostlog_url' );
+
+  if (!defined $job)
+  {
+    $resp->set_error("jobid $jobid not found");
+    return $resp;
+  }
+
+  $resp->set_ok;
+
+  foreach my $host (@hostnames)
+  {
+    my $urls = $job->host($host)->outputurl;
+    $resp->add_record( [ $host, @$urls ] );
+  }
+
+  $resp->add_header( hosts => join ',', @hostnames );
+
+  return $resp;
+}
+
+sub jobalter
+{
+  my ($jobid, %alter) = @_;
+  my $job = Pogo::Engine->job($jobid);
+  my $resp = new Pogo::Engine::Response;
+  $resp->add_header( action => 'jobalter' );
+
+  if (!defined $job)
+  {
+    $resp->set_error("jobid $jobid not found");
+    return $resp;
+  }
+
+  while ( my ( $k, $v ) = each %alter )
+  {
+    if (!$job->set_meta( $k, $v ))
+    {
+      $resp->set_error("failed to set $k=$v for $jobid");
+      return $resp;
+    }
+  }
+  $resp->set_ok;
+
+  return $resp;
+}
+
+sub jobhalt
+{
+  my $jobid = shift;
+  my $job = Pogo::Engine->job($jobid);
+  my $resp = new Pogo::Engine::Response;
+  $resp->add_header( action => 'jobhalt' );
+
+  if (!defined $job)
+  {
+    $resp->set_error("jobid $jobid not found");
+    return $resp;
+  }
+
+  if (!$job->halt)
+  {
+    $resp->set_error("error halting $jobid");
+    return $resp;
+  }
+
+  $resp->set_ok;
+  return $resp;
+}
+
+sub jobhoststatus
+{
+  my ($jobid, $hostname) = @_;
+  my $job = Pogo::Engine->job($jobid);
+  my $resp = new Pogo::Engine::Response;
+
+  $resp->add_header( action => 'jobhoststatus' );
+
+  if (!defined $job)
+  {
+    $resp->set_error("jobid $jobid not found");
+    return $resp;
+  }
+
+  if (!job->has_host($hostname))
+  {
+    $resp->set_error("host $hostname not part of job $jobid");
+    return $resp;
+  }
+
+  $resp->set_records( $job->host($hostname)->state );
+  $resp->set_ok;
+  return $resp;
+};
+
+sub jobinfo
+{
+  my $jobid = shift;
+  my $job = Pogo::Engine->job($jobid);
+  my $resp = new Pogo::Engine::Response;
+
+  $resp->add_header( action => 'jobinfo' );
+
+  if (!defined $job)
+  {
+    $resp->set_error("jobid $jobid not found");
+    return $resp;
+  }
+
+  $resp->set_records($job->info);
+  $resp->set_ok;
+
+  return $resp;
+}
+
+sub joblog
+{
+  my ($jobid, $offset, $limit) = @_;
+  my $job = Pogo::Engine->job($jobid);
+  my $resp = new Pogo::Engine::Response;
+
+  $resp->add_header( action => 'joblog' );
+
+  if (!defined $job)
+  {
+    $resp->set_error("jobid $jobid not found");
+    return $resp;
+  }
+
+  $resp->set_records( $job->read_log( $offset, $limit ) );
+  $resp->set_ok;
+
+  return $resp;
+}
+
+sub jobresume
+{
+  my $jobid = shift;
+  my $job = Pogo::Engine->job($jobid);
+  my $resp = new Pogo::Engine::Response;
+
+  $resp->add_header( action => 'jobresume' );
+
+  if (!defined $job)
+  {
+    $resp->set_error("jobid $jobid not found");
+    return $resp;
+  }
+
+  if ($job->state ne 'halted')
+  {
+    $resp->set_error("job $jobid not halted; cannot resume");
+    return $resp;
+  }
+
+  Pogo::Engine->add_task( 'resumejob', $job->{id} );
+  $resp->set_ok;
+
+  return $resp;
+}
+
+sub jobretry
+{
+  my ($jobid, @hostnames ) = @_;
+  my $job = Pogo::Engine->job($jobid);
+  my $resp = new Pogo::Engine::Response;
+
+  $resp->add_header( action => 'jobretry' );
+
+  if (!defined $job)
+  {
+    $resp->set_error("jobid $jobid not found");
+    return $resp;
+  }
+
+  my $out = [ map { $job->retry_host($_) } @hostnames ];
+  Pogo::Engine->add_task( 'resumejob', $job->{id} );
+
+  $resp->set_records($out);
+  $resp->set_ok;
+
+  return $resp;
+}
+
+sub jobskip
+{
+  my ($jobid, @hostnames) = @_;
+  my $job = Pogo::Engine->job($jobid);
+  my $resp = new Pogo::Engine::Response;
+
+  $resp->add_header( action => 'jobskip' );
+
+  if (!defined $job)
+  {
+    $resp->set_error("jobid $jobid not found");
+    return $resp;
+  }
+
+  my $out = [ map { $job->skip_host($_) } @hostnames ];
+  Pogo::Engine->add_task( 'continuejob', $job->{id} );
+
+  $resp->set_records($out);
+  $resp->set_ok;
+
+  return $resp;
+}
+
+sub jobsnapshot
+{
+  my ( $jobid, $offset ) = @_;
+  my $job = Pogo::Engine->job($jobid);
+  my $resp = new Pogo::Engine::Response;
+
+  $resp->add_header( action => 'jobsnapshot' );
+
+  if (!defined $job)
+  {
+    $resp->set_error("jobid $jobid not found");
+    return $resp;
+  }
+
+  my ( $idx, $snap ) = $job->snapshot($offset);
+
+  # $snap is a JSON-encoded string; we want to return it as a raw
+  # value rather than re-encoding it in the Response object
+  # i guess this means it'll have to be double-decoded in the client until we
+  # can make Response.pm do what we want
+
+  $resp->add_raw_record([ $idx, $snap ]);
+  $resp->set_ok;
+
+  return $resp;
+}
+
+sub jobstatus
+{
+  my $jobid = shift;
+  my $job = Pogo::Engine->job($jobid);
+  my $resp = new Pogo::Engine::Response;
+
+  $resp->add_header( action => 'jobstatus' );
+
+  if (!defined $job)
+  {
+    $resp->set_error("jobid $jobid not found");
+    return $resp;
+  }
+
+  my @hostlist = map { $resp->add_record([ $_->name, $_->state ]) } $job->hosts;
+  $resp->add_header( hosts => join ',', @hostlist );
+  $resp->set_ok;
+
+  return $resp;
+}
+
+sub lastjob
+{
+  my ( %matchopts ) = @_;
+  $matchopts{limit} = 1;
+  my $resp = new Pogo::Engine::Response;
+  $resp->set_header( action => 'lastjob');
+
+  my @jobs = Pogo::Engine->_listjobs(%matchopts);
+  $resp->set_ok;
+
+  return $resp unless @jobs;
+
+  $resp->add_record(pop(@jobs)->{jobid});
+
+  return $resp;
+}
+
+sub listjobs
+{
+  my (%matchopts) = @_;
+  my $resp = new Pogo::Engine::Response;
+  $resp->set_header( action => 'listjobs' );
+
+  my @jobs = Pogo::Engine->instance->_listjobs(\%matchopts);
+  $resp->set_ok;
+
+  return $resp unless @jobs;
+
+  $res->set_records(\@jobs);
+
+  return $resp;
+}
+
+sub _listjobs
+{
+  my ( $self, $matchopts ) = @_;
+
+  my @jobs;
+
+  my $limit  = delete $matchopts->{limit}  || 100;
+  my $offset = delete $matchopts->{offset} || 0;
+  my $jobidx = _get_children_version("/pogo/job") - 1 - $offset;
+
+JOB: for ( ; $jobidx >= 0 && $limit > 0; $jobidx-- )
+  {
+    my $jobid = sprintf( "p%010d", $jobidx );
+    my $jobinfo = $self->job($jobid)->info;
+    last unless defined $jobinfo;
+
+    foreach my $k ( keys %$matchopts )
+    {
+      next JOB if ( !exists $jobinfo->{$k} );
+      next JOB if ( $matchopts->{$k} ne $jobinfo->{$k} );
+    }
+    $jobinfo->{jobid} = $jobid;
+    push @jobs, $jobinfo;
+    $limit--;
+  }
+  return @jobs;
+}
+
+sub loadconf
+{
+  my ($ns, $conf) = @_;
+  my $resp = new Pogo::Engine::Response;
+  $resp->add_header( action => 'loadconf' );
+
+  Pogo::Server->namespace($ns)->init->set_conf($conf);
+}
+
+
+sub ping { return shift->instance->store->ping(@_); }
+sub run {}
+
 sub stats
 {
   my @total_stats;
@@ -126,45 +502,6 @@ sub stats
   return \@total_stats;
 }
 
-sub lastjob
-{
-  my ( $self, $matchopts ) = @_;
-  $matchopts->{limit} = 1;
-  my @jobs = $self->listjobs($matchopts);
-
-  return if ( !@jobs );
-  my $lastjob = pop(@jobs);
-
-  return $lastjob->{jobid};
-}
-
-sub listjobs
-{
-  my ( $self, $matchopts ) = @_;
-
-  my @jobs;
-
-  my $limit  = delete $matchopts->{limit}  || 100;
-  my $offset = delete $matchopts->{offset} || 0;
-  my $jobidx = _get_children_version("/pogo/job") - 1 - $offset;
-
-JOB: for ( ; $jobidx >= 0 && $limit > 0; $jobidx-- )
-  {
-    my $jobid = sprintf( "p%010d", $jobidx );
-    my $jobinfo = $self->job($jobid)->info;
-    last unless defined $jobinfo;
-
-    foreach my $k ( keys %$matchopts )
-    {
-      next JOB if ( !exists $jobinfo->{$k} );
-      next JOB if ( $matchopts->{$k} ne $jobinfo->{$k} );
-    }
-    $jobinfo->{jobid} = $jobid;
-    push @jobs, $jobinfo;
-    $limit--;
-  }
-  return @jobs;
-}
 
 sub add_task    # hmm, is this still used?
 {
