@@ -64,4 +64,5 @@ foreach my $portname qw/worker_port rpc_port authstore_port/
 # stop
 ok( PogoTester::stop_dispatcher, 'stop' );
 
+1;
 
