@@ -18,13 +18,13 @@ use strict;
 use warnings;
 
 use Log::Log4perl qw(:easy);
-use YAML::Syck qw(LoadFile);
+use YAML::XS qw(LoadFile);
 use Getopt::Long qw(GetOptions);
 
 use Pogo::Dispatcher;
 
 use constant POGO_ROOT => $ENV{POGO_ROOT} || '/usr/local';
-use constant POGO_CONF => POGO_ROOT . '/etc/pogo/dispatcher.conf';
+use constant POGO_CONF => POGO_ROOT . '/etc/pogo/pogo.conf';
 use constant PIDFILE   => POGO_ROOT . '/var/run/pogo-dispatcher.pid';
 
 sub main
@@ -33,7 +33,7 @@ sub main
   GetOptions( $opts, 'f=s' );
 
   my $conf;
-  eval { $conf = LoadFile( $opts->{f} || POGO_CONF ) };
+  eval { $conf = LoadFile( $opts->{f} || POGO_CONF ); };
   if ($@)
   {
     LOGDIE "couldn't open config: $@\n";
