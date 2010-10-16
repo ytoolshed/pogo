@@ -56,7 +56,9 @@ my %ZOO_ERROR_NAME   = map { $_->[1] => $_->[0] } @ZOO_ERRORS;
 sub new
 {
   my ( $class, $opts ) = @_;
-  my $serverlist = join( ',', $opts->{serverlist} || ZK_SERVERLIST );
+  my @serverlist = defined $opts->{store_options}->{serverlist} ? @{ $opts->{store_options}->{serverlist} } : ZK_SERVERLIST;
+
+  my $serverlist = join( ',', @serverlist );
   DEBUG "using serverlist '$serverlist'";
 
   my $self = { handle => Net::ZooKeeper->new($serverlist), };
