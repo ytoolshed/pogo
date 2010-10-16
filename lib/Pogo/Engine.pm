@@ -53,16 +53,9 @@ sub instance
 # we'd normally load in pogo-dispatcher
 sub init
 {
-  my ( $class, %opts ) = @_;
-  LOGDIE "no configuration?" unless $opts{conf};
+  my ( $class, $conf ) = @_;
 
-  my $conf;
-  eval { $conf = LoadFile( $opts{conf} ); };
-
-  if ($@)
-  {
-    LOGDIE "couldn't open config: $@\n";
-  }
+  LOGDIE "no configuration?" unless $conf->{worker_cert};  # arbitrary canary
 
   return $class->instance($conf);
 }
@@ -90,11 +83,11 @@ sub job
 
 # these should be available via the http api and the json-rpc connection handler
 
-sub err
-{
-  return LOGDIE "@_";
-
-}
+# this seems to be unused currently
+#sub err
+#{
+#  return LOGDIE "@_";
+#}
 
 sub globalstatus
 {

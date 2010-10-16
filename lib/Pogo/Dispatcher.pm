@@ -40,7 +40,7 @@ sub instance
   return $instance if defined $instance;
   {
     my $class = shift;
-    my $self  = shift;
+    my $self  = shift; # incoming config hashref
 
     $self->{workers} = {
       idle => {},
@@ -170,7 +170,6 @@ sub retire_worker
   delete $instance->{workers}->{busy}->{ $worker->id };
   DEBUG "retired worker: " . $worker->id;
 }
-
 
 1;
 

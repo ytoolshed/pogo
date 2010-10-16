@@ -50,6 +50,13 @@ sub instance
   return bless $self, $class;
 }
 
+sub init
+{
+  my ($class, $conf) = @_;
+  LOGDIE "no configuration?" unless defined $conf->{authstore_port};
+  return $class->instance($conf);
+}
+
 sub store
 {
   my ( $self, $job, $pw, $passphrase, $expire ) = @_;
