@@ -80,11 +80,12 @@ sub accept_handler
       # $cmd is either store or expire
 
       DEBUG "RPC $cmd from " . $self->id;
-      if ( !exists $ALLOWED_RPC_COMMANDS{$cmd} )
+      if ( !exists $ALLOWED_RPC_METHODS{$cmd} )
       {
         my $resp = new Pogo::Engine::Response; # we're gonna fake it here.
         $resp->set_error("unknown rpc command '$cmd'");
         $h->push_write( json => $resp );
+      }
       if ( $cmd eq 'storepw' )
       {
         my ( $jobid, $pw, $passphrase, $expire ) = @args;
