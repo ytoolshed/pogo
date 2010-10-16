@@ -18,18 +18,18 @@ use strict;
 use warnings;
 
 use Test::More 'no_plan';
-use Net::SSLeay qw/sslcat/;
-use Log::Log4perl qw/:easy/;
+use Net::SSLeay qw(sslcat);
+use Log::Log4perl qw(:easy);
 
-use YAML::XS qw/LoadFile/;
-use FindBin qw/$Bin/;
+use YAML::XS qw(LoadFile);
+use FindBin qw($Bin);
 use JSON;
 use IO::Socket::INET;
 use Data::Dumper;
 
 use lib "$Bin/lib/";
 
-use PogoTester;
+use PogoTester qw(rpcit);
 
 chdir($Bin);
 
@@ -46,6 +46,16 @@ ok( $conf->{worker_port}    =~ m/^\d+/, "parse worker port" );
 ok( $conf->{rpc_port}       =~ m/^\d+/, "parse rpc port" );
 ok( $conf->{authstore_port} =~ m/^\d+/, "parse authstore port" );
 
+# globalstatus rpc method tests
+
+# hostlog_url rpc method tests
+
+# loadconf rpc method tests
+
+# ping rpc method tests
+
+# stats rpc method tests
+
 foreach my $portname qw/worker_port rpc_port authstore_port/
 {
   my $port = $conf->{$portname};
@@ -58,6 +68,7 @@ foreach my $portname qw/worker_port rpc_port authstore_port/
   eval { $pong = $js->decode($resp[0]); };
   ok( !$@ && $pong, "decode $portname" );
   ok( $pong->[0] eq 'pong', "pong $portname" );
+
 }
 
 # stop

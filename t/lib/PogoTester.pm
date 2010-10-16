@@ -18,18 +18,31 @@ use strict;
 use warnings;
 
 use Time::HiRes qw(sleep);
+use AnyEvent;
+use AnyEvent::Handle;
+use AnyEvent::TLS;
 
 use FindBin qw($Bin);
 
-our $serverpid;
+our $dispatcher_pid;
+our $zookeeper_pid;
+
+sub new
+{
+  my ($class, $opts) = @_;
+
+  my $self = {};
+
+  return bless $class, $self;
+}
 
 sub start_dispatcher
 {
   my (%opts) = @_;
   my $conf = $opts{conf} || "$Bin/conf/dispatcher.conf";
-  $serverpid = fork();
+  $dispatcher_pid = fork();
 
-  if ( $serverpid == 0 )
+  if ( $dispatcher_pid == 0 )
   {
     exec( "/usr/local/bin/perl", "-I$Bin/../lib", "-I$Bin/lib", "$Bin/../bin/pogo-dispatcher", '-f',
       $conf )
@@ -44,13 +57,34 @@ sub start_dispatcher
 sub stop_dispatcher
 {
   sleep(0.2);
-  kill( 15, $serverpid );
+  kill( 15, $dispatcher_pid );
   return 1;
 }
 
 sub start_zookeeper
 {
+  $ENV{ZOOPIDFILE} = "$Bin/zookeeper.pid";
+  $ENV{CLASSPATH} = "
+
+
   return 1;
+}
+
+sub stop_zookeeper
+{
+  return 1;
+}
+
+sub authstore_client
+{
+}
+
+sub rpc_client
+{
+}
+
+sub worker_client
+{
 }
 
 sub bin
