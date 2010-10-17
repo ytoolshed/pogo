@@ -36,7 +36,9 @@ chdir($Bin);
 my $js = JSON->new;
 
 # start pogo-dispatcher
-ok( PogoTester::start_dispatcher, 'start' );
+ok( PogoTester::start_zookeeper, 'start zookeeper' );
+ok( PogoTester::start_dispatcher, 'start dispatcher' );
+
 
 my $conf;
 eval { $conf = LoadFile("$Bin/conf/dispatcher.conf"); };
@@ -61,7 +63,9 @@ foreach my $portname qw/worker_port rpc_port authstore_port/
 }
 
 # stop
-ok( PogoTester::stop_dispatcher, 'stop' );
+ok( PogoTester::stop_dispatcher, 'stop dispatcher' );
+ok( PogoTester::stop_zookeeper, 'stop zookeeper' );
+
 
 1;
 

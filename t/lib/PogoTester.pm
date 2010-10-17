@@ -18,8 +18,11 @@ use strict;
 use warnings;
 
 use Time::HiRes qw(sleep);
+use Log::Log4perl qw(:easy);
+
 use AnyEvent;
 use AnyEvent::Handle;
+use AnyEvent::Socket;
 use AnyEvent::TLS;
 
 use FindBin qw($Bin);
@@ -29,7 +32,7 @@ our $zookeeper_pid;
 
 sub new
 {
-  my ($class, $opts) = @_;
+  my ( $class, $opts ) = @_;
 
   my $self = {};
 
@@ -46,7 +49,7 @@ sub start_dispatcher
   {
     exec( "/usr/local/bin/perl", "-I$Bin/../lib", "-I$Bin/lib", "$Bin/../bin/pogo-dispatcher", '-f',
       $conf )
-      or die $!;
+      or LOGDIE $!;
   }
 
   # wait for server startup
@@ -57,21 +60,37 @@ sub start_dispatcher
 sub stop_dispatcher
 {
   sleep(0.2);
+  INFO "killing $dispatcher_pid";
   kill( 15, $dispatcher_pid );
   return 1;
 }
 
 sub start_zookeeper
 {
-  $ENV{ZOOPIDFILE} = "$Bin/zookeeper.pid";
-  $ENV{CLASSPATH} = "
+  my (%opts) = @_;
+  my $conf = $opts{zookeeper_conf} || "$Bin/conf/zookeeper.conf";
+  $zookeeper_pid = fork();
 
+  my $zookeeper_cmd = `zookeeper-server.sh print-cmd $conf 2>/dev/null`;
+  if ( $zookeeper_pid == 0 )
+  {
+    exec($zookeeper_cmd )
+      or LOGDIE $!;
+  }
+  else
+  {
+    sleep(3.5);
+    INFO "spawned zookeeper (pid $zookeeper_pid)";
+  }
 
   return 1;
 }
 
 sub stop_zookeeper
 {
+  sleep(0.2);
+  INFO "killing $zookeeper_pid";
+  kill( 15, $zookeeper_pid );
   return 1;
 }
 
