@@ -81,7 +81,7 @@ sub start_dispatcher
   }
   else
   {
-    sleep(3.5);
+    sleep(2.5);
     INFO "spawned dispatcher (pid $dispatcher_pid)";
   }
 
@@ -111,7 +111,7 @@ sub start_zookeeper
   }
   else
   {
-    sleep(3.5);
+    sleep(2.5);
     INFO "spawned zookeeper (pid $zookeeper_pid)";
   }
 
