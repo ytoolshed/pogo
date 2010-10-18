@@ -54,7 +54,7 @@ sub new
       verify                     => 1,
     ) || LOGDIE "Couldn't init: $!";
 
-  return bless $class, $self;
+  return bless $self, $class;
 }
 
 sub start_dispatcher
