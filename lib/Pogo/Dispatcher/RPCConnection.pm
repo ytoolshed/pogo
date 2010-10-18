@@ -79,7 +79,7 @@ sub accept_handler
 
       # $cmd is either store or expire
 
-      DEBUG "RPC $cmd from " . $self->id;
+      DEBUG "rpc '$cmd' from " . $self->id;
       if ( !exists $ALLOWED_RPC_METHODS{$cmd} )
       {
         my $resp = new Pogo::Engine::Response; # we're gonna fake it here.

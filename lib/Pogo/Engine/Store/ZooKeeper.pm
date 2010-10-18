@@ -117,9 +117,9 @@ sub create
 {
   my ( $self, $path, $contents, %opts ) = @_;
   $opts{acl} ||= ZK_ACL;
-  DEBUG Dumper [ $self, $path, $contents, \%opts ];
+  #DEBUG Dumper [ $self, $path, $contents, \%opts ];
   my $ret = $self->{handle}->create( $path, $contents, %opts );
-  DEBUG Dumper $ret;
+  #DEBUG Dumper $ret;
   return $ret;
 }
 
