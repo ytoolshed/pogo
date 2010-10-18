@@ -35,6 +35,24 @@ sub new
   my ( $class, $opts ) = @_;
 
   my $self = {};
+  $self->{worker_ctx} = AnyEvent::TLS->new(
+      key_file                   => "$Bin/conf/worker.key",
+      cert_file                  => "$Bin/conf/worker.cert",
+      verify_require_client_cert => 1,
+      verify                     => 1,
+    ) || LOGDIE "Couldn't init: $!";
+  $self->{authstore_ctx} = AnyEvent::TLS->new(
+      key_file                   => "$Bin/conf/authstore.key",
+      cert_file                  => "$Bin/conf/authstore.cert",
+      verify_require_client_cert => 1,
+      verify                     => 1,
+    ) || LOGDIE "Couldn't init: $!";
+  $self->{dispatcher_ctx} = AnyEvent::TLS->new(
+      key_file                   => "$Bin/conf/dispatcher.key",
+      cert_file                  => "$Bin/conf/dispatcher.cert",
+      verify_require_client_cert => 1,
+      verify                     => 1,
+    ) || LOGDIE "Couldn't init: $!";
 
   return bless $class, $self;
 }
@@ -51,9 +69,12 @@ sub start_dispatcher
       $conf )
       or LOGDIE $!;
   }
+  else
+  {
+    sleep(3.5);
+    INFO "spawned dispatcher (pid $dispatcher_pid)";
+  }
 
-  # wait for server startup
-  sleep(3.5);
   return 1;
 }
 
@@ -94,16 +115,20 @@ sub stop_zookeeper
   return 1;
 }
 
-sub authstore_client
+# send raw json-rpc back and forth to our authstore port
+sub authstore_rpc
 {
+  my $self = shift;
 }
 
-sub rpc_client
+sub dispatcher_rpc
 {
+  my $self = shift;
 }
 
-sub worker_client
+sub worker_rpc
 {
+  my $self = shift;
 }
 
 sub bin
