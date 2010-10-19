@@ -19,12 +19,12 @@ package Pogo::Dispatcher;
 # . handles jsonrpc connections from the http api
 # . fetch/store passwords
 
-use strict;
-use warnings;
+use common::sense;
 
-use AnyEvent;
 use AnyEvent::Socket qw(tcp_server);
 use AnyEvent::TLS;
+use AnyEvent;
+use JSON qw(to_json);
 use Log::Log4perl qw(:easy);
 
 use Pogo::Dispatcher::AuthStore;
@@ -40,7 +40,7 @@ sub instance
   return $instance if defined $instance;
   {
     my $class = shift;
-    my $self  = shift; # incoming config hashref
+    my $self  = shift;    # incoming config hashref
 
     $self->{workers} = {
       idle => {},
@@ -91,16 +91,16 @@ sub start
     }
   );
 
-#  # store/expire passwords
-#  tcp_server(
-#    $instance->{bind_address},
-#    $instance->{authstore_port},
-#    Pogo::Dispatcher::AuthStore->accept_handler,
-#    sub {
-#      INFO "listening for authstore connections on " .$_[1] . ':' . $_[2];
-#      return 0;
-#    }
-#  );
+  #  # store/expire passwords
+  #  tcp_server(
+  #    $instance->{bind_address},
+  #    $instance->{authstore_port},
+  #    Pogo::Dispatcher::AuthStore->accept_handler,
+  #    sub {
+  #      INFO "listening for authstore connections on " .$_[1] . ':' . $_[2];
+  #      return 0;
+  #    }
+  #  );
 
   # accept rpc connections from the (local) http API
   tcp_server(
@@ -141,6 +141,31 @@ sub _poll
 
 sub _write_stats
 {
+  my $path  = '/pogo/stats/' . $instance->{stats}->{hostname} . '/current';
+  my $store = Pogo::Engine->store;
+
+  $instance->{stats}->{workers_busy} = scalar keys %{ $instance->{workers}->{busy} };
+  $instance->{stats}->{workers_idle} = scalar keys %{ $instance->{workers}->{idle} };
+
+  my @tasks = Pogo::Engine->listtaskq();
+
+  $instance->{stats}->{tasks_queued} = scalar @tasks;
+  $instance->{stats}->{last_update}  = time();
+
+  if ( !$store->exists($path) )
+  {
+    DEBUG "creating new stats node";
+    if ( !$store->exists( '/pogo/stats/' . $instance->{stats}->{hostname} ) )
+    {
+      $store->create( '/pogo/stats/' . $instance->{stats}->{hostname}, '' )
+        or WARN "couldn't create stats/hostname node: " . $store->get_error;
+    }
+    $store->create_ephemeral( $path, '' )
+      or WARN "couldn't create '$path' node: " . $store->get_error;
+  }
+
+  $store->set( $path, to_json $instance->{stats} )
+    or WARN "couldn't update stats node: " . $store->get_error;
 }
 
 sub ssl_ctx
@@ -152,9 +177,10 @@ sub ssl_ctx
 sub idle_worker
 {
   LOGDIE "dispatcher not yet initialized" unless defined $instance;
-  my ($class, $worker) = @_;
+  my ( $class, $worker ) = @_;
   $worker->{tasks}--;
-  if ($worker->{tasks} < MAX_WORKER_TASKS) {
+  if ( $worker->{tasks} < MAX_WORKER_TASKS )
+  {
     delete $instance->{workers}->{busy}->{ $worker->id };
     $instance->{workers}->{idle} ||= {};
     $instance->{workers}->{idle}->{ $worker->id } = $worker;
@@ -165,7 +191,7 @@ sub idle_worker
 sub retire_worker
 {
   LOGDIE "dispatcher not yet initialized" unless defined $instance;
-  my ($class, $worker) = @_;
+  my ( $class, $worker ) = @_;
   delete $instance->{workers}->{idle}->{ $worker->id };
   delete $instance->{workers}->{busy}->{ $worker->id };
   DEBUG "retired worker: " . $worker->id;

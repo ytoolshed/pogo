@@ -126,6 +126,11 @@ sub create
   return $ret;
 }
 
+sub create_ephemeral
+{
+  return shift->create(@_, flags => ZOO_EPHEMERAL);
+}
+
 sub get_error
 {
   my ( $self, @opts ) = @_;

@@ -24,6 +24,7 @@ use JSON;
 use Log::Log4perl qw(:easy);
 use Net::SSLeay qw();
 use YAML::XS qw(LoadFile);
+use Sys::Hostname qw(hostname);
 
 use lib "$Bin/lib/";
 
@@ -50,7 +51,7 @@ ok( $t->[1]->[0] == 0xDEADBEEF, 'ping' )
   or print Dumper $t;
 
 $t = $pt->dispatcher_rpc( ["stats"] );
-ok( $t->[1] eq 'whatever', 'status' )
+ok( $t->[1]->[0]->{hostname} eq hostname(), 'stats' )
   or print Dumper $t;
 
 $t = $pt->dispatcher_rpc( ["weird"] );

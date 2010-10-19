@@ -411,7 +411,7 @@ sub _listjobs
 
   my $limit  = delete $matchopts->{limit}  || 100;
   my $offset = delete $matchopts->{offset} || 0;
-  my $jobidx = $instance->store->get_children_version("/pogo/job") - 1 - $offset;
+  my $jobidx = store->get_children_version("/pogo/job") - 1 - $offset;
 
 JOB: for ( ; $jobidx >= 0 && $limit > 0; $jobidx-- )
   {
@@ -446,7 +446,7 @@ sub ping
 
   my $resp = Pogo::Engine::Response->new()->add_header( action => 'ping' );
 
-  my $foo = $class->instance->store->ping($pong);
+  my $foo = store->ping($pong);
   if ( $foo eq $pong )
   {
     $resp->set_ok;
@@ -458,7 +458,7 @@ sub ping
   return $resp;
 }
 
-sub _ping { return $instance->store->ping(@_); }
+sub _ping { return store->ping(@_); }
 
 sub run
 {
@@ -503,17 +503,17 @@ sub stats
 {
   my $resp = Pogo::Engine::Response->new()->add_header( action => 'stats' );
   my @total_stats;
-  foreach my $host ( $instance->store->get_children('/pogo/stats') )
+  foreach my $host ( store->get_children('/pogo/stats') )
   {
     my $path = '/pogo/stats/' . $host . '/current';
-    if ( !$instance->store->exists($path) )
+    if ( !store->exists($path) )
     {
       push( @total_stats, { hostname => $host, state => 'not connected' } );
       next;
     }
 
-    my $raw_stats = $instance->store->get($path)
-      or WARN "race condition? $path should exist but doesn't: " . $instance->store->get_error;
+    my $raw_stats = store->get($path)
+      or WARN "race condition? $path should exist but doesn't: " . store->get_error;
 
     my $host_stats;
     eval { $host_stats = from_json($raw_stats) };
@@ -535,8 +535,25 @@ sub add_task
 {
   my ( $class, @task ) = @_;
   DEBUG "adding task: " . to_json( \@task );
-  $instance->store->create( '/pogo/taskq' . join( ';', @task, '' ) )
-    or LOGDIE $instance->store->get_error;
+  store->create( '/pogo/taskq' . join( ';', @task, '' ) )
+    or LOGDIE store->get_error;
+}
+
+sub listtaskq
+{
+  my @tasks;
+  foreach my $task ( store->get_children("/pogo/taskq") )
+  {
+    my @req = split( /;/, $task );
+    push(
+      @tasks,
+      { reqtype => $req[0],
+        jobid   => $req[1],
+        host    => $req[2]
+      }
+    );
+  }
+  return @tasks;
 }
 
 1;
