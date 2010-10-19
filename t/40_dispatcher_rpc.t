@@ -14,8 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-use strict;
-use warnings;
+use common::sense;
 
 use Test::More 'no_plan';
 
@@ -28,27 +27,40 @@ use YAML::XS qw(LoadFile);
 
 use lib "$Bin/lib/";
 
-use PogoTester;
-ok(my $pt = PogoTester->new(), "new pt");
+use PogoTester qw(derp);
+ok( my $pt = PogoTester->new(), "new pt" );
 
 chdir($Bin);
 
+ok( Log::Log4perl::init("$Bin/conf/log4perl.conf"), "log4perl" );
+
 my $js = JSON->new;
+my $t;
 
 # start pogo-dispatcher
-ok( $pt->start_zookeeper, 'start zookeeper' );
+ok( $pt->start_zookeeper,  'start zookeeper' );
 ok( $pt->start_dispatcher, 'start dispatcher' );
 
 my $conf;
 eval { $conf = LoadFile("$Bin/conf/dispatcher.conf"); };
 ok( !$@, "loadconf" );
 
-ok($pt->dispatcher_rpc(["ping"])->[0] eq 'pong', 'ping');
+$t = $pt->dispatcher_rpc( ["ping"] );
+ok( $t->[1]->[0] == 0xDEADBEEF, 'ping' )
+  or print Dumper $t;
+
+$t = $pt->dispatcher_rpc( ["stats"] );
+ok( $t->[1] eq 'whatever', 'status' )
+  or print Dumper $t;
+
+$t = $pt->dispatcher_rpc( ["weird"] );
+ok( $t->[0]->{status} eq 'ERROR', 'weird' )
+  or print Dumper $t;
+ok( $t->[0]->{errmsg} eq qq/unknown rpc command 'weird'/, 'weird 2' );
 
 # stop
 ok( $pt->stop_dispatcher, 'stop dispatcher' );
-ok( $pt->stop_zookeeper, 'stop zookeeper' );
-
+ok( $pt->stop_zookeeper,  'stop zookeeper' );
 
 1;
 
