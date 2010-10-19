@@ -50,6 +50,8 @@ sub new
   return $self;
 }
 
+# set_ and add_ records return undef or $self so that we can do chaining on new()
+
 sub load_data
 {
   my ( $self, $content ) = @_;
@@ -105,6 +107,7 @@ sub set_ok
   my $self = shift;
   $self->{_state} = RESPONSE_OK;
   $self->{_header}->{status} = 'OK';
+  return $self;
 }
 
 sub set_error
@@ -114,6 +117,7 @@ sub set_error
   $self->{_state}            = RESPONSE_ERROR;
   $self->{_header}->{errmsg} = $errmsg;
   $self->{_header}->{status} = 'ERROR';
+  return $self;
 }
 
 sub status_msg
@@ -156,7 +160,7 @@ sub set_callback
     $self->add_header( response => 'callback' );
     $self->add_header( callback => $callback );
   }
-  return;
+  return $self;
 }
 
 #}}} callback
@@ -188,7 +192,7 @@ sub set_pushvar
     $self->add_header( response => 'pushvar' );
     $self->add_header( pushvar  => $pushvar );
   }
-  return;
+  return $self;
 }
 
 #}}} pushvar
@@ -217,12 +221,14 @@ sub set_header
 {
   my ( $self, $data ) = @_;
   $self->{_header} = $data;
+  return $self;
 }
 
 sub add_header
 {
   my ( $self, $key, $value ) = @_;
   $self->{_header}->{$key} = $value;
+  return $self;
 }
 
 sub has_header
@@ -239,12 +245,14 @@ sub set_records
 {
   my ( $self, $data ) = @_;
   $self->{_records} = $data;
+  return $self;
 }
 
 sub add_record
 {
   my ( $self, $data ) = @_;
   push @{ $self->{_records} }, $data;
+  return $self;
 }
 
 sub records
@@ -343,6 +351,12 @@ sub content
 {
   my $self = shift;
   return $self->to_string( [ $self->{_header}, $self->{_records} ] );
+}
+
+sub unblessed
+{
+  my $self = shift;
+  return [ $self->{_header}, $self->{_records} ];
 }
 
 #}}} stringify

@@ -22,6 +22,7 @@ use Socket qw(AF_INET inet_aton);
 use Log::Log4perl qw(:easy);
 
 use Pogo::Engine;
+use Pogo::Engine::Response;
 use Pogo::Dispatcher::AuthStore;
 
 our %ALLOWED_RPC_METHODS = (
@@ -82,30 +83,30 @@ sub accept_handler
       DEBUG "rpc '$cmd' from " . $self->id;
       if ( !exists $ALLOWED_RPC_METHODS{$cmd} )
       {
+        ERROR "unknown command '$cmd' from " . $self->id;
         my $resp = new Pogo::Engine::Response; # we're gonna fake it here.
         $resp->set_error("unknown rpc command '$cmd'");
-        $h->push_write( json => $resp );
+        $h->push_write( json => $resp->unblessed );
+        $h->push_read( json => $on_json );
+        return;
       }
-      if ( $cmd eq 'storepw' )
+
+      # presumably we have something valid here
+      my $resp;
+      eval { $resp = Pogo::Engine->$cmd };
+      if ($@)
       {
-        my ( $jobid, $pw, $passphrase, $expire ) = @args;
-        DEBUG "got passwords for job $jobid from " . $self->id;
-        Pogo::Dispatcher::AuthStore->instance->store(@args);
-        $h->push_write( json => [1] );
+        ERROR "command '$cmd' from " . $self->id . "failed";
+        $resp = new Pogo::Engine::Response; # overwrite old possibly-bogus response
+        $resp->set_error("internal error: $@");
+        $h->push_write( json => $resp->unblessed );
+        $h->push_read( json => $on_json );
+        return;
       }
-      elsif ( $cmd eq 'status' )
-      {
-        $h->push_write( json => ['whatever'] );
-      }
-      elsif ( $cmd eq 'ping' )
-      {
-        $h->push_write( json => ['pong'] );
-      }
-      else
-      {
-        $h->push_write( json => [ undef, "no such command" ] );
-      }
+
+      $h->push_write( json=> $resp->unblessed );
       $h->push_read( json => $on_json );
+      return;
     };
 
     $self->{handle} = AnyEvent::Handle->new(

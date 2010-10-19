@@ -55,7 +55,7 @@ sub init
 {
   my ( $class, $conf ) = @_;
 
-  LOGDIE "no configuration?" unless $conf->{worker_cert};  # arbitrary canary
+  LOGDIE "no configuration?" unless $conf->{worker_cert};    # arbitrary canary
 
   return $class->instance($conf);
 }
@@ -92,8 +92,7 @@ sub job
 sub globalstatus
 {
   my ( $ns, @args ) = @_;
-  my $resp = new Pogo::Engine::Respone;
-  $resp->add_header( action => 'globalstatus' );
+  my $resp = Pogo::Engine::Response->new()->add_header( action => 'globalstatus' );
 
   $resp->set_records( $instance->namespace($ns)->global_get_locks(@args) );
   $resp->set_ok;
@@ -106,8 +105,7 @@ sub hostinfo
   my $range = shift;
   my $ns    = shift;
 
-  my $resp = new Pogo::Engine::Response;
-  $resp->add_header( action => 'hostinfo' );
+  my $resp = Pogo::Engine::Response->new()->add_header( action => 'hostinfo' );
 
   my $error;
   my $w = AnyEvent->condvar;
@@ -136,9 +134,8 @@ sub hostinfo
 sub hostlog_url
 {
   my ( $jobid, @hostnames ) = @_;
-  my $job  = $instance->job($jobid);
-  my $resp = new Pogo::Engine::Response;
-  $resp->add_header( action => 'hostlog_url' );
+  my $job = $instance->job($jobid);
+  my $resp = Pogo::Engine::Response->new()->add_header( action => 'hostlog_url' );
 
   if ( !defined $job )
   {
@@ -162,9 +159,8 @@ sub hostlog_url
 sub jobalter
 {
   my ( $jobid, %alter ) = @_;
-  my $job  = $instance->job($jobid);
-  my $resp = new Pogo::Engine::Response;
-  $resp->add_header( action => 'jobalter' );
+  my $job = $instance->job($jobid);
+  my $resp = Pogo::Engine::Response->new()->add_header( action => 'jobalter' );
 
   if ( !defined $job )
   {
@@ -189,8 +185,7 @@ sub jobhalt
 {
   my $jobid = shift;
   my $job   = $instance->job($jobid);
-  my $resp  = new Pogo::Engine::Response;
-  $resp->add_header( action => 'jobhalt' );
+  my $resp  = Pogo::Engine::Response->new()->add_header( action => 'jobhalt' );
 
   if ( !defined $job )
   {
@@ -211,10 +206,8 @@ sub jobhalt
 sub jobhoststatus
 {
   my ( $jobid, $hostname ) = @_;
-  my $job  = $instance->job($jobid);
-  my $resp = new Pogo::Engine::Response;
-
-  $resp->add_header( action => 'jobhoststatus' );
+  my $job = $instance->job($jobid);
+  my $resp = Pogo::Engine::Response->new()->add_header( action => 'jobhoststatus' );
 
   if ( !defined $job )
   {
@@ -237,9 +230,7 @@ sub jobinfo
 {
   my $jobid = shift;
   my $job   = $instance->job($jobid);
-  my $resp  = new Pogo::Engine::Response;
-
-  $resp->add_header( action => 'jobinfo' );
+  my $resp  = Pogo::Engine::Response->new()->add_header( action => 'jobinfo' );
 
   if ( !defined $job )
   {
@@ -256,10 +247,8 @@ sub jobinfo
 sub joblog
 {
   my ( $jobid, $offset, $limit ) = @_;
-  my $job  = $instance->job($jobid);
-  my $resp = new Pogo::Engine::Response;
-
-  $resp->add_header( action => 'joblog' );
+  my $job = $instance->job($jobid);
+  my $resp = Pogo::Engine::Response->new()->add_header( action => 'joblog' );
 
   if ( !defined $job )
   {
@@ -277,9 +266,7 @@ sub jobresume
 {
   my $jobid = shift;
   my $job   = $instance->job($jobid);
-  my $resp  = new Pogo::Engine::Response;
-
-  $resp->add_header( action => 'jobresume' );
+  my $resp  = Pogo::Engine::Response->new()->add_header( action => 'jobresume' );
 
   if ( !defined $job )
   {
@@ -302,10 +289,8 @@ sub jobresume
 sub jobretry
 {
   my ( $jobid, @hostnames ) = @_;
-  my $job  = $instance->job($jobid);
-  my $resp = new Pogo::Engine::Response;
-
-  $resp->add_header( action => 'jobretry' );
+  my $job = $instance->job($jobid);
+  my $resp = Pogo::Engine::Response->new()->add_header( action => 'jobretry' );
 
   if ( !defined $job )
   {
@@ -325,10 +310,8 @@ sub jobretry
 sub jobskip
 {
   my ( $jobid, @hostnames ) = @_;
-  my $job  = $instance->job($jobid);
-  my $resp = new Pogo::Engine::Response;
-
-  $resp->add_header( action => 'jobskip' );
+  my $job = $instance->job($jobid);
+  my $resp = Pogo::Engine::Response->new()->add_header( action => 'jobskip' );
 
   if ( !defined $job )
   {
@@ -348,10 +331,8 @@ sub jobskip
 sub jobsnapshot
 {
   my ( $jobid, $offset ) = @_;
-  my $job  = $instance->job($jobid);
-  my $resp = new Pogo::Engine::Response;
-
-  $resp->add_header( action => 'jobsnapshot' );
+  my $job = $instance->job($jobid);
+  my $resp = Pogo::Engine::Response->new()->add_header( action => 'jobsnapshot' );
 
   if ( !defined $job )
   {
@@ -376,9 +357,7 @@ sub jobstatus
 {
   my $jobid = shift;
   my $job   = $instance->job($jobid);
-  my $resp  = new Pogo::Engine::Response;
-
-  $resp->add_header( action => 'jobstatus' );
+  my $resp  = Pogo::Engine::Response->new()->add_header( action => 'jobstatus' );
 
   if ( !defined $job )
   {
@@ -397,8 +376,7 @@ sub lastjob
 {
   my (%matchopts) = @_;
   $matchopts{limit} = 1;
-  my $resp = new Pogo::Engine::Response;
-  $resp->set_header( action => 'lastjob' );
+  my $resp = Pogo::Engine::Response->new()->set_header( action => 'lastjob' );
 
   my @jobs = $instance->_listjobs(%matchopts);
   $resp->set_ok;
@@ -413,8 +391,7 @@ sub lastjob
 sub listjobs
 {
   my (%matchopts) = @_;
-  my $resp = new Pogo::Engine::Response;
-  $resp->set_header( action => 'listjobs' );
+  my $resp = Pogo::Engine::Response->new()->set_header( action => 'listjobs' );
 
   my @jobs = $instance->_listjobs( \%matchopts );
   $resp->set_ok;
@@ -457,23 +434,23 @@ JOB: for ( ; $jobidx >= 0 && $limit > 0; $jobidx-- )
 sub loadconf
 {
   my ( $ns, $conf ) = @_;
-  my $resp = new Pogo::Engine::Response;
-  $resp->add_header( action => 'loadconf' );
+  my $resp = Pogo::Engine::Response->new()->add_header( action => 'loadconf' );
 
   $instance->namespace($ns)->init->set_conf($conf);
 }
 
 sub ping
 {
+  my $class = shift;
   my $pong = shift || 0xDEADBEEF;
-  my $resp = new Pogo::Engine::Response;
-  $resp->add_header( action => 'ping' );
 
-  my $foo = $instance->store->ping($pong);
+  my $resp = Pogo::Engine::Response->new()->add_header( action => 'ping' );
+
+  my $foo = $class->instance->store->ping($pong);
   if ( $foo eq $pong )
   {
     $resp->set_ok;
-    $resp->add_record("PONG $foo");
+    $resp->add_record($foo);
     return $resp;
   }
 
@@ -486,7 +463,7 @@ sub _ping { return $instance->store->ping(@_); }
 sub run
 {
   my (%args) = @_;
-  my $resp = new Pogo::Engine::Response;
+  my $resp = Pogo::Engine::Response->new()->add_header( action => 'run' );
   foreach my $arg (qw(user run_as command range password namespace pkg_passwords))
   {
     if ( !exists $args{$arg} )
@@ -524,6 +501,7 @@ sub run
 
 sub stats
 {
+  my $resp = Pogo::Engine::Response->new()->add_header( action => 'stats' );
   my @total_stats;
   foreach my $host ( $instance->store->get_children('/pogo/stats') )
   {
@@ -547,7 +525,10 @@ sub stats
     push( @total_stats, $host_stats );
   }
 
-  return \@total_stats;
+  $resp->set_ok;
+  $resp->set_records( \@total_stats );
+
+  return $resp;
 }
 
 sub add_task
