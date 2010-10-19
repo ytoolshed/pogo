@@ -14,8 +14,7 @@ package PogoTester;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-use strict;
-use warnings;
+use common::sense;
 
 use Time::HiRes qw(sleep);
 use Log::Log4perl qw(:easy);
@@ -29,12 +28,13 @@ use Net::SSLeay;
 use JSON qw(to_json from_json);
 use Data::Dumper;
 use Carp qw(croak confess);
-
+use Exporter 'import';
 use FindBin qw($Bin);
 
 our $dispatcher_pid;
 our $zookeeper_pid;
-our $cv = AnyEvent->condvar;
+
+our @EXPORT_OK = qw(derp);
 
 sub new
 {
@@ -45,6 +45,9 @@ sub new
   my $conf = $opts{conf} || "$Bin/conf/dispatcher.conf";
   my $self = LoadFile($conf);
 
+  # use the anyevent stuff here even though we don't need to be
+  # event-driven in the test suite.  we want to use the same
+  # client code we normally do.
   $self->{worker_ctx} = AnyEvent::TLS->new(
     key_file                   => "$Bin/conf/worker.key",
     cert_file                  => "$Bin/conf/worker.cert",
@@ -63,6 +66,8 @@ sub new
     verify_require_client_cert => 1,
     verify                     => 0,
   ) || LOGDIE "Couldn't init: $!";
+
+  $self->{bind_address} ||= '127.0.0.1';
 
   return bless $self, $class;
 }
@@ -131,11 +136,12 @@ sub stop_zookeeper
 sub authstore_rpc
 {
   my ( $self, $rpc ) = @_;
+  my $cv = AnyEvent->condvar;
   if ( !defined $self->{authstore_handle} )
   {
     DEBUG "creating new authstore handle";
     tcp_connect(
-      '127.0.0.1',
+      $self->{bind_address},
       $self->{authstore_port},
       sub {
         my ( $fh, $host, $port ) = @_;
@@ -157,8 +163,8 @@ sub authstore_rpc
           on_error => sub {
             delete $self->{authstore_handle};
             my $fatal = $_[1];
-            LOGDIE sprintf( "$host:$port reported %s error: %s",
-               $fatal ? 'fatal' : 'non-fatal', $! );
+            LOGDIE
+              sprintf( "$host:$port reported %s error: %s", $fatal ? 'fatal' : 'non-fatal', $! );
           },
         ) || LOGDIE "couldn't create handle: $!";
         $self->{authstore_handle}->push_write( json => $rpc );
@@ -178,11 +184,12 @@ sub authstore_rpc
 sub dispatcher_rpc
 {
   my ( $self, $rpc ) = @_;
+  my $cv = AnyEvent->condvar;
   if ( !defined $self->{dispatcher_handle} )
   {
     DEBUG "creating new dispatcher handle";
     tcp_connect(
-      '127.0.0.1',
+      $self->{bind_address},
       $self->{rpc_port},
       sub {
         my ( $fh, $host, $port ) = @_;
@@ -204,8 +211,8 @@ sub dispatcher_rpc
           on_error => sub {
             delete $self->{dispatcher_handle};
             my $fatal = $_[1];
-            LOGDIE sprintf( "$host:$port reported %s error: %s",
-               $fatal ? 'fatal' : 'non-fatal', $! );
+            LOGDIE
+              sprintf( "$host:$port reported %s error: %s", $fatal ? 'fatal' : 'non-fatal', $! );
           },
         ) || LOGDIE "couldn't create handle: $!";
         $self->{dispatcher_handle}->push_write( json => $rpc );
@@ -225,11 +232,12 @@ sub dispatcher_rpc
 sub worker_rpc
 {
   my ( $self, $rpc ) = @_;
+  my $cv = AnyEvent->condvar;
   if ( !defined $self->{worker_handle} )
   {
     DEBUG "creating new worker handle";
     tcp_connect(
-      '127.0.0.1',
+      $self->{bind_address},
       $self->{worker_port},
       sub {
         my ( $fh, $host, $port ) = @_;
@@ -251,8 +259,8 @@ sub worker_rpc
           on_error => sub {
             delete $self->{worker_handle};
             my $fatal = $_[1];
-            LOGDIE sprintf( "$host:$port reported %s error: %s",
-               $fatal ? 'fatal' : 'non-fatal', $! );
+            LOGDIE
+              sprintf( "$host:$port reported %s error: %s", $fatal ? 'fatal' : 'non-fatal', $! );
           },
         ) || LOGDIE "couldn't create handle: $!";
         $self->{worker_handle}->push_write( json => $rpc );
@@ -269,10 +277,17 @@ sub worker_rpc
   return $cv->recv;
 }
 
-sub bin
+# pretty-print a test failure
+sub derp
 {
-  print $Bin;
+  my ( $test, $obj ) = @_;
+  my $dump = Data::Dumper::Dumper($obj);
+  my $str  = <<"__DERP__";
+Test name: $test
+Result: $dump
+__DERP__
+
+  return $str;
 }
 
 1;
-
