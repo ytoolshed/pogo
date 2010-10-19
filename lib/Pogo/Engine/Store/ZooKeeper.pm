@@ -56,7 +56,10 @@ my %ZOO_ERROR_NAME   = map { $_->[1] => $_->[0] } @ZOO_ERRORS;
 sub new
 {
   my ( $class, $opts ) = @_;
-  my @serverlist = defined $opts->{store_options}->{serverlist} ? @{ $opts->{store_options}->{serverlist} } : ZK_SERVERLIST;
+  my @serverlist =
+    defined $opts->{store_options}->{serverlist}
+    ? @{ $opts->{store_options}->{serverlist} }
+    : ZK_SERVERLIST;
 
   my $serverlist = join( ',', @serverlist );
   DEBUG "using serverlist '$serverlist'";
@@ -98,8 +101,8 @@ sub _get_children_version
 
 sub ping
 {
-  my $self     = shift;
-  my $testdata = 0xDEADBEEF;
+  my $self = shift;
+  my $testdata = shift || 0xDEADBEEF;
 
   DEBUG "got here";
   my $node = $self->create( '/pogo/lock/ping', '', flags => ZOO_SEQUENCE | ZOO_EPHEMERAL, )
@@ -109,17 +112,17 @@ sub ping
   $self->set( $node, $testdata ) or LOGDIE "unable to set data: " . $self->get_error;
   my $probe = $self->get($node) or LOGDIE "unable to get data: " . $self->get_error;
   $self->delete($node) or LOGDIE "unable to delete $node: " . $self->get_error;
-  LOGDIE "unable to write test data to $node" unless $probe eq 0xDEADBEEF;
-  return 1;
+  LOGDIE "unable to write test data to $node" unless $probe eq $testdata;
+  return $probe;
 }
 
 sub create
 {
   my ( $self, $path, $contents, %opts ) = @_;
   $opts{acl} ||= ZK_ACL;
-  #DEBUG Dumper [ $self, $path, $contents, \%opts ];
+
   my $ret = $self->{handle}->create( $path, $contents, %opts );
-  #DEBUG Dumper $ret;
+
   return $ret;
 }
 
@@ -134,6 +137,7 @@ sub exists { return shift->{handle}->exists(@_); }
 sub get    { return shift->{handle}->get(@_); }
 sub set    { return shift->{handle}->set(@_); }
 sub delete { return shift->{handle}->delete(@_); }
+sub get_children { return shift->{handle}->get_children(@_); }
 
 1;
 
