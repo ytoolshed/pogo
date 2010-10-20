@@ -321,4 +321,4 @@ Apache 2.0
 
 =cut
 
-1;
+# vim:syn=perl:sw=2:ts=2:sts=2:et:fdm=marker
