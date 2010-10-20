@@ -109,10 +109,12 @@ sub start_zookeeper
   $zookeeper_pid = fork();
 
   my $zookeeper_cmd = `zookeeper-server.sh print-cmd $conf 2>/dev/null`;
+  DEBUG "using '$zookeeper_cmd'";
+
   if ( $zookeeper_pid == 0 )
   {
-    exec($zookeeper_cmd )
-      or LOGDIE $!;
+    exec($zookeeper_cmd)
+      or LOGDIE "$zookeeper_cmd failed: $!";
   }
   else
   {
