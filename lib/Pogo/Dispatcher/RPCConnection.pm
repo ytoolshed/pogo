@@ -84,7 +84,7 @@ sub accept_handler
       if ( !exists $ALLOWED_RPC_METHODS{$cmd} )
       {
         ERROR "unknown command '$cmd' from " . $self->id;
-        my $resp = new Pogo::Engine::Response; # we're gonna fake it here.
+        my $resp = new Pogo::Engine::Response;    # we're gonna fake it here.
         $resp->set_error("unknown rpc command '$cmd'");
         $h->push_write( json => $resp->unblessed );
         $h->push_read( json => $on_json );
@@ -93,18 +93,18 @@ sub accept_handler
 
       # presumably we have something valid here
       my $resp;
-      eval { $resp = Pogo::Engine->$cmd };
+      eval { $resp = Pogo::Engine->$cmd(@args) };
       if ($@)
       {
         ERROR "command '$cmd' from " . $self->id . "failed";
-        $resp = new Pogo::Engine::Response; # overwrite old possibly-bogus response
+        $resp = new Pogo::Engine::Response;    # overwrite old possibly-bogus response
         $resp->set_error("internal error: $@");
         $h->push_write( json => $resp->unblessed );
         $h->push_read( json => $on_json );
         return;
       }
 
-      $h->push_write( json=> $resp->unblessed );
+      $h->push_write( json => $resp->unblessed );
       $h->push_read( json => $on_json );
       return;
     };
