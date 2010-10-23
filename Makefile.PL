@@ -19,7 +19,7 @@ use ExtUtils::MakeMaker;
 
 WriteMakefile(
   NAME         => 'pogo',
-  VERSION_FROM => 'lib/Pogo/Engine.pm',
+  VERSION_FROM => 'lib/Pogo/Common.pm',
 );
 
 1;
