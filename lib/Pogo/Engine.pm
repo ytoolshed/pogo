@@ -28,6 +28,9 @@ use Pogo::Engine::Namespace;
 use Pogo::Engine::Store;
 use Pogo::Roles;
 
+
+our $VERSION = '4.0';
+
 our $instance;
 our $nscache;
 
