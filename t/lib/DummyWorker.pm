@@ -1,4 +1,4 @@
-package Pogo::Engine::Namespace::Slot;
+package PogoDummyWorker;
 
 # Copyright (c) 2010, Yahoo! Inc. All rights reserved.
 #
@@ -13,6 +13,33 @@ package Pogo::Engine::Namespace::Slot;
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+use Pogo::Worker;
+
+our $opts = {};
+our $execute = undef;
+sub instance()
+{
+  if ( defined $opts->{log4perl} && -r $opts->{log4perl} )
+  {
+    Log::Log4perl::init( $opts->{log4perl} );
+  }
+  if ( defined $opts->{loglevel} )
+  {
+    Log::Log4perl::get_logger()->level( $opts->{loglevel} );
+  }
+
+  {
+    die "Please set PogoDummyWorker::execute to a coderef" unless ref $execute eq 'CODE';
+
+    no strict 'refs';
+    *{'Pogo::Worker::Connection::real_execute'} = \&Pogo::Worker::Connection::execute;
+    *{'Pogo::Worker::Connection::execute'} = $execute;
+  }
+  return Pogo::Worker->instance($opts);
+}
+
+"The proles don't matter.";
 
 1;
 

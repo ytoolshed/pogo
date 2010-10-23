@@ -187,3 +187,5 @@ Apache 2.0
   Robert Phan <rphan@yahoo-inc.com>
 
 =cut
+
+# vim:syn=perl:sw=2:ts=2:sts=2:et:fdm=marker

@@ -1,5 +1,4 @@
-package Pogo::Engine::Namespace::Slot;
-
+#!/bin/sh
 # Copyright (c) 2010, Yahoo! Inc. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,48 +13,25 @@ package Pogo::Engine::Namespace::Slot;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-1;
+WORKER="/usr/local/sbin/pogo-worker"
+WORKER_KEY="/usr/local/etc/pogo/worker.key"
+RUN_AS_USER="root"
 
-=pod
+exec 2>&1
 
-=head1 NAME
+if [ ! -f "$WORKER_KEY" ]; then
+  echo "ERROR cannot start pogo-worker: $WORKER_KEY is missing"
+  exit 1
+fi
 
-  CLASSNAME - SHORT DESCRIPTION
+echo "starting pogo-worker"
 
-=head1 SYNOPSIS
+# linux only?
+if [ -w "/proc/sys/fs/file-max" ]; then
+  echo "131072" > /proc/sys/fs/file-max
+fi
 
-CODE GOES HERE
+# hopefully somewhat portable
+ulimit -n 131072
+exec setuidgid $RUN_AS_USER $WORKER
 
-=head1 DESCRIPTION
-
-LONG_DESCRIPTION
-
-=head1 METHODS
-
-B<methodexample>
-
-=over 2
-
-methoddescription
-
-=back
-
-=head1 SEE ALSO
-
-L<Pogo::Dispatcher>
-
-=head1 COPYRIGHT
-
-Apache 2.0
-
-=head1 AUTHORS
-
-  Andrew Sloane <asloane@yahoo-inc.com>
-  Michael Fischer <mfischer@yahoo-inc.com>
-  Nicholas Harteau <nrh@yahoo-inc.com>
-  Nick Purvis <nep@yahoo-inc.com>
-  Robert Phan <rphan@yahoo-inc.com>
-
-=cut
-
-# vim:syn=perl:sw=2:ts=2:sts=2:et:fdm=marker

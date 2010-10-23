@@ -1,0 +1,101 @@
+#!/usr/bin/expect --
+
+# Copyright (c) 2010, Yahoo! Inc. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+## main ()
+
+set cpasswd ""
+set cresetpasswd ""
+set cresetpasswd2 ""
+set cpassp ""
+
+fconfigure stdin -blocking 1
+set timeout [gets stdin]
+# Pick up passwords from stdin
+set cpasswd [gets stdin]
+while 1 {
+  if {[gets stdin line] == -1} break
+  if {[regexp {([^=]+)=(.*)} $line whole pkg cpkgpasswd]} {
+    set pkgkey($pkg) $cpkgpasswd
+  }
+}
+fconfigure stdin -blocking 0
+
+eval spawn -noecho $argv
+
+expect {
+  "Sorry, try again." {
+    exit 255
+  }
+  "Mismatch; try again, EOF to quit." {
+    exit 255
+  }
+  "New password:" {
+    exit 255
+  }
+  "Retype new password:" {
+    exit 255
+  }
+  "Permission denied, please try again." {
+    exit 255
+  }
+  "assword:" {
+    send_user " (supplied by pogo-pw)"
+    set passwd [exec perl -n -e "print unpack(q{u},\$_)" << "$cpasswd"]
+    log_user 0
+    send -- "$passwd\r"
+    set passwd $cpasswd
+    log_user 1
+    exp_continue
+  }
+  -re "(Enter passphrase for .+:|Bad passphrase, try again:)" {
+    if {$expect_out(1,string) == "Bad passphrase, try again:"} {
+      exit 255
+    }
+    send_user " (supplied by pogo-pw)\n"
+    set passp [exec perl -n -e "print unpack(q{u},\$_)" << "$cpassp"]
+    log_user 0
+    send -- "$passp\r"
+    set passp $cpassp
+    log_user 1
+    exp_continue
+  }
+  -re {key fingerprint is [a-zA-Z0-9:]+\.[\r\n]+Are you sure you want to continue connecting \(yes/no\)\?} {
+    send -- "yes\r"
+    exp_continue
+  }
+  -re "Enter package passphrase for (\[^\-]+)" {
+    set pkg $expect_out(1,string)
+    if {[array names pkgkey $pkg] == ""} {
+      puts stderr "ERROR: Could not find package passphrase for $pkg"
+      exit 255
+    }
+    send_user " (supplied by pogo-pw)\n"
+    set pkgpasswd [exec perl -n -e "print unpack(q{u},\$_)" << "$pkgkey($pkg)"]
+    log_user 0
+    send -- "$pkgpasswd\r"
+    set pkgpasswd ""
+    log_user 1
+    exp_continue
+  }
+  eof {
+    set status [lindex [wait] 3]
+    exit $status
+  }
+  timeout {
+    puts stderr "Timeout reached: Process shut down after $timeout seconds of inactivity."
+    exit 254
+  }
+}

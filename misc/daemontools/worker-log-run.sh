@@ -1,4 +1,4 @@
-package Pogo::Engine::Namespace::Slot;
+#!/bin/sh
 
 # Copyright (c) 2010, Yahoo! Inc. All rights reserved.
 #
@@ -14,48 +14,9 @@ package Pogo::Engine::Namespace::Slot;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-1;
+RUN_AS_USER="pogo"
+LOG_DIR="/usr/local/logs/pogo/worker/"
 
-=pod
-
-=head1 NAME
-
-  CLASSNAME - SHORT DESCRIPTION
-
-=head1 SYNOPSIS
-
-CODE GOES HERE
-
-=head1 DESCRIPTION
-
-LONG_DESCRIPTION
-
-=head1 METHODS
-
-B<methodexample>
-
-=over 2
-
-methoddescription
-
-=back
-
-=head1 SEE ALSO
-
-L<Pogo::Dispatcher>
-
-=head1 COPYRIGHT
-
-Apache 2.0
-
-=head1 AUTHORS
-
-  Andrew Sloane <asloane@yahoo-inc.com>
-  Michael Fischer <mfischer@yahoo-inc.com>
-  Nicholas Harteau <nrh@yahoo-inc.com>
-  Nick Purvis <nep@yahoo-inc.com>
-  Robert Phan <rphan@yahoo-inc.com>
-
-=cut
-
-# vim:syn=perl:sw=2:ts=2:sts=2:et:fdm=marker
+umask 022
+exec setuidgid $RUN_AS_USER multilog \
+  t n99 s100000000 $LOG_DIR

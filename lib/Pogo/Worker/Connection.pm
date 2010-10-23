@@ -1,4 +1,4 @@
-package Pogo::Engine::Namespace::Slot;
+package Pogo::Worker::Connection;
 
 # Copyright (c) 2010, Yahoo! Inc. All rights reserved.
 #

@@ -1,4 +1,4 @@
-package Pogo::Engine::Namespace::Slot;
+#!/usr/local/bin/perl -w
 
 # Copyright (c) 2010, Yahoo! Inc. All rights reserved.
 #
@@ -13,6 +13,34 @@ package Pogo::Engine::Namespace::Slot;
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+use common::sense;
+
+use YAML::XS qw(LoadFile);
+
+use PogoDummyWorker;
+
+$PogoDummyWorker::opts                = YAML::LoadFile("/usr/local/etc/pogo/worker.conf");
+$PogoDummyWorker::opts->{num_workers} = 2;
+$PogoDummyWorker::execute             = sub {
+  my ( $self, $task_id ) = @_;
+  my @lines = ( "Fuck you, whale!\n", "Fuck you, dolphin!\n" );
+  foreach (@lines)
+  {
+    $self->write_json( { task => $task_id, type => 'STDOUT' }, $_ );
+  }
+
+  $self->reset( $task_id, 0 );    # DO NOT EXIT THIS SUB WITHOUT CALLING RESET!
+};
+
+my $worker = PogoDummyWorker::instance();
+
+#$worker->run(); # This is a real Pogo::Worker object
+
+# Let's do our own AnyEvent loop
+use AnyEvent;
+$worker->connect( 1, 1 );
+AnyEvent->condvar->recv();
 
 1;
 
@@ -57,5 +85,3 @@ Apache 2.0
   Robert Phan <rphan@yahoo-inc.com>
 
 =cut
-
-# vim:syn=perl:sw=2:ts=2:sts=2:et:fdm=marker
