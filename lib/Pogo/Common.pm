@@ -25,8 +25,8 @@ use URI::file;
 our $PREFIX    = '/usr/local';
 our $VERSION   = '4.0';
 our $USERAGENT = LWP::UserAgent->new(
-  timeout => 65;
-    agent => "Pogo/$VERSION"
+  timeout => 65,
+  agent   => "Pogo/$VERSION",
 );
 
 our %EXPORT_TAGS = ( vars => [ $VERSION, $POGO_BASE ] );

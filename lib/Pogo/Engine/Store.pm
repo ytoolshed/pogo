@@ -17,11 +17,16 @@ package Pogo::Engine::Store;
 use strict;
 use warnings;
 
+use Exporter 'import';
 use Log::Log4perl qw(:easy);
 
-sub new
+our @EXPORT_OK = qw(store);
+
+our $store;
+
+sub instance
 {
-  my ($class, $opts) = @_;
+  my ( $class, $opts ) = @_;
 
   LOGDIE "must define a datastore" unless $opts->{store};
 
@@ -30,7 +35,8 @@ sub new
   if ( $opts->{store} eq 'zookeeper' )
   {
     use Pogo::Engine::Store::ZooKeeper;
-    return Pogo::Engine::Store::ZooKeeper->new( $opts );
+    $store = Pogo::Engine::Store::ZooKeeper->new($opts);
+    return $store;
   }
   else
   {
@@ -38,6 +44,18 @@ sub new
   }
 
   return;
+}
+
+sub init
+{
+  my ( $class, $conf ) = @_;
+  return $class->instance($conf);
+}
+
+sub store
+{
+  LOGDIE "not yet initialized" unless defined $store;
+  return $store;
 }
 
 1;

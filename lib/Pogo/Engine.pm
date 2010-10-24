@@ -14,22 +14,20 @@ package Pogo::Engine;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-use strict;
-use warnings;
+use common::sense;
 
 use AnyEvent;
-use Log::Log4perl qw(:easy);
+use Exporter 'import';
 use JSON qw(from_json);
+use Log::Log4perl qw(:easy);
 use YAML::XS qw(LoadFile);
-use Data::Dumper qw(Dumper);
 
 use Pogo::Engine::Job;
 use Pogo::Engine::Namespace;
-use Pogo::Engine::Store;
-use Pogo::Roles;
+use Pogo::Engine::Store qw(store);
+use Pogo::Common;
 
-
-our $VERSION = '4.0';
+our @EXPORT_OK = qw(namespace instance);
 
 our $instance;
 our $nscache;
@@ -47,7 +45,7 @@ sub instance
     start_time => time(),
   };
 
-  $instance->{store} = Pogo::Engine::Store->new($opts);
+  Pogo::Engine::Store->init($opts);
 
   return bless $instance, $class;
 }
@@ -61,12 +59,6 @@ sub init
   LOGDIE "no configuration?" unless $conf->{worker_cert};    # arbitrary canary
 
   return $class->instance($conf);
-}
-
-sub store
-{
-  LOGDIE "not yet initialized" unless defined $instance;
-  return $instance->{store};
 }
 
 # convenience interfaces into Engine sublcasses

@@ -14,13 +14,13 @@ package Pogo::Engine::Namespace;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-use strict;
-use warnings;
+use common::sense;
 
 use List::Util qw(min max);
 use Log::Log4perl qw(:easy);
 
 use Pogo::Engine::Namespace::Slot;
+use Pogo::Engine::Store qw(store);
 
 # Naming convention:
 # get_* retrieves something synchronously
@@ -41,20 +41,19 @@ sub new
 
 sub init
 {
-  my $self  = shift;
-  my $store = Pogo::Engine->store;
+  my $self = shift;
 
   my $ns = $self->{ns};
-  if ( !$store->exists( $self->path ) )
+  if ( !store->exists( $self->path ) )
   {
-    $store->create( $self->path, '' )
-      or LOGDIE "unable to create namespace '$ns': " . $store->get_error;
-    $store->create( $self->path . '/env', '' )
-      or LOGDIE "unable to create namespace '$ns': " . $store->get_error;
-    $store->create( $self->path . '/lock', '' )
-      or LOGDIE "unable to create namespace '$ns': " . $store->get_error;
-    $store->create( $self->path . '/conf', '' )
-      or LOGDIE "unable to create namespace '$ns': " . $store->get_error;
+    store->create( $self->path, '' )
+      or LOGDIE "unable to create namespace '$ns': " . store->get_error;
+    store->create( $self->path . '/env', '' )
+      or LOGDIE "unable to create namespace '$ns': " . store->get_error;
+    store->create( $self->path . '/lock', '' )
+      or LOGDIE "unable to create namespace '$ns': " . store->get_error;
+    store->create( $self->path . '/conf', '' )
+      or LOGDIE "unable to create namespace '$ns': " . store->get_error;
   }
 
   return $self;
@@ -68,16 +67,15 @@ sub name
 sub _has_constraints
 {
   my ( $self, $app, $k ) = @_;
-  my $store = Pogo::Engine->store;
 
   # TODO: potential optimization, cache these to avoid probing storage
   if ( !defined $k )
   {
-    return $store->exists( $self->path( '/conf/constraints/', $app ) );
+    return store->exists( $self->path( '/conf/constraints/', $app ) );
   }
   else
   {
-    return $store->exists( $self->path("/conf/constraints/$app/$k") );
+    return store->exists( $self->path("/conf/constraints/$app/$k") );
   }
 
   return;
@@ -86,20 +84,19 @@ sub _has_constraints
 sub unlock_job
 {
   my ( $self, $job ) = @_;
-  my $store = Pogo::Engine->store;
 
-  foreach my $env ( $store->get_children( $self->path('/env/') ) )
+  foreach my $env ( store->get_children( $self->path('/env/') ) )
   {
-    foreach my $jobhost ( $store->get_children( $self->path( '/env/', $env ) ) )
+    foreach my $jobhost ( store->get_children( $self->path( '/env/', $env ) ) )
     {
       my ( $host_jobid, $hostname ) = split /_/, $jobhost;
       if ( $job->id eq $host_jobid )
       {
-        $store->delete( $self->path("/env/$env/$jobhost") );
+        store->delete( $self->path("/env/$env/$jobhost") );
       }
     }
 
-    $store->delete( $self->path( '/env/', $env ) );
+    store->delete( $self->path( '/env/', $env ) );
   }
 }
 
@@ -109,7 +106,6 @@ sub is_sequence_blocked
 {
   my ( $self, $job, $host ) = @_;
 
-  my $store = Pogo::Engine->store;
   my ( $nblockers, @bywhat ) = (0);
 
   foreach my $env ( @{ $host->info->{env} } )
@@ -119,10 +115,10 @@ sub is_sequence_blocked
 
     foreach my $app ( @{ $host->info->{apps} } )
     {
-      my @preds = $store->get_children( $self->path("/conf/sequences/pred/$k/$app") );
+      my @preds = store->get_children( $self->path("/conf/sequences/pred/$k/$app") );
       foreach my $pred (@preds)
       {
-        my $n = $store->get_children( $job->{path} . "/seq/$pred" . "_$k" . "_$v" );
+        my $n = store->get_children( $job->{path} . "/seq/$pred" . "_$k" . "_$v" );
         if ($n)
         {
           $nblockers += $n;
@@ -137,7 +133,6 @@ sub is_sequence_blocked
 sub get_seq_successors
 {
   my ( $self, $envk, $app ) = @_;
-  my $store = Pogo::Engine->store;
 
   my @successors = ($app);
   my @results;
@@ -145,7 +140,7 @@ sub get_seq_successors
   while (@successors)
   {
     $app = pop @successors;
-    my @s = $store->get_children( $self->path("/conf/sequences/succ/$envk/$app") );
+    my @s = store->get_children( $self->path("/conf/sequences/succ/$envk/$app") );
     push @results,    @s;
     push @successors, @s;
   }
@@ -158,9 +153,8 @@ sub get_seq_successors
 sub filter_apps
 {
   my ( $self, $apps ) = @_;
-  my $store = Pogo::Server->store;
 
-  my %constraints = map { $_ => 1 } $store->get_children( $self->path('/conf/constraints') );
+  my %constraints = map { $_ => 1 } store->get_children( $self->path('/conf/constraints') );
 
   # FIXME: if you have sequences for which there are no constraints, we might
   # improperly ignore them here.  Can't think of a straightforward fix and
@@ -179,13 +173,12 @@ sub parse_appgroups
 sub translate_appgroups
 {
   my ( $self, $apps ) = @_;
-  my $store = Pogo::Server->store;
 
   my %g;
 
   foreach my $app (@$apps)
   {
-    my @groups = $store->get_children( $self->path("/conf/appgroups/byrole/$app") );
+    my @groups = store->get_children( $self->path("/conf/appgroups/byrole/$app") );
     if (@groups)
     {
       map { $g{$_} = 1 } @groups;
@@ -202,9 +195,8 @@ sub translate_appgroups
 sub appgroup_members
 {
   my ( $self, $appgroup ) = @_;
-  my $store = Pogo::Engine->store;
 
-  my @members = $store->get_children( $self->path("/conf/appgroups/bygroup/$appgroup") );
+  my @members = store->get_children( $self->path("/conf/appgroups/bygroup/$appgroup") );
 
   return @members if @members;
   return $appgroup;
@@ -217,16 +209,15 @@ sub appgroup_members
 sub unlock_host    # {{{ deprecated unlock_host
 {
   my ( $self, $job, $host, $unlockseq ) = @_;
-  my $store = Pogo::Server->store;
 
   return LOGDIE "unlock_host is deprecated";
 
   # iterate over /pogo/host/$host/<children>
   my $path = "/pogo/job/$host/host/$host";
-  return unless $store->exists($path);
+  return unless store->exists($path);
 
   my $n = 0;
-  foreach my $child ( $store->get_children($path) )
+  foreach my $child ( store->get_children($path) )
   {
     next if substr( $child, 0, 1 ) eq '_';
 
@@ -239,10 +230,10 @@ sub unlock_host    # {{{ deprecated unlock_host
 
       # remove sequence lock
       my $node = substr( $child, 4 );
-      $store->delete("/pogo/job/$job/seq/$node/$host");
-      if ( ( scalar $store->get_children("/pogo/job/$job/seq/$node") ) == 0 )
+      store->delete("/pogo/job/$job/seq/$node/$host");
+      if ( ( scalar store->get_children("/pogo/job/$job/seq/$node") ) == 0 )
       {
-        $store->delete("/pogo/job/$job/seq/$node");
+        store->delete("/pogo/job/$job/seq/$node");
       }
     }
     else
@@ -251,19 +242,19 @@ sub unlock_host    # {{{ deprecated unlock_host
 
       # remove environment lock
       # delete /pogo/env/$app_$k_$v
-      $store->delete("/pogo/env/$child/$job_host")
+      store->delete("/pogo/env/$child/$job_host")
         or ERROR "unable to remove '/pogo/env/$child/$job_host' from '$child_path': "
-        . $store->get_error;
+        . store->get_error;
 
       # clean up empty env nodes
-      if ( ( scalar $store->get_children("/pogo/env/$child") ) == 0 )
+      if ( ( scalar store->get_children("/pogo/env/$child") ) == 0 )
       {
-        $store->delete("/pogo/env/$child");
+        store->delete("/pogo/env/$child");
       }
     }
 
-    $store->delete($child_path)
-      or LOGDIE "unable to remove $child_path: " . $store->get_error;
+    store->delete($child_path)
+      or LOGDIE "unable to remove $child_path: " . store->get_error;
     $n++;
   }
 
