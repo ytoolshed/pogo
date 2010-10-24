@@ -15,12 +15,12 @@
 # limitations under the License.
 
 use common::sense;
-use ExtUtils::MakeMaker;
+use inc::Module::Install;
 
-WriteMakefile(
-  NAME         => 'pogo',
-  VERSION_FROM => 'lib/Pogo/Common.pm',
-);
+name 'pogo';
+all_from 'lib/Pogo/Common.pm';
+
+WriteAll;
 
 1;
 
