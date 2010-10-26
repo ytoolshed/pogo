@@ -1,4 +1,4 @@
-# Pogo
+# NOTE: Pogo is a work in progress - watch this space for updates
 
 Pogo is an agent-based system for running interruptive commands safely
 on thousands of machines in parallel.
