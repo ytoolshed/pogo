@@ -46,18 +46,27 @@ my $conf;
 eval { $conf = LoadFile("$Bin/conf/dispatcher.conf"); };
 ok( !$@, "loadconf" );
 
+# ping
 $t = $pt->dispatcher_rpc( ["ping"] );
 ok( $t->[1]->[0] == 0xDEADBEEF, 'ping' )
   or print Dumper $t;
 
+# stats
 $t = $pt->dispatcher_rpc( ["stats"] );
 ok( $t->[1]->[0]->{hostname} eq hostname(), 'stats' )
   or print Dumper $t;
 
+# badcmd
 $t = $pt->dispatcher_rpc( ["weird"] );
 ok( $t->[0]->{status} eq 'ERROR', 'weird' )
   or print Dumper $t;
 ok( $t->[0]->{errmsg} eq qq/unknown rpc command 'weird'/, 'weird 2' );
+
+# loadconf
+my $conf_to_load = LoadFile("$Bin/conf/constraints.test.yaml");
+$t = $pt->dispatcher_rpc( ["loadconf", $conf_to_load] )
+  or print Dumper $t;
+
 
 # stop
 ok( $pt->stop_dispatcher, 'stop dispatcher' );

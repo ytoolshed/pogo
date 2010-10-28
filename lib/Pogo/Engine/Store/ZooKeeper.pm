@@ -23,6 +23,7 @@ use Data::Dumper;
 
 use constant ZK_ACL        => ZOO_OPEN_ACL_UNSAFE;
 use constant ZK_SERVERLIST => qw(localhost:2181);
+
 my @ZOO_ERRORS = (
   [ 0,    'ZOK',                      'Everything is OK' ],
   [ -1,   'ZSYSTEMERROR',             'ZSYSTEMERROR' ],
@@ -128,21 +129,37 @@ sub create
 
 sub create_ephemeral
 {
-  return shift->create(@_, flags => ZOO_EPHEMERAL);
+  return shift->create( @_, flags => ZOO_EPHEMERAL );
 }
 
-sub get_error
+sub get_error_name
 {
   my ( $self, @opts ) = @_;
   my $err = $self->{handle}->get_error(@opts);
   return $ZOO_ERROR_NUMBER{$err} || $err;
 }
 
-sub exists { return shift->{handle}->exists(@_); }
-sub get    { return shift->{handle}->get(@_); }
-sub set    { return shift->{handle}->set(@_); }
-sub delete { return shift->{handle}->delete(@_); }
+sub delete_r
+{
+  my ( $self, $path ) = @_;
+  foreach my $node ( $self->get_children($path) )
+  {
+    $self->delete_r("$path/$node");
+  }
+  if ( !$self->delete($path) )
+  {
+    WARN "unable to remove '$path': " . $self->get_error;
+    return 0;
+  }
+  return 1;
+}
+
+sub exists       { return shift->{handle}->exists(@_); }
+sub get          { return shift->{handle}->get(@_); }
+sub set          { return shift->{handle}->set(@_); }
+sub delete       { return shift->{handle}->delete(@_); }
 sub get_children { return shift->{handle}->get_children(@_); }
+sub get_error    { return shift->{handle}->get_error(@_); }
 
 1;
 

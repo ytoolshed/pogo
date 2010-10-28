@@ -21,6 +21,7 @@ use Log::Log4perl qw(:easy);
 
 use Pogo::Engine::Namespace::Slot;
 use Pogo::Engine::Store qw(store);
+use Pogo::Common qw(merge_hash);
 
 # Naming convention:
 # get_* retrieves something synchronously
@@ -36,7 +37,8 @@ sub new
     slots => {},
   };
 
-  return bless $self, $class;
+  bless $self, $class;
+  return $self->init;
 }
 
 sub init
@@ -95,7 +97,6 @@ sub unlock_job
         store->delete( $self->path("/env/$env/$jobhost") );
       }
     }
-
     store->delete( $self->path( '/env/', $env ) );
   }
 }
@@ -164,6 +165,89 @@ sub filter_apps
 }
 
 # config stuff
+sub set_conf
+{
+  my ($self, $conf_in) = @_;
+
+  my $conf = {};
+
+  # flatten and merge with fail on overwrite
+  foreach my $deployment_name (keys %$conf_in)
+  {
+    $conf = _parse_deployment($conf, $deployment_name, $conf_in->{$deployment_name});
+  }
+
+  eval { _write_conf( $self->{path}, $conf ) };
+  if ($@)
+  {
+    LOGDIE "couldn't load config: $@";
+  }
+  return $self;
+}
+
+sub _parse_deployment
+{
+  my ($conf_in, $deployment_name, $data) = @_;
+  my $conf_out = {};
+
+  foreach my $app ( keys %{ $data->{apps} } )
+  {
+    DEBUG "processing '$deployment_name/app/$app'";
+  }
+  return $conf_in;
+}
+
+sub _write_conf
+{
+  my ($path,$conf) = @_;
+
+  store->delete_r( "$path/conf" );
+  store->create( "$path/conf" );
+  _set_conf_r( "$path/conf", $conf );
+
+  return $self;
+}
+
+
+sub _set_conf_r
+{
+  my ($path, $node) = @_;
+  foreach my $k (keys %$node)
+  {
+    my $v = $node->{$key};
+    my $r = ref($v);
+    my $p = "$path/$k";
+
+    # that's all, folks
+    if (! $r )
+    {
+      store->create( $p, '' );
+    }
+    elsif( $r eq 'HASH' )
+    {
+      store->create( $p, '' );
+      _set_conf_r( $p, $v );
+    }
+    elsif( $r eq 'ARRAY')
+    {
+      store->create( $p, '' );
+      foreach my $node ( 0 .. scalar @$v)
+      {
+        store->create( "$p/$node", '' );
+        store->set( "$p/$node", to_json($v[$node]);
+      }
+    }
+  }
+}
+
+
+
+
+
+
+
+
+
 sub parse_appgroups
 {
 }
