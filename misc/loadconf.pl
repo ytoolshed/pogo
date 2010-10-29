@@ -16,9 +16,14 @@
 
 use common::sense;
 
+use FindBin qw($Bin);
+
+use lib "$Bin/../lib";
+
 use Pogo::Engine;
 use Log::Log4perl qw(:easy);
 use YAML::XS qw(LoadFile);
+
 
 # it's sorta lame to set up log4perl here, but inside the Engine stuff it's
 # used extensively

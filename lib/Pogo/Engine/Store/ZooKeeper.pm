@@ -122,9 +122,7 @@ sub create
   my ( $self, $path, $contents, %opts ) = @_;
   $opts{acl} ||= ZK_ACL;
 
-  my $ret = $self->{handle}->create( $path, $contents, %opts );
-
-  return $ret;
+  return $self->{handle}->create( $path, $contents, %opts );
 }
 
 sub create_ephemeral
@@ -151,6 +149,7 @@ sub delete_r
     WARN "unable to remove '$path': " . $self->get_error;
     return 0;
   }
+  TRACE "removed '$path'";
   return 1;
 }
 
