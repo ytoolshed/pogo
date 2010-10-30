@@ -38,12 +38,14 @@ ok( my $pt = PogoTester->new(), "new pt" );
 chdir($Bin);
 ok( Log::Log4perl::init("$Bin/conf/log4perl.conf"), "log4perl" );
 my $js = JSON->new;
+my $valid = {};
+my $invalid = {};
 
 #{{{ VALID1
-my $valid1 = <<___VALID1___;
+$valid->{valid1} = <<___VALID1___;
 # example constraints
 ---
-example:
+valid1:
   apps:
     frontend:
       inline:
@@ -75,10 +77,10 @@ ___VALID1___
 
 #}}}
 #{{{ VALID2
-my $valid2 = <<___VALID2___;
+$valid->{valid2} = <<___VALID2___;
 # example constraints
 ---
-example:  # minimal constraints should be valid
+valid2:  # minimal constraints should be valid
   apps:
   envs:
   constraints:
@@ -86,15 +88,15 @@ ___VALID2___
 
 #}}}
 #{{{ VALID3
-my $valid3 = <<___VALID3___;
+$valid->{valid3} = <<___VALID3___;
 # example constraints
 ---
-example:  # minimal constraints should be valid
+valid3:  # minimal constraints should be valid
 ___VALID3___
 
 #}}}
 #{{{ VALID4
-my $valid4 = <<___VALID4___;
+$valid->{valid4} = <<___VALID4___;
 # example constraints
 ---
 # minimal constraints should be valid
@@ -102,10 +104,10 @@ ___VALID4___
 
 #}}}
 #{{{ INVALID1
-my $invalid1 = <<___INVALID1___;
+$invalid->{invalid1} = <<___INVALID1___;
 # example constraints
 ---
-example:
+invalid1:
   apps:
     frontend:
       inline:
@@ -137,10 +139,10 @@ ___INVALID1___
 
 #}}}
 #{{{ INVALID2
-my $invalid2 = <<___INVALID2___;
+$invalid->{invalid2} = <<___INVALID2___;
 # example constraints
 ---
-example:
+invalid2:
   app:        # <--- should be 'apps' not 'app'
     frontend:
       inline:
@@ -172,10 +174,10 @@ ___INVALID2___
 
 #}}}
 #{{{ INVALID3
-my $invalid3 = <<___INVALID3___;
+$invalid->{invalid3} = <<___INVALID3___;
 # example constraints
 ---
-example:
+invalid3:
   apps:
     frontend:
       inline:
@@ -207,7 +209,7 @@ ___INVALID3___
 
 #}}}
 #{{{ INVALID4
-my $invalid4 = <<___INVALID4___;
+$invalid->{invalid4} = <<___INVALID4___;
 # example constraints
 ---
 apps:  #<-- missing top-level 'deployment' hash
@@ -241,63 +243,25 @@ ___INVALID4___
 
 #}}}
 
-my $namespace = 'example';
-my $disp_conf;
-my ( $gotconf, $const_conf, $r, $ns );
-lives_ok { $disp_conf = LoadFile("$Bin/conf/dispatcher.conf"); } 'load dispatcher conf';
+foreach my $cname ( sort keys %$valid )
+{
 
-### VALID1
-( $gotconf, $const_conf, $r, $ns ) = ( undef, undef, undef );
-# first test non-rpc
-lives_ok { $const_conf = Load($valid1); } 'valid1 eval yaml';
-ok( $ns = Pogo::Engine->init($disp_conf)->loadconf( $namespace, $const_conf ), 'valid1 set_conf' );
-ok( $gotconf = Pogo::Engine->namespace($namespace)->get_conf, 'valid1 get_conf' );
+  my $namespace = $cname;
+  my $disp_conf;
+  my ( $gotconf, $const_conf, $r, $ns ) = (undef, undef, undef, undef);
+  lives_ok { $disp_conf = LoadFile("$Bin/conf/dispatcher.conf"); } 'load dispatcher conf';
 
-# now test rpc
-undef $gotconf;
-ok( $r = $pt->dispatcher_rpc( [ 'loadconf', $namespace, $const_conf ] ), 'valid1 rpc loadconf' );
-ok( $r->[0]->{status} eq 'OK', 'valid1 rpc loadconf OK' );
-ok( $gotconf = Pogo::Engine->namespace($namespace)->get_conf, 'valid1 rpc get_conf' );
+  # first test non-rpc
+  lives_ok { $const_conf = Load($valid->{$cname}); } "$cname eval yaml";
+  ok( $ns = Pogo::Engine->init($disp_conf)->loadconf( $namespace, $const_conf ), "$cname set_conf" );
+  ok( $gotconf = Pogo::Engine->namespace($namespace)->get_conf, "$cname get_conf" );
 
-### VALID2
-( $gotconf, $const_conf, $r, $ns ) = ( undef, undef, undef );
-# first test non-rpc
-lives_ok { $const_conf = Load($valid2); } 'valid2 eval yaml';
-ok( $ns = Pogo::Engine->init($disp_conf)->loadconf( $namespace, $const_conf ), 'valid2 set_conf' );
-ok( $gotconf = Pogo::Engine->namespace($namespace)->get_conf, 'valid2 get_conf' );
-
-# now test rpc
-undef $gotconf;
-ok( $r = $pt->dispatcher_rpc( [ 'loadconf', $namespace, $const_conf ] ), 'valid2 rpc loadconf' );
-ok( $r->[0]->{status} eq 'OK', 'valid2 rpc loadconf OK' );
-ok( $gotconf = Pogo::Engine->namespace($namespace)->get_conf, 'valid2 rpc get_conf' );
-
-### VALID3
-( $gotconf, $const_conf, $r, $ns ) = ( undef, undef, undef );
-# first test non-rpc
-lives_ok { $const_conf = Load($valid3); } 'valid3 eval yaml';
-ok( $ns = Pogo::Engine->init($disp_conf)->loadconf( $namespace, $const_conf ), 'valid3 set_conf' );
-ok( $gotconf = Pogo::Engine->namespace($namespace)->get_conf, 'valid3 get_conf' );
-
-# now test rpc
-undef $gotconf;
-ok( $r = $pt->dispatcher_rpc( [ 'loadconf', $namespace, $const_conf ] ), 'valid3 rpc loadconf' );
-ok( $r->[0]->{status} eq 'OK', 'valid3 rpc loadconf OK' );
-ok( $gotconf = Pogo::Engine->namespace($namespace)->get_conf, 'valid3 rpc get_conf' );
-
-### VALID4
-( $gotconf, $const_conf, $r, $ns ) = ( undef, undef, undef );
-# first test non-rpc
-lives_ok { $const_conf = Load($valid4); } 'valid4 eval yaml';
-ok( $ns = Pogo::Engine->init($disp_conf)->loadconf( $namespace, $const_conf ), 'valid4 set_conf' );
-ok( $gotconf = Pogo::Engine->namespace($namespace)->get_conf, 'valid4 get_conf' );
-
-# now test rpc
-undef $gotconf;
-ok( $r = $pt->dispatcher_rpc( [ 'loadconf', $namespace, $const_conf ] ), 'valid4 rpc loadconf' );
-ok( $r->[0]->{status} eq 'OK', 'valid4 rpc loadconf OK' );
-ok( $gotconf = Pogo::Engine->namespace($namespace)->get_conf, 'valid4 rpc get_conf' );
-
+  # now test rpc
+  undef $gotconf;
+  ok( $r = $pt->dispatcher_rpc( [ 'loadconf', $namespace, $const_conf ] ), "$cname rpc loadconf" );
+  ok( $r->[0]->{status} eq 'OK', "$cname rpc loadconf OK" );
+  ok( $gotconf = Pogo::Engine->namespace($namespace)->get_conf, "$cname rpc get_conf" );
+}
 
 #my $config = LoadFile($configf) || LOGDIE "cannot load $configf";
 #my $constraints = LoadFile($constraintsf) || LOGDIE "cannot load $constraintsf";
