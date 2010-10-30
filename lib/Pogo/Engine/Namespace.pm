@@ -22,8 +22,7 @@ use Log::Log4perl qw(:easy);
 use Pogo::Engine::Namespace::Slot;
 use Pogo::Engine::Store qw(store);
 use Pogo::Common qw(merge_hash);
-use JSON qw(to_json);
-use Data::Dumper;
+use JSON qw(to_json from_json);
 
 # Naming convention:
 # get_* retrieves something synchronously
@@ -166,18 +165,20 @@ sub filter_apps
   return [ grep { exists $constraints{$_} } @$apps ];
 }
 
-# config stuff
+#{{{ config setters
 sub set_conf
 {
-  my ($self, $conf_in) = @_;
+  my ( $self, $conf_ref ) = @_;
 
-  my $conf = {};
+  # copy the conf ref, since we're going to modify the crap out of it below
+  my $conf_in = { %{$conf_ref} };
+  my $conf    = {};
 
   # flatten and merge with fail on overwrite
-  foreach my $deployment_name (keys %$conf_in)
+  foreach my $deployment_name ( keys %$conf_in )
   {
     DEBUG "processing '$deployment_name'";
-    eval { $conf = _parse_deployment($conf_in, $deployment_name, $conf_in->{$deployment_name}); };
+    eval { $conf = _parse_deployment( $conf_in, $deployment_name, $conf_in->{$deployment_name} ); };
   }
 
   if ($@)
@@ -195,12 +196,13 @@ sub set_conf
 
 sub _parse_deployment
 {
-  my ($conf_in, $deployment_name, $data) = @_;
+  my ( $conf_in, $deployment_name, $data ) = @_;
   my $conf_out = {};
 
   foreach my $app ( keys %{ $data->{apps} } )
   {
     DEBUG "processing '$deployment_name/app/$app'";
+
     # provider-processing code goes here
     $conf_out->{apps}->{$app} = delete $data->{apps}->{$app};
   }
@@ -208,6 +210,7 @@ sub _parse_deployment
   foreach my $env ( keys %{ $data->{envs} } )
   {
     DEBUG "processing '$deployment_name/env/$env'";
+
     # provider-processing code goes here
     $conf_out->{envs}->{$env} = delete $data->{envs}->{$env};
   }
@@ -216,6 +219,7 @@ sub _parse_deployment
   foreach my $c_env_type ( keys %$constraints )
   {
     DEBUG "processing '$deployment_name/constraints/$c_env_type'";
+
     # ensure that the apps we're constraining actually exist
     my $cur = delete $constraints->{$c_env_type}->{concurrency};
     my $seq = delete $constraints->{$c_env_type}->{sequence};
@@ -229,10 +233,10 @@ sub _parse_deployment
 
     # map sequences
     LOGDIE "config error: sequences expects an array"
-      unless (ref $seq eq 'ARRAY');
+      unless ( ref $seq eq 'ARRAY' );
 
-#    $conf_out->{seq}->{pred}->{$c_env_type};
-#    $conf_out->{seq}->{succ}->{$c_env_type};
+    #    $conf_out->{seq}->{pred}->{$c_env_type};
+    #    $conf_out->{seq}->{succ}->{$c_env_type};
 
     foreach my $seq_c (@$seq)
     {
@@ -241,9 +245,9 @@ sub _parse_deployment
       LOGDIE "config error: sequences must have at least two elements"
         if scalar @$seq_c < 2;
 
-      for (my $i = 1; $i < @$seq_c; $i++)
+      for ( my $i = 1; $i < @$seq_c; $i++ )
       {
-        my ($first, $second) = @{$seq_c}[$i - 1, $i];
+        my ( $first, $second ) = @{$seq_c}[ $i - 1, $i ];
 
         LOGDIE "unknown application '$first'"
           unless exists $conf_out->{apps}->{$first};
@@ -263,13 +267,13 @@ sub _parse_deployment
     # transform concurrency
     foreach my $cur_c (@$cur)
     {
-      while ( my ($app, $max) = each %$cur_c)
+      while ( my ( $app, $max ) = each %$cur_c )
       {
         LOGDIE "unknown application '$app'"
           unless exists $conf_out->{apps}->{$app};
-        if ($max !~ /^\d+$/ && $max !~ /^(\d+)%$/)
+        if ( $max !~ /^\d+$/ && $max !~ /^(\d+)%$/ )
         {
-          LOGDIE "invalid constraint for '$app': '$max'"
+          LOGDIE "invalid constraint for '$app': '$max'";
         }
         $conf_out->{cur}->{$c_env_type}->{$app} = $max;
       }
@@ -279,57 +283,51 @@ sub _parse_deployment
   return $conf_out;
 }
 
-sub _parse_sequences
-{
-}
-
-
 sub _write_conf
 {
-  my ($path,$conf) = @_;
+  my ( $path, $conf ) = @_;
   DEBUG "writing $path";
 
-  store->delete_r( "$path/conf" )
+  store->delete_r("$path/conf")
     or WARN "Couldn't delete_r '$path/conf': " . store->get_error_name;
   store->create( "$path/conf", '' )
     or WARN "Couldn't create '$path/conf': " . store->get_error_name;
   _set_conf_r( "$path/conf", $conf );
 }
 
-
 sub _set_conf_r
 {
-  my ($path, $node) = @_;
-  foreach my $k (keys %$node)
+  my ( $path, $node ) = @_;
+  foreach my $k ( keys %$node )
   {
     my $v = $node->{$k};
     my $r = ref($v);
     my $p = "$path/$k";
 
     # that's all, folks
-    if (! $r )
+    if ( !$r )
     {
       store->create( $p, '' )
         or WARN "couldn't create '$p': " . store->get_error_name;
-      store->set( $p, to_json($v, {allow_nonref=>1}) )
+      store->set( $p, to_json( $v, { allow_nonref => 1 } ) )
         or WARN "couldn't set '$p': " . store->get_error_name;
     }
-    elsif( $r eq 'HASH' )
+    elsif ( $r eq 'HASH' )
     {
       store->create( $p, '' )
         or WARN "couldn't create '$p': " . store->get_error_name;
       _set_conf_r( $p, $v );
     }
-    elsif( $r eq 'ARRAY')
+    elsif ( $r eq 'ARRAY' )
     {
       store->create( $p, '' )
         or WARN "couldn't create '$p': " . store->get_error_name;
-      for ( my $node = 0; $node < scalar @$v; $node++)
+      for ( my $node = 0; $node < scalar @$v; $node++ )
       {
         store->create( "$p/$node", '' )
           or WARN "couldn't create '$p/$node': " . store->get_error_name;
 
-        store->set( "$p/$node", to_json($v->[$node], {allow_nonref=> 1}))
+        store->set( "$p/$node", to_json( $v->[$node], { allow_nonref => 1 } ) )
           or WARN "couldn't set '$p/$node': " . store->get_error_name;
 
       }
@@ -337,17 +335,82 @@ sub _set_conf_r
   }
 }
 
-
-
-
-
-
-
-
-
-sub parse_appgroups
+#}}}
+#{{{ config getters
+# recursively traverse conf/ dir and build hash
+sub _get_conf_r
 {
+  my $path = shift;
+  my $c    = {};
+  foreach my $node ( store->get_children($path) )
+  {
+    my $p = "$path/$node";
+    my $v = store->get($p);
+    if ($v)
+    {
+      $c->{$node} = from_json( $v, { allow_nonref => 1 } );
+    }
+    else
+    {
+      $c->{$node} = _get_conf_r($p);
+    }
+  }
+  return $c;
 }
+
+sub get_conf
+{
+  my $self = shift;
+  return _get_conf_r( $self->{path} . "/conf" );
+}
+
+sub get_concurrence
+{
+  my ( $self, $app, $key ) = @_;
+  my $c = store->get( $self->{path} . "/conf/cur/$app/$key" );
+  return $c;
+}
+
+sub get_concurrences
+{
+  my ( $self, $app ) = @_;
+  my $path = $self->{path} . "/conf/cur/$app";
+  my %c = map { $_ => $self->get_constraint( $app, $_ ) } store->get_children($path);
+
+  DEBUG "constraints for $app: " . join( ",", keys %c );
+  return \%c;
+}
+
+sub get_all_concurrences
+{
+  my $self = shift;
+  my $path = $self->{path} . "/conf/cur";
+  return { map { $_ => $self->get_constraints($_) } store->get_children($path) };
+}
+
+sub get_all_sequences
+{
+  my $self = shift;
+  my $path = $self->{path} . "/conf/seq/pred";
+  my %seq;
+  foreach my $env ( store->get_children($path) )
+  {
+    my $p = "$path/$env";
+    my %apps = map { $_ => [ store->get_children("$p/$_") ] } store->get_children($p);
+    $seq{$env} = \%apps;
+  }
+  return \%seq;
+}
+
+sub get_conf_apps
+{
+  my ($self) = @_;
+  my $path = $self->{path} . "/conf/apps";
+
+  return _get_conf_r($path);
+}
+
+#}}}
 
 # i'm not sure we need this if we move to the new config format
 #{{{ appgroup stuff

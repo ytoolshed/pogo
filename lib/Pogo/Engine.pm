@@ -25,6 +25,7 @@ use YAML::XS qw(LoadFile);
 use Pogo::Engine::Job;
 use Pogo::Engine::Namespace;
 use Pogo::Engine::Store qw(store);
+use Pogo::Engine::Response;
 use Pogo::Common;
 
 our @EXPORT_OK = qw(namespace instance);
@@ -428,10 +429,21 @@ JOB: for ( ; $jobidx >= 0 && $limit > 0; $jobidx-- )
 
 sub loadconf
 {
-  my ( $ns, $conf ) = @_;
+  my ( undef, $ns, $conf ) = @_;
   my $resp = Pogo::Engine::Response->new()->add_header( action => 'loadconf' );
 
-  if ($instance->namespace($ns)->init->set_conf($conf))
+  # validate args
+  if ( !defined $conf || ref $conf ne 'HASH' )
+  {
+    return $resp->set_error("no configuration specified");
+  }
+
+  if ( ref $ns )
+  {
+    return $resp->set_error("bad call to loadconf");
+  }
+
+  if ( $instance->namespace($ns)->init->set_conf($conf) )
   {
     $resp->set_ok;
   }

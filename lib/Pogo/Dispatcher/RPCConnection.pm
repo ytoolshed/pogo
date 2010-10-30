@@ -14,8 +14,7 @@ package Pogo::Dispatcher::RPCConnection;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-use strict;
-use warnings;
+use common::sense;
 
 use AnyEvent::Handle;
 use Socket qw(AF_INET inet_aton);
@@ -71,7 +70,7 @@ sub accept_handler
 
     bless( $self, $class );
 
-    DEBUG "rpc connection from " . $self->id;
+    #DEBUG "rpc connection from " . $self->id;
 
     my $on_json;
     $on_json = sub {
