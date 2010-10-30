@@ -22,6 +22,8 @@ use Log::Log4perl qw(:easy);
 use Pogo::Engine::Namespace::Slot;
 use Pogo::Engine::Store qw(store);
 use Pogo::Common qw(merge_hash);
+use JSON qw(to_json);
+use Data::Dumper;
 
 # Naming convention:
 # get_* retrieves something synchronously
@@ -174,7 +176,13 @@ sub set_conf
   # flatten and merge with fail on overwrite
   foreach my $deployment_name (keys %$conf_in)
   {
-    $conf = _parse_deployment($conf, $deployment_name, $conf_in->{$deployment_name});
+    DEBUG "processing '$deployment_name'";
+    eval { $conf = _parse_deployment($conf_in, $deployment_name, $conf_in->{$deployment_name}); };
+  }
+
+  if ($@)
+  {
+    LOGDIE "couldn't load config: $@";
   }
 
   eval { _write_conf( $self->{path}, $conf ) };
@@ -193,19 +201,99 @@ sub _parse_deployment
   foreach my $app ( keys %{ $data->{apps} } )
   {
     DEBUG "processing '$deployment_name/app/$app'";
+    # provider-processing code goes here
+    $conf_out->{apps}->{$app} = delete $data->{apps}->{$app};
   }
-  return $conf_in;
+
+  foreach my $env ( keys %{ $data->{envs} } )
+  {
+    DEBUG "processing '$deployment_name/env/$env'";
+    # provider-processing code goes here
+    $conf_out->{envs}->{$env} = delete $data->{envs}->{$env};
+  }
+
+  my $constraints = delete $data->{constraints};
+  foreach my $c_env_type ( keys %$constraints )
+  {
+    DEBUG "processing '$deployment_name/constraints/$c_env_type'";
+    # ensure that the apps we're constraining actually exist
+    my $cur = delete $constraints->{$c_env_type}->{concurrency};
+    my $seq = delete $constraints->{$c_env_type}->{sequence};
+
+    my @err = keys %{ $constraints->{$c_env_type} };
+
+    if ( @err > 0 )
+    {
+      LOGDIE "unknown config parameter '$err[0]'";
+    }
+
+    # map sequences
+    LOGDIE "config error: sequences expects an array"
+      unless (ref $seq eq 'ARRAY');
+
+#    $conf_out->{seq}->{pred}->{$c_env_type};
+#    $conf_out->{seq}->{succ}->{$c_env_type};
+
+    foreach my $seq_c (@$seq)
+    {
+      LOGDIE "config error: sequences must be arrays"
+        unless ref $seq_c eq 'ARRAY';
+      LOGDIE "config error: sequences must have at least two elements"
+        if scalar @$seq_c < 2;
+
+      for (my $i = 1; $i < @$seq_c; $i++)
+      {
+        my ($first, $second) = @{$seq_c}[$i - 1, $i];
+
+        LOGDIE "unknown application '$first'"
+          unless exists $conf_out->{apps}->{$first};
+
+        LOGDIE "unknown application '$second'"
+          unless exists $conf_out->{apps}->{$second};
+
+        # $second requires $first to go first within $env
+        # $first is a predecessor of $second
+        # $second is a successor of $first
+        # we just make sure these exist, don't define them
+        $conf_out->{seq}->{pred}->{$c_env_type}->{$second}->{$first};
+        $conf_out->{seq}->{succ}->{$c_env_type}->{$first}->{$second};
+      }
+    }
+
+    # transform concurrency
+    foreach my $cur_c (@$cur)
+    {
+      while ( my ($app, $max) = each %$cur_c)
+      {
+        LOGDIE "unknown application '$app'"
+          unless exists $conf_out->{apps}->{$app};
+        if ($max !~ /^\d+$/ && $max !~ /^(\d+)%$/)
+        {
+          LOGDIE "invalid constraint for '$app': '$max'"
+        }
+        $conf_out->{cur}->{$c_env_type}->{$app} = $max;
+      }
+    }
+  }
+
+  return $conf_out;
 }
+
+sub _parse_sequences
+{
+}
+
 
 sub _write_conf
 {
   my ($path,$conf) = @_;
+  DEBUG "writing $path";
 
-  store->delete_r( "$path/conf" );
-  store->create( "$path/conf" );
+  store->delete_r( "$path/conf" )
+    or WARN "Couldn't delete_r '$path/conf': " . store->get_error_name;
+  store->create( "$path/conf", '' )
+    or WARN "Couldn't create '$path/conf': " . store->get_error_name;
   _set_conf_r( "$path/conf", $conf );
-
-  return $self;
 }
 
 
@@ -214,27 +302,36 @@ sub _set_conf_r
   my ($path, $node) = @_;
   foreach my $k (keys %$node)
   {
-    my $v = $node->{$key};
+    my $v = $node->{$k};
     my $r = ref($v);
     my $p = "$path/$k";
 
     # that's all, folks
     if (! $r )
     {
-      store->create( $p, '' );
+      store->create( $p, '' )
+        or WARN "couldn't create '$p': " . store->get_error_name;
+      store->set( $p, to_json($v, {allow_nonref=>1}) )
+        or WARN "couldn't set '$p': " . store->get_error_name;
     }
     elsif( $r eq 'HASH' )
     {
-      store->create( $p, '' );
+      store->create( $p, '' )
+        or WARN "couldn't create '$p': " . store->get_error_name;
       _set_conf_r( $p, $v );
     }
     elsif( $r eq 'ARRAY')
     {
-      store->create( $p, '' );
-      foreach my $node ( 0 .. scalar @$v)
+      store->create( $p, '' )
+        or WARN "couldn't create '$p': " . store->get_error_name;
+      for ( my $node = 0; $node < scalar @$v; $node++)
       {
-        store->create( "$p/$node", '' );
-        store->set( "$p/$node", to_json($v[$node]);
+        store->create( "$p/$node", '' )
+          or WARN "couldn't create '$p/$node': " . store->get_error_name;
+
+        store->set( "$p/$node", to_json($v->[$node], {allow_nonref=> 1}))
+          or WARN "couldn't set '$p/$node': " . store->get_error_name;
+
       }
     }
   }

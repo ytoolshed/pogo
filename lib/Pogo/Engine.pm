@@ -431,7 +431,15 @@ sub loadconf
   my ( $ns, $conf ) = @_;
   my $resp = Pogo::Engine::Response->new()->add_header( action => 'loadconf' );
 
-  $instance->namespace($ns)->init->set_conf($conf);
+  if ($instance->namespace($ns)->init->set_conf($conf))
+  {
+    $resp->set_ok;
+  }
+  else
+  {
+    $resp->set_error;
+  }
+  return $resp;
 }
 
 sub ping
