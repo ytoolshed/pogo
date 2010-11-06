@@ -22,7 +22,8 @@ use CGI;
 use JSON;
 use Log::Log4perl qw(:easy);
 use YAML::XS qw();
-use Data::Dumper;
+
+use Pogo::API::V3;
 
 our $VERSION = '0.0.2';
 
@@ -35,32 +36,21 @@ sub handler
   my ( undef, @path ) = split '/', $r->path_info;    # throw away leading null
   my $thing = shift @path;
 
-  my $version;
+  my $version = 'V3';                                # first public release
 
   if ( $thing && $thing =~ m/^v\d+$/i )
   {
     $version = uc($thing);
   }
-  else
-  {
-    $version = 'V3';                                 # first public release
-  }
 
-  my $class     = 'Pogo::API::' . $version;
-  my $respclass = $class . '::Response';
-
-  DEBUG "using $class, $respclass";
-
-  eval "require $class";
-  eval "require $respclass";
-
-  my $api = $class->instance;
+  my $class = 'Pogo::API::' . $version;
+  my $api   = $class->instance;
 
   # non-RPC requests
   if ( !$c->param('r') )
   {
     my $method = shift @path;
-    if ( $method && $api->can('api_' . $method) )
+    if ( $method && $api->can( 'api_' . $method ) )
     {
       $method = 'api_' . $method;
       my $response = $api->$method( $c->Vars );
@@ -73,31 +63,31 @@ sub handler
     {
       $r->content_type('text/html');
       print $c->start_html( -title => 'Pogo Status' );
-      print $c->h1("Pogo API $version");
-      print 'online check: ';
-      my $pong = $api->rpc('ping','ok');
-      print $pong->is_success ? 'OK' : 'ERROR';
+      my $pong = $api->rpc( 'ping', 'pong' );
+      $pong->set_format('yaml');
       print '<pre>';
-      print param_as_yaml($c);
+      print $pong->content;
       print '</pre>';
-      return $Apache2::Const::HTTP_OK;
+
+      return $pong->is_success ? $Apache2::Const::HTTP_OK : $Apache2::Const::SERVER_ERROR;
     }
-    return throw_error( $class . '::Response', $c, 'Unknown request' );
+    return throw_error( $r, $c, 'Unknown request' );
   }
 
   # heavy-lifting - now we're RPC
   my $req;
   eval { $req = $js->decode( $c->param('r') ) };
+
   if ($@)
   {
-    return throw_error( $class . '::Response', $c, $@ );
+    return throw_error( $r, $c, $@ );
   }
 
   DEBUG "requested method: " . $req->[0];
 
   if ( $c->param('c') && $c->param('v') )
   {
-    return throw_error( $class . '::Response', $c, "c/v mutually exclusive" );
+    return throw_error( $r, $c, "c/v mutually exclusive" );
   }
 
   # so now we try to use api_foo in the versioned API::Vx module
@@ -105,7 +95,12 @@ sub handler
   # perhaps rpc should be AUTOLOAD'd and API.pm should just
   # pass through requests.
 
-  my $response = $api->rpc(@$req);
+  my $response;
+  eval { $response = $api->rpc(@$req) };
+  if ($@)
+  {
+    return throw_error( $r, $c, $@ );
+  }
 
   $response->set_format( $c->param('format') );
   $response->set_callback( $c->param('c') )
@@ -113,26 +108,19 @@ sub handler
   $response->set_pushvar( $c->param('v') )
     if $c->param('v');
 
-  $c->content_type( $response->format eq 'json' ? 'text/javascript' : 'text/plain' );
+  $r->content_type( $response->format eq 'json' ? 'text/javascript' : 'text/plain' );
   print $response->content;
   return $Apache2::Const::HTTP_OK;
 }
 
-sub param_as_yaml
-{
-  my $c   = shift;
-  my $foo = {};
-  map { $foo->{$_} = $c->param($_) } $c->param;
-  return YAML::XS::Dump $foo;
-}
-
 sub throw_error
 {
-  my ( $class, $c, $errmsg ) = @_;
+  my ( $r, $c, $errmsg ) = @_;
   ERROR $errmsg;
-  my $error = $class->new;
+  my $error = Pogo::Engine::Response->new;
 
   $error->set_format( $c->param('format') );
+  $r->content_type( $error->format eq 'json' ? 'text/javascript' : 'text/plain' );
   $error->set_error($errmsg);
 
   print $error->content;

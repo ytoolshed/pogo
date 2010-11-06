@@ -20,18 +20,14 @@ use YAML::XS qw(LoadFile);
 
 use lib qw(/Users/nrh/projects/pogo/lib);
 use Pogo::Engine;
+use Pogo::Common;
 
-Log::Log4perl::init_once('/usr/local/etc/pogo/api/log4perl.conf');
-
-my $conf;
-eval { $conf = LoadFile( $opts->{conf} ); };
+Log::Log4perl::init_once($Pogo::Common::CONFIGDIR . 'log4perl.conf');
 
 if ($@)
 {
   LOGDIE "couldn't open config: $@\n";
 }
-
-Pogo::Engine->init($conf);
 
 CGI->compile(':all');
 

@@ -14,29 +14,32 @@ package Pogo::API::V3;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-use strict;
-use warnings;
+use common::sense;
 
 use Log::Log4perl qw(:easy);
 use Sys::Hostname qw(hostname);
+use YAML::XS qw(LoadFile);
 
+use Pogo::Common;
 use Pogo::Engine;
+use Pogo::Engine::Response;
 
 our $instance;
 
 sub init
 {
   my $class = shift;
-  my $self = {
-    hostname => hostname(),
-  };
-
+  my $self = { hostname => hostname(), };
+  DEBUG "new instance [$$]";
+  my $conf;
+  eval { $conf = LoadFile($Pogo::Common::CONFIGDIR . '/dispatcher.conf'); };
+  Pogo::Engine->init($conf);
   return bless $self, $class;
 }
 
 sub instance
 {
-  my ($class, %opts) = @_;
+  my ( $class, %opts ) = @_;
   $instance ||= $class->init(%opts);
   return $instance;
 }
@@ -44,7 +47,14 @@ sub instance
 # all rpc methods return an arrayref
 sub _rpc_ping
 {
-  return [ Pogo::Engine->ping, @_ ];
+  my $self = shift;
+  return Pogo::Engine->ping(@_);
+}
+
+sub _rpc_stats
+{
+  my $self = shift;
+  return Pogo::Engine->stats(@_);
 }
 
 sub _rpc_err
@@ -54,22 +64,15 @@ sub _rpc_err
 
 sub rpc
 {
-  my ($self, $action, @args) = @_;
-  my $response = Pogo::API::V3::Response->new();
+  my ( $self, $action, @args ) = @_;
+  my $response = Pogo::Engine::Response->new();
 
   my $method = '_rpc_' . $action;
 
-  if (!$self->can($method))
-  {
-    ERROR "no such method $action";
-    $response->set_error("No such action $action");
-    return $response;
-  }
-
   $response->add_header( action => $action );
-  my $out = eval { $self->$method(@args); };
+  my $out = $self->$method(@args);
   return $out
-    if ref $out eq 'Pogo::API::V3::Response';
+    if ref $out eq 'Pogo::Engine::Response';
 
   if ($@)
   {

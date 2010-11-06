@@ -29,6 +29,9 @@ our $USERAGENT = LWP::UserAgent->new(
   agent   => "Pogo/$VERSION",
 );
 
+our $CONFIGDIR = '/Users/nrh/projects/pogo/t/conf/';
+#our $CONFIGDIR = '/usr/local/etc/pogo/';
+
 our %EXPORT_TAGS = ( vars => [ $VERSION, $POGO_BASE ] );
 our @EXPORT_OK = qw($VERSION $POGO_BASE fetch_yaml uri_to_absuri merge_hash);
 

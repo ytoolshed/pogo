@@ -14,6 +14,8 @@ package Pogo::Engine;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+use Data::Dumper;
+
 use common::sense;
 
 use AnyEvent;
@@ -39,8 +41,6 @@ sub instance
     if defined $instance;
 
   my ( $class, $opts ) = @_;
-  DEBUG "new Pogo::Engine instance";
-
   $instance = {
     client_min => $opts->{client_min} || '0.0.0',
     start_time => time(),
