@@ -14,8 +14,6 @@ package Pogo::Engine;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-use Data::Dumper;
-
 use common::sense;
 
 use AnyEvent;
@@ -47,7 +45,6 @@ sub instance
   };
 
   Pogo::Engine::Store->init($opts);
-
   return bless $instance, $class;
 }
 
@@ -56,9 +53,7 @@ sub instance
 sub init
 {
   my ( $class, $conf ) = @_;
-
   LOGDIE "no configuration?" unless $conf->{worker_cert};    # arbitrary canary
-
   return $class->instance($conf);
 }
 
@@ -78,12 +73,6 @@ sub job
 }
 
 # these should be available via the http api and the json-rpc connection handler
-
-# this seems to be unused currently
-#sub err
-#{
-#  return LOGDIE "@_";
-#}
 
 sub globalstatus
 {
@@ -370,11 +359,11 @@ sub jobstatus
 
 sub lastjob
 {
-  my (%matchopts) = @_;
+  my ($class, %matchopts) = @_;
   $matchopts{limit} = 1;
-  my $resp = Pogo::Engine::Response->new()->set_header( action => 'lastjob' );
+  my $resp = Pogo::Engine::Response->new()->add_header( action => 'lastjob' );
 
-  my @jobs = $instance->_listjobs(%matchopts);
+  my @jobs = $class->instance->_listjobs(%matchopts);
   $resp->set_ok;
 
   return $resp unless @jobs;
@@ -386,10 +375,10 @@ sub lastjob
 
 sub listjobs
 {
-  my (%matchopts) = @_;
-  my $resp = Pogo::Engine::Response->new()->set_header( action => 'listjobs' );
+  my ($class, %matchopts) = @_;
+  my $resp = Pogo::Engine::Response->new()->add_header( action => 'listjobs' );
 
-  my @jobs = $instance->_listjobs( \%matchopts );
+  my @jobs = $class->instance->_listjobs( \%matchopts );
   $resp->set_ok;
 
   return $resp unless @jobs;

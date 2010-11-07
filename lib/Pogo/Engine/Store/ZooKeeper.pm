@@ -93,7 +93,7 @@ sub new
   return $self;
 }
 
-sub _get_children_version
+sub get_children_version
 {
   my ( $self, $node ) = @_;
   my $stat = $self->stat;
@@ -133,6 +133,11 @@ sub create_ephemeral
   return shift->create( @_, flags => ZOO_EPHEMERAL );
 }
 
+sub create_sequence
+{
+  return shift->create( @_, flags => ZOO_SEQUENCE );
+}
+
 sub get_error_name
 {
   my ( $self, @opts ) = @_;
@@ -143,7 +148,7 @@ sub get_error_name
 sub delete_r
 {
   my ( $self, $path ) = @_;
-  foreach my $node ( $self->get_children($path) )
+ foreach my $node ( $self->get_children($path) )
   {
     $self->delete_r("$path/$node");
   }
@@ -156,6 +161,7 @@ sub delete_r
   return 1;
 }
 
+sub stat         { return shift->{handle}->stat(@_); }
 sub exists       { return shift->{handle}->exists(@_); }
 sub get          { return shift->{handle}->get(@_); }
 sub set          { return shift->{handle}->set(@_); }

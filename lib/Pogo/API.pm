@@ -46,6 +46,8 @@ sub handler
   my $class = 'Pogo::API::' . $version;
   my $api   = $class->instance;
 
+  $r->content_type( $c->param('format') eq 'json' ? 'text/javascript' : 'text/plain' );
+
   # non-RPC requests
   if ( !$c->param('r') )
   {
@@ -55,7 +57,6 @@ sub handler
       $method = 'api_' . $method;
       my $response = $api->$method( $c->Vars );
       $response->set_format( $c->param('format') );
-      $r->content_type( $response->format eq 'json' ? 'text/javascript' : 'text/plain' );
       print $response->content;
       return $Apache2::Const::HTTP_OK;
     }
@@ -71,7 +72,7 @@ sub handler
 
       return $pong->is_success ? $Apache2::Const::HTTP_OK : $Apache2::Const::SERVER_ERROR;
     }
-    return throw_error( $r, $c, 'Unknown request' );
+    return throw_error( $c, 'Unknown request' );
   }
 
   # heavy-lifting - now we're RPC
@@ -80,14 +81,12 @@ sub handler
 
   if ($@)
   {
-    return throw_error( $r, $c, $@ );
+    return throw_error( $c, $@ );
   }
-
-  DEBUG "requested method: " . $req->[0];
 
   if ( $c->param('c') && $c->param('v') )
   {
-    return throw_error( $r, $c, "c/v mutually exclusive" );
+    return throw_error( $c, "c/v mutually exclusive" );
   }
 
   # so now we try to use api_foo in the versioned API::Vx module
@@ -99,7 +98,7 @@ sub handler
   eval { $response = $api->rpc(@$req) };
   if ($@)
   {
-    return throw_error( $r, $c, $@ );
+    return throw_error( $c, $@ );
   }
 
   $response->set_format( $c->param('format') );
@@ -108,19 +107,17 @@ sub handler
   $response->set_pushvar( $c->param('v') )
     if $c->param('v');
 
-  $r->content_type( $response->format eq 'json' ? 'text/javascript' : 'text/plain' );
   print $response->content;
   return $Apache2::Const::HTTP_OK;
 }
 
 sub throw_error
 {
-  my ( $r, $c, $errmsg ) = @_;
+  my ( $c, $errmsg ) = @_;
   ERROR $errmsg;
   my $error = Pogo::Engine::Response->new;
 
   $error->set_format( $c->param('format') );
-  $r->content_type( $error->format eq 'json' ? 'text/javascript' : 'text/plain' );
   $error->set_error($errmsg);
 
   print $error->content;

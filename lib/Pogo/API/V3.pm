@@ -22,6 +22,7 @@ use YAML::XS qw(LoadFile);
 
 use Pogo::Common;
 use Pogo::Engine;
+use Pogo::Engine::Job;
 use Pogo::Engine::Response;
 
 our $instance;
@@ -57,10 +58,50 @@ sub _rpc_stats
   return Pogo::Engine->stats(@_);
 }
 
-sub _rpc_err
+sub _rpc_listjobs
 {
-  LOGDIE "@_";
+  my $self = shift;
+  return Pogo::Engine->listjobs(@_);
 }
+sub _rpc_run
+{
+  my ($self, %args) = @_;
+
+  my $resp = Pogo::Engine::Response->new()->add_header( action => 'run' );
+
+  foreach my $arg (qw(user run_as command target password namespace))
+  {
+    if ( !exists $args{$arg} )
+    {
+      $resp->set_error("Mandatory argument '$arg' missing from 'run' request");
+      DEBUG "failed run, got args " . join( ",", keys(%args) );
+      return $resp;
+    }
+  }
+  my $run_as  = $args{run_as};
+  my $command = $args{command};
+  my $target   = $args{target};
+
+  $args{timeout}     ||= 600;
+  $args{job_timeout} ||= 1800;
+  $args{retry}       ||= 0;
+#  $args{pkg_passwords} = to_json( $args{pkg_passwords} );
+
+  my $opts = {};
+  foreach my $arg (
+    qw(invoked_as namespace target user run_as password timeout job_timeout
+    command retry prehook posthook pkg_passwords email im_handle client
+    requesthost concurrent exe_name exe_data)
+    )
+  {
+    $opts->{$arg} = $args{$arg} if exists $args{$arg};
+  }
+  my $job = Pogo::Engine::Job->new($opts);
+  DEBUG $job->id . ": running $command as $run_as on: " . to_json($target);
+  $resp->add_record( $job->id );
+  return $resp;
+};
+
 
 sub rpc
 {

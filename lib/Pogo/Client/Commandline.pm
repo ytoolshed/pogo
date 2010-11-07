@@ -19,13 +19,15 @@ use common::sense;
 use Getopt::Long qw(:config bundling no_ignore_case pass_through);
 use Log::Log4perl qw(:easy);
 use Log::Log4perl::Level;
+use Pod::Find qw(pod_where);
+use Pod::Usage qw(pod2usage);
 use Sys::Hostname qw(hostname);
 use Time::HiRes qw(gettimeofday);
 use YAML::XS qw(LoadFile);
 
-use Pogo::Common qw($PREFIX);
+use Pogo::Common;
 
-use constant POGO_GLOBAL_CONF => $PREFIX . '/etc/pogo/client.conf';
+use constant POGO_GLOBAL_CONF => $Pogo::Common::CONFIGDIR . '/client.conf';
 use constant POGO_USER_CONF   => $ENV{HOME} . '/.pogoconf';
 
 sub run_from_commandline
@@ -93,14 +95,8 @@ sub cmd_run
     my $cookbook = $self->load_cookbook( $cmdline_opts->{cookbook} || $opts->{cookbook} );
     if ( defined $cookbook )
     {
-
-111: $opts = merge_hash( $opts, $recipe );
-     ^                                    
-found Scalar where operator expected
-
-Missing ';' above?
-      my $recipe = $self->load_recipe( $cmdline_opts->{recipe}, $cookbook ) $opts =
-        merge_hash( $opts, $recipe );
+      my $recipe = $self->load_recipe( $cmdline_opts->{recipe}, $cookbook );
+      $opts = merge_hash( $opts, $recipe );
     }
   }
 
