@@ -40,6 +40,12 @@ use constant POGO_USER_CONF       => $ENV{HOME} . '/.pogoconf';
 use constant POGO_WORKER_CERT     => $Pogo::Common::WORKER_CERT;
 use constant POGO_PASSPHRASE_FILE => 'bar';
 
+my %LOG_SUBST = (
+  'jobstate' => 'job',
+  'hoststate' => 'host',
+);
+
+
 sub run_from_commandline
 {
   my $class = shift;
@@ -374,6 +380,248 @@ $job->{jobid}, $job->{user}, '\''. $job->{command}. '\'',
 }
 
 #}}}
+#{{{ cmd_status
+
+sub cmd_status
+{
+  my $self = shift;
+  my $opts = {};
+
+  # fetchez le options
+  GetOptions( $opts, 'target|h=s', 'status|s=s', 'verbose|v' );
+
+  # process the jobid
+  my $jobid = shift @ARGV;
+  if ( defined $jobid )
+  {
+    $jobid = $self->to_jobid($jobid);
+    if ( !defined $jobid )
+    {
+      LOGDIE "No jobs found";
+    }
+    DEBUG "Using jobid '$jobid'";
+  }
+  else
+  {
+    LOGDIE "no jobid specified";
+  }
+
+  # expand the range if needed
+  my $target;
+  if ( defined $opts->{target} )
+  {
+    $target = $self->expand_expression( $opts->{target} );
+  }
+
+  # fetch the job info
+  my $resp = $self->_client()->jobinfo( $jobid, %$opts );
+  if ( !$resp->is_success )
+  {
+    LOGDIE "Unable to fetch jobinfo: " . $resp->status_msg;
+  }
+
+  # output job info
+  my $info = $resp->record;
+  my $disp = {
+    'job id'     => $jobid,
+    'user'       => $info->{user},
+    'command'    => $info->{command},
+    'invoked as' => $info->{invoked_as},
+  };
+
+  if ( $opts->{verbose} ) { $disp = $info; }
+
+  my $len = 5;
+  map { $len = length($_) if $len < length($_) } keys %{$disp};
+
+  my $pat = " %${len}s: %s\n";
+
+  foreach my $key ( keys %{$disp} )
+  {
+    printf "$pat", $key, $disp->{$key};
+  }
+
+  # fetch the status
+  $resp = $self->_client()->jobstatus($jobid);
+  if ( !$resp->is_success )
+  {
+    LOGDIE "Unable to fetch jobstatus: " . $resp->status_msg;
+  }
+
+  # output status
+  my @rec    = $resp->records;
+  my $status = shift @rec;
+  printf "$pat", "job status", $status;
+  while ( my $rec = shift @rec )
+  {
+    my ( $host, $status, $exit ) = @$rec;
+    if ( !defined $target || $target->contains($host) )
+    {
+      if ( !exists $opts->{status} || $opts->{status} eq $status )
+      {
+        print "  $host => $status\n";
+      }
+    }
+  }
+
+  return 0;
+}
+
+#}}}
+#{{{ cmd_log
+
+sub cmd_log
+{
+  my $self = shift;
+  my $opts = { verbose => 0 };
+
+  GetOptions( $opts, 'tail|f', 'verbose|v' )
+    or $self->usage;
+
+  my $jobid = shift @ARGV;
+  $opts = merge_hash( $self->{opts}, $opts );
+
+  if ( defined $jobid )
+  {
+    $jobid = $self->to_jobid($jobid);
+    if (!defined $jobid)
+    {
+      print "No jobs found\n";
+      return 1;
+    }
+    DEBUG "Using jobid '$jobid'";
+  }
+  unless ($jobid)
+  {
+    LOGDIE "no jobid specified\n";
+  }
+
+  my $hosts;
+  my $target = shift @ARGV;
+
+  if (defined $target )
+  {
+    $hosts = $self->expand_expression($target);
+  }
+
+  my $idx = 0;
+  my $limit = 100;
+  my $finished = 0;
+  my $resp;
+
+  do {
+    $resp = $self->_client->joblog( $jobid, $idx, $limit );
+    if (!$resp->is_success)
+    {
+      ERROR "%s: %s\n", $self->{api}, $resp->status_msg;
+      return -1;
+    }
+
+    foreach my $record ( sort { $a->[0] <=> $b->[0] } $resp->records )
+    {
+      $idx = ( shift @$record ) + 1;
+      display_log_event( $jobid, $record, $opts->{verbose}, $hosts );
+      if ($record->[1] eq 'jobstate' )
+      {
+        my $newstate = $record->[2]->{state};
+        $finished = 1 if ( $newstate eq 'finished' or $newstate eq 'halted' );
+      }
+    }
+  } while (scalar $resp->records == $limit );
+
+  if ($opts->{tail})
+  {
+    while (!$finished)
+    {
+      $resp = $self->_client->joblog( $jobid, $idx, $limit );
+      if (!$resp->is_success)
+      {
+        ERROR "ERROR: %s: %s\n", $self->api, $resp->status_msg;
+      }
+
+      my $laststate;
+      my $lastthing;
+
+      foreach my $record ( sort { $a->[0] <=> $b->[0] } $resp->records )
+      {
+        $idx = ( shift @$record ) + 1;
+        display_log_event( $jobid, $record, $opts->{verbose}, $hosts );
+        if ( $record->[1] eq 'jobstate' )
+        {
+          my $newstate = $record->[2]->{state};
+          $finished = 1 if ( $newstate eq 'finished' or $newstate eq 'halted' );
+        }
+      }
+
+      sleep 0.6 unless scalar $resp->records == $limit;
+    }
+  }
+
+  return 0;
+}
+
+sub display_log_event
+{
+  my ($jobid, $event, $verbose, $hosts) = @_;
+  my ($ts, $type, $details, $summary) = @$event;
+
+  $ts = to_ts($ts);
+
+  # cosmetic crap
+  if (defined $LOG_SUBST{$type})
+  {
+    $type = $LOG_SUBST{$type};
+  }
+
+  my $ok = 1;
+  if (defined $hosts && $type eq 'host' && ref $details eq 'HASH' )
+  {
+    $ok = $hosts->has($details->{host});
+  }
+
+  if (ref $details eq 'HASH')
+  {
+    if ( defined $details->{host} )
+    {
+      $type = "$type/" . $details->{host};
+    }
+  }
+  else
+  {
+    $type = $details;
+  }
+
+  my ( $keys, $values );
+  format JOBLOG =
+@<<<<<<<<<<<<<<<<<<<<<<< @* => @*
+$ts,                     $type, $summary
+.
+
+  format JOBLOG_VERBOSE =
+@<<<<<<<<<<<<<<<<<<<<<<< @* => @*
+$ts,                     $type, $summary
+                         ^* => ^*
+~~                       $keys, $values
+.
+
+  if ($ok)
+  {
+    if ($verbose)
+    {
+      format_name STDOUT 'JOBLOG_VERBOSE';
+      $keys = join "\n", keys %$details;
+      $values = join "\n", values %$details;
+      write;
+    }
+    else
+    {
+      format_name STDOUT 'JOBLOG';
+      write;
+    }
+  }
+}
+
+#}}}
 #{{{ options processing and usage
 
 sub process_options
@@ -540,6 +788,68 @@ sub load_passphrases
   }
 
   return;
+}
+
+# we're just always going to have to do this server-side for now
+sub expand_expression
+{
+  my ($self, @foo) = @_;
+
+  my @hosts;
+  foreach my $exp (@foo)
+  {
+    DEBUG "expanding $exp";
+
+    my $resp;
+    eval { $resp = $self->_client()->expand(\@foo); };
+    if ($@ || !$resp->is_success)
+    {
+      LOGDIE "unable to expand '$exp': " . $@ || $resp->status_msg;
+    }
+    push( @hosts, @{ $resp->records } );
+  }
+
+  return Set::Scalar->new(@hosts);
+}
+
+sub to_jobid
+{
+  my ( $self, $jobid ) = @_;
+
+  my $p = 'p';
+  my $i;
+
+  if ( $jobid eq 'last' )
+  {
+    $jobid = $self->get_last_jobid( $self->{userid} );
+  }
+
+  if ( $jobid =~ m/^([a-z]+)(\d+)$/ )
+  {
+    ( $p, $i ) = ( $1, $2 );
+  }
+  elsif ( $jobid =~ m/^(\d+)$/ )
+  {
+    $i = $1;
+  }
+  else
+  {
+    ERROR "Don't understand jobid '$jobid'";
+    return;
+  }
+
+  my $new_jobid;
+  if ( defined $i )
+  {
+    $new_jobid = sprintf "%s%010d", $p, $i;
+    DEBUG "Translated jobid '$jobid' to '$new_jobid'";
+  }
+  else
+  {
+    INFO "No jobs found";
+  }
+
+  return $new_jobid;
 }
 
 #}}} helper crap

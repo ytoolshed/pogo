@@ -226,7 +226,7 @@ sub jobinfo
     return $resp;
   }
 
-  $resp->set_records( $job->info );
+  $resp->set_records( [ $job->info ] );
   $resp->set_ok;
 
   return $resp;
@@ -234,7 +234,7 @@ sub jobinfo
 
 sub joblog
 {
-  my ( $jobid, $offset, $limit ) = @_;
+  my ( $class, $jobid, $offset, $limit ) = @_;
   my $job = $instance->job($jobid);
   my $resp = Pogo::Engine::Response->new()->add_header( action => 'joblog' );
 
@@ -343,16 +343,16 @@ sub jobsnapshot
 
 sub jobstatus
 {
-  my $jobid = shift;
-  my $job   = $instance->job($jobid);
-  my $resp  = Pogo::Engine::Response->new()->add_header( action => 'jobstatus' );
+  my ( $class, $jobid ) = @_;
+  my $job = $instance->job($jobid);
+  my $resp = Pogo::Engine::Response->new()->add_header( action => 'jobstatus' );
 
   if ( !defined $job )
   {
     $resp->set_error("jobid $jobid not found");
     return $resp;
   }
-
+  $resp->add_record( $job->state );
   my @hostlist = map { $resp->add_record( [ $_->name, $_->state ] ) } $job->hosts;
   $resp->add_header( hosts => join ',', @hostlist );
   $resp->set_ok;
