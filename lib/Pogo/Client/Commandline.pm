@@ -28,7 +28,7 @@ use MIME::Base64 qw(encode_base64);
 use Pod::Find qw(pod_where);
 use Pod::Usage qw(pod2usage);
 use Sys::Hostname qw(hostname);
-use Time::HiRes qw(gettimeofday);
+use Time::HiRes qw(gettimeofday tv_interval);
 use YAML::XS qw(LoadFile);
 
 use Pogo::Common;
@@ -55,6 +55,8 @@ sub run_from_commandline
   my $cmd = $self->process_options
     or $self->cmd_usage;
 
+  $self->{api} = delete $self->{opts}->{api};
+
   my $method = 'cmd_' . $cmd;
   if ( !$self->can($method) )
   {
@@ -65,6 +67,7 @@ sub run_from_commandline
 }
 
 #{{{ cmd_run
+
 sub cmd_run
 {
   my $self = shift;
@@ -279,6 +282,39 @@ $key,                  $value
 }
 
 #}}} cmd_run
+#{{{ cmd_ping
+
+sub cmd_ping
+{
+  my $self = shift;
+  my $res;
+  my $resp = $self->_client()->ping('pong');
+  my $elapsed = tv_interval( $self->{epoch}, [gettimeofday] );
+  if ( !$resp->is_success )
+  {
+    printf "ERROR %s: %s\n", $self->{api}, $@;
+    return 1;
+  }
+
+  my @foo  = $resp->records;
+  my $pong = shift @foo;
+
+  if ( !$pong )
+  {
+    printf "ERROR %s: no pong!\n", $self->{api};
+    return 1;
+  }
+  if ( $pong ne 'pong' )
+  {
+    printf "ERROR %s: %s\n", $self->{api}, $pong;
+    return 1;
+  }
+
+  printf "OK %s %0dms\n", $self->{api}, $elapsed * 1000;
+  return 0;
+}
+
+#}}}
 #{{{ cmd_jobs
 
 sub cmd_jobs
@@ -476,7 +512,7 @@ sub _client
   my $self = shift;
   if ( !defined $self->{pogoclient} )
   {
-    $self->{pogoclient} = Pogo::Client->new( $self->{opts}->{api} );
+    $self->{pogoclient} = Pogo::Client->new( $self->{api} );
     Log::Log4perl->get_logger("Pogo::Client")->level($DEBUG) if ( $self->{opts}->{debug} );
   }
 
