@@ -58,7 +58,7 @@ sub AUTOLOAD
   my $rpc = to_json( [ $method, @stuff ] );
   my $post = POST $self->{api}, [ r => $rpc ];
 
-  DEBUG "request: $method";
+  DEBUG "request: $rpc";
 
   my $r = $self->ua->request($post);
   LOGDIE "fatal error in request '$method': " . $r->status_line

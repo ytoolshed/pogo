@@ -20,8 +20,8 @@ use Log::Log4perl qw(:easy);
 use Pogo::Client::Commandline;
 
 Log::Log4perl::init(
-  { #'log4perl.rootLogger'                               => 'ERROR, Client',
-    'log4perl.category.Pogo.Client'                     => 'INFO, Client',
+  { 'log4perl.rootLogger'                               => 'DEBUG, Client',
+  #  'log4perl.category.Pogo.Client'                     => 'INFO, Client',
     'log4perl.appender.Client'                          => 'Log::Log4perl::Appender::Screen',
     'log4perl.appender.Client.stderr'                   => 0,
     'log4perl.appender.Client.layout'                   => 'Log::Log4perl::Layout::PatternLayout',
