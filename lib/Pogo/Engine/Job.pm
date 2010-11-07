@@ -218,6 +218,15 @@ sub info
 # }}}
 # {{{ logging
 
+sub log
+{
+  my ( $self, @stuff) = @_;
+  my $t = time();
+  my $entry = to_json( [ $t, @stuff ] );
+  store->create_sequence( $self->{path} . '/log/l', $entry )
+    or ERROR "couldn't create log sequence: " . store->get_error_name;
+}
+
 # determine job start time by the first log entry's timestamp
 sub start_time
 {
