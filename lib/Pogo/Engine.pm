@@ -17,10 +17,13 @@ package Pogo::Engine;
 use common::sense;
 
 use AnyEvent;
-use Exporter 'import';
-use JSON qw(from_json);
+use AnyEvent::Handle;
+use AnyEvent::Socket qw(tcp_connect);
+use JSON qw(from_json to_json);
 use Log::Log4perl qw(:easy);
 use YAML::XS qw(LoadFile);
+
+use Exporter 'import';
 
 use Pogo::Engine::Job;
 use Pogo::Engine::Namespace;
@@ -213,7 +216,7 @@ sub jobhoststatus
 
 sub jobinfo
 {
-  my $jobid = shift;
+  my ($class, $jobid) = @_;
   my $job   = $instance->job($jobid);
   my $resp  = Pogo::Engine::Response->new()->add_header( action => 'jobinfo' );
 
@@ -401,8 +404,9 @@ sub _listjobs
 JOB: for ( ; $jobidx >= 0 && $limit > 0; $jobidx-- )
   {
     my $jobid = sprintf( "p%010d", $jobidx );
-    my $jobinfo = $self->job($jobid)->info;
-    last unless defined $jobinfo;
+    my $jobinfo;
+    eval { $jobinfo = $self->job($jobid)->info; }; # resiliently skip totally fubar jobs
+    next JOB unless defined $jobinfo;
 
     foreach my $k ( keys %$matchopts )
     {
@@ -558,6 +562,34 @@ sub listtaskq
     );
   }
   return @tasks;
+}
+
+# send local rpc requests to the dispatcher
+# used mostly for storing passwords
+sub rpcclient
+{
+  my ($class, $request, $cb) = @_;
+  tcp_connect('localhost', $instance->{rpc_port} || 7655,
+    sub {
+      my ($fh, $host, $port) = @_;
+      if (!$fh)
+      {
+        return $cb->(undef, "unable to connect to local RPC port!");
+      }
+
+      my $h;
+      $h = AnyEvent::Handle->new(
+        fh => $fh,
+        tls => 'connect',
+        tls_ctx => $instance->{ssl_ctx},
+        no_delay => 1,
+        on_eof => sub { undef $h; },
+        on_error => sub { undef $h; $cb->(undef, $!); },
+        );
+      $h->push_write(json => $request);
+      $h->push_read(json => sub { my ($hdl, $data) = @_; $cb->(@$data); $h->push_shutdown(); undef $h } );
+    }
+    );
 }
 
 1;

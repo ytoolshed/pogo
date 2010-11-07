@@ -17,6 +17,7 @@ package Pogo::API::V3;
 use common::sense;
 
 use Log::Log4perl qw(:easy);
+use JSON qw(to_json);
 use Sys::Hostname qw(hostname);
 use YAML::XS qw(LoadFile);
 
@@ -33,7 +34,7 @@ sub init
   my $self = { hostname => hostname(), };
   DEBUG "new instance [$$]";
   my $conf;
-  eval { $conf = LoadFile($Pogo::Common::CONFIGDIR . '/dispatcher.conf'); };
+  eval { $conf = LoadFile( $Pogo::Common::CONFIGDIR . '/dispatcher.conf' ); };
   Pogo::Engine->init($conf);
   return bless $self, $class;
 }
@@ -45,27 +46,15 @@ sub instance
   return $instance;
 }
 
-# all rpc methods return an arrayref
-sub _rpc_ping
-{
-  my $self = shift;
-  return Pogo::Engine->ping(@_);
-}
+# all rpc methods return an Engine::Response object
+sub _rpc_ping     { my $self = shift; return Pogo::Engine->ping(@_); }
+sub _rpc_stats    { my $self = shift; return Pogo::Engine->stats(@_); }
+sub _rpc_listjobs { my $self = shift; return Pogo::Engine->listjobs(@_); }
+sub _rpc_jobinfo  { my $self = shift; return Pogo::Engine->jobinfo(@_); }
 
-sub _rpc_stats
-{
-  my $self = shift;
-  return Pogo::Engine->stats(@_);
-}
-
-sub _rpc_listjobs
-{
-  my $self = shift;
-  return Pogo::Engine->listjobs(@_);
-}
 sub _rpc_run
 {
-  my ($self, %args) = @_;
+  my ( $self, %args ) = @_;
 
   my $resp = Pogo::Engine::Response->new()->add_header( action => 'run' );
 
@@ -80,12 +69,14 @@ sub _rpc_run
   }
   my $run_as  = $args{run_as};
   my $command = $args{command};
-  my $target   = $args{target};
+  my $target  = $args{target};
 
   $args{timeout}     ||= 600;
   $args{job_timeout} ||= 1800;
   $args{retry}       ||= 0;
-#  $args{pkg_passwords} = to_json( $args{pkg_passwords} );
+
+  # why are we encoding this twice? dumb
+  # $args{pkg_passwords} = to_json( $args{pkg_passwords} );
 
   my $opts = {};
   foreach my $arg (
@@ -97,12 +88,14 @@ sub _rpc_run
     $opts->{$arg} = $args{$arg} if exists $args{$arg};
   }
   my $job = Pogo::Engine::Job->new($opts);
+  $resp->set_ok;
   DEBUG $job->id . ": running $command as $run_as on: " . to_json($target);
   $resp->add_record( $job->id );
   return $resp;
-};
+}
 
-
+# this is the main entry point for V3.pm
+# /pogo?r=[1,2,3] => rpc(1,2,3)
 sub rpc
 {
   my ( $self, $action, @args ) = @_;
@@ -117,10 +110,12 @@ sub rpc
 
   if ($@)
   {
+    ERROR "$method: $@";
     $response->set_error($@);
   }
   else
   {
+    WARN "$method returned a non-response object?";
     $response->set_ok;
     $response->set_records($out);
   }

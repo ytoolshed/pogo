@@ -26,6 +26,7 @@ use JSON;
 use Log::Log4perl qw(:easy);
 
 use Pogo::Common;
+use Pogo::Engine;
 use Pogo::Engine::Store qw(store);
 use Pogo::Engine::Job::Host;
 
@@ -83,7 +84,7 @@ sub new
   my $expire = $args->{job_timeout} + time();
 
   my $cv = AnyEvent->condvar;
-  Pogo::Engine->rpc(
+  Pogo::Engine->rpcclient(
     [ 'storepw', $self->{id}, $pw, $pp, $expire ],
     sub {
       my ( $ret, $err ) = @_;
@@ -104,7 +105,7 @@ sub new
   while (my ($k, $v) = each %$args ) { $self->set_meta( $k, $v ); }
   $self->set_meta( 'target', to_json($target));
 
-  Pogo::Server->add_task( 'startjob', $self->{id} );
+  Pogo::Engine->add_task( 'startjob', $self->{id} );
 
   return $self;
 }
@@ -115,8 +116,14 @@ sub new
 sub get
 {
   my ( $class, $jobid ) = @_;
-  my $jobpath = "/pogo/jobid/$jobid";
-  my $state = store->get($jobpath) or return;
+  my $jobpath = "/pogo/job/$jobid";
+
+  my $state = store->get($jobpath);
+  if (!$state)
+  {
+    WARN "invalid state for jobid $jobid";
+    return;
+  }
   my $self = {
     id => $jobid,
     path => $jobpath,
@@ -127,10 +134,10 @@ sub get
 
   my $ns = $self->meta('namespace');
 
-  # have we been purged
+  # have we been purged?
   if (!defined $ns)
   {
-    ERROR "request for non-existent jobid $jobid";
+    WARN "request for non-existent jobid $jobid";
     return;
   }
 
@@ -209,6 +216,11 @@ sub start_time
   {
     return eval { $data = from_json $data; return $data->[0]; };
   }
+}
+
+sub _lognode
+{
+  return sprintf( "l%010d", $_[0] );
 }
 
 sub info

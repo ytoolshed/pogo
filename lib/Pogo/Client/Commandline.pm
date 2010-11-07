@@ -14,9 +14,12 @@ package Pogo::Client::Commandline;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+use Data::Dumper;
+
 use common::sense;
 
 use Getopt::Long qw(:config bundling no_ignore_case pass_through);
+use JSON qw(to_json);
 use Log::Log4perl qw(:easy);
 use Log::Log4perl::Level;
 use Pod::Find qw(pod_where);
@@ -26,6 +29,7 @@ use Time::HiRes qw(gettimeofday);
 use YAML::XS qw(LoadFile);
 
 use Pogo::Common;
+use Pogo::Client;
 
 use constant POGO_GLOBAL_CONF => $Pogo::Common::CONFIGDIR . '/client.conf';
 use constant POGO_USER_CONF   => $ENV{HOME} . '/.pogoconf';
@@ -129,6 +133,65 @@ sub cmd_run
 }
 
 #}}} cmd_run
+#{{{ cmd_jobs
+
+sub cmd_jobs
+{
+  my $self = shift;
+  my $opts = {
+    user => $self->{userid},
+    limit => 50,
+  };
+  GetOptions( $opts, 'user|U=s', 'all', 'limit|L=i' );
+  delete $opts->{user} if $opts->{all};
+  delete $opts->{all} if $opts->{all};
+
+  DEBUG "cmd_jobs: " . to_json($opts);
+
+  my $resp = $self->_client()->listjobs(%$opts);
+  if (!$resp->is_success)
+  {
+    LOGDIE "Unable to list jobs: " . $resp->status_msg;
+  }
+
+  my @matches;
+  my @jobs = $resp->records;
+  my $count = 0;
+
+JOBS: foreach my $job ( sort { $b->{jobid} cmp $a->{jobid} } @jobs )
+  {
+    push @matches, $job;
+    $count++;
+  }
+
+  format JOB_TOP =
+Job ID      User     Command
+.
+
+  my $job;
+  format JOB =
+@<<<<<<<<<< @<<<<<<< @<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+$job->{jobid}, $job->{user}, '\''. $job->{command}. '\'',
+.
+
+  foreach $job ( sort { $a->{jobid} cmp $b->{jobid} } @matches )
+  {
+
+    if ( !defined $job->{jobid}
+      || !defined $job->{user}
+      || !defined $job->{command} )
+    {
+      DEBUG "skipping invalid job: " . $job->{'jobid'} || 'NULL';
+      next;
+    }
+
+    format_name STDOUT "JOB";
+    format_top_name STDOUT "JOB_TOP";
+    write STDOUT;
+  }
+}
+
+#}}}
 #{{{ options processing and usage
 
 sub process_options
@@ -199,6 +262,8 @@ sub process_options
   # overwrite with commandline opts
   $self->{opts} = merge_hash( $opts, $cmdline_opts );
 
+  DEBUG Dumper $self->{opts};
+
   return $command;
 }
 
@@ -261,6 +326,19 @@ sub merge_hash
 
   return $onto;
 }
+
+sub _client
+{
+  my $self = shift;
+  if ( !defined $self->{pogoclient} )
+  {
+    $self->{pogoclient} = Pogo::Client->new( $self->{opts}->{api} );
+    Log::Log4perl->get_logger("Pogo::Client")->level($DEBUG) if ($self->{opts}->{debug});
+  }
+
+  return $self->{pogoclient};
+}
+
 
 #}}} helper crap
 

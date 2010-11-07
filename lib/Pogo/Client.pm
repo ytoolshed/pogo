@@ -21,22 +21,28 @@ use JSON qw(to_json from_json);
 use Log::Log4perl qw(:easy);
 use HTTP::Request::Common qw(POST);
 
-use Pogo::Client::Response;
+use Pogo::Engine::Response;
 use Pogo::Common qw($VERSION fetch_yaml);
+
+our $AUTOLOAD;
 
 sub new
 {
   my ($class, $url) = @_;
   my $self = { api => $url };
+  DEBUG "api = $url";
   bless $self, $class;
   return $self;
 }
 
-sub set_ua
+sub ua
 {
-  my ( $self, $ua ) = @_;
-  $ua = ( ref $self eq 'Pogo::Client' ) ? $ua : $self;
-  return $self;
+  my ($self) = @_;
+  if (!defined $self->{ua})
+  {
+    $self->{ua} = LWP::UserAgent->new();
+  }
+  return $self->{ua};
 }
 
 # why are we overriding this again?
@@ -54,13 +60,13 @@ sub AUTOLOAD
 
   DEBUG "request: $method";
 
-  $r = $ua->request($post);
+  my $r = $self->ua->request($post);
   LOGDIE "fatal error in request '$method': " . $r->status_line
     if $r->is_error;
 
   DEBUG "response: ". $r->decoded_content;
 
-  my $resp = Pogo::Client::Response->new( $r->decoded_content );
+  my $resp = Pogo::Engine::Response->new( $r->decoded_content );
 
   LOGDIE "error from pogo server in request '$method': " . $resp->status_msg . "\n"
     unless $resp->is_success;
