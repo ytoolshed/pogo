@@ -47,10 +47,12 @@ sub instance
 }
 
 # all rpc methods return an Engine::Response object
-sub _rpc_ping     { my $self = shift; return Pogo::Engine->ping(@_); }
-sub _rpc_stats    { my $self = shift; return Pogo::Engine->stats(@_); }
-sub _rpc_listjobs { my $self = shift; return Pogo::Engine->listjobs(@_); }
-sub _rpc_jobinfo  { my $self = shift; return Pogo::Engine->jobinfo(@_); }
+sub _rpc_ping      { my $self = shift; return Pogo::Engine->ping(@_); }
+sub _rpc_stats     { my $self = shift; return Pogo::Engine->stats(@_); }
+sub _rpc_listjobs  { my $self = shift; return Pogo::Engine->listjobs(@_); }
+sub _rpc_jobinfo   { my $self = shift; return Pogo::Engine->jobinfo(@_); }
+sub _rpc_jobstatus { my $self = shift; return Pogo::Engine->jobstatus(@_); }
+sub _rpc_joblog    { my $self = shift; return Pogo::Engine->joblog(@_); }
 
 sub _rpc_run
 {
