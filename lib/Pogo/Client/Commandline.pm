@@ -19,9 +19,12 @@ use Data::Dumper;
 use common::sense;
 
 use Getopt::Long qw(:config bundling no_ignore_case pass_through);
+use Crypt::OpenSSL::RSA;
+use Crypt::OpenSSL::X509;
 use JSON qw(to_json);
 use Log::Log4perl qw(:easy);
 use Log::Log4perl::Level;
+use MIME::Base64 qw(encode_base64);
 use Pod::Find qw(pod_where);
 use Pod::Usage qw(pod2usage);
 use Sys::Hostname qw(hostname);
@@ -30,9 +33,13 @@ use YAML::XS qw(LoadFile);
 
 use Pogo::Common;
 use Pogo::Client;
+use Pogo::Client::AuthCheck qw(get_password check_password);
 
 use constant POGO_GLOBAL_CONF => $Pogo::Common::CONFIGDIR . '/client.conf';
 use constant POGO_USER_CONF   => $ENV{HOME} . '/.pogoconf';
+use constant POGO_WORKER_CERT => $Pogo::Common::WORKER_CERT;
+use constant POGO_PASSPHRASE_FILE => 'bar';
+
 
 sub run_from_commandline
 {
@@ -71,7 +78,7 @@ sub cmd_run
   };
   GetOptions(
     my $cmdline_opts = {}, 'cookbook|C=s',
-    'hostfile|H=s',              'target|host|h=s',
+    'hostfile|H=s',              'target|host|h=s@',
     'job_timeout|job-timeout=i', 'dryrun|n',
     'recipe|R=s',                'retry|r=i',
     'timeout|t=i',               'prehooks!',
@@ -115,6 +122,7 @@ sub cmd_run
     $opts->{command} = delete $opts->{cmd};
   }
 
+
   # run an anonymous executable?
   if ( defined $opts->{file} )
   {
@@ -130,6 +138,145 @@ sub cmd_run
     unless defined $opts->{command};
 
   my @targets;
+
+  if (exists $opts->{target})
+  {
+    push @targets, @{ delete $opts->{target} };
+  }
+
+  if ( $opts->{hostfile} )
+  {
+    foreach my $hostfile ( @{ $opts->{hostfile} } )
+    {
+      if ( -r $hostfile )
+      {
+        open( my $fh, '<', $hostfile )
+          or LOGDIE "Couldn't open file: $!";
+
+        while( my $host = <$fh> )
+        {
+          next unless $host;
+          next if $host =~ m/^\s*#/;
+          chomp($host);
+          push @targets, $host;
+        }
+        close($fh);
+      }
+      else
+      {
+        LOGDIE "couldn't read '$hostfile'";
+      }
+    }
+  }
+
+  if (@targets == 0)
+  {
+    LOGDIE "run needs hosts!";
+  }
+
+  $opts->{target} = \@targets;
+
+  # package passphrases
+  my $passphrase;
+  if ($opts->{passfile})
+  {
+    $passphrase = load_passphrases( $opts->{passfile} );
+
+    if (!$passphrase )
+    {
+      ERROR "Can't load passphrases from $opts->{passfile}: $!";
+    }
+  }
+  else
+  {
+    $passphrase = load_passphrases(POGO_PASSPHRASE_FILE);
+  }
+
+  # --unconstrained means we're 100% in parallel
+  if ( delete $opts->{unconstrained} )
+  {
+    LOGDIE "--unconstrained and --concurrent are mutually exclusive"
+      if exists $opts->{concurrent};
+    $opts->{concurrent} = 0;
+  }
+
+  # check the value of concurrent
+  if (exists $opts->{concurrent} )
+  {
+    LOGDIE "--concurrent value must be an integer or a percentage"
+      unless $opts->{concurrent} =~ m/^\d+%?$/;
+  }
+
+  if ($opts->{dryrun})
+  {
+    my $key;
+    my $value;
+    format DRYRUN =
+^>>>>>>>>>>>>>>>>>> => ^*
+$key,                  $value
+.
+
+    format_name STDOUT "DRYRUN";
+
+    foreach $key (sort keys %$opts)
+    {
+      $value = $opts->{$key};
+      if (ref $value eq 'ARRAY' )
+      {
+        $value = join ',', @$value;
+      }
+      $value = join( '; ', split /\n/, $value );
+      write STDOUT;
+    }
+
+    return 0;
+  }
+
+  my $password = get_password();
+
+  # use CLI::Auth to validate
+  # note that this is just testing against the local password in case you happen
+  # to use the same one everywhere - to avoid spewing the wrong password to
+  # thousands of hosts, this is not a real auth check
+  if ($opts->{check_password})
+  {
+    if ( !check_password( $self->{userid}, $password))
+    {
+      LOGDIE "Local password check failed, bailing\nset 'check_password: 0' in your .pogoconf to disable\n";
+    }
+  }
+
+  # bring the crypto
+  Crypt::OpenSSL::RSA->import_random_seed();
+  my $x509 = Crypt::OpenSSL::X509->new_from_file(POGO_WORKER_CERT);
+  my $rsa_pub = Crypt::OpenSSL::RSA->new_public_key( $x509->pubkey() );
+
+  # encrypt the password
+  my $cryptpw = encode_base64( $rsa_pub->encrypt($password) );
+
+  $opts->{user} = $self->{userid};
+  $opts->{run_as} = $self->{userid};
+  $opts->{password} = $cryptpw;
+
+  $opts->{pkg_passwords} =
+    { map { $_ => encode_base64( $rsa_pub->encrypt( $passphrase->{$_} ) ) } keys %$passphrase };
+
+  my $resp = $self->_client->run(%$opts);
+
+  if (!$resp->is_success)
+  {
+    LOGDIE "Failed to start job: " . $resp->status_msg;
+  }
+
+  my $jobid = $resp->record;
+
+  $SIG{INT}     = sub { $self->pogo_client()->jobhalt($jobid) if $jobid; exit 1; };
+  $SIG{__DIE__} = sub { $self->pogo_client()->jobhalt($jobid) if $jobid; die @_; };
+
+  print "$jobid; " . $self->{ui} . $jobid . "\n";
+
+  # $self->wait_job($jobid);
+  return 0;
 }
 
 #}}} cmd_run
@@ -262,8 +409,6 @@ sub process_options
   # overwrite with commandline opts
   $self->{opts} = merge_hash( $opts, $cmdline_opts );
 
-  DEBUG Dumper $self->{opts};
-
   return $command;
 }
 
@@ -338,6 +483,31 @@ sub _client
 
   return $self->{pogoclient};
 }
+
+sub load_passphrases
+{
+  my $file = shift;
+  if ( -r $file )
+  {
+    my $data = load_yaml($file)
+      or ERROR "Couldn't load data from '$file': $!" and return;
+    foreach my $pkg ( sort keys %$data )
+    {
+      DEBUG "Got passphrase for '$pkg'";
+    }
+
+    return $data;
+  }
+  else
+  {
+    INFO "Can't load data from '$file': $!";
+    return;
+  }
+
+  return;
+}
+
+
 
 
 #}}} helper crap
