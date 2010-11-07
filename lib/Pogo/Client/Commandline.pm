@@ -27,6 +27,7 @@ use Log::Log4perl::Level;
 use MIME::Base64 qw(encode_base64);
 use Pod::Find qw(pod_where);
 use Pod::Usage qw(pod2usage);
+use POSIX qw(strftime);
 use Sys::Hostname qw(hostname);
 use Time::HiRes qw(gettimeofday tv_interval);
 use YAML::XS qw(LoadFile);
@@ -517,7 +518,9 @@ sub cmd_log
       return -1;
     }
 
-    foreach my $record ( sort { $a->[0] <=> $b->[0] } $resp->records )
+    my (@records) = $resp->records;
+
+    foreach my $record ( sort { $a->[0] <=> $b->[0] } @records )
     {
       $idx = ( shift @$record ) + 1;
       display_log_event( $jobid, $record, $opts->{verbose}, $hosts );
@@ -619,6 +622,14 @@ $ts,                     $type, $summary
       write;
     }
   }
+}
+
+sub to_ts
+{
+  my $ts = shift;
+  my ( $secs, $msecs) = split /\./, $ts;
+  $ts = strftime '%b %e %H:%M:%S UTC%z', localtime($secs);
+  return $ts;
 }
 
 #}}}
