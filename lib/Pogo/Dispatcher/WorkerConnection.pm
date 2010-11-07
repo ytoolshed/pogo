@@ -26,6 +26,7 @@ sub accept_handler
   my $class = shift;
   return sub {
     my ( $fh, $remote_ip, $remote_port ) = @_;
+
     # This is the accept callback handler for the user interface to the
     # dispatcher
 

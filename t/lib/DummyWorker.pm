@@ -16,8 +16,9 @@ package PogoDummyWorker;
 
 use Pogo::Worker;
 
-our $opts = {};
+our $opts    = {};
 our $execute = undef;
+
 sub instance()
 {
   if ( defined $opts->{log4perl} && -r $opts->{log4perl} )
@@ -34,7 +35,7 @@ sub instance()
 
     no strict 'refs';
     *{'Pogo::Worker::Connection::real_execute'} = \&Pogo::Worker::Connection::execute;
-    *{'Pogo::Worker::Connection::execute'} = $execute;
+    *{'Pogo::Worker::Connection::execute'}      = $execute;
   }
   return Pogo::Worker->instance($opts);
 }

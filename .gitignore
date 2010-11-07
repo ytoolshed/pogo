@@ -6,6 +6,7 @@
 # *~
 *.pid
 .*.swp
+*.bak
 t/.tmp
 Makefile
 blib

@@ -148,7 +148,7 @@ sub get_error_name
 sub delete_r
 {
   my ( $self, $path ) = @_;
- foreach my $node ( $self->get_children($path) )
+  foreach my $node ( $self->get_children($path) )
   {
     $self->delete_r("$path/$node");
   }

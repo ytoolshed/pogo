@@ -40,9 +40,10 @@ our $POLL_INTERVAL = 10;
 
 sub new
 {
-  my ($class, $args) = @_;
+  my ( $class, $args ) = @_;
 
-  foreach my $opt (qw(target namespace user run_as password command timeout job_timeout pkg_passwords))
+  foreach
+    my $opt (qw(target namespace user run_as password command timeout job_timeout pkg_passwords))
   {
     LOGDIE "missing require job parameter '$opt'"
       unless exists $args->{$opt};
@@ -51,8 +52,8 @@ sub new
   my $ns = $args->{namespace};
 
   my $jobstate = 'gathering';
-  my $self = {
-    state => $jobstate,
+  my $self     = {
+    state  => $jobstate,
     _hosts => {},
   };
 
@@ -60,9 +61,9 @@ sub new
     or LOGDIE "Unable to create job node: " . store->get_error_name;
 
   $jobpath =~ m{/(p\d+)$} or LOGDIE "malformed job path";
-  $self->{id} = $1;
+  $self->{id}   = $1;
   $self->{path} = $jobpath;
-  $self->{ns} = Pogo::Engine->namespace($ns);
+  $self->{ns}   = Pogo::Engine->namespace($ns);
 
   # TODO: ensure namespace exists
 
@@ -88,7 +89,7 @@ sub new
     [ 'storepw', $self->{id}, $pw, $pp, $expire ],
     sub {
       my ( $ret, $err ) = @_;
-      if (! defined $ret )
+      if ( !defined $ret )
       {
         WARN "error storing passwords for job $self->{id}: $err";
       }
@@ -98,12 +99,12 @@ sub new
       }
       $cv->send(1);
     }
-    );
+  );
   $cv->recv();
 
   # store all non-secure items in zk
-  while (my ($k, $v) = each %$args ) { $self->set_meta( $k, $v ); }
-  $self->set_meta( 'target', to_json($target));
+  while ( my ( $k, $v ) = each %$args ) { $self->set_meta( $k, $v ); }
+  $self->set_meta( 'target', to_json($target) );
 
   Pogo::Engine->add_task( 'startjob', $self->{id} );
 
@@ -119,14 +120,14 @@ sub get
   my $jobpath = "/pogo/job/$jobid";
 
   my $state = store->get($jobpath);
-  if (!$state)
+  if ( !$state )
   {
     WARN "invalid state for jobid $jobid";
     return;
   }
   my $self = {
-    id => $jobid,
-    path => $jobpath,
+    id    => $jobid,
+    path  => $jobpath,
     state => $state,
   };
 
@@ -135,7 +136,7 @@ sub get
   my $ns = $self->meta('namespace');
 
   # have we been purged?
-  if (!defined $ns)
+  if ( !defined $ns )
   {
     WARN "request for non-existent jobid $jobid";
     return;
@@ -148,13 +149,13 @@ sub get
 
 sub _get
 {
-  my ($self, $k) = @_;
+  my ( $self, $k ) = @_;
   return store->get( $self->{path} . '/' . $k );
 }
 
 sub _set
 {
-  my ($self, $k, $v) = @_;
+  my ( $self, $k, $v ) = @_;
   my $node = $self->{path} . '/' . $k;
 
   store->create( $node, $v )
@@ -164,21 +165,21 @@ sub _set
 # cosmetically truncate a value for display
 sub _shrink_meta_value
 {
-  my ($s, $maxlen ) = @_;
-  return $s if (length($s) < $maxlen);
+  my ( $s, $maxlen ) = @_;
+  return $s if ( length($s) < $maxlen );
   my @v = split( m/,\s*/, $s );
   my $out = shift @v;
 
-  while (@v > 0 and length($out) < ( $maxlen - 13 ) )
+  while ( @v > 0 and length($out) < ( $maxlen - 13 ) )
   {
     $out .= ',' . shift @v;
   }
 
-  if (@v > 0)
+  if ( @v > 0 )
   {
-    return substr( $out, 0, $maxlen - 13) . "...(" . (scalar @v) . " more)";
+    return substr( $out, 0, $maxlen - 13 ) . "...(" . ( scalar @v ) . " more)";
   }
-  elsif (length($out) > $maxlen )
+  elsif ( length($out) > $maxlen )
   {
     return substr( $out, 0, $maxlen - 3 ) . "...";
   }
@@ -187,17 +188,17 @@ sub _shrink_meta_value
 
 sub meta
 {
-  my ($self, $k) = @_;
+  my ( $self, $k ) = @_;
   return store->get( $self->{path} . "/meta/$k" );
 }
 
 sub set_meta
 {
-  my ($self, $k, $v) = @_;
+  my ( $self, $k, $v ) = @_;
   my $node = $self->{path} . "/meta/$k";
-  if (!store->set( $node, $v))
+  if ( !store->set( $node, $v ) )
   {
-    return store->create($node, $v );
+    return store->create( $node, $v );
   }
   return 1;
 }
@@ -212,7 +213,7 @@ sub all_meta
 sub start_time
 {
   my ($self) = @_;
-  if (my $data = store->get( $self->{path} . '/log/' . _lognode(0)))
+  if ( my $data = store->get( $self->{path} . '/log/' . _lognode(0) ) )
   {
     return eval { $data = from_json $data; return $data->[0]; };
   }
@@ -226,20 +227,20 @@ sub _lognode
 sub info
 {
   my ($self) = @_;
-  if (!exists $self->{_info})
+  if ( !exists $self->{_info} )
   {
     my %info = $self->all_meta;
     $info{start_time} = $self->start_time;
-    $info{state} = $self->{state};
-    $self->{_info} = \%info;
+    $info{state}      = $self->{state};
+    $self->{_info}    = \%info;
   }
   return $self->{_info};
 }
 
 sub host
 {
-  my ($self, $hostname, $defstate) = @_;
-  if (!exists $self->{_hosts}->{$hostname})
+  my ( $self, $hostname, $defstate ) = @_;
+  if ( !exists $self->{_hosts}->{$hostname} )
   {
     $self->{_hosts}->{$hostname} = Pogo::Engine::Job::Host->new( $self, $hostname, $defstate );
   }
@@ -248,14 +249,14 @@ sub host
 
 sub has_host
 {
-  my ($self, $host) = @_;
+  my ( $self, $host ) = @_;
   return store->exists( $self->{path} . "/host/$host" );
 }
 
 sub hosts
 {
   my ($self) = @_;
-  if (!exists $self->{_hostlist})
+  if ( !exists $self->{_hostlist} )
   {
     $self->{_hostlist} = [ map { $self->host($_) } store->get_children( $self->{path} . '/host' ) ];
   }
@@ -264,7 +265,7 @@ sub hosts
 
 sub hosts_in_slot
 {
-  my ($self, $slot) = @_;
+  my ( $self, $slot ) = @_;
   my $id = $slot->id;
   return map { $self->host($_) } store->get_children( $self->{path} . "/slot/$id" );
 }
@@ -283,13 +284,13 @@ sub unfinished_hosts
 
 sub unfinished_hosts_in_slot
 {
-  my ($self, $slot) = @_;
+  my ( $self, $slot ) = @_;
   return grep { !$_->is_finished } $self->hosts_in_slot($slot);
 }
 
 sub unsuccessful_hosts_in_slot
 {
-  my ($self, $slot) = @_;
+  my ( $self, $slot ) = @_;
   return grep { $_->is_failed && $_->is_finished } $self->hosts_in_slot($slot);
 }
 
@@ -304,18 +305,18 @@ sub failed_hosts
   my ($self) = @_;
   my $state = $self->state;
   return $state eq 'running'
-    or $state eq 'gathering';
+    or $state   eq 'gathering';
 }
 
 sub is_slot_done
 {
-  my ($self, $slot) = @_;
+  my ( $self, $slot ) = @_;
   return scalar $self->unfinished_hosts_in_slot($slot) == 0;
 }
 
 sub is_slot_successful
 {
-  my ($self, $slot) = @_;
+  my ( $self, $slot ) = @_;
   return scalar $self->unsuccessful_hosts_in_slot($slot) == 0;
 }
 
@@ -338,29 +339,29 @@ sub _get_pwent
 # ugh this bugs me
 sub encode_perl
 {
-  local $Data::Dumper::Terse = 1;
+  local $Data::Dumper::Terse  = 1;
   local $Data::Dumper::Indent = 0;
   local $Data::Dumper::Purity = 1;
-  local $Data::Dumper::Useqq = 1;
+  local $Data::Dumper::Useqq  = 1;
   return Dumper(@_);
 }
 
-sub password { return $_[0]->_get_pwent()->[0]; }
+sub password      { return $_[0]->_get_pwent()->[0]; }
 sub pkg_passwords { return $_[0]->_get_pwent()->[1]; }
-sub namespace   { return $_[0]->{ns} }
-sub id          { return $_[0]->{id} }
-sub user        { return $_[0]->meta('user'); }
-sub run_as      { return $_[0]->meta('run_as'); }
-sub timeout     { return $_[0]->meta('timeout'); }
-sub job_timeout { return $_[0]->meta('job_timeout'); }
-sub retry       { return $_[0]->meta('retry'); }
-sub command     { return $_[0]->meta('command'); }
-sub concurrent  { return $_[0]->meta('concurrent'); }
-sub state { return store->get( $_[0]->{path} ); }
+sub namespace     { return $_[0]->{ns} }
+sub id            { return $_[0]->{id} }
+sub user          { return $_[0]->meta('user'); }
+sub run_as        { return $_[0]->meta('run_as'); }
+sub timeout       { return $_[0]->meta('timeout'); }
+sub job_timeout   { return $_[0]->meta('job_timeout'); }
+sub retry         { return $_[0]->meta('retry'); }
+sub command       { return $_[0]->meta('command'); }
+sub concurrent    { return $_[0]->meta('concurrent'); }
+sub state         { return store->get( $_[0]->{path} ); }
 
 sub set_state
 {
-  my ($self, $state, $msg, @extra) = @_;
+  my ( $self, $state, $msg, @extra ) = @_;
   $self->{state} = $state;
   store->set( $self->{path}, $state );
   $self->log( 'jobstate', { state => $state, @extra }, $msg );
@@ -382,9 +383,9 @@ sub worker_command
   my ($self) = @_;
   my %meta = $self->all_meta;
   my $exe = delete $meta{exe_data} || '';
-  my $worker_stub = read_file( Pogo::Dispatcher->instance()->worker_script() ) . encode_perl(
-    {
-      job => $self->id,
+  my $worker_stub = read_file( Pogo::Dispatcher->instance()->worker_script() )
+    . encode_perl(
+    { job => $self->id,
       api => Pogo::Server->instance()->{api_uri},
       %meta
     }
@@ -404,19 +405,19 @@ sub worker_command
 
 sub start
 {
-  my ($self, $errc, $cont) = @_;
+  my ( $self, $errc, $cont ) = @_;
 
   # do hostinfo lookup for the targets
-  my $target = from_json( $self->meta('target') );
-  my $ns = $self->namespace;
+  my $target     = from_json( $self->meta('target') );
+  my $ns         = $self->namespace;
   my $concurrent = $self->concurrent;
 
-  $self->set_state('gathering', 'job created; fetching hostinfo', target => $target );
+  $self->set_state( 'gathering', 'job created; fetching hostinfo', target => $target );
   INFO "starting job " . $self->id;
 
   my $fetching_error = sub {
     ERROR $self->id . ": unable to obtain hostinfo for target: $@";
-    $self->set_state('halted', "unable to obtain hostinfo for target: $@");
+    $self->set_state( 'halted', "unable to obtain hostinfo for target: $@" );
     return $errc->();
   };
 
@@ -426,10 +427,8 @@ sub start
     $fetching_error,
     sub {
     },
-    );
+  );
 }
-
-
 
 1;
 
