@@ -46,7 +46,14 @@ sub handler
   my $class = 'Pogo::API::' . $version;
   my $api   = $class->instance;
 
-  $r->content_type( $c->param('format') eq 'json' ? 'text/javascript' : 'text/plain' );
+  if ( !$c->param('format') )
+  {
+    $r->content_type('text/javascript');
+  }
+  elsif ( $c->param('format') eq 'yaml' )
+  {
+    $r->content_type('text/plain');
+  }
 
   # non-RPC requests
   if ( !$c->param('r') )

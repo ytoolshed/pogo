@@ -35,11 +35,10 @@ use Pogo::Common;
 use Pogo::Client;
 use Pogo::Client::AuthCheck qw(get_password check_password);
 
-use constant POGO_GLOBAL_CONF => $Pogo::Common::CONFIGDIR . '/client.conf';
-use constant POGO_USER_CONF   => $ENV{HOME} . '/.pogoconf';
-use constant POGO_WORKER_CERT => $Pogo::Common::WORKER_CERT;
+use constant POGO_GLOBAL_CONF     => $Pogo::Common::CONFIGDIR . '/client.conf';
+use constant POGO_USER_CONF       => $ENV{HOME} . '/.pogoconf';
+use constant POGO_WORKER_CERT     => $Pogo::Common::WORKER_CERT;
 use constant POGO_PASSPHRASE_FILE => 'bar';
-
 
 sub run_from_commandline
 {
@@ -122,7 +121,6 @@ sub cmd_run
     $opts->{command} = delete $opts->{cmd};
   }
 
-
   # run an anonymous executable?
   if ( defined $opts->{file} )
   {
@@ -139,7 +137,7 @@ sub cmd_run
 
   my @targets;
 
-  if (exists $opts->{target})
+  if ( exists $opts->{target} )
   {
     push @targets, @{ delete $opts->{target} };
   }
@@ -153,7 +151,7 @@ sub cmd_run
         open( my $fh, '<', $hostfile )
           or LOGDIE "Couldn't open file: $!";
 
-        while( my $host = <$fh> )
+        while ( my $host = <$fh> )
         {
           next unless $host;
           next if $host =~ m/^\s*#/;
@@ -169,7 +167,7 @@ sub cmd_run
     }
   }
 
-  if (@targets == 0)
+  if ( @targets == 0 )
   {
     LOGDIE "run needs hosts!";
   }
@@ -178,11 +176,11 @@ sub cmd_run
 
   # package passphrases
   my $passphrase;
-  if ($opts->{passfile})
+  if ( $opts->{passfile} )
   {
     $passphrase = load_passphrases( $opts->{passfile} );
 
-    if (!$passphrase )
+    if ( !$passphrase )
     {
       ERROR "Can't load passphrases from $opts->{passfile}: $!";
     }
@@ -201,13 +199,13 @@ sub cmd_run
   }
 
   # check the value of concurrent
-  if (exists $opts->{concurrent} )
+  if ( exists $opts->{concurrent} )
   {
     LOGDIE "--concurrent value must be an integer or a percentage"
       unless $opts->{concurrent} =~ m/^\d+%?$/;
   }
 
-  if ($opts->{dryrun})
+  if ( $opts->{dryrun} )
   {
     my $key;
     my $value;
@@ -218,10 +216,10 @@ $key,                  $value
 
     format_name STDOUT "DRYRUN";
 
-    foreach $key (sort keys %$opts)
+    foreach $key ( sort keys %$opts )
     {
       $value = $opts->{$key};
-      if (ref $value eq 'ARRAY' )
+      if ( ref $value eq 'ARRAY' )
       {
         $value = join ',', @$value;
       }
@@ -238,24 +236,25 @@ $key,                  $value
   # note that this is just testing against the local password in case you happen
   # to use the same one everywhere - to avoid spewing the wrong password to
   # thousands of hosts, this is not a real auth check
-  if ($opts->{check_password})
+  if ( $opts->{check_password} )
   {
-    if ( !check_password( $self->{userid}, $password))
+    if ( !check_password( $self->{userid}, $password ) )
     {
-      LOGDIE "Local password check failed, bailing\nset 'check_password: 0' in your .pogoconf to disable\n";
+      LOGDIE
+        "Local password check failed, bailing\nset 'check_password: 0' in your .pogoconf to disable\n";
     }
   }
 
   # bring the crypto
   Crypt::OpenSSL::RSA->import_random_seed();
-  my $x509 = Crypt::OpenSSL::X509->new_from_file(POGO_WORKER_CERT);
+  my $x509    = Crypt::OpenSSL::X509->new_from_file(POGO_WORKER_CERT);
   my $rsa_pub = Crypt::OpenSSL::RSA->new_public_key( $x509->pubkey() );
 
   # encrypt the password
   my $cryptpw = encode_base64( $rsa_pub->encrypt($password) );
 
-  $opts->{user} = $self->{userid};
-  $opts->{run_as} = $self->{userid};
+  $opts->{user}     = $self->{userid};
+  $opts->{run_as}   = $self->{userid};
   $opts->{password} = $cryptpw;
 
   $opts->{pkg_passwords} =
@@ -263,7 +262,7 @@ $key,                  $value
 
   my $resp = $self->_client->run(%$opts);
 
-  if (!$resp->is_success)
+  if ( !$resp->is_success )
   {
     LOGDIE "Failed to start job: " . $resp->status_msg;
   }
@@ -286,23 +285,23 @@ sub cmd_jobs
 {
   my $self = shift;
   my $opts = {
-    user => $self->{userid},
+    user  => $self->{userid},
     limit => 50,
   };
   GetOptions( $opts, 'user|U=s', 'all', 'limit|L=i' );
   delete $opts->{user} if $opts->{all};
-  delete $opts->{all} if $opts->{all};
+  delete $opts->{all}  if $opts->{all};
 
   DEBUG "cmd_jobs: " . to_json($opts);
 
   my $resp = $self->_client()->listjobs(%$opts);
-  if (!$resp->is_success)
+  if ( !$resp->is_success )
   {
     LOGDIE "Unable to list jobs: " . $resp->status_msg;
   }
 
   my @matches;
-  my @jobs = $resp->records;
+  my @jobs  = $resp->records;
   my $count = 0;
 
 JOBS: foreach my $job ( sort { $b->{jobid} cmp $a->{jobid} } @jobs )
@@ -478,7 +477,7 @@ sub _client
   if ( !defined $self->{pogoclient} )
   {
     $self->{pogoclient} = Pogo::Client->new( $self->{opts}->{api} );
-    Log::Log4perl->get_logger("Pogo::Client")->level($DEBUG) if ($self->{opts}->{debug});
+    Log::Log4perl->get_logger("Pogo::Client")->level($DEBUG) if ( $self->{opts}->{debug} );
   }
 
   return $self->{pogoclient};
@@ -506,9 +505,6 @@ sub load_passphrases
 
   return;
 }
-
-
-
 
 #}}} helper crap
 
