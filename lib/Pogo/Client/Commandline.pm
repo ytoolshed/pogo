@@ -450,10 +450,10 @@ sub cmd_status
   }
 
   # output status
-  my @rec    = $resp->records;
-  my $status = shift @rec;
+  my $records = $resp->records;
+  my $status = shift @$records;
   printf "$pat", "job status", $status;
-  while ( my $rec = shift @rec )
+  while ( my $rec = shift @$records )
   {
     my ( $host, $status, $exit ) = @$rec;
     if ( !defined $target || $target->contains($host) )
