@@ -54,6 +54,11 @@ sub handler
   {
     $r->content_type('text/plain');
   }
+  else
+  {
+    $r->content_type('text/javascript');
+  }
+
 
   # non-RPC requests
   if ( !$c->param('r') )
