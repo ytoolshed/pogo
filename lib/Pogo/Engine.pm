@@ -543,14 +543,14 @@ sub add_task
 {
   my ( $class, @task ) = @_;
   DEBUG "adding task: " . to_json( \@task );
-  store->create( '/pogo/taskq' . join( ';', @task, '' ) )
-    or LOGDIE store->get_error;
+  store->create( '/pogo/taskq/' . join( ';', @task ), '' )
+    or LOGDIE store->get_error_name;
 }
 
 sub listtaskq
 {
   my @tasks;
-  foreach my $task ( store->get_children("/pogo/taskq") )
+  foreach my $task ( store->get_children('/pogo/taskq/') )
   {
     my @req = split( /;/, $task );
     push(
