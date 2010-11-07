@@ -18,12 +18,12 @@ use common::sense;
 
 #use File::Slurp qw(read_file);
 #use List::Util qw(min max);
-#use MIME::Base64 qw(encode_base64);
-#use Time::HiRes qw(time);
 use AnyEvent;
 use Data::Dumper;
 use JSON;
 use Log::Log4perl qw(:easy);
+use MIME::Base64 qw(encode_base64);
+use Time::HiRes qw(time);
 
 use Pogo::Common;
 use Pogo::Engine;
@@ -37,6 +37,11 @@ our $UPDATE_INTERVAL = 0.10;
 # re-check constraints after 10 seconds if a job is unable to run more
 # hosts
 our $POLL_INTERVAL = 10;
+
+# Pogo::Engine::Job->new() creates a new job from the ether
+# Pogo::Engine::Job->get(jobid) vivifies a job object from
+# an existing jobid
+# {{{ new
 
 sub new
 {
@@ -111,9 +116,9 @@ sub new
   return $self;
 }
 
-# Pogo::Engine::Job->new() creates a new job from the ether
-# Pogo::Engine::Job->get(jobid) vivifies a job object from
-# an existing jobid
+# }}}
+# {{{ get
+
 sub get
 {
   my ( $class, $jobid ) = @_;
@@ -147,21 +152,8 @@ sub get
   return $self;
 }
 
-sub _get
-{
-  my ( $self, $k ) = @_;
-  return store->get( $self->{path} . '/' . $k );
-}
-
-sub _set
-{
-  my ( $self, $k, $v ) = @_;
-  my $node = $self->{path} . '/' . $k;
-
-  store->create( $node, $v )
-    or LOGDIE "error creating $node: " . store->get_error_name;
-}
-
+# }}}
+# {{{ meta
 # cosmetically truncate a value for display
 sub _shrink_meta_value
 {
@@ -209,6 +201,23 @@ sub all_meta
   return map { $_ => $self->meta($_) } store->get_children( $self->{path} . '/meta' );
 }
 
+sub info
+{
+  my ($self) = @_;
+  if ( !exists $self->{_info} )
+  {
+    my %info = $self->all_meta;
+    $info{start_time} = $self->start_time;
+    $info{state}      = $self->{state};
+    $info{jobid}      = $self->{id};
+    $self->{_info}    = \%info;
+  }
+  return $self->{_info};
+}
+
+# }}}
+# {{{ logging
+
 # determine job start time by the first log entry's timestamp
 sub start_time
 {
@@ -224,18 +233,58 @@ sub _lognode
   return sprintf( "l%010d", $_[0] );
 }
 
-sub info
+sub cur_logidx
 {
   my ($self) = @_;
-  if ( !exists $self->{_info} )
-  {
-    my %info = $self->all_meta;
-    $info{start_time} = $self->start_time;
-    $info{state}      = $self->{state};
-    $self->{_info}    = \%info;
-  }
-  return $self->{_info};
+  return store->_get_children_version( $self->{path} . '/log' );
 }
+
+sub read_log
+{
+  my ( $self, $offset, $limit ) = @_;
+  my $path = $self->{path} . '/log/';
+
+  my @log;
+
+  $offset ||= 0;
+  $limit  ||= -1;
+
+  while ( $limit-- && ( my $data = store->get( $path . _lognode($offset) ) ) )
+  {
+    my $logentry = eval { from_json($data); };
+    if ($@)
+    {
+      push @log,
+        [
+        $offset, time(), 'readerror',
+        { error => $@ },
+        "error reading log entry at offset $offset",
+        ];
+      $offset++;
+    }
+    else
+    {
+      push @log, [ $offset++, @$logentry ];
+    }
+  }
+  return @log;
+}
+
+# }}}
+# {{{ job snapshotting
+
+sub parse_log
+{
+  my ( $self, $limit, $offset ) = @_;
+  my $path = $self->{path} . '/log/';
+
+  my $snap = {};
+
+  # NEED MORE MOJO HERE
+}
+
+# }}}
+# {{{ host stuff
 
 sub host
 {
@@ -308,6 +357,16 @@ sub failed_hosts
     or $state   eq 'gathering';
 }
 
+sub runnable_hostinfo
+{
+  my ($self) = @_;
+  my @runnable = $self->runnable_hosts;
+  return { map { $_->name, $_->info } @runnable };
+}
+
+# }}}
+# {{{ slot stuff
+
 sub is_slot_done
 {
   my ( $self, $slot ) = @_;
@@ -320,31 +379,8 @@ sub is_slot_successful
   return scalar $self->unsuccessful_hosts_in_slot($slot) == 0;
 }
 
-sub runnable_hostinfo
-{
-  my ($self) = @_;
-  my @runnable = $self->runnable_hosts;
-  return { map { $_->name, $_->info } @runnable };
-}
-
-# odd, why is this here?
-sub _get_pwent
-{
-  my ($self) = @_;
-  my $entry = Pogo::Dispatcher->instance->pwstore->get( $self->{id} );
-  LOGDIE "No password entry found for job $self->{id}!" if ( !$entry );
-  return $entry;
-}
-
-# ugh this bugs me
-sub encode_perl
-{
-  local $Data::Dumper::Terse  = 1;
-  local $Data::Dumper::Indent = 0;
-  local $Data::Dumper::Purity = 1;
-  local $Data::Dumper::Useqq  = 1;
-  return Dumper(@_);
-}
+# }}}
+# {{{ various accessors
 
 sub password      { return $_[0]->_get_pwent()->[0]; }
 sub pkg_passwords { return $_[0]->_get_pwent()->[1]; }
@@ -377,6 +413,8 @@ sub set_host_state
   }
 }
 
+# }}}
+
 # wow this is awkward
 sub worker_command
 {
@@ -401,7 +439,7 @@ sub worker_command
   return [ 'POGOATTACHMENT!' . encode_base64($worker_stub) . $exe ];
 }
 
-# {{{ actions
+# {{{ start
 
 sub start
 {
@@ -429,6 +467,46 @@ sub start
     },
   );
 }
+
+# }}}
+# {{{ misc helper
+
+# odd, why is this here?
+sub _get_pwent
+{
+  my ($self) = @_;
+  my $entry = Pogo::Dispatcher->instance->pwstore->get( $self->{id} );
+  LOGDIE "No password entry found for job $self->{id}!" if ( !$entry );
+  return $entry;
+}
+
+# ugh this bugs me
+sub encode_perl
+{
+  local $Data::Dumper::Terse  = 1;
+  local $Data::Dumper::Indent = 0;
+  local $Data::Dumper::Purity = 1;
+  local $Data::Dumper::Useqq  = 1;
+  return Dumper(@_);
+}
+
+# these two might be unused?
+sub _get
+{
+  my ( $self, $k ) = @_;
+  return store->get( $self->{path} . '/' . $k );
+}
+
+sub _set
+{
+  my ( $self, $k, $v ) = @_;
+  my $node = $self->{path} . '/' . $k;
+
+  store->create( $node, $v )
+    or LOGDIE "error creating $node: " . store->get_error_name;
+}
+
+# }}}
 
 1;
 
