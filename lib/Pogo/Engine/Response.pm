@@ -79,7 +79,7 @@ sub load_data
   return 1;
 }
 
-#{{{ status
+# {{{ status
 
 sub is_success
 {
@@ -130,9 +130,8 @@ sub status_msg
   return $self->{_header}->{errmsg};
 }
 
-#}}}
-
-#{{{ callback
+# }}}
+# {{{ callback
 
 sub callback
 {
@@ -162,9 +161,8 @@ sub set_callback
   return $self;
 }
 
-#}}} callback
-
-#{{{ pushvar
+# }}} callback
+# {{{ pushvar
 
 sub pushvar
 {
@@ -194,9 +192,8 @@ sub set_pushvar
   return $self;
 }
 
-#}}} pushvar
-
-#{{{ header
+# }}} pushvar
+# {{{ header
 
 sub header
 {
@@ -236,9 +233,8 @@ sub has_header
   return exists $self->{_header}->{shift};
 }
 
-#}}} header
-
-#{{{ records
+# }}} header
+# {{{ records
 
 sub set_records
 {
@@ -275,9 +271,8 @@ sub record
   return;
 }
 
-#}}} records
-
-#{{{ stringify
+# }}} records
+# {{{ stringify
 
 sub format
 {
@@ -359,7 +354,7 @@ sub unblessed
   return [ $self->{_header}, $self->{_records} ];
 }
 
-#}}} stringify
+# }}} stringify
 
 1;
 

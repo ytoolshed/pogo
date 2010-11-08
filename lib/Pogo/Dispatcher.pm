@@ -176,7 +176,8 @@ sub _poll
       }
       when ('startjob')
       {
-        if ( store->delete("/pogo/taskq/$task") )
+        #if ( store->delete("/pogo/taskq/$task") )
+        if ( store->get("/pogo/taskq/$task") )
         {
           my $job = Pogo::Engine->job($jobid);
 
