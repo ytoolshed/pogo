@@ -1,4 +1,4 @@
-#!/usr/local/bin/perl -w
+#!/usr/bin/env perl -w
 # $Id: export.pl 261440 2009-11-02 17:22:53Z asloane $
 
 use strict;
