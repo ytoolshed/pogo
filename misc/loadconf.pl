@@ -1,4 +1,4 @@
-#!/usr/local/bin/perl -w
+#!/usr/bin/env perl -w
 
 # Copyright (c) 2010, Yahoo! Inc. All rights reserved.
 #

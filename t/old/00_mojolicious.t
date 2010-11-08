@@ -1,4 +1,4 @@
-#!/usr/local/bin/perl -w
+#!/usr/bin/env perl -w
 # $Id: 00_mojolicious.t 283310 2010-09-05 16:41:19Z nharteau $
 # vim:ft=perl:
 
