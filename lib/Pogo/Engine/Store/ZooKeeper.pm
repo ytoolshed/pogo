@@ -82,7 +82,7 @@ sub new
     if ( !$self->exists($path) )
     {
       $self->create( $path, '' )
-        or LOGDIE "unable to create path '$path': " . $self->get_error;
+        or LOGDIE "unable to create path '$path': " . $self->get_error_name;
       DEBUG "created zk path '$path'";
     }
   }
