@@ -17,10 +17,13 @@ package Pogo::Engine;
 use common::sense;
 
 use AnyEvent;
-use Exporter 'import';
-use JSON qw(from_json);
+use AnyEvent::Handle;
+use AnyEvent::Socket qw(tcp_connect);
+use JSON qw(from_json to_json);
 use Log::Log4perl qw(:easy);
 use YAML::XS qw(LoadFile);
+
+use Exporter 'import';
 
 use Pogo::Engine::Job;
 use Pogo::Engine::Namespace;
@@ -39,15 +42,12 @@ sub instance
     if defined $instance;
 
   my ( $class, $opts ) = @_;
-  DEBUG "new Pogo::Engine instance";
-
   $instance = {
     client_min => $opts->{client_min} || '0.0.0',
     start_time => time(),
   };
 
   Pogo::Engine::Store->init($opts);
-
   return bless $instance, $class;
 }
 
@@ -56,9 +56,7 @@ sub instance
 sub init
 {
   my ( $class, $conf ) = @_;
-
   LOGDIE "no configuration?" unless $conf->{worker_cert};    # arbitrary canary
-
   return $class->instance($conf);
 }
 
@@ -78,12 +76,6 @@ sub job
 }
 
 # these should be available via the http api and the json-rpc connection handler
-
-# this seems to be unused currently
-#sub err
-#{
-#  return LOGDIE "@_";
-#}
 
 sub globalstatus
 {
@@ -224,9 +216,9 @@ sub jobhoststatus
 
 sub jobinfo
 {
-  my $jobid = shift;
-  my $job   = $instance->job($jobid);
-  my $resp  = Pogo::Engine::Response->new()->add_header( action => 'jobinfo' );
+  my ( $class, $jobid ) = @_;
+  my $job = $instance->job($jobid);
+  my $resp = Pogo::Engine::Response->new()->add_header( action => 'jobinfo' );
 
   if ( !defined $job )
   {
@@ -234,7 +226,7 @@ sub jobinfo
     return $resp;
   }
 
-  $resp->set_records( $job->info );
+  $resp->set_records( [ $job->info ] );
   $resp->set_ok;
 
   return $resp;
@@ -242,7 +234,7 @@ sub jobinfo
 
 sub joblog
 {
-  my ( $jobid, $offset, $limit ) = @_;
+  my ( $class, $jobid, $offset, $limit ) = @_;
   my $job = $instance->job($jobid);
   my $resp = Pogo::Engine::Response->new()->add_header( action => 'joblog' );
 
@@ -351,16 +343,16 @@ sub jobsnapshot
 
 sub jobstatus
 {
-  my $jobid = shift;
-  my $job   = $instance->job($jobid);
-  my $resp  = Pogo::Engine::Response->new()->add_header( action => 'jobstatus' );
+  my ( $class, $jobid ) = @_;
+  my $job = $instance->job($jobid);
+  my $resp = Pogo::Engine::Response->new()->add_header( action => 'jobstatus' );
 
   if ( !defined $job )
   {
     $resp->set_error("jobid $jobid not found");
     return $resp;
   }
-
+  $resp->add_record( $job->state );
   my @hostlist = map { $resp->add_record( [ $_->name, $_->state ] ) } $job->hosts;
   $resp->add_header( hosts => join ',', @hostlist );
   $resp->set_ok;
@@ -370,11 +362,11 @@ sub jobstatus
 
 sub lastjob
 {
-  my (%matchopts) = @_;
+  my ( $class, %matchopts ) = @_;
   $matchopts{limit} = 1;
-  my $resp = Pogo::Engine::Response->new()->set_header( action => 'lastjob' );
+  my $resp = Pogo::Engine::Response->new()->add_header( action => 'lastjob' );
 
-  my @jobs = $instance->_listjobs(%matchopts);
+  my @jobs = $class->instance->_listjobs(%matchopts);
   $resp->set_ok;
 
   return $resp unless @jobs;
@@ -386,10 +378,10 @@ sub lastjob
 
 sub listjobs
 {
-  my (%matchopts) = @_;
-  my $resp = Pogo::Engine::Response->new()->set_header( action => 'listjobs' );
+  my ( $class, %matchopts ) = @_;
+  my $resp = Pogo::Engine::Response->new()->add_header( action => 'listjobs' );
 
-  my @jobs = $instance->_listjobs( \%matchopts );
+  my @jobs = $class->instance->_listjobs( \%matchopts );
   $resp->set_ok;
 
   return $resp unless @jobs;
@@ -412,8 +404,9 @@ sub _listjobs
 JOB: for ( ; $jobidx >= 0 && $limit > 0; $jobidx-- )
   {
     my $jobid = sprintf( "p%010d", $jobidx );
-    my $jobinfo = $self->job($jobid)->info;
-    last unless defined $jobinfo;
+    my $jobinfo;
+    eval { $jobinfo = $self->job($jobid)->info; };    # resiliently skip totally fubar jobs
+    next JOB unless defined $jobinfo;
 
     foreach my $k ( keys %$matchopts )
     {
@@ -550,14 +543,14 @@ sub add_task
 {
   my ( $class, @task ) = @_;
   DEBUG "adding task: " . to_json( \@task );
-  store->create( '/pogo/taskq' . join( ';', @task, '' ) )
-    or LOGDIE store->get_error;
+  store->create( '/pogo/taskq/' . join( ';', @task ), '' )
+    or LOGDIE store->get_error_name;
 }
 
 sub listtaskq
 {
   my @tasks;
-  foreach my $task ( store->get_children("/pogo/taskq") )
+  foreach my $task ( store->get_children('/pogo/taskq/') )
   {
     my @req = split( /;/, $task );
     push(
@@ -569,6 +562,37 @@ sub listtaskq
     );
   }
   return @tasks;
+}
+
+# send local rpc requests to the dispatcher
+# used mostly for storing passwords
+sub rpcclient
+{
+  my ( $class, $request, $cb ) = @_;
+  tcp_connect(
+    'localhost',
+    $instance->{rpc_port} || 7655,
+    sub {
+      my ( $fh, $host, $port ) = @_;
+      if ( !$fh )
+      {
+        return $cb->( undef, "unable to connect to local RPC port!" );
+      }
+
+      my $h;
+      $h = AnyEvent::Handle->new(
+        fh       => $fh,
+        tls      => 'connect',
+        tls_ctx  => $instance->{ssl_ctx},
+        no_delay => 1,
+        on_eof   => sub { undef $h; },
+        on_error => sub { undef $h; $cb->( undef, $! ); },
+      );
+      $h->push_write( json => $request );
+      $h->push_read(
+        json => sub { my ( $hdl, $data ) = @_; $cb->(@$data); $h->push_shutdown(); undef $h } );
+    }
+  );
 }
 
 1;

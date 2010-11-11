@@ -27,6 +27,7 @@ use AnyEvent;
 use JSON qw(to_json);
 use Log::Log4perl qw(:easy);
 
+use Pogo::Engine::Store qw(store);
 use Pogo::Dispatcher::AuthStore;
 use Pogo::Dispatcher::RPCConnection;
 use Pogo::Dispatcher::WorkerConnection;
@@ -135,8 +136,74 @@ sub start
   return $condvar->recv;
 }
 
+# poll zookeeper task queue for jobs
+# this would be better if we had an async zookeeper implementation
 sub _poll
 {
+  foreach my $task ( store->get_children('/pogo/taskq') )
+  {
+    my @workers = values %{ $instance->{workers}->{idle} };
+    if ( !scalar @workers )
+    {
+      DEBUG "task waiting but no idle workers connected...";
+      #return;      # technically we don't need workers to do startjob.
+    }
+
+    # will we win the race to grab the task?
+    my @req = split( /;/, $task );
+    my ( $reqtype, $jobid, $host ) = @req;
+
+    my $errc = sub {
+      ERROR "Error executing @req: $@";
+    };
+
+    given ($reqtype)
+    {
+      when ('runhost')
+      {
+        next if ( !scalar @workers );    # skip if we have no workers.
+        next
+          if ( !Pogo::Dispatcher::AuthStore->get($jobid) )
+          ;                              # skip for now if we have no passwords (yet?)
+
+        if ( store->delete("/pogo/taskq/$task") )
+        {
+          my $job = Pogo::Engine->job($jobid);
+          my $w   = $workers[ int rand( scalar @workers ) ];    # this is where we would include
+                                                                # smarter logic on worker selection
+          $w->start_task( $job, $host );
+        }
+      }
+      when ('startjob')
+      {
+        #if ( store->delete("/pogo/taskq/$task") )
+        if ( store->get("/pogo/taskq/$task") )
+        {
+          my $job = Pogo::Engine->job($jobid);
+
+          # TODO: handle error callback by halting job with an error
+          $job->start( $errc, sub { } );
+        }
+      }
+      when ('continuejob')
+      {
+        if ( store->delete("/pogo/taskq/$task") )
+        {
+          Pogo::Engine->job($jobid)->continue_deferred();
+        }
+      }
+      when ('resumejob')
+      {
+        if ( store->delete("/pogo/taskq/$task") )
+        {
+          my $job = Pogo::Engine->job($jobid);
+          $job->resume( 'job resumed by retry request', sub { $job->continue_deferred(); }, );
+        }
+      }
+      default { ERROR "unknown task: '$task'"; }
+    }
+  }
+  return;    # should not be reached;
 }
 
 sub _write_stats

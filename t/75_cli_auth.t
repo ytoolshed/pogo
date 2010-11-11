@@ -1,4 +1,4 @@
-#!/usr/local/bin/perl -w
+#!/usr/bin/env perl -w
 # $Id: 20_cli_auth.t 268881 2010-03-08 21:06:13Z nharteau $;
 
 use strict;

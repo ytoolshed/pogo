@@ -14,11 +14,10 @@ package Pogo::Engine::Response;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-use strict;
-use warnings;
+use common::sense;
 
-use JSON;
-use YAML::XS qw();
+use JSON qw(to_json);
+use YAML::XS qw(Dump);
 use Log::Log4perl qw(:easy);
 use Sys::Hostname qw(hostname);
 use Data::Dumper qw(Dumper);
@@ -80,7 +79,7 @@ sub load_data
   return 1;
 }
 
-#{{{ status
+# {{{ status
 
 sub is_success
 {
@@ -131,9 +130,8 @@ sub status_msg
   return $self->{_header}->{errmsg};
 }
 
-#}}}
-
-#{{{ callback
+# }}}
+# {{{ callback
 
 sub callback
 {
@@ -163,9 +161,8 @@ sub set_callback
   return $self;
 }
 
-#}}} callback
-
-#{{{ pushvar
+# }}} callback
+# {{{ pushvar
 
 sub pushvar
 {
@@ -195,9 +192,8 @@ sub set_pushvar
   return $self;
 }
 
-#}}} pushvar
-
-#{{{ header
+# }}} pushvar
+# {{{ header
 
 sub header
 {
@@ -237,9 +233,8 @@ sub has_header
   return exists $self->{_header}->{shift};
 }
 
-#}}} header
-
-#{{{ records
+# }}} header
+# {{{ records
 
 sub set_records
 {
@@ -263,7 +258,7 @@ sub records
     ERROR "response has no records";
     return;
   }
-  return @{ $self->{_records} };
+  return $self->{_records};
 }
 
 sub record
@@ -276,9 +271,8 @@ sub record
   return;
 }
 
-#}}} records
-
-#{{{ stringify
+# }}} records
+# {{{ stringify
 
 sub format
 {
@@ -293,6 +287,7 @@ sub set_format
   {
     $self->{_format} = lc $format;
   }
+  return $self;
 }
 
 sub to_string
@@ -302,7 +297,7 @@ sub to_string
   my $string;
   if ( $self->format eq 'json' )
   {
-    eval { $string = JSON::to_json($data); };
+    eval { $string = to_json( $data, { allow_nonref => 1 } ); };
     if ($@)
     {
       ERROR "Error formatting output: $@";
@@ -312,7 +307,7 @@ sub to_string
   }
   elsif ( $self->format eq 'json-pretty' )
   {
-    eval { $string = JSON::to_json( $data, { pretty => 1 } ); };
+    eval { $string = to_json( $data, { pretty => 1 } ); };
     if ($@)
     {
       ERROR "Error formatting output: $@";
@@ -322,7 +317,7 @@ sub to_string
   }
   elsif ( $self->format eq 'yaml' )
   {
-    eval { $string = YAML::Syck::Dump($data); };
+    eval { $string = Dump($data); };
     if ($@)
     {
       ERROR "Error formatting output: $@";
@@ -359,7 +354,7 @@ sub unblessed
   return [ $self->{_header}, $self->{_records} ];
 }
 
-#}}} stringify
+# }}} stringify
 
 1;
 

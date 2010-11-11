@@ -14,12 +14,14 @@ package Pogo::Engine::Store::ZooKeeper;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-use strict;
-use warnings;
+use Data::Dumper;
+
+use common::sense;
 
 use Log::Log4perl qw(:easy);
 use Net::ZooKeeper qw(:node_flags :acls :errors);
-use Data::Dumper;
+use Time::HiRes qw(sleep);
+use JSON qw(to_json);
 
 use constant ZK_ACL        => ZOO_OPEN_ACL_UNSAFE;
 use constant ZK_SERVERLIST => qw(localhost:2181);
@@ -63,14 +65,16 @@ sub new
     : ZK_SERVERLIST;
 
   my $serverlist = join( ',', @serverlist );
-  DEBUG "using serverlist '$serverlist'";
 
   my $self = { handle => Net::ZooKeeper->new($serverlist), };
-  LOGDIE "couldn't init zookeeper: $!" unless defined $self->{handle};
+  LOGDIE "couldn't init zookeeper: $!" unless defined $self->{handle}->{session_id};
+  bless $self, $class;
+
+  INFO "Connected to '$serverlist'";
+  DEBUG $self->get_error_name;
+  DEBUG sprintf( "Session timeout is %.2f seconds.\n", $self->{handle}->{session_timeout} / 1000 );
 
   $self->{handle}->{data_read_len} = 1048576;
-
-  bless $self, $class;
 
   # this is sorta ugly, but whatever
   foreach my $path (qw{/pogo /pogo/ns /pogo/job /pogo/host /pogo/lock /pogo/stats /pogo/taskq})
@@ -78,7 +82,7 @@ sub new
     if ( !$self->exists($path) )
     {
       $self->create( $path, '' )
-        or LOGDIE "unable to create path '$path': " . $self->get_error;
+        or LOGDIE "unable to create path '$path': " . $self->get_error_name;
       DEBUG "created zk path '$path'";
     }
   }
@@ -89,7 +93,7 @@ sub new
   return $self;
 }
 
-sub _get_children_version
+sub get_children_version
 {
   my ( $self, $node ) = @_;
   my $stat = $self->stat;
@@ -105,14 +109,12 @@ sub ping
   my $self = shift;
   my $testdata = shift || 0xDEADBEEF;
 
-  DEBUG "got here";
   my $node = $self->create( '/pogo/lock/ping', '', flags => ZOO_SEQUENCE | ZOO_EPHEMERAL, )
-    or LOGDIE "unable to create ping node: " . $self->get_error;
-  DEBUG "got here too";
+    or LOGDIE "unable to create ping node: " . $self->get_error_name;
 
-  $self->set( $node, $testdata ) or LOGDIE "unable to set data: " . $self->get_error;
-  my $probe = $self->get($node) or LOGDIE "unable to get data: " . $self->get_error;
-  $self->delete($node) or LOGDIE "unable to delete $node: " . $self->get_error;
+  $self->set( $node, $testdata ) or LOGDIE "unable to set data: " . $self->get_error_name;
+  my $probe = $self->get($node) or LOGDIE "unable to get data: " . $self->get_error_name;
+  $self->delete($node) or LOGDIE "unable to delete $node: " . $self->get_error_name;
   LOGDIE "unable to write test data to $node" unless $probe eq $testdata;
   return $probe;
 }
@@ -121,13 +123,19 @@ sub create
 {
   my ( $self, $path, $contents, %opts ) = @_;
   $opts{acl} ||= ZK_ACL;
-
-  return $self->{handle}->create( $path, $contents, %opts );
+  my $ret;
+  eval { $ret = $self->{handle}->create( $path, $contents, %opts ); };
+  return $ret;
 }
 
 sub create_ephemeral
 {
   return shift->create( @_, flags => ZOO_EPHEMERAL );
+}
+
+sub create_sequence
+{
+  return shift->create( @_, flags => ZOO_SEQUENCE );
 }
 
 sub get_error_name
@@ -153,6 +161,7 @@ sub delete_r
   return 1;
 }
 
+sub stat         { return shift->{handle}->stat(@_); }
 sub exists       { return shift->{handle}->exists(@_); }
 sub get          { return shift->{handle}->get(@_); }
 sub set          { return shift->{handle}->set(@_); }

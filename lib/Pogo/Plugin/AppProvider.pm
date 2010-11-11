@@ -26,16 +26,16 @@ our %plugins;
 sub register_plugin
 {
   my $plugin_name = shift;
-  $plugins{caller()} = $plugin_name;
+  $plugins{ caller() }   = $plugin_name;
   $plugins{$plugin_name} = caller();
-  $plugins{file} = __FILE__;
+  $plugins{file}         = __FILE__;
 
   print Dumper \%plugins;
 }
 
 sub new
 {
-  my ($class, %opts) = @_;
+  my ( $class, %opts ) = @_;
 
   my $self = \%opts;
 

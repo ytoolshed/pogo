@@ -42,8 +42,8 @@ sub instance
   delete $peers{ _resolve_host( Sys::Hostname::hostname() ) };
 
   my $self = {
-    peers     => \%peers,
-    passwords => {},
+    peers          => \%peers,
+    passwords      => {},
     authstore_port => $conf->{authstore_port},
   };
 
@@ -52,7 +52,7 @@ sub instance
 
 sub init
 {
-  my ($class, $conf) = @_;
+  my ( $class, $conf ) = @_;
   LOGDIE "no configuration?" unless defined $conf->{authstore_port};
   return $class->instance($conf);
 }
@@ -142,17 +142,20 @@ sub start_server
 
       my $handle;
       $handle = AnyEvent::Handle->new(
-        fh      => $fh,
-        tls     => 'accept',
-        tls_ctx => Pogo::Dispatcher->ssl_ctx,
+        fh       => $fh,
+        tls      => 'accept',
+        tls_ctx  => Pogo::Dispatcher->ssl_ctx,
         on_error => sub {
           my $fatal = $_[1];
-          ERROR sprintf( "%s error reported while talking to authstore at %s:%s: $!",
-          $fatal ? 'fatal' : 'non-fatal', $remote_ip, $remote_port );
+          ERROR sprintf(
+            "%s error reported while talking to authstore at %s:%s: $!",
+            $fatal ? 'fatal' : 'non-fatal',
+            $remote_ip, $remote_port
+          );
           undef $self->{handle};
         },
 
-        on_eof  => sub {
+        on_eof => sub {
           INFO "peer connection closed from $remote_ip:$remote_port";
           undef $handle;
         },
