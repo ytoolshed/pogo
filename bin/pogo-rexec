@@ -48,7 +48,7 @@ sub execute
   my $args = shift;
   my @command = ( $opts->{expect_wrapper}, @_ );
 
-  my ( $writer, $reader ) = ( new IO::Handle, new IO::Handle );
+  my ( $writer, $reader ) = ( IO::Handle->new, IO::Handle->new );
   my $pid;
   eval { $pid = open3( $writer, $reader, undef, @command ); };
   if ($@)
@@ -63,12 +63,6 @@ sub execute
   $writer->printf( "%s\n",
     pack( q{u}, $opts->{private_key}->decrypt( decode_base64( $args->{password} ) ) ) );
 
-  # Send package passwords
-  while ( my ( $pkg, $password ) = each( %{ $args->{pkg_passwords} } ) )
-  {
-    $writer->printf( "%s=%s\n", $pkg,
-      pack( q{u}, $opts->{private_key}->decrypt( decode_base64($password) ) ) );
-  }
   $writer->close;
 
   # Copy remote command's output to ours.
@@ -125,7 +119,7 @@ sub main
   $args = decode_json( STDIN->getline() );
 
   # Check for required arguments
-  for (qw(job_id command user run_as password pkg_passwords host timeout))
+  for (qw(job_id command user run_as password host timeout))
   {
     unless ( defined $args->{$_} )
     {
@@ -154,19 +148,6 @@ sub main
     $args->{command}->[0] = $tmpfile->filename;
 
     # that way we can pass args to our script
-  }
-  elsif ( ( ${ $args->{command} }[0] =~ /\/yinst$/ ) or ( ${ $args->{command} }[0] eq "yinst" ) )
-  {
-
-    # Convert command "yinst CMD" to "yinst CMD -noautopw"
-    if ( scalar @{ $args->{command} } > 1 )
-    {
-      my @tmp;
-      push @tmp, shift @{ $args->{command} };
-      push @tmp, shift @{ $args->{command} };
-      unshift( @{ $args->{command} }, "-noautopw" );
-      unshift( @{ $args->{command} }, @tmp );
-    }
   }
 
   # Prepend "sudo -u <user>" if we are running as someone else
