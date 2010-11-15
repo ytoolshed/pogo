@@ -23,14 +23,7 @@ set cpassp ""
 
 fconfigure stdin -blocking 1
 set timeout [gets stdin]
-# Pick up passwords from stdin
 set cpasswd [gets stdin]
-while 1 {
-  if {[gets stdin line] == -1} break
-  if {[regexp {([^=]+)=(.*)} $line whole pkg cpkgpasswd]} {
-    set pkgkey($pkg) $cpkgpasswd
-  }
-}
 fconfigure stdin -blocking 0
 
 eval spawn -noecho $argv
@@ -74,20 +67,6 @@ expect {
   }
   -re {key fingerprint is [a-zA-Z0-9:]+\.[\r\n]+Are you sure you want to continue connecting \(yes/no\)\?} {
     send -- "yes\r"
-    exp_continue
-  }
-  -re "Enter package passphrase for (\[^\-]+)" {
-    set pkg $expect_out(1,string)
-    if {[array names pkgkey $pkg] == ""} {
-      puts stderr "ERROR: Could not find package passphrase for $pkg"
-      exit 255
-    }
-    send_user " (supplied by pogo-pw)\n"
-    set pkgpasswd [exec perl -n -e "print unpack(q{u},\$_)" << "$pkgkey($pkg)"]
-    log_user 0
-    send -- "$pkgpasswd\r"
-    set pkgpasswd ""
-    log_user 1
     exp_continue
   }
   eof {
