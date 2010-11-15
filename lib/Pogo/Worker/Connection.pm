@@ -149,7 +149,7 @@ sub execute    #{{{
   my ( $self, $task_id ) = @_;
   my $task = $self->{tasks}->{$task_id};
 
-  for (qw(job_id command user run_as password pkg_passwords host timeout))
+  for (qw(job_id command user run_as password host timeout))
   {
     return $self->reset( $task_id, "500", "Missing required argument $_" )
       unless defined( $task->{args}->{$_} );
