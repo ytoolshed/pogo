@@ -1,16 +1,32 @@
-#!/bin/sh -x
+#!/bin/sh 
 
-echo "--- create password-protected key"
 umask 0066
-/usr/bin/openssl genrsa -passout pass:asdf -aes256 -out /tmp/server.key.$$ 4096
+dir=$1
 
-echo "--- remove passphrase"
-/usr/bin/openssl rsa -passin pass:asdf -in /tmp/server.key.$$ -out ./ssl.key
-rm /tmp/server.key.$$
+if [ -z "$dir" ]; then
+  echo "Usage: $0 <dir>" >&2
+  exit 1
+fi
 
-echo "--- generate cert"
-/usr/bin/openssl req  -new -x509 -days 3650 -key ssl.key -out ssl.cert -config pogo.dn
 
-echo "--- key/cert"
-ls -la ssl.key ssl.cert
+echo "---creating dispatcher keypair in $dir"
+openssl req -batch \
+            -config dispatcher_ssl.cnf \
+            -x509 \
+            -newkey rsa:2048 \
+            -days 365 \
+            -nodes \
+            -out $dir/pogo-dispatcher.crt \
+            -keyout $dir/pogo-dispatcher.key
 
+echo "---creating worker keypair in $dir"
+openssl req -batch \
+            -config worker_ssl.cnf \
+            -x509 \
+            -newkey rsa:2048 \
+            -days 365 \
+            -nodes \
+            -out $dir/pogo-worker.crt \
+            -keyout $dir/pogo-worker.key
+
+# vim:syn=sh:ts=2:sw=2:et:ai

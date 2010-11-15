@@ -1,0 +1,17 @@
+[ req ]
+distinguished_name     = req_distinguished_name
+attributes             = req_attributes
+prompt                 = no
+
+[ req_distinguished_name ]
+C                      = US
+ST                     = New York
+L                      = Brooklyn
+O                      = Internets
+OU                     = Pogo
+CN                     = Pogo Worker
+emailAddress           = pogo-devel.example.com
+
+[ req_attributes ]
+challengePassword      =
+
