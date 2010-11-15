@@ -1,4 +1,4 @@
-#!/usr/bin/env perl -w
+#!/usr/bin/env perl
 
 # Copyright (c) 2010, Yahoo! Inc. All rights reserved.
 #
@@ -14,15 +14,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+use 5.008;
 use common::sense;
 
+use Pogo::Worker;
 use Getopt::Long qw(:config bundling);
 use Pod::Usage qw(pod2usage);
 use Sys::Hostname qw(hostname);
 use YAML::XS qw(LoadFile);
 use Log::Log4perl qw(:easy);
-
-use Data::Dumper qw/Dumper/;
 
 our $VERSION = '4.0';
 
@@ -30,55 +30,110 @@ sub main
 {
   $ENV{PATH} = qq{/usr/local/libexec/pogo:/usr/local/bin:/bin:/sbin:/usr/bin:/usr/sbin};
 
-  my $gotopts = {
-    output_uri => 'http://' . hostname() . '/pogo_output/',
-    configfile => '/usr/local/etc/pogo/worker.conf',
+  # Defaults
+  my $config_file = "/usr/local/etc/pogo/worker.conf.yaml";
+  my $opts = {
+    num_workers => 100,
+    data_dir    => '/usr/local/var/pogo/',
+    exec_helper => '/usr/local/libexec/pogo/pogo-pw',
+    log_conf    => '/usr/local/etc/pogo/worker.log.conf',
+    pid_file    => '/usr/local/var/run/pogo-worker.pid',
+    worker_cert => '/usr/local/etc/ssl/pogo_worker.crt',
+    worker_key  => '/usr/local/etc/ssl/pogo_worker.key',
+    dispatcher_cert => '/usr/local/etc/ssl/pogo_dispatcher.crt',
+    output_uri  => 'http://' . hostname() . '/pogo_output/',
   };
 
+  my $log_conf;
+  my $log_level;
+  my $cmdline_opts;
+
   GetOptions(
-    $gotopts,
-    'configfile|f=s',
-    'data_dir|data-dir=s',
-    'dispatcher_cert|dispatcher-cert=s',
-    'dispatchers|s=s@' => sub { push @{ $gotopts->{dispatchers} }, split /\s*,\s*/, $_[1] },
-    'exec_helper|exec-helper=s',
-    'h|help' => sub { pod2usage(); exit 0; },
-    'log4perl|logger-config=s',
-    'num_workers|workers=i',
-    'output_uri|output-uri=s',
-    'pid_file|pid-file=s',
-    'worker_cert|ssl-cert=s',
-    'worker_key|ssl-key=s',
-    'debug' => sub { $gotopts->{loglevel} = 'DEBUG'; Log::Log4perl::get_logger->level('DEBUG'); },
+        'h|help' => sub { pod2usage; exit -1 },
+        'f|config-file=s' => \$config_file,
+        'd|data-dir=s' => \$cmdline_opts->{data_dir},
+        'e|exec-helper=s' => \$cmdline_opts->{exec_helper},
+        'l|logger-config=s' => \$cmdline_opts->{log_conf},
+        'P|pid-file=s' => \$cmdline_opts->{pid_file},
+        'c|ssl-cert=s' => \$cmdline_opts->{worker_cert},
+        'k|ssl-key=s' => \$cmdline_opts->{worker_key},
+        'C|dispatcher-cert=s' => \$cmdline_opts->{dispatcher_cert},
+        'U|output-uri=s' => \$cmdline_opts->{output_uri},
+        'n|workers=i' => \$cmdline_opts->{num_workers},
+        's|dispatchers=s@' => sub { push @{$cmdline_opts->{dispatchers}}, split /,/, $_[1] },
+        'debug' => sub { $log_level = 'DEBUG' },
   );
 
-  my $opts;
-  if ( $gotopts->{configfile} )
+  my $config_file_opts;
+  if ( $config_file )
   {
-    eval { $opts = LoadFile( $gotopts->{configfile} ) };
-    if ($@)
-    {
-      LOGDIE "Error: $@";
-    }
+    $config_file_opts = LoadFile( $config_file );
 
-    # merge command-line options over configfile
-    while ( my ( $k, $v ) = each %$gotopts )
+    # merge config-file options over defaults
+    while ( my ( $k, $v ) = each %$config_file_opts )
     {
-      $opts->{$k} = $v;
+      $opts->{$k} = $v if defined $v;
     }
   }
+    # merge command-line opts
+    while ( my ( $k, $v ) = each %$cmdline_opts )
+    {
+      $opts->{$k} = $v if defined $v;;
+    }
 
   # init logger
-  if ( defined $opts->{log4perl} && -r $opts->{log4perl} )
+  if ( defined $opts->{log_conf} && -r $opts->{log_conf} )
   {
-    Log::Log4perl::init( $opts->{log4perl} );
+    Log::Log4perl::init( $opts->{log_conf} );
   }
-  if ( defined $opts->{loglevel} )
+  else 
   {
-    Log::Log4perl::get_logger->level( $opts->{loglevel} );
+      Log::Log4perl->easy_init unless Log::Log4perl->initialized;
+  }
+  delete $opts->{log_conf};
+  if ( defined $log_level )
+  {
+    Log::Log4perl::get_logger->level( $log_level );
   }
 
-  print Dumper $opts;
+  # Perform some basic sanity checks.
+  unless (@{$opts->{dispatchers}}) {
+    LOGDIE "No dispatchers specified in configuration file or command line";
+  }
+
+  for (qw(worker_cert worker_key dispatcher_cert))
+  {
+    unless ( -r $opts->{$_} )
+    {
+      LOGDIE "Can't open $_ file " . $opts->{$_};
+    }
+  }
+  unless ( -x $opts->{exec_helper} )
+  {
+    LOGDIE $opts->{exec_helper} . " is not executable";
+  }
+
+  # Log something if we die.
+  $SIG{__DIE__} = sub {
+    # Don't log if die() is called in eval context; see "die" in perlfunc
+    die @_ if $^S;
+    FATAL "Server terminated: " . shift;
+    exit 2;
+  };
+
+  # Log something and clean up if we are terminated by SIGTERM or SIGINT.
+  $SIG{INT} = $SIG{TERM} = sub {
+    my $name = shift;
+    FATAL "Server terminated by SIG$name";
+    unlink $opts->{pid_file} if -e $opts->{pid_file};
+    exit 0;
+  };
+
+  # Enter worker main loop.
+  Pogo::Worker->instance(%$opts)->run;
+
+  # This should never be reached.
+  return 0;
 }
 
 exit main();
@@ -89,33 +144,38 @@ exit main();
 
 =head1 NAME
 
-  CLASSNAME - SHORT DESCRIPTION
+  pogo-worker - Pogo worker daemon
 
 =head1 SYNOPSIS
 
-CODE GOES HERE
+  pogo-worker -f FILE
+
+  pogo-worker [options]
 
 =head1 DESCRIPTION
 
-LONG_DESCRIPTION
-
-=head1 METHODS
-
-B<methodexample>
-
-=over 2
-
-methoddescription
-
-=back
+B<pogo-worker> is the Pogo worker daemon.  It accepts tasks from the Pogo
+dispatcher and executes them on the target hosts via ssh(1).
 
 =head1 SEE ALSO
 
-L<Pogo::Dispatcher>
+L<Pogo::Worker>
 
-=head1 COPYRIGHT
+=head1 COPYRIGHT AND LICENSE
 
-Apache 2.0
+Copyright (c) 2010, Yahoo! Inc. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 
 =head1 AUTHORS
 
@@ -126,3 +186,7 @@ Apache 2.0
   Robert Phan <rphan@yahoo-inc.com>
 
 =cut
+
+__END__
+
+# vim:syn=perl:sw=2:ts=2:sts=2:et:fdm=marker
