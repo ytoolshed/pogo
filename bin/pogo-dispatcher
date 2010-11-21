@@ -31,6 +31,15 @@ sub main
   $ENV{PATH} = '/usr/local/libexec/pogo:/usr/local/bin:/bin:/sbin:/usr/bin:/usr/sbin';
   my $POGO_ROOT = $ENV{POGO_ROOT} || '/usr/local';
 
+  # we'll load a simple default logger thinger here
+  # until we load the real conf below
+  Log::Log4perl::init(\q{
+    log4perl.rootLogger             = INFO, Screen
+    log4perl.appender.Screen        = Log::Log4perl::Appender::Screen
+    log4perl.appender.Screen.stderr = 0
+    log4perl.appender.Screen.layout = Log::Log4perl::Layout::SimpleLayout
+  });
+
   # Defaults
   my $DEFAULT_CONFIG_FILE = "$POGO_ROOT/etc/pogo/dispatcher.conf.yaml";
   my $opts = {
