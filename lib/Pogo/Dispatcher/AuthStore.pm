@@ -19,6 +19,7 @@ use common::sense;
 
 use Socket qw(inet_ntoa);
 use AnyEvent::Socket qw(tcp_server tcp_connect);
+use AnyEvent::TLS;
 use Log::Log4perl qw(:easy);
 use Sys::Hostname qw(hostname);
 
@@ -66,6 +67,7 @@ sub start_server
     $instance->{authstore_port},
     sub {
       my ($fh, $host, $port) = @_;
+      local *__ANON__ = 'AE:cb:connect_cb';
       INFO "Received connection from authstore peer at $host:$port";
 
       my $handle; $handle = AnyEvent::Handle->new(
@@ -77,14 +79,16 @@ sub start_server
           ca_file => Pogo::Dispatcher->dispatcher_cert,
           verify => 1,
           verify_cb => sub {
+            local *__ANON__ = 'AE:cb:verify_cb';
             my $preverify_ok = $_[4];
             my $cert = $_[6];
-            DEBUG sprintf("certificate: %s", certname($cert));
+            DEBUG sprintf("certificate: %s", AnyEvent::TLS::certname($cert));
             return $preverify_ok;
           },
         },
         keepalive => 1,
         on_starttls => sub {
+          local *__ANON__ = 'AE:cb:on_starttls';
           my $success = $_[1];
           my $msg = $_[2];
           if ($success) {
@@ -127,7 +131,7 @@ sub start_server
         },
       );
     },
-    sub { INFO "Accepting authstore peer connections on $_[1]:$_[2]"; },
+    sub { local *__ANON__ = 'AE:cb:prepare_cb'; INFO "Accepting authstore peer connections on $_[1]:$_[2]"; },
   );
 }
 
@@ -144,6 +148,7 @@ sub start_client
   my $timer; $timer = AnyEvent->timer(
     after => $interval,
     cb    => sub {
+      local *__ANON__ = 'AE:cb:timer_cb';
       undef $timer;
       INFO sprintf( "initializing connection to authstore %s:%d", $host, $port );
       my $handle; $handle = AnyEvent::Handle->new(
@@ -155,16 +160,19 @@ sub start_client
           ca_file => Pogo::Dispatcher->dispatcher_cert,
           verify => 1,
           verify_cb => sub {
+            local *__ANON__ = 'AE:cb:verify_cb';
             my $preverify_ok = $_[4];
             my $cert = $_[6];
-            DEBUG sprintf("certificate: %s", certname($cert));
+            DEBUG sprintf("certificate: %s", AnyEvent::TLS::certname($cert));
             return $preverify_ok;
           },
         },
         on_connect => sub {
+          local *__ANON__ = 'AE:cb:on_connect';
           INFO sprintf("Connected to authstore peer at %s:%d", $host, $port);
         },
         on_starttls => sub {
+          local *__ANON__ = 'AE:cb:on_starttls';
           my $success = $_[1];
           my $msg = $_[2];
           if ($success) {
@@ -185,11 +193,13 @@ sub start_client
         keepalive => 1,
         no_delay => 1,
         on_eof  => sub {
+          local *__ANON__ = 'AE:cb:on_eof';
           $handle->destroy;
           ERROR sprintf("Unexpected EOF received from authstore peer at %s:%d", $host, $port);
           start_client(rand(5), $host);
         },
         on_error => sub {
+          local *__ANON__ = 'AE:cb:on_error';
           my $msg = $_[2];
           $handle->destroy;
           ERROR sprintf( "I/O error occurred while communicating with authstore peer at %s:%d: %s", $host, $port, $msg);
