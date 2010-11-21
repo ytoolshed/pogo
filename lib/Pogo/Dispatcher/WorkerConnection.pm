@@ -62,7 +62,7 @@ sub accept
       if ($success) {
         INFO sprintf("SSL/TLS handshake completed with worker at %s:%d", $host, $port);
       } else {
-        $self->{dispatcher_handle}->destroy;
+        $self->{handle}->destroy;
         ERROR sprintf("Failed to complete SSL/TLS handshake with worker at %s:%d: %s", $host, $port, $msg);
       }
     },
