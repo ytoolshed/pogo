@@ -68,7 +68,7 @@ sub run #{{
     $instance->{bind_address},
     $instance->{worker_port} || Pogo::Dispatcher::WorkerConnection->DEFAULT_PORT,
     sub { Pogo::Dispatcher::WorkerConnection->accept(@_); },
-    sub { INFO "Accepting worker connections on $_[1]:$_[2]"; },
+    sub { local *__ANON__ = 'AE:cb:prepare_cb'; INFO "Accepting worker connections on $_[1]:$_[2]"; },
   );
 
   # accept rpc connections from the (local) http API
@@ -76,7 +76,7 @@ sub run #{{
     '127.0.0.1',    # rpc server binds to localhost only
     $instance->{rpc_port} || Pogo::Dispatcher::RPCConnection->DEFAULT_PORT,
     sub { Pogo::Dispatcher::RPCConnection->accept(@_ ); },
-    sub { INFO "Accepting RPC connections on $_[1]:$_[2]"; },
+    sub { local *__ANON__ = 'AE:cb:prepare_cb'; INFO "Accepting RPC connections on $_[1]:$_[2]"; },
   );
 
   # periodically poll task queue for jobs
@@ -85,7 +85,7 @@ sub run #{{
     interval => 1,
     cb       => sub { _poll(); },
   );
-  
+
   # periodically record stats
   my $stats_timer = AnyEvent->timer(
     after    => 1,

@@ -68,12 +68,20 @@ sub main
   {
     # Config file was specified on command-line - fatal if doesn't exist
     # or is non-parseable
-    $config_file_opts = LoadFile( $config_file );
+    eval { $config_file_opts = LoadFile( $config_file ); };
+    if ($@)
+    {
+      LOGDIE "problem processing '$config_file': $@";
+    }
   }
-  elsif ( -r $DEFAULT_CONFIG_FILE ) 
+  elsif ( -r $DEFAULT_CONFIG_FILE )
   {
     # Config file not specified - load the default only if it exists
-    $config_file_opts = LoadFile( $DEFAULT_CONFIG_FILE );
+    eval { $config_file_opts = LoadFile( $DEFAULT_CONFIG_FILE ); };
+    if ($@)
+    {
+      LOGDIE "problem processing '$config_file_opts': $@";
+    }
   }
 
   # merge config-file options over defaults
@@ -92,7 +100,7 @@ sub main
   {
     Log::Log4perl::init( $opts->{log_conf} );
   }
-  else 
+  else
   {
       Log::Log4perl->easy_init unless Log::Log4perl->initialized;
   }
@@ -129,7 +137,7 @@ sub main
   };
 
   open (my $fd, '>', $opts->{pid_file})
-    or LOGDIE "couldn't open pid file: $!\n";
+    or LOGDIE "couldn't open pid file '$opts->{pid_file}': $!\n";
   print $fd $$;
   close $fd or LOGDIE "problem with $opts->{pid_file}: $!\n";
 
