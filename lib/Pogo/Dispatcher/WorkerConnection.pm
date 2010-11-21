@@ -51,16 +51,14 @@ sub accept
       },
     },
     keepalive => 1,
-    on_connect => sub {
-      INFO sprintf("Received connection from worker at %s:%d", $host, $port);
-      $self->{tasks} = 0;
-      Pogo::Dispatcher->idle_worker($self);
-    },
     on_starttls => sub {
       my $success = $_[1];
       my $msg = $_[2];
+      INFO sprintf("Received connection from worker at %s:%d", $host, $port);
       if ($success) {
         INFO sprintf("SSL/TLS handshake completed with worker at %s:%d", $host, $port);
+        $self->{tasks} = 0;
+        Pogo::Dispatcher->idle_worker($self);
       } else {
         $self->{handle}->destroy;
         ERROR sprintf("Failed to complete SSL/TLS handshake with worker at %s:%d: %s", $host, $port, $msg);
