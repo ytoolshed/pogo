@@ -38,20 +38,19 @@ sub run # {{{
   # Initialize response queue
   $instance->{connections} = {};
   $instance->{responsequeue} = [];
+  my $port = $instance->{dispatcher_port} || DEFAULT_PORT;
 
-  foreach my $dispatcher (@{$instance->{dispatchers}})  {
-    my ($host,$port) = split(/:/, $dispatcher);
-    $port ||= DEFAULT_PORT;
+  foreach my $host (@{$instance->{dispatchers}})  {
     INFO sprintf( "Connecting to dispatcher at %s:%d", $host, $port);
-    Pogo::Worker::Connection->new(host => $host, 
-                                  port => $port, 
+    Pogo::Worker::Connection->new(host => $host,
+                                  port => $port,
                                   worker_key => $instance->{worker_key},
                                   worker_cert => $instance->{worker_cert},
                                   dispatcher_cert => $instance->{dispatcher_cert})->run;
   }
 
   # Start event loop
-  AnyEvent->condvar->recv();    
+  AnyEvent->condvar->recv();
 
   ERROR "Event loop terminated - this should not have happened!";
 } # }}}
