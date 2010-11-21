@@ -17,43 +17,47 @@
 use 5.008;
 use common::sense;
 
-use Pogo::Worker;
 use Getopt::Long qw(:config bundling);
 use Pod::Usage qw(pod2usage);
 use Sys::Hostname qw(hostname);
 use YAML::XS qw(LoadFile);
 use Log::Log4perl qw(:easy);
 
+use Pogo::Worker;
+
 our $VERSION = '4.0';
 
 sub main
 {
-  $ENV{PATH} = qq{/usr/local/libexec/pogo:/usr/local/bin:/bin:/sbin:/usr/bin:/usr/sbin};
+  $ENV{PATH} = '/usr/local/libexec/pogo:/usr/local/bin:/bin:/sbin:/usr/bin:/usr/sbin';
+  my $POGO_ROOT = $ENV{POGO_ROOT} || '/usr/local';
 
   # Defaults
-  my $config_file = "/usr/local/etc/pogo/worker.conf.yaml";
+  my $DEFAULT_CONFIG_FILE = "$POGO_ROOT/etc/pogo/worker.conf.yaml";
   my $opts = {
     num_workers => 100,
-    data_dir    => '/usr/local/var/pogo/',
-    exec_helper => '/usr/local/libexec/pogo/pogo-pw',
-    log_conf    => '/usr/local/etc/pogo/worker.log.conf',
-    pid_file    => '/usr/local/var/run/pogo-worker.pid',
-    worker_cert => '/usr/local/etc/ssl/pogo_worker.crt',
-    worker_key  => '/usr/local/etc/ssl/pogo_worker.key',
-    dispatcher_cert => '/usr/local/etc/ssl/pogo_dispatcher.crt',
+    data_dir    => "$POGO_ROOT/var/pogo/",
+    exec_helper => "$POGO_ROOT/libexec/pogo/pogo-pw",
+    log_conf    => "$POGO_ROOT/etc/pogo/worker.log.conf",
+    pid_file    => "$POGO_ROOT/var/run/pogo-worker.pid",
+    worker_cert => "$POGO_ROOT/etc/ssl/pogo_worker.crt",
+    worker_key  => "$POGO_ROOT/etc/ssl/pogo_worker.key",
+    dispatcher_cert => "$POGO_ROOT/etc/ssl/pogo_dispatcher.crt",
     output_uri  => 'http://' . hostname() . '/pogo_output/',
   };
 
   my $log_conf;
   my $log_level;
-  my $cmdline_opts;
+  my $cmdline_opts = {};
+  my $config_file_opts = {};
 
   GetOptions(
         'h|help' => sub { pod2usage; exit -1 },
-        'f|config-file=s' => \$config_file,
+        'f|config-file=s' => \$cmdline_opts->{config_file},
         'd|data-dir=s' => \$cmdline_opts->{data_dir},
         'e|exec-helper=s' => \$cmdline_opts->{exec_helper},
         'l|logger-config=s' => \$cmdline_opts->{log_conf},
+        'p|dispatcher-port=i' => \$cmdline_opts->{dispatcher_port},
         'P|pid-file=s' => \$cmdline_opts->{pid_file},
         'c|ssl-cert=s' => \$cmdline_opts->{worker_cert},
         'k|ssl-key=s' => \$cmdline_opts->{worker_key},
@@ -64,22 +68,28 @@ sub main
         'debug' => sub { $log_level = 'DEBUG' },
   );
 
-  my $config_file_opts;
-  if ( $config_file )
+  if ( my $config_file = delete $cmdline_opts->{config_file} )
   {
+    # Config file was specified on command-line - fatal if doesn't exist
+    # or is non-parseable
     $config_file_opts = LoadFile( $config_file );
-
-    # merge config-file options over defaults
-    while ( my ( $k, $v ) = each %$config_file_opts )
-    {
-      $opts->{$k} = $v if defined $v;
-    }
   }
-    # merge command-line opts
-    while ( my ( $k, $v ) = each %$cmdline_opts )
-    {
+  elsif ( -r $DEFAULT_CONFIG_FILE ) 
+  {
+    # Config file not specified - load the default only if it exists
+    $config_file_opts = LoadFile( $DEFAULT_CONFIG_FILE );
+  }
+
+  # merge config-file options over defaults
+  while ( my ( $k, $v ) = each %$config_file_opts )
+  {
+      $opts->{$k} = $v if defined $v;
+  }
+  # command-line options take precedence over all
+  while ( my ( $k, $v ) = each %$cmdline_opts )
+  {
       $opts->{$k} = $v if defined $v;;
-    }
+  }
 
   # init logger
   if ( defined $opts->{log_conf} && -r $opts->{log_conf} )
@@ -117,20 +127,26 @@ sub main
   $SIG{__DIE__} = sub {
     # Don't log if die() is called in eval context; see "die" in perlfunc
     die @_ if $^S;
-    FATAL "Server terminated: " . shift;
+    FATAL "Process terminated: " . shift;
+    unlink $opts->{pid_file} if -e $opts->{pid_file};
     exit 2;
   };
 
   # Log something and clean up if we are terminated by SIGTERM or SIGINT.
   $SIG{INT} = $SIG{TERM} = sub {
     my $name = shift;
-    FATAL "Server terminated by SIG$name";
+    FATAL "Process terminated by SIG$name";
     unlink $opts->{pid_file} if -e $opts->{pid_file};
     exit 0;
   };
 
+  open (my $fd, '>', $opts->{pid_file})
+    or LOGDIE "couldn't open pid file: $!\n";
+  print $fd $$;
+  close $fd or LOGDIE "problem with $opts->{pidfile}: $!\n";
+
   # Enter worker main loop.
-  Pogo::Worker->instance(%$opts)->run;
+  Pogo::Worker->run(%$opts);
 
   # This should never be reached.
   return 0;

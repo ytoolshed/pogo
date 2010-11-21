@@ -1,4 +1,4 @@
-#!/usr/bin/env perl -w
+#!/usr/bin/env perl
 
 # Copyright (c) 2010, Yahoo! Inc. All rights reserved.
 #
@@ -14,51 +14,130 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-use strict;
-use warnings;
+use 5.008;
+use common::sense;
 
-use Log::Log4perl qw(:easy);
+use Getopt::Long qw(:config bundling);
+use Pod::Usage qw(pod2usage);
 use YAML::XS qw(LoadFile);
-use Getopt::Long qw(GetOptions);
+use Log::Log4perl qw(:easy);
 
 use Pogo::Dispatcher;
 
-use constant POGO_ROOT => $ENV{POGO_ROOT} || '/usr/local';
-use constant POGO_CONF => POGO_ROOT . '/etc/pogo/pogo.conf';
-use constant PIDFILE   => POGO_ROOT . '/var/run/pogo-dispatcher.pid';
+our $VERSION = '4.0';
 
 sub main
 {
-  my $opts = {};
-  GetOptions( $opts, 'f=s' );
+  $ENV{PATH} = '/usr/local/libexec/pogo:/usr/local/bin:/bin:/sbin:/usr/bin:/usr/sbin';
+  my $POGO_ROOT = $ENV{POGO_ROOT} || '/usr/local';
 
-  my $conf;
-  eval { $conf = LoadFile( $opts->{f} || POGO_CONF ); };
-  if ($@)
-  {
-    LOGDIE "couldn't open config: $@\n";
+  # Defaults
+  my $DEFAULT_CONFIG_FILE = "$POGO_ROOT/etc/pogo/dispatcher.conf.yaml";
+  my $opts = {
+    log_conf        => "$POGO_ROOT/etc/pogo/dispatcher.log.conf",
+    pid_file        => "$POGO_ROOT/var/run/pogo-dispatcher.pid",
+    dispatcher_key  => "$POGO_ROOT/etc/ssl/pogo_dispatcher.key",
+    dispatcher_cert => "$POGO_ROOT/etc/ssl/pogo_dispatcher.crt",
+    worker_cert     => "$POGO_ROOT/etc/ssl/pogo_worker.crt",
+    bind_address    => undef,
+    peers           => [],
   };
 
-  if ( defined $conf->{log4perl} && -r $conf->{log4perl} )
+  my $log_conf;
+  my $log_level;
+  my $cmdline_opts = {};
+  my $config_file_opts = {};
+
+  GetOptions(
+    'h|help'             => sub { pod2usage; exit -1 },
+    'f|config-file=s'    => \$cmdline_opts->{config_file},
+    'l|logger-config=s'  => \$cmdline_opts->{log_conf},
+    'P|pid-file=s'       => \$cmdline_opts->{pid_file},
+    'c|ssl-cert=s'       => \$cmdline_opts->{dispatcher_cert},
+    'k|ssl-key=s'        => \$cmdline_opts->{dispatcher_key},
+    'C|worker-cert=s'    => \$cmdline_opts->{worker_cert},
+    'A|bind-address=s'   => \$cmdline_opts->{bind_address},
+    'p|rpc-port=i'       => \$cmdline_opts->{rpc_port},
+    'w|worker-port=i'    => \$cmdline_opts->{worker_port},
+    'a|authstore-port=i' => \$cmdline_opts->{authstore_port},
+    'peers=s@'           => \$cmdline_opts->{peers},
+    'debug'              => sub { $log_level = 'DEBUG' },
+  );
+
+  if ( my $config_file = delete $cmdline_opts->{config_file} )
   {
-    Log::Log4perl::init( $conf->{log4perl} );
-    if ( defined $conf->{loglevel} )
+    # Config file was specified on command-line - fatal if doesn't exist
+    # or is non-parseable
+    $config_file_opts = LoadFile( $config_file );
+  }
+  elsif ( -r $DEFAULT_CONFIG_FILE ) 
+  {
+    # Config file not specified - load the default only if it exists
+    $config_file_opts = LoadFile( $DEFAULT_CONFIG_FILE );
+  }
+
+  # merge config-file options over defaults
+  while ( my ( $k, $v ) = each %$config_file_opts )
+  {
+      $opts->{$k} = $v if defined $v;
+  }
+  # command-line options take precedence over all
+  while ( my ( $k, $v ) = each %$cmdline_opts )
+  {
+      $opts->{$k} = $v if defined $v;;
+  }
+
+  # init logger
+  if ( defined $opts->{log_conf} && -r $opts->{log_conf} )
+  {
+    Log::Log4perl::init( $opts->{log_conf} );
+  }
+  else 
+  {
+      Log::Log4perl->easy_init unless Log::Log4perl->initialized;
+  }
+  delete $opts->{log_conf};
+  if ( defined $log_level )
+  {
+    Log::Log4perl::get_logger->level( $log_level );
+  }
+
+  # Perform some basic sanity checks.
+  for (qw(worker_cert dispatcher_key dispatcher_cert))
+  {
+    unless ( -r $opts->{$_} )
     {
-      Log::Log4perl->get_logger->level( $conf->{loglevel} );
+      LOGDIE "Can't open $_ file " . $opts->{$_};
     }
   }
 
-  my $pidfile = $conf->{pidfile} || PIDFILE;
-  open my $fd, '>', $pidfile
-    or LOGDIE "couldn't open pid file: $!\n";
+  # Log something if we die.
+  $SIG{__DIE__} = sub {
+    # Don't log if die() is called in eval context; see "die" in perlfunc
+    die @_ if $^S;
+    FATAL "Process terminated: " . shift;
+    unlink $opts->{pid_file} if -e $opts->{pid_file};
+    exit 2;
+  };
 
+  # Log something and clean up if we are terminated by SIGTERM or SIGINT.
+  $SIG{INT} = $SIG{TERM} = sub {
+    my $name = shift;
+    FATAL "Process terminated by SIG$name";
+    unlink $opts->{pid_file} if -e $opts->{pid_file};
+    exit 0;
+  };
+
+  open (my $fd, '>', $opts->{pid_file})
+    or LOGDIE "couldn't open pid file: $!\n";
   print $fd $$;
-  close $fd or LOGDIE "problems with $pidfile: $!\n";
+  close $fd or LOGDIE "problem with $opts->{pid_file}: $!\n";
 
   # here we go
-  Pogo::Dispatcher->instance($conf)->start();
+  Pogo::Dispatcher->run(%$opts);
 
-  unlink $pidfile or LOGDIE "couldn't unlink $pidfile: $!\n";
+  # This should never be reached.
+  return 0;
 }
 
 exit main();

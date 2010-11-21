@@ -26,12 +26,12 @@ use Pogo::Worker::Connection;
 use Sys::Hostname;
 use Scalar::Util qw(refaddr);
 
+use constant DEFAULT_PORT => 9697;
+
 my $instance;
 
-sub instance    #{{{
+sub run # {{{
 {
-  return $instance if defined $instance;
-
   my $class = shift;
   $instance = bless({ @_ }, $class);
 
@@ -39,16 +39,9 @@ sub instance    #{{{
   $instance->{connections} = {};
   $instance->{responsequeue} = [];
 
-  return $instance;
-}    #}}}
-
-sub run # {{{
-{
-  LOGDIE "Worker not initialized yet" unless defined $instance;
-
   foreach my $dispatcher (@{$instance->{dispatchers}})  {
     my ($host,$port) = split(/:/, $dispatcher);
-    $port ||= 7654;
+    $port ||= DEFAULT_PORT;
     INFO sprintf( "Connecting to dispatcher at %s:%d", $host, $port);
     Pogo::Worker::Connection->new(host => $host, 
                                   port => $port, 
@@ -102,6 +95,11 @@ sub dequeue_msg #{{{
 
 
 # Properties {{{
+sub instance    #{{{
+{
+  return $instance;
+}
+
 sub dispatcher_host
 {
   LOGDIE "Worker not initialized yet" unless defined $instance;

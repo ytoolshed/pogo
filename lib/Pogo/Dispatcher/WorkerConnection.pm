@@ -14,105 +14,139 @@ package Pogo::Dispatcher::WorkerConnection;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-use strict;
-use warnings;
+use 5.008;
+use common::sense;
 
 use AnyEvent::Handle;
+use AnyEvent::TLS;
 use Log::Log4perl qw(:easy);
-use Socket qw(AF_INET inet_aton);
 
-sub accept_handler
+use constant DEFAULT_PORT => 9697;
+
+sub accept
 {
-  my $class = shift;
-  return sub {
-    my ( $fh, $remote_ip, $remote_port ) = @_;
+  my ( $class, $fh, $host, $port )  = @_;
 
-    # This is the accept callback handler for the user interface to the
-    # dispatcher
-
-    # Here we act like a constructor.  (We have no choice but to place
-    # that functionality here, as AnyEvent::Socket only lets us specify
-    # a code ref as an accept handler, and not a module name.)
-    my $self = {
-      handle      => undef,
-      remote_host => undef,
-      remote_ip   => $remote_ip,
-      remote_port => $remote_port,
-    };
-
-    bless( $self, $class );
-
-    INFO "worker connection recieved at " . $self->id;
-
-    $self->{handle} = AnyEvent::Handle->new(
-      fh      => $fh,
-      tls     => 'accept',
-      tls_ctx => Pogo::Dispatcher->ssl_ctx,
-      on_eof  => sub {
-        INFO "worker connection closed from " . $self->id;
-        Pogo::Dispatcher->retire_worker($self);
-        undef $self->{handle};
-      },
-      on_error => sub {
-        my $fatal = $_[1];
-        ERROR sprintf( "%s error reported while talking to worker at %s: $!",
-          $fatal ? 'fatal' : 'non-fatal', $self->id );
-        Pogo::Dispatcher->retire_worker($self);
-        undef $self->{handle};
-      },
-
-      # We'll replace this later - need it to catch connections closing
-      # before we're actively conversing with a worker
-      on_read => sub { },
-    );
-
-    Pogo::Dispatcher->idle_worker($self);
-
-    my $on_json;
-
-    $on_json = sub {
-      my ( $h,   $req )  = @_;
-      my ( $cmd, @args ) = @$req;
-
-      if ( $cmd eq 'idle' )
-      {
-        Pogo::Dispatcher->idle_worker($self);
-      }
-      elsif ( $cmd eq 'start' )
-      {
-        my ( $jobid, $host, $outputurl ) = @args;
-        my $job = Pogo::Engine->job($jobid);
-        LOGDIE "nonexistant job $jobid sent from worker " . $self->id unless $job;
-        $job->start_host( $host, $outputurl );
-      }
-      elsif ( $cmd eq 'finish' )
-      {
-        my ( $jobid, $host, $exitcode, $msg ) = @args;
-        my $job = Pogo::Engine->job($jobid);
-        LOGDIE "nonexistant job $jobid sent from worker " . $self->id unless $job;
-        $job->finish_host( $host, $exitcode, $msg );
-      }
-      elsif ( $cmd eq 'ping' )
-      {
-        $h->push_write( json => ["pong"] );
-      }
-      $h->push_read( json => $on_json );
-    };
-    $self->{handle}->push_read( json => $on_json );
+  my $self = {
+    fh => $fh,
+    host => $host,
+    port => $port,
   };
+
+  bless($self, $class);
+
+  $self->{handle} = AnyEvent::Handle->new(
+    fh      => $fh,
+    tls     => 'accept',
+    tls_ctx => {
+      key_file => Pogo::Dispatcher->dispatcher_key,
+      cert_file => Pogo::Dispatcher->dispatcher_cert,
+      ca_file => Pogo::Dispatcher->worker_cert,
+      verify => 1,
+      verify_cb => sub {
+        my $preverify_ok = $_[4];
+        my $cert = $_[6];
+        DEBUG sprintf("certificate: %s", AnyEvent::TLS::certname($cert));
+        return $preverify_ok;
+      },
+    },
+    keepalive => 1,
+    on_connect => sub {
+      INFO sprintf("Received connection from worker at %s:%d", $host, $port);
+      $self->{tasks} = 0;
+      Pogo::Dispatcher->idle_worker($self);
+    },
+    on_starttls => sub {
+      my $success = $_[1];
+      my $msg = $_[2];
+      if ($success) {
+        INFO sprintf("SSL/TLS handshake completed with worker at %s:%d", $host, $port);
+      } else {
+        $self->{dispatcher_handle}->destroy;
+        ERROR sprintf("Failed to complete SSL/TLS handshake with worker at %s:%d: %s", $host, $port, $msg);
+      }
+    },
+    on_eof  => sub {
+      $self->{handle}->destroy;
+      ERROR sprintf("Unexpected EOF received from worker at %s:%d", $host, $port);
+      Pogo::Dispatcher->retire_worker($self);
+    },
+    on_error => sub {
+      $self->{handle}->destroy;
+      my $msg = $_[2];
+      ERROR sprintf( "I/O error occurred while communicating with worker at %s:%d: %s", $host, $port, $msg);
+      Pogo::Dispatcher->retire_worker($self);
+    },
+    on_read => sub { 
+      $self->{handle}->push_read(json => sub {
+        my ( $req )  = $_[1];
+        my ( $cmd, @args ) = @$req;
+        if ( $cmd eq 'idle' )
+        {
+          $self->{tasks}-- if $self->{tasks} > 0;
+          Pogo::Dispatcher->idle_worker($self);
+        }
+        elsif ( $cmd eq 'start' )
+        {
+          my ( $jobid, $host, $outputurl ) = @args;
+          my $job = Pogo::Engine->job($jobid);
+          LOGDIE "Nonexistent job $jobid sent from worker " . $self->id unless $job;
+          $job->start_host( $host, $outputurl );
+        }
+        elsif ( $cmd eq 'finish' )
+        {
+          my ( $jobid, $host, $exitcode, $msg ) = @args;
+          my $job = Pogo::Engine->job($jobid);
+          LOGDIE "Nonexistent job $jobid sent from worker " . $self->id unless $job;
+          $job->finish_host( $host, $exitcode, $msg );
+        }
+        elsif ( $cmd eq 'ping' )
+        {
+          $self->{handle}->push_write( json => ["pong"] );
+        }
+      });
+    },
+  );
+  return $self;
+}
+
+sub start_task    #{{{
+{
+  my ( $self, $job, $host ) = @_;
+
+  # Sanity check
+  Pogo::Dispatcher->busy_worker($self);
+
+  DEBUG sprintf( "%s: %s assigned to worker %s:%d",
+    $job->id, $host, $self->{host}, $self->{port} );
+
+  # Tell worker what to do
+  $self->{handle}->push_write(
+    json => [
+      "execute",
+      { job_id        => $job->id,
+        command       => $job->worker_command,
+        user          => $job->user,
+        run_as        => $job->run_as,
+        password      => $job->password,
+        host          => $host,
+        timeout       => $job->timeout,
+        userdata      => $job->userdata,
+      }
+    ]
+  );
+}    #}}}
+
+sub tasks
+{
+  my $self = shift;
+  return $self->{tasks};
 }
 
 sub id
 {
   my $self = shift;
-  return sprintf '%s:%d', $self->remote_host, $self->{remote_port};
-}
-
-sub remote_host
-{
-  my $self = shift;
-  $self->{remote_host} ||= ( gethostbyaddr( inet_aton( $self->{remote_ip} ), AF_INET ) )[0];
-  return $self->{remote_host};
+  return sprintf '%s:%d', $self->{host}, $self->{port};
 }
 
 1;

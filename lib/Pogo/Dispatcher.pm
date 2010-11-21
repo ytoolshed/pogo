@@ -19,13 +19,15 @@ package Pogo::Dispatcher;
 # . handles jsonrpc connections from the http api
 # . fetch/store passwords
 
+use 5.008;
 use common::sense;
 
 use AnyEvent::Socket qw(tcp_server);
 use AnyEvent::TLS;
 use AnyEvent;
-use JSON qw(to_json);
+use JSON::XS qw(encode_json);
 use Log::Log4perl qw(:easy);
+use Scalar::Util qw(refaddr);
 
 use Pogo::Engine::Store qw(store);
 use Pogo::Dispatcher::AuthStore;
@@ -34,110 +36,67 @@ use Pogo::Dispatcher::WorkerConnection;
 
 use constant MAX_WORKER_TASKS => 50;
 
-our $instance;
+my $instance;
 
-sub instance
+sub run #{{
 {
-  return $instance if defined $instance;
-  {
-    my $class = shift;
-    my $self  = shift;    # incoming config hashref
+  my $class = shift;
+  $instance = { @_ };
 
-    $self->{workers} = {
-      idle => {},
-      busy => {},
-    };
+  $instance->{workers} = {
+    idle => {},
+    busy => {},
+  };
 
-    $self->{stats} = {
-      hostname     => Sys::Hostname::hostname(),
-      state        => 'connected',
-      start_time   => time(),
-      pid          => $$,
-      tasks_failed => 0,
-      tasks_run    => 0,
-      workers_busy => 0,
-      workers_idle => 0,
-    };
-
-    # set up ssl
-    $self->{ssl_ctx} = AnyEvent::TLS->new(
-      key_file                   => $self->{dispatcher_key},
-      cert_file                  => $self->{dispatcher_cert},
-      verify_require_client_cert => 1,
-      verify                     => 0,
-    ) or LOGDIE "failed to initialize SSL: $!";
-
-    $instance = bless( $self, $class );
-  }
-  return $instance;
-}
-
-sub start
-{
-  my $self = shift;
-  LOGDIE "dispatcher not yet initialized" unless defined $instance;
+  $instance->{stats} = {
+    hostname     => Sys::Hostname::hostname(),
+    state        => 'connected',
+    start_time   => time(),
+    pid          => $$,
+    tasks_failed => 0,
+    tasks_run    => 0,
+    workers_busy => 0,
+    workers_idle => 0,
+  };
 
   # start these puppies up
-  Pogo::Engine->init($self);
-  Pogo::Dispatcher::AuthStore->init($self);
+  Pogo::Engine->init($instance);
+  Pogo::Dispatcher::AuthStore->start($instance);
 
   # handle workers
   tcp_server(
     $instance->{bind_address},
-    $instance->{worker_port},
-    Pogo::Dispatcher::WorkerConnection->accept_handler,
-    sub {
-      INFO "listening for worker connections on " . $_[1] . ':' . $_[2];
-      return 0;
-    }
+    $instance->{worker_port} || Pogo::Dispatcher::WorkerConnection->DEFAULT_PORT,
+    sub { Pogo::Dispatcher::WorkerConnection->accept(@_); },
+    sub { INFO "Accepting worker connections on $_[1]:$_[2]"; },
   );
-
-  #  # store/expire passwords
-  #  tcp_server(
-  #    $instance->{bind_address},
-  #    $instance->{authstore_port},
-  #    Pogo::Dispatcher::AuthStore->accept_handler,
-  #    sub {
-  #      INFO "listening for authstore connections on " .$_[1] . ':' . $_[2];
-  #      return 0;
-  #    }
-  #  );
 
   # accept rpc connections from the (local) http API
   tcp_server(
     '127.0.0.1',    # rpc server binds to localhost only
-    $instance->{rpc_port},
-    Pogo::Dispatcher::RPCConnection->accept_handler,
-    sub {
-      INFO "listening for rpc connections on " . $_[1] . ':' . $_[2];
-      return 0;
-    }
+    $instance->{rpc_port} || Pogo::Dispatcher::RPCConnection->DEFAULT_PORT,
+    sub { Pogo::Dispatcher::RPCConnection->accept(@_ ); },
+    sub { INFO "Accepting RPC connections on $_[1]:$_[2]"; },
   );
-
-  my $condvar = AnyEvent->condvar;
-
-  $SIG{TERM} = sub { WARN "SIGTERM received"; $condvar->send(1); };
-  $SIG{INT}  = sub { WARN "SIGINT received";  $condvar->send(1); };
 
   # periodically poll task queue for jobs
   my $poll_timer = AnyEvent->timer(
     after    => 1,
     interval => 1,
-    cb       => \&_poll,
+    cb       => sub { _poll(); },
   );
-
+  
   # periodically record stats
   my $stats_timer = AnyEvent->timer(
     after    => 1,
     interval => 5,
-    cb       => \&_write_stats,
+    cb       => sub { _write_stats(); },
   );
 
-  return $condvar->recv;
-}
+  # Start event loop.
+  AnyEvent->condvar->recv;
+} #}}}
 
-# poll zookeeper task queue for jobs
-# this would be better if we had an async zookeeper implementation
 sub _poll
 {
   foreach my $task ( store->get_children('/pogo/taskq') )
@@ -157,50 +116,50 @@ sub _poll
       ERROR "Error executing @req: $@";
     };
 
-    given ($reqtype)
+    if ($reqtype eq 'runhost')
     {
-      when ('runhost')
-      {
-        next if ( !scalar @workers );    # skip if we have no workers.
-        next
-          if ( !Pogo::Dispatcher::AuthStore->get($jobid) )
-          ;                              # skip for now if we have no passwords (yet?)
+      next if ( !scalar @workers );    # skip if we have no workers.
+      next
+        if ( !Pogo::Dispatcher::AuthStore->get($jobid) )
+        ;                              # skip for now if we have no passwords (yet?)
 
-        if ( store->delete("/pogo/taskq/$task") )
-        {
-          my $job = Pogo::Engine->job($jobid);
-          my $w   = $workers[ int rand( scalar @workers ) ];    # this is where we would include
-                                                                # smarter logic on worker selection
-          $w->start_task( $job, $host );
-        }
-      }
-      when ('startjob')
+      if ( store->delete("/pogo/taskq/$task") )
       {
-        #if ( store->delete("/pogo/taskq/$task") )
-        if ( store->get("/pogo/taskq/$task") )
-        {
-          my $job = Pogo::Engine->job($jobid);
+        my $job = Pogo::Engine->job($jobid);
+        my $w   = $workers[ int rand( scalar @workers ) ];    # this is where we would include
+                                                              # smarter logic on worker selection
+        $w->start_task( $job, $host );
+      }
+    }
+    elsif ($reqtype eq 'startjob')
+    {
+      #if ( store->delete("/pogo/taskq/$task") )
+      if ( store->get("/pogo/taskq/$task") )
+      {
+        my $job = Pogo::Engine->job($jobid);
 
-          # TODO: handle error callback by halting job with an error
-          $job->start( $errc, sub { } );
-        }
+        # TODO: handle error callback by halting job with an error
+        $job->start( $errc, sub { } );
       }
-      when ('continuejob')
+    }
+    elsif ($reqtype eq 'continuejob')
+    {
+      if ( store->delete("/pogo/taskq/$task") )
       {
-        if ( store->delete("/pogo/taskq/$task") )
-        {
-          Pogo::Engine->job($jobid)->continue_deferred();
-        }
+        Pogo::Engine->job($jobid)->continue_deferred();
       }
-      when ('resumejob')
+    }
+    elsif ($reqtype eq 'resumejob')
+    {
+      if ( store->delete("/pogo/taskq/$task") )
       {
-        if ( store->delete("/pogo/taskq/$task") )
-        {
-          my $job = Pogo::Engine->job($jobid);
-          $job->resume( 'job resumed by retry request', sub { $job->continue_deferred(); }, );
-        }
+        my $job = Pogo::Engine->job($jobid);
+        $job->resume( 'job resumed by retry request', sub { $job->continue_deferred(); }, );
       }
-      default { ERROR "unknown task: '$task'"; }
+    }
+    else 
+    { 
+      ERROR "Unknown task '$task'"; 
     }
   }
   return;    # should not be reached;
@@ -231,27 +190,19 @@ sub _write_stats
       or WARN "couldn't create '$path' node: " . $store->get_error;
   }
 
-  $store->set( $path, to_json $instance->{stats} )
+  $store->set( $path, encode_json $instance->{stats} )
     or WARN "couldn't update stats node: " . $store->get_error;
-}
-
-sub ssl_ctx
-{
-  LOGDIE "dispatcher not yet initialized" unless defined $instance;
-  return $instance->{ssl_ctx};
 }
 
 sub idle_worker
 {
   LOGDIE "dispatcher not yet initialized" unless defined $instance;
   my ( $class, $worker ) = @_;
-  $worker->{tasks}--;
-  if ( $worker->{tasks} < MAX_WORKER_TASKS )
+  if ( $worker->tasks < MAX_WORKER_TASKS )
   {
     delete $instance->{workers}->{busy}->{ $worker->id };
-    $instance->{workers}->{idle} ||= {};
     $instance->{workers}->{idle}->{ $worker->id } = $worker;
-    DEBUG "marked worker idle: " . $worker->id;
+    DEBUG sprintf("Marked worker %s idle", $worker->id);
   }
 }
 
@@ -261,8 +212,32 @@ sub retire_worker
   my ( $class, $worker ) = @_;
   delete $instance->{workers}->{idle}->{ $worker->id };
   delete $instance->{workers}->{busy}->{ $worker->id };
-  DEBUG "retired worker: " . $worker->id;
+  DEBUG sprintf("Retired worker %s", $worker->id);
 }
+
+sub dispatcher_cert
+{
+  LOGDIE "dispatcher not yet initialized" unless defined $instance;
+  return $instance->{dispatcher_cert};
+}
+
+sub dispatcher_key
+{
+  LOGDIE "dispatcher not yet initialized" unless defined $instance;
+  return $instance->{dispatcher_key};
+}
+
+sub worker_cert
+{
+  LOGDIE "dispatcher not yet initialized" unless defined $instance;
+  return $instance->{worker_cert};
+}
+
+sub instance #{{{
+{
+  return $instance;
+} #}}}
+
 
 1;
 

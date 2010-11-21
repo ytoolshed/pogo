@@ -14,6 +14,7 @@ package Pogo::Dispatcher::RPCConnection;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+use 5.008;
 use common::sense;
 
 use AnyEvent::Handle;
@@ -23,6 +24,8 @@ use Log::Log4perl qw(:easy);
 use Pogo::Engine;
 use Pogo::Engine::Response;
 use Pogo::Dispatcher::AuthStore;
+
+use constant DEFAULT_PORT => 9696;
 
 our %ALLOWED_RPC_METHODS = (
   err           => 1,
@@ -48,98 +51,83 @@ our %ALLOWED_RPC_METHODS = (
   add_task      => 1,
 );
 
-sub accept_handler
+sub accept
 {
-  my $class = shift;
+  my ( $class, $fh, $host, $port )  = @_;
 
-  # This is the accept callback handler for the user interface to the
-  # dispatcher.
-
-  # Here we act like a constructor.  (We have no choice but to place
-  # that functionality here, as AnyEvent::Socket only lets us specify
-  # a code ref as an accept handler, and not a module name.)
-
-  return sub {
-    my ( $fh, $remote_ip, $remote_port ) = @_;
-    my $self = {
-      remote_ip   => $remote_ip,
-      remote_port => $remote_port,
-      handle      => undef,
-      remote_host => undef,
-    };
-
-    bless( $self, $class );
-
-    #DEBUG "rpc connection from " . $self->id;
-
-    my $on_json;
-    $on_json = sub {
-      my ( $h,   $req )  = @_;
-      my ( $cmd, @args ) = @$req;
-
-      # $cmd is either store or expire
-
-      DEBUG "rpc '$cmd' from " . $self->id;
-      if ( !exists $ALLOWED_RPC_METHODS{$cmd} )
-      {
-        ERROR "unknown command '$cmd' from " . $self->id;
-        my $resp = new Pogo::Engine::Response;    # we're gonna fake it here.
-        $resp->set_error("unknown rpc command '$cmd'");
-        $h->push_write( json => $resp->unblessed );
-        $h->push_read( json => $on_json );
-        return;
-      }
-
-      # presumably we have something valid here
-      my $resp;
-      eval { $resp = Pogo::Engine->$cmd(@args) };
-      if ($@)
-      {
-        ERROR "command '$cmd' from " . $self->id . "failed";
-        $resp = new Pogo::Engine::Response;    # overwrite old possibly-bogus response
-        $resp->set_error("internal error: $@");
-        $h->push_write( json => $resp->unblessed );
-        $h->push_read( json => $on_json );
-        return;
-      }
-
-      $h->push_write( json => $resp->unblessed );
-      $h->push_read( json => $on_json );
-      return;
-    };
-
-    $self->{handle} = AnyEvent::Handle->new(
-      fh       => $fh,
-      tls      => 'accept',
-      tls_ctx  => Pogo::Dispatcher->instance->ssl_ctx,
-      on_error => sub {
-        my $fatal = $_[1];
-        ERROR sprintf( "%s error reported while talking rpc to %s: $!",
-          $fatal ? 'fatal' : 'non-fatal', $self->id );
-        undef $self->{handle};
-
-      },
-      on_eof => sub {
-        INFO "rpc connection closed from " . $self->id;
-        undef $self->{handle};
-      },
-      on_read => sub { },
-    );
-
-    $self->{handle}->push_read( json => $on_json );
+  my $self = {
+    fh => $fh,
+    host => $host,
+    port => $port,
   };
+
+  bless( $self, $class );
+
+  $self->{handle} = AnyEvent::Handle->new(
+    fh      => $fh,
+    tls     => 'accept',
+    tls_ctx => {
+      key_file => Pogo::Dispatcher->dispatcher_key,
+      cert_file => Pogo::Dispatcher->dispatcher_cert,
+    },
+    on_connect => sub {
+      INFO sprintf("Received RPC connection from %s:%d", $host, $port);
+    },
+    on_eof  => sub {
+      $self->{handle}->destroy;
+      ERROR sprintf("EOF received from RPC client at %s:%d", $host, $port);
+    },
+    on_error => sub {
+      my $msg = $_[2];
+      $self->{handle}->destroy;
+      ERROR sprintf( "I/O error occurred while communicating with RPC client at %s:%d: %s", $host, $port, $msg);
+    },
+    on_read => sub {
+      $self->{handle}->push_read(json => sub {
+        my ( $h,   $req )  = @_;
+        my ( $cmd, @args ) = @$req;
+
+        # $cmd is either store or expire
+
+        DEBUG "rpc '$cmd' from " . $self->id;
+        if ( !exists $ALLOWED_RPC_METHODS{$cmd} )
+        {
+          ERROR "unknown command '$cmd' from " . $self->id;
+          my $resp = Pogo::Engine::Response->new;    # we're gonna fake it here.
+          $resp->set_error("unknown rpc command '$cmd'");
+          $h->push_write( json => $resp->unblessed );
+          return;
+        }
+
+        # presumably we have something valid here
+        my $resp;
+        eval { $resp = Pogo::Engine->$cmd(@args) };
+        if ($@)
+        {
+          ERROR "command '$cmd' from " . $self->id . "failed";
+          $resp = Pogo::Engine::Response->new;    # overwrite old possibly-bogus response
+          $resp->set_error("internal error: $@");
+          $h->push_write( json => $resp->unblessed );
+          return;
+        }
+        $h->push_write( json => $resp->unblessed );
+      });
+    },
+  );
+
+  return $self;
 }
 
 sub id
 {
   my $self = shift;
-  return sprintf '%s:%d', $self->remote_host, $self->{remote_port};
+  return sprintf '%s:%d', $self->remote_host, $self->{port};
 }
 
 sub remote_host
 {
   my $self = shift;
-  $self->{remote_host} ||= ( gethostbyaddr( inet_aton( $self->{remote_ip} ), AF_INET ) )[0];
+  $self->{remote_host} ||= ( gethostbyaddr( inet_aton( $self->{host} ), AF_INET ) )[0];
   return $self->{remote_host};
 }
 

@@ -85,7 +85,6 @@ sub run #{{{
       $self->reconnect;
     },
     on_error => sub {
-      my $fatal = $_[1];
       my $msg = $_[2];
       $self->{dispatcher_handle}->destroy;
       Pogo::Worker->delete_connection($self);
