@@ -34,61 +34,64 @@ sub main
 
   # Defaults
   my $DEFAULT_CONFIG_FILE = "$POGO_ROOT/etc/pogo/worker.conf.yaml";
-  my $opts = {
-    num_workers => 100,
-    data_dir    => "$POGO_ROOT/var/pogo/",
-    exec_helper => "$POGO_ROOT/libexec/pogo/pogo-pw",
-    log_conf    => "$POGO_ROOT/etc/pogo/worker.log.conf",
-    pid_file    => "$POGO_ROOT/var/run/pogo-worker.pid",
-    worker_cert => "$POGO_ROOT/etc/ssl/pogo_worker.crt",
-    worker_key  => "$POGO_ROOT/etc/ssl/pogo_worker.key",
+  my $opts                = {
+    num_workers     => 100,
+    data_dir        => "$POGO_ROOT/var/pogo/",
+    exec_helper     => "$POGO_ROOT/libexec/pogo/pogo-pw",
+    log_conf        => "$POGO_ROOT/etc/pogo/worker.log.conf",
+    pid_file        => "$POGO_ROOT/var/run/pogo-worker.pid",
+    worker_cert     => "$POGO_ROOT/etc/ssl/pogo_worker.crt",
+    worker_key      => "$POGO_ROOT/etc/ssl/pogo_worker.key",
     dispatcher_cert => "$POGO_ROOT/etc/ssl/pogo_dispatcher.crt",
-    output_uri  => 'http://' . hostname() . '/pogo_output/',
+    output_uri      => 'http://' . hostname() . '/pogo_output/',
   };
 
   my $log_conf;
   my $log_level;
-  my $cmdline_opts = {};
+  my $cmdline_opts     = {};
   my $config_file_opts = {};
 
   GetOptions(
-        'h|help' => sub { pod2usage; exit -1 },
-        'f|config-file=s' => \$cmdline_opts->{config_file},
-        'd|data-dir=s' => \$cmdline_opts->{data_dir},
-        'e|exec-helper=s' => \$cmdline_opts->{exec_helper},
-        'l|logger-config=s' => \$cmdline_opts->{log_conf},
-        'p|dispatcher-port=i' => \$cmdline_opts->{dispatcher_port},
-        'P|pid-file=s' => \$cmdline_opts->{pid_file},
-        'c|ssl-cert=s' => \$cmdline_opts->{worker_cert},
-        'k|ssl-key=s' => \$cmdline_opts->{worker_key},
-        'C|dispatcher-cert=s' => \$cmdline_opts->{dispatcher_cert},
-        'U|output-uri=s' => \$cmdline_opts->{output_uri},
-        'n|workers=i' => \$cmdline_opts->{num_workers},
-        's|dispatchers=s@' => sub { push @{$cmdline_opts->{dispatchers}}, split /,/, $_[1] },
-        'debug' => sub { $log_level = 'DEBUG' },
+    'h|help' => sub { pod2usage; exit -1 },
+    'f|config-file=s'     => \$cmdline_opts->{config_file},
+    'd|data-dir=s'        => \$cmdline_opts->{data_dir},
+    'e|exec-helper=s'     => \$cmdline_opts->{exec_helper},
+    'l|logger-config=s'   => \$cmdline_opts->{log_conf},
+    'p|dispatcher-port=i' => \$cmdline_opts->{dispatcher_port},
+    'P|pid-file=s'        => \$cmdline_opts->{pid_file},
+    'c|ssl-cert=s'        => \$cmdline_opts->{worker_cert},
+    'k|ssl-key=s'         => \$cmdline_opts->{worker_key},
+    'C|dispatcher-cert=s' => \$cmdline_opts->{dispatcher_cert},
+    'U|output-uri=s'      => \$cmdline_opts->{output_uri},
+    'n|workers=i'         => \$cmdline_opts->{num_workers},
+    's|dispatchers=s@'    => sub { push @{ $cmdline_opts->{dispatchers} }, split /,/, $_[1] },
+    'debug' => sub { $log_level = 'DEBUG' },
   );
 
   if ( my $config_file = delete $cmdline_opts->{config_file} )
   {
+
     # Config file was specified on command-line - fatal if doesn't exist
     # or is non-parseable
-    $config_file_opts = LoadFile( $config_file );
+    $config_file_opts = LoadFile($config_file);
   }
-  elsif ( -r $DEFAULT_CONFIG_FILE ) 
+  elsif ( -r $DEFAULT_CONFIG_FILE )
   {
+
     # Config file not specified - load the default only if it exists
-    $config_file_opts = LoadFile( $DEFAULT_CONFIG_FILE );
+    $config_file_opts = LoadFile($DEFAULT_CONFIG_FILE);
   }
 
   # merge config-file options over defaults
   while ( my ( $k, $v ) = each %$config_file_opts )
   {
-      $opts->{$k} = $v if defined $v;
+    $opts->{$k} = $v if defined $v;
   }
+
   # command-line options take precedence over all
   while ( my ( $k, $v ) = each %$cmdline_opts )
   {
-      $opts->{$k} = $v if defined $v;;
+    $opts->{$k} = $v if defined $v;
   }
 
   # init logger
@@ -96,18 +99,19 @@ sub main
   {
     Log::Log4perl::init( $opts->{log_conf} );
   }
-  else 
+  else
   {
-      Log::Log4perl->easy_init unless Log::Log4perl->initialized;
+    Log::Log4perl->easy_init unless Log::Log4perl->initialized;
   }
   delete $opts->{log_conf};
   if ( defined $log_level )
   {
-    Log::Log4perl::get_logger->level( $log_level );
+    Log::Log4perl::get_logger->level($log_level);
   }
 
   # Perform some basic sanity checks.
-  unless (@{$opts->{dispatchers}}) {
+  unless ( @{ $opts->{dispatchers} } )
+  {
     LOGDIE "No dispatchers specified in configuration file or command line";
   }
 
@@ -125,6 +129,7 @@ sub main
 
   # Log something if we die.
   $SIG{__DIE__} = sub {
+
     # Don't log if die() is called in eval context; see "die" in perlfunc
     die @_ if $^S;
     FATAL "Process terminated: " . shift;
@@ -140,7 +145,7 @@ sub main
     exit 0;
   };
 
-  open (my $fd, '>', $opts->{pid_file})
+  open( my $fd, '>', $opts->{pid_file} )
     or LOGDIE "couldn't open pid file: $!\n";
   print $fd $$;
   close $fd or LOGDIE "problem with $opts->{pidfile}: $!\n";
