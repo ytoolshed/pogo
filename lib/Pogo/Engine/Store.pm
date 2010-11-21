@@ -35,7 +35,15 @@ sub instance
   if ( $opts->{store} eq 'zookeeper' )
   {
     use Pogo::Engine::Store::ZooKeeper;
-    $store = Pogo::Engine::Store::ZooKeeper->new($opts);
+
+    # by default we'll use the same peerlist as everything else
+    my $store_opts = $opts->{store_options};
+    if (!exists $store_opts->{serverlist} && exists $opts->{peers})
+    {
+      $store_opts->{serverlist} = $opts->{peers};
+    }
+
+    $store = Pogo::Engine::Store::ZooKeeper->new($store_opts);
     return $store;
   }
   else

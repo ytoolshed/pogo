@@ -24,7 +24,8 @@ use Time::HiRes qw(sleep);
 use JSON qw(to_json);
 
 use constant ZK_ACL        => ZOO_OPEN_ACL_UNSAFE;
-use constant ZK_SERVERLIST => qw(localhost:2181);
+use constant ZK_SERVERLIST => qw(localhost);
+use constant ZK_PORT       => 2181;
 
 my @ZOO_ERRORS = (
   [ 0,    'ZOK',                      'Everything is OK' ],
@@ -60,11 +61,16 @@ sub new
 {
   my ( $class, $opts ) = @_;
   my @serverlist =
-    defined $opts->{store_options}->{serverlist}
-    ? @{ $opts->{store_options}->{serverlist} }
+    defined $opts->{serverlist}
+    ? @{ $opts->{serverlist} }
     : ZK_SERVERLIST;
 
-  my $serverlist = join( ',', @serverlist );
+  # build serverlist;
+  my $serverport = $opts->{port} || ZK_PORT;
+  my $serverlist = pop(@serverlist) . ":$serverport";
+  map { $serverlist .= ",$_:$serverport" } @serverlist;
+
+  DEBUG "serverlist=$serverlist";
 
   my $self = { handle => Net::ZooKeeper->new($serverlist), };
   LOGDIE "couldn't init zookeeper: $!" unless defined $self->{handle}->{session_id};
