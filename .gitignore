@@ -4,11 +4,7 @@
 # exclude patterns (uncomment them if you want to use them):
 # *.[oa]
 # *~
-*.pid
-.*.swp
-*.bak
 t/.tmp
-Makefile
 blib
 pm_to_blib
 Makefile.old
