@@ -8,3 +8,4 @@ t/.tmp
 blib
 pm_to_blib
 Makefile.old
+./build/test-results
