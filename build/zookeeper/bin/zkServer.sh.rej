@@ -1,0 +1,51 @@
+***************
+*** 32,51 ****
+  
+  if [ "x$JMXDISABLE" = "x" ]
+  then
+-     echo "JMX enabled by default"
+      # for some reason these two options are necessary on jdk6 on Ubuntu
+      #   accord to the docs they are not necessary, but otw jconsole cannot
+      #   do a local attach
+      ZOOMAIN="-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.local.only=$JMXLOCALONLY org.apache.zookeeper.server.quorum.QuorumPeerMain"
+  else
+-     echo "JMX disabled by user request"
+      ZOOMAIN="org.apache.zookeeper.server.quorum.QuorumPeerMain"
+  fi
+  
+  # Only follow symlinks if readlink supports it
+  if readlink -f "$0" > /dev/null 2>&1
+  then
+-   ZOOBIN=`readlink -f "$0"`
+  else
+    ZOOBIN="$0"
+  fi
+--- 32,59 ----
+  
+  if [ "x$JMXDISABLE" = "x" ]
+  then
++     echo "JMX enabled by default" >&2
+      # for some reason these two options are necessary on jdk6 on Ubuntu
+      #   accord to the docs they are not necessary, but otw jconsole cannot
+      #   do a local attach
+      ZOOMAIN="-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.local.only=$JMXLOCALONLY org.apache.zookeeper.server.quorum.QuorumPeerMain"
+  else
++     echo "JMX disabled by user request" >&2
+      ZOOMAIN="org.apache.zookeeper.server.quorum.QuorumPeerMain"
+  fi
+  
+  # Only follow symlinks if readlink supports it
++ # macos's readlink doesn't have -f
+  if readlink -f "$0" > /dev/null 2>&1
+  then
++   READLINK="readlink -f"
++ else
++   READLINK="readlink"
++ fi
++ 
++ if $READLINK "$0" > /dev/null 2>&1
++ then
++   ZOOBIN=`$READLINK "$0"`
+  else
+    ZOOBIN="$0"
+  fi

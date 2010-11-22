@@ -109,7 +109,7 @@ sub start_zookeeper
   my $conf = $opts{zookeeper_conf} || "$Bin/conf/zookeeper.conf";
   my $zookeeper_pid = fork();
 
-  my $zookeeper_cmd = `zookeeper-server.sh print-cmd $conf 2>/dev/null`;
+  my $zookeeper_cmd = `$Bin/../build/zookeeper/bin/zkServer.sh print-cmd $conf 2>/dev/null`;
   DEBUG "using '$zookeeper_cmd'";
 
   if ( $zookeeper_pid == 0 )
@@ -118,7 +118,7 @@ sub start_zookeeper
     open STDOUT, '>/dev/null';
     open STDERR, '>&STDOUT';
 
-    exec($zookeeper_cmd)
+    exec("$zookeeper_cmd < /dev/null")
       or LOGDIE "$zookeeper_cmd failed: $!";
   }
   else
