@@ -41,6 +41,8 @@ my $js = JSON->new;
 my $valid = {};
 my $invalid = {};
 
+ok( $pt->start_dispatcher, 'stop dispatcher' );
+
 #{{{ VALID1
 $valid->{valid1} = <<___VALID1___;
 # example constraints
@@ -266,6 +268,8 @@ foreach my $cname ( sort keys %$valid )
 #my $config = LoadFile($configf) || LOGDIE "cannot load $configf";
 #my $constraints = LoadFile($constraintsf) || LOGDIE "cannot load $constraintsf";
 #my $ns = Pogo::Engine->init($config)->namespace($namespace)->init->set_conf($constraints);
+
+ok( $pt->stop_dispatcher, 'stop dispatcher' );
 
 1;
 

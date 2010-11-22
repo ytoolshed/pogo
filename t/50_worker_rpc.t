@@ -36,7 +36,6 @@ chdir($Bin);
 my $js = JSON->new;
 
 # start pogo-dispatcher
-ok( $pt->start_zookeeper, 'start zookeeper' );
 ok( $pt->start_dispatcher, 'start dispatcher' );
 
 my $conf;
@@ -47,7 +46,6 @@ ok($pt->worker_rpc(["ping"])->[0] eq 'pong', 'ping');
 
 # stop
 ok( $pt->stop_dispatcher, 'stop dispatcher' );
-ok( $pt->stop_zookeeper, 'stop zookeeper' );
 
 
 1;

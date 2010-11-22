@@ -32,7 +32,8 @@ use Exporter 'import';
 use FindBin qw($Bin);
 
 our $dispatcher_pid;
-our $zookeeper_pid;
+
+use constant ZOO_PID_FILE => "$Bin/.tmp/zookeeper.pid";
 
 our @EXPORT_OK = qw(derp);
 
@@ -106,13 +107,17 @@ sub start_zookeeper
 {
   my ( $self, %opts ) = @_;
   my $conf = $opts{zookeeper_conf} || "$Bin/conf/zookeeper.conf";
-  $zookeeper_pid = fork();
+  my $zookeeper_pid = fork();
 
   my $zookeeper_cmd = `zookeeper-server.sh print-cmd $conf 2>/dev/null`;
   DEBUG "using '$zookeeper_cmd'";
 
   if ( $zookeeper_pid == 0 )
   {
+    open STDIN, '/dev/null';
+    open STDOUT, '>/dev/null';
+    open STDERR, '>&STDOUT';
+
     exec($zookeeper_cmd)
       or LOGDIE "$zookeeper_cmd failed: $!";
   }
@@ -120,6 +125,11 @@ sub start_zookeeper
   {
     sleep(2.5);
     INFO "spawned zookeeper (pid $zookeeper_pid)";
+    open my $fh, '>', ZOO_PID_FILE
+      or LOGDIE "couldn't open file: $!";
+
+    print $fh $zookeeper_pid;
+    close $fh;
   }
 
   return 1;
@@ -129,6 +139,18 @@ sub stop_zookeeper
 {
   my $self = shift;
   sleep(0.2);
+
+  open my $fh, '<', ZOO_PID_FILE
+    or LOGDIE "couldn't open file: $!";
+
+  chomp( my $zookeeper_pid = <$fh> );
+  close $fh;
+
+  if ( !defined $zookeeper_pid || $zookeeper_pid !~ /^\d+$/ )
+  {
+    LOGDIE "invalid pid: $zookeeper_pid";
+  }
+
   INFO "killing $zookeeper_pid";
   kill( 15, $zookeeper_pid );
   return 1;
@@ -189,16 +211,16 @@ sub dispatcher_rpc
   my $cv = AnyEvent->condvar;
   if ( !defined $self->{dispatcher_handle} )
   {
-    DEBUG "creating new dispatcher handle";
+    DEBUG "creating new dispatcher handle: $self->{bind_address}:$self->{rpc_port}";
     tcp_connect(
       $self->{bind_address},
       $self->{rpc_port},
       sub {
+        local *__ANON__ = 'AE:cb:connect_cb';
         my ( $fh, $host, $port ) = @_;
         if ( !$host && !$port )
         {
-          ERROR "connection failed: $!";
-          return;
+          LOGDIE "connection failed: $!";
         }
         DEBUG "connection successful, starting SSL negotiation";
         $self->{dispatcher_handle} = AnyEvent::Handle->new(
