@@ -38,10 +38,10 @@ use constant MAX_WORKER_TASKS => 50;
 
 my $instance;
 
-sub run #{{
+sub run    #{{
 {
   my $class = shift;
-  $instance = { @_ };
+  $instance = {@_};
 
   $instance->{workers} = {
     idle => {},
@@ -68,14 +68,17 @@ sub run #{{
     $instance->{bind_address},
     $instance->{worker_port} || Pogo::Dispatcher::WorkerConnection->DEFAULT_PORT,
     sub { Pogo::Dispatcher::WorkerConnection->accept(@_); },
-    sub { local *__ANON__ = 'AE:cb:prepare_cb'; INFO "Accepting worker connections on $_[1]:$_[2]"; },
+    sub {
+      local *__ANON__ = 'AE:cb:prepare_cb';
+      INFO "Accepting worker connections on $_[1]:$_[2]";
+    },
   );
 
   # accept rpc connections from the (local) http API
   tcp_server(
     '127.0.0.1',    # rpc server binds to localhost only
     $instance->{rpc_port} || Pogo::Dispatcher::RPCConnection->DEFAULT_PORT,
-    sub { Pogo::Dispatcher::RPCConnection->accept(@_ ); },
+    sub { Pogo::Dispatcher::RPCConnection->accept(@_); },
     sub { local *__ANON__ = 'AE:cb:prepare_cb'; INFO "Accepting RPC connections on $_[1]:$_[2]"; },
   );
 
@@ -95,7 +98,7 @@ sub run #{{
 
   # Start event loop.
   AnyEvent->condvar->recv;
-} #}}}
+}    #}}}
 
 sub _poll
 {
@@ -105,6 +108,7 @@ sub _poll
     if ( !scalar @workers )
     {
       DEBUG "task waiting but no idle workers connected...";
+
       #return;      # technically we don't need workers to do startjob.
     }
 
@@ -116,7 +120,7 @@ sub _poll
       ERROR "Error executing @req: $@";
     };
 
-    if ($reqtype eq 'runhost')
+    if ( $reqtype eq 'runhost' )
     {
       next if ( !scalar @workers );    # skip if we have no workers.
       next
@@ -131,8 +135,9 @@ sub _poll
         $w->start_task( $job, $host );
       }
     }
-    elsif ($reqtype eq 'startjob')
+    elsif ( $reqtype eq 'startjob' )
     {
+
       #if ( store->delete("/pogo/taskq/$task") )
       if ( store->get("/pogo/taskq/$task") )
       {
@@ -142,14 +147,14 @@ sub _poll
         $job->start( $errc, sub { } );
       }
     }
-    elsif ($reqtype eq 'continuejob')
+    elsif ( $reqtype eq 'continuejob' )
     {
       if ( store->delete("/pogo/taskq/$task") )
       {
         Pogo::Engine->job($jobid)->continue_deferred();
       }
     }
-    elsif ($reqtype eq 'resumejob')
+    elsif ( $reqtype eq 'resumejob' )
     {
       if ( store->delete("/pogo/taskq/$task") )
       {
@@ -157,9 +162,9 @@ sub _poll
         $job->resume( 'job resumed by retry request', sub { $job->continue_deferred(); }, );
       }
     }
-    else 
-    { 
-      ERROR "Unknown task '$task'"; 
+    else
+    {
+      ERROR "Unknown task '$task'";
     }
   }
   return;    # should not be reached;
@@ -202,7 +207,7 @@ sub idle_worker
   {
     delete $instance->{workers}->{busy}->{ $worker->id };
     $instance->{workers}->{idle}->{ $worker->id } = $worker;
-    DEBUG sprintf("Marked worker %s idle", $worker->id);
+    DEBUG sprintf( "Marked worker %s idle", $worker->id );
   }
 }
 
@@ -212,7 +217,7 @@ sub retire_worker
   my ( $class, $worker ) = @_;
   delete $instance->{workers}->{idle}->{ $worker->id };
   delete $instance->{workers}->{busy}->{ $worker->id };
-  DEBUG sprintf("Retired worker %s", $worker->id);
+  DEBUG sprintf( "Retired worker %s", $worker->id );
 }
 
 sub dispatcher_cert
@@ -233,11 +238,10 @@ sub worker_cert
   return $instance->{worker_cert};
 }
 
-sub instance #{{{
+sub instance    #{{{
 {
   return $instance;
-} #}}}
-
+}               #}}}
 
 1;
 
