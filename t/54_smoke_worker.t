@@ -36,13 +36,18 @@ chdir($Bin);
 my $js = JSON->new;
 
 # start pogo-dispatcher
-ok( $pt->start_dispatcher, 'start dispatcher' );
+my $pid;
+ok( $pid = $pt->start_dispatcher, "start dispatcher $pid" );
+
+eval {
 
 my $conf;
 eval { $conf = LoadFile("$Bin/conf/dispatcher.conf"); };
 ok( !$@, "loadconf" );
 
 ok($pt->worker_rpc(["ping"])->[0] eq 'pong', 'ping');
+
+};
 
 # stop
 ok( $pt->stop_dispatcher, 'stop dispatcher' );

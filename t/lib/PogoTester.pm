@@ -91,7 +91,7 @@ sub start_dispatcher
     INFO "spawned dispatcher (pid $dispatcher_pid)";
   }
 
-  return 1;
+  return $dispatcher_pid;
 }
 
 sub stop_dispatcher
@@ -114,11 +114,12 @@ sub start_zookeeper
 
   if ( $zookeeper_pid == 0 )
   {
-    open STDIN, '/dev/null';
+    #open STDIN, '/dev/null';
     open STDOUT, '>/dev/null';
     open STDERR, '>&STDOUT';
 
-    exec("$zookeeper_cmd < /dev/null")
+    close STDIN;
+    exec($zookeeper_cmd)
       or LOGDIE "$zookeeper_cmd failed: $!";
   }
   else

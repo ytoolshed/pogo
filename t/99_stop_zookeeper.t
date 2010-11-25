@@ -16,7 +16,7 @@
 
 use common::sense;
 
-use Test::More tests => 3;
+use Test::More tests => 4;
 
 use Data::Dumper;
 use FindBin qw($Bin);
@@ -36,5 +36,6 @@ chdir($Bin);
 ok( Log::Log4perl::init("$Bin/conf/log4perl.conf"), "log4perl" );
 
 ok( $pt->stop_zookeeper,  'stop zookeeper' );
+ok( system("rm -rf $Bin/.tmp/version-*") == 0, "clear zookeeper");
 
 1;

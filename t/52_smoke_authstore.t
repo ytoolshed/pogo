@@ -29,27 +29,31 @@ use YAML::XS qw(LoadFile);
 use lib "$Bin/lib/";
 
 use PogoTester;
-ok(my $pt = PogoTester->new(), "new pt");
+ok( my $pt = PogoTester->new(), "new pt" );
 
 chdir($Bin);
 
 my $js = JSON->new;
 
 # start pogo-dispatcher
-ok( $pt->start_dispatcher, 'start dispatcher' );
+my $pid;
+ok( $pid = $pt->start_dispatcher, "start dispatcher $pid" );
 
-my $conf;
-eval { $conf = LoadFile("$Bin/conf/dispatcher.conf"); };
-ok( !$@, "loadconf" );
+eval {
+  my $conf;
+  eval { $conf = LoadFile("$Bin/conf/dispatcher.conf"); };
+  ok( !$@, "loadconf" );
 
-SKIP: {
-skip "broken for some reason", 1;
-ok($pt->authstore_rpc(["ping"])->[0] eq 'pong', 'ping');
+SKIP:
+  {
+    skip "broken for some reason", 1;
+    ok( $pt->authstore_rpc( ["ping"] )->[0] eq 'pong', 'ping' );
+  }
+
 };
 
 # stop
 ok( $pt->stop_dispatcher, 'stop dispatcher' );
-
 
 1;
 
