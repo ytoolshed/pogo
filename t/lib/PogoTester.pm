@@ -154,6 +154,7 @@ sub stop_zookeeper
 
   INFO "killing $zookeeper_pid";
   kill( 15, $zookeeper_pid );
+  unlink ZOO_PID_FILE;
   return 1;
 }
 
