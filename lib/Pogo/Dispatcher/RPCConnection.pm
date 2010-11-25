@@ -46,7 +46,7 @@ our %ALLOWED_RPC_METHODS = (
   listjobs      => 1,
   loadconf      => 1,
   ping          => 1,
-  run           => 1,
+#  run           => 1,
   stats         => 1,
   add_task      => 1,
 );
@@ -71,21 +71,26 @@ sub accept
       cert_file => Pogo::Dispatcher->dispatcher_cert,
     },
     on_connect => sub {
+      local *__ANON__ = 'AE:cb:on_connect';
       INFO sprintf("Received RPC connection from %s:%d", $host, $port);
     },
     on_eof  => sub {
+      local *__ANON__ = 'AE:cb:on_eof';
       $self->{handle}->destroy;
       ERROR sprintf("EOF received from RPC client at %s:%d", $host, $port);
     },
     on_error => sub {
+      local *__ANON__ = 'AE:cb:on_error';
       my $msg = $_[2];
       $self->{handle}->destroy;
       ERROR sprintf( "I/O error occurred while communicating with RPC client at %s:%d: %s", $host, $port, $msg);
     },
     on_read => sub {
+      local *__ANON__ = 'AE:cb:on_read';
       $self->{handle}->push_read(json => sub {
         my ( $h,   $req )  = @_;
         my ( $cmd, @args ) = @$req;
+        local *__ANON__ = 'AE:cb:on_read:push_read';
 
         # $cmd is either store or expire
 

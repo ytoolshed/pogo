@@ -49,7 +49,7 @@ sub new
   my ( $class, $args ) = @_;
 
   foreach
-    my $opt (qw(target namespace user run_as password command timeout job_timeout pkg_passwords))
+    my $opt (qw(target namespace user run_as password command timeout job_timeout))
   {
     LOGDIE "missing require job parameter '$opt'"
       unless exists $args->{$opt};
@@ -221,7 +221,7 @@ sub info
 
 sub log
 {
-  my ( $self, @stuff) = @_;
+  my ( $self, @stuff ) = @_;
   my $t = time();
   my $entry = to_json( [ $t, @stuff ] );
   store->create_sequence( $self->{path} . '/log/l', $entry )
@@ -451,6 +451,7 @@ sub worker_command
 
 # {{{ start
 
+# Job->start is called from _poll when 'startjob' tasks are encountered.
 sub start
 {
   my ( $self, $errc, $cont ) = @_;
@@ -460,11 +461,13 @@ sub start
   my $ns         = $self->namespace;
   my $concurrent = $self->concurrent;
 
-  my @flat_targets = _expand_targets( $target );
+  my @flat_targets = _expand_targets($target);
 
-  DEBUG Dumper \@flat_targets;
-
-  $self->set_state( 'gathering', 'job created; fetching host info', target => $self->meta('target') );
+  $self->set_state(
+    'gathering',
+    'job created; fetching host info',
+    target => $self->meta('target')
+  );
   INFO "starting job " . $self->id;
 
   my $fetching_error = sub {

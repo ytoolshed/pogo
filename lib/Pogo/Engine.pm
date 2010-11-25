@@ -468,9 +468,11 @@ sub ping
 
 sub _ping { return store->ping(@_); }
 
+# I don't think this is needed anymore
+# this should only ever happen via the API.
 sub run
 {
-  my (%args) = @_;
+  my ($class, %args) = @_;
   my $resp = Pogo::Engine::Response->new()->add_header( action => 'run' );
   foreach my $arg (qw(user run_as command range password namespace pkg_passwords))
   {
