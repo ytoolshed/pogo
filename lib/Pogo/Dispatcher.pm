@@ -91,7 +91,6 @@ sub run    #{{
 
   # periodically record stats
   my $stats_timer = AnyEvent->timer(
-    after    => 1,
     interval => 5,
     cb       => sub { _write_stats(); },
   );

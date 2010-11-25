@@ -66,10 +66,14 @@ eval {
   # ensure no workers are connected
   foreach my $dispatcher ( @{ $t->[1] } )
   {
-    ok( exists $dispatcher->{workers_idle}, "exists workers_idle" );
-    ok( exists $dispatcher->{workers_busy}, "exists workers_busy" );
-    ok( $dispatcher->{workers_idle} == 0,   "zero workers_idle" );
-    ok( $dispatcher->{workers_busy} == 0,   "zero workers_busy" );
+    ok( exists $dispatcher->{workers_idle}, "exists workers_idle" )
+      or print Dumper $dispatcher;
+    ok( exists $dispatcher->{workers_busy}, "exists workers_busy" )
+      or print Dumper $dispatcher;
+    ok( $dispatcher->{workers_idle} == 0,   "zero workers_idle" )
+      or print Dumper $dispatcher;
+    ok( $dispatcher->{workers_busy} == 0,   "zero workers_busy" )
+      or print Dumper $dispatcher;
   }
 
   # loadconf
@@ -78,23 +82,22 @@ eval {
     or print Dumper $t;
 
   # get the store up
-  ok( Pogo::Engine::Store->init( $conf ), "store up" ); 
+  ok( Pogo::Engine::Store->init($conf), "store up" );
 
   # start a job
   my %job1 = (
-    user      => 'test',
-    run_as    => 'test',
-    command   => 'echo job1',
-    target    => [ 'foo.example.com', ],
-    namespace => 'example',
-    password  => 'foo',
-    timeout   => 1800,
+    user        => 'test',
+    run_as      => 'test',
+    command     => 'echo job1',
+    target      => [ 'foo.example.com', ],
+    namespace   => 'example',
+    password    => 'foo',
+    timeout     => 1800,
     job_timeout => 1800,
   );
 
-  my $job = Pogo::Engine::Job->new( \%job1 );
-
-  print Dumper $job;
+  ok( my $job = Pogo::Engine::Job->new( \%job1 ), "job->new");
+  $job->start();
 
 };
 

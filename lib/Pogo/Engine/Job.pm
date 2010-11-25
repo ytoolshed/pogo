@@ -48,8 +48,7 @@ sub new
 {
   my ( $class, $args ) = @_;
 
-  foreach
-    my $opt (qw(target namespace user run_as password command timeout job_timeout))
+  foreach my $opt (qw(target namespace user run_as password command timeout job_timeout))
   {
     LOGDIE "missing require job parameter '$opt'"
       unless exists $args->{$opt};
@@ -470,19 +469,34 @@ sub start
   );
   INFO "starting job " . $self->id;
 
-  my $fetching_error = sub {
+  my $fetch_errc = sub {
+    local *__ANON__ = 'AE:cb:fetch_target_meta:errc';
     ERROR $self->id . ": unable to obtain host info for target: $@";
     $self->set_state( 'halted', "unable to obtain hostinfo for target: $@" );
     return $errc->();
   };
 
-  Pogo::Engine::fetch_hostinfo(
-    $target,
-    $ns->name,
-    $fetching_error,
-    sub {
-    },
-  );
+  my $fetch_cont = sub {
+    local *__ANON__ = 'AE:cb:fetch_target_meta:cont';
+    DEBUG $self->id . ": adding hosts";
+    DEBUG $self->id . ": computing slots";
+    $self->fetch_runnable_hosts();
+  };
+
+  $self->fetch_target_meta( \@flat_targets, $ns->name, $fetch_errc, $fetch_cont, );
+}
+
+# }}}
+# {{{ fetch_target_meta
+
+sub fetch_target_meta
+{
+  my ( $self, $targets, $namespace, $errc, $cont ) = @_;
+
+  # dig up the namespace configuration
+  # new all plugins
+  # for each plugin, fetch_meta()
+
 }
 
 # }}}
