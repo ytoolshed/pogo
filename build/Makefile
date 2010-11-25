@@ -12,7 +12,7 @@ $(TESTRESULTDIR) :
 	mkdir $(TESTRESULTDIR)
 
 $(TESTRESULTDIR)/%.xml : $(TESTDIR)/%.t
-	prove --formatter TAP::Formatter::JUnit $< > $@ || exit 0
+	prove --timer --formatter TAP::Formatter::JUnit $< > $@ || exit 0
 
 clean :
 	rm -f $(TESTRESULTS)
