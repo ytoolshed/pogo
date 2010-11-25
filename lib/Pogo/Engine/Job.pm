@@ -24,6 +24,7 @@ use JSON;
 use Log::Log4perl qw(:easy);
 use MIME::Base64 qw(encode_base64);
 use Time::HiRes qw(time);
+use String::Glob::Permute qw(string_glob_permute);
 
 use Pogo::Common;
 use Pogo::Engine;
@@ -459,11 +460,15 @@ sub start
   my $ns         = $self->namespace;
   my $concurrent = $self->concurrent;
 
-  $self->set_state( 'gathering', 'job created; fetching hostinfo', target => $target );
+  my @flat_targets = _expand_targets( $target );
+
+  DEBUG Dumper \@flat_targets;
+
+  $self->set_state( 'gathering', 'job created; fetching host info', target => $self->meta('target') );
   INFO "starting job " . $self->id;
 
   my $fetching_error = sub {
-    ERROR $self->id . ": unable to obtain hostinfo for target: $@";
+    ERROR $self->id . ": unable to obtain host info for target: $@";
     $self->set_state( 'halted', "unable to obtain hostinfo for target: $@" );
     return $errc->();
   };
@@ -479,6 +484,35 @@ sub start
 
 # }}}
 # {{{ misc helper
+
+# this is where we need to include support for expansion plugins a la range
+sub _expand_targets
+{
+  my $targets = shift;
+
+  # $targets should always be an arrayref
+  LOGDIE "malformed target parameter: $targets" unless ref $targets eq 'ARRAY';
+
+  my @flat;
+  foreach my $elem (@$targets)
+  {
+    push @flat, string_glob_permute($elem);
+  }
+
+  # we also need to uniq this, methinks
+  my %uniq = map { $_ => 1 } @flat;
+
+  return sort _hostsort keys %uniq;
+}
+
+sub _hostsort
+{
+  my $ahost = join( '.', reverse split /[\.\-]/, $a );
+  my $bhost = join( '.', reverse split /[\.\-]/, $b );
+
+  return $ahost cmp $bhost
+    || $a cmp $b;
+}
 
 # odd, why is this here?
 sub _get_pwent
