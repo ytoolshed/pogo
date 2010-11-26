@@ -4,7 +4,15 @@ TESTDIR := ../t
 TESTS := $(wildcard ../t/*.t)
 TESTRESULTS := $(patsubst $(TESTDIR)/%.t,$(TESTRESULTDIR)/%.xml,$(TESTS))
 
-test : $(TESTS) $(TESTRESULTS)
+hudson : $(TESTS) $(TESTRESULTS)
+  FORMATTER := --formatter TAP::Formatter::JUnit
+
+hudson-clean :
+	rm -f $(TESTRESULTS)
+	rm -rf $(TESTRESULTDIR)
+
+test: $(TESTS)
+	prove --timer $(TESTS) 2>/dev/null
 
 $(TESTS) : | $(TESTRESULTDIR)
 
@@ -12,11 +20,7 @@ $(TESTRESULTDIR) :
 	mkdir $(TESTRESULTDIR)
 
 $(TESTRESULTDIR)/%.xml : $(TESTDIR)/%.t
-	prove --timer --formatter TAP::Formatter::JUnit $< > $@ || exit 0
-
-clean :
-	rm -f $(TESTRESULTS)
-	rm -rf $(TESTRESULTDIR)
+	prove --timer $(FORMATTER) $< > $@ || exit 0
 
 
 
