@@ -36,24 +36,23 @@ chdir($Bin);
 my $js = JSON->new;
 
 # start pogo-dispatcher
+my $stopped = 0;
 my $pid;
 ok( $pid = $pt->start_dispatcher, "start dispatcher $pid" );
+END { kill 15, $pid unless $stopped; }
 
-eval {
-  my $conf;
-  eval { $conf = LoadFile("$Bin/conf/dispatcher.conf"); };
-  ok( !$@, "loadconf" );
+my $conf;
+eval { $conf = LoadFile("$Bin/conf/dispatcher.conf"); };
+ok( !$@, "loadconf" );
 
 SKIP:
-  {
-    skip "broken for some reason", 1;
-    ok( $pt->authstore_rpc( ["ping"] )->[0] eq 'pong', 'ping' );
-  }
-
-};
+{
+  skip "broken for some reason", 1;
+  ok( $pt->authstore_rpc( ["ping"] )->[0] eq 'pong', 'ping' );
+}
 
 # stop
-ok( $pt->stop_dispatcher, 'stop dispatcher' );
+ok( $pt->stop_dispatcher, 'stop dispatcher' ) and $stopped = 1;
 
 1;
 

@@ -494,6 +494,9 @@ sub fetch_target_meta
   my ( $self, $targets, $namespace, $errc, $cont ) = @_;
 
   # dig up the namespace configuration
+  my $ns_conf = $self->{ns}->get_conf();
+  DEBUG Dumper $ns_conf;
+
   # new all plugins
   # for each plugin, fetch_meta()
 

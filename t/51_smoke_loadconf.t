@@ -41,12 +41,13 @@ my $js      = JSON->new;
 my $valid   = {};
 my $invalid = {};
 
+my $stopped = 0;
 my $pid;
 ok( $pid = $pt->start_dispatcher, "start dispatcher $pid" );
-eval {
+END { kill 15, $pid unless $stopped; }
 
-  #{{{ VALID1
-  $valid->{valid1} = <<___VALID1___;
+#{{{ VALID1
+$valid->{valid1} = <<___VALID1___;
 # example constraints
 ---
 valid1:
@@ -79,9 +80,9 @@ valid1:
         - [ backend, frontend ]
 ___VALID1___
 
-  #}}}
-  #{{{ VALID2
-  $valid->{valid2} = <<___VALID2___;
+#}}}
+#{{{ VALID2
+$valid->{valid2} = <<___VALID2___;
 # example constraints
 ---
 valid2:  # minimal constraints should be valid
@@ -90,26 +91,26 @@ valid2:  # minimal constraints should be valid
   constraints:
 ___VALID2___
 
-  #}}}
-  #{{{ VALID3
-  $valid->{valid3} = <<___VALID3___;
+#}}}
+#{{{ VALID3
+$valid->{valid3} = <<___VALID3___;
 # example constraints
 ---
 valid3:  # minimal constraints should be valid
 ___VALID3___
 
-  #}}}
-  #{{{ VALID4
-  $valid->{valid4} = <<___VALID4___;
+#}}}
+#{{{ VALID4
+$valid->{valid4} = <<___VALID4___;
 # example constraints
 ---
 # minimal constraints should be valid
 ___VALID4___
-  delete $valid->{valid4};    # skip broken test
+delete $valid->{valid4};    # skip broken test
 
-  #}}}
-  #{{{ INVALID1
-  $invalid->{invalid1} = <<___INVALID1___;
+#}}}
+#{{{ INVALID1
+$invalid->{invalid1} = <<___INVALID1___;
 # example constraints
 ---
 invalid1:
@@ -142,9 +143,9 @@ invalid1:
         - [ backend, frontend ]
 ___INVALID1___
 
-  #}}}
-  #{{{ INVALID2
-  $invalid->{invalid2} = <<___INVALID2___;
+#}}}
+#{{{ INVALID2
+$invalid->{invalid2} = <<___INVALID2___;
 # example constraints
 ---
 invalid2:
@@ -177,9 +178,9 @@ invalid2:
         - [ backend, frontend ]
 ___INVALID2___
 
-  #}}}
-  #{{{ INVALID3
-  $invalid->{invalid3} = <<___INVALID3___;
+#}}}
+#{{{ INVALID3
+$invalid->{invalid3} = <<___INVALID3___;
 # example constraints
 ---
 invalid3:
@@ -212,9 +213,9 @@ invalid3:
         - [ backend, frontend ]
 ___INVALID3___
 
-  #}}}
-  #{{{ INVALID4
-  $invalid->{invalid4} = <<___INVALID4___;
+#}}}
+#{{{ INVALID4
+$invalid->{invalid4} = <<___INVALID4___;
 # example constraints
 ---
 apps:  #<-- missing top-level 'deployment' hash
@@ -246,36 +247,49 @@ constraints:
       - [ backend, frontend ]
 ___INVALID4___
 
-  #}}}
+#}}}
+# {{{ validity testing
 
-  foreach my $cname ( sort keys %$valid )
-  {
+foreach my $cname ( sort keys %$valid )
+{
 
-    my $namespace = $cname;
-    my $disp_conf;
-    my ( $gotconf, $const_conf, $r, $ns ) = ( undef, undef, undef, undef );
-    lives_ok { $disp_conf = LoadFile("$Bin/conf/dispatcher.conf"); } 'load dispatcher conf';
+  my $namespace = $cname;
+  my $disp_conf;
+  my ( $gotconf, $const_conf, $r, $ns ) = ( undef, undef, undef, undef );
+  lives_ok { $disp_conf = LoadFile("$Bin/conf/dispatcher.conf"); } 'load dispatcher conf';
 
-    # first test non-rpc
-    lives_ok { $const_conf = Load( $valid->{$cname} ); } "$cname eval yaml";
-    ok( $ns = Pogo::Engine->init($disp_conf)->loadconf( $namespace, $const_conf ),
-      "$cname set_conf" );
-    ok( $gotconf = Pogo::Engine->namespace($namespace)->get_conf, "$cname get_conf" );
+  # first test non-rpc
+  lives_ok { $const_conf = Load( $valid->{$cname} ); } "$cname eval yaml";
+  ok( $ns = Pogo::Engine->init($disp_conf)->loadconf( $namespace, $const_conf ),
+    "$cname set_conf" );
+  ok( $gotconf = Pogo::Engine->namespace($namespace)->get_conf, "$cname get_conf" );
 
-    # now test rpc
-    undef $gotconf;
-    ok( $r = $pt->dispatcher_rpc( [ 'loadconf', $namespace, $const_conf ] ),
-      "$cname rpc loadconf" );
-    ok( $r->[0]->{status} eq 'OK', "$cname rpc loadconf OK" );
-    ok( $gotconf = Pogo::Engine->namespace($namespace)->get_conf, "$cname rpc get_conf" );
-  }
+  # now test rpc
+  undef $gotconf;
+  ok( $r = $pt->dispatcher_rpc( [ 'loadconf', $namespace, $const_conf ] ), "$cname rpc loadconf" );
+  ok( $r->[0]->{status} eq 'OK', "$cname rpc loadconf OK" );
+  ok( $gotconf = Pogo::Engine->namespace($namespace)->get_conf, "$cname rpc get_conf" );
+}
 
-  #my $config = LoadFile($configf) || LOGDIE "cannot load $configf";
-  #my $constraints = LoadFile($constraintsf) || LOGDIE "cannot load $constraintsf";
-  #my $ns = Pogo::Engine->init($config)->namespace($namespace)->init->set_conf($constraints);
-};
+#my $config = LoadFile($configf) || LOGDIE "cannot load $configf";
+#my $constraints = LoadFile($constraintsf) || LOGDIE "cannot load $constraintsf";
+#my $ns = Pogo::Engine->init($config)->namespace($namespace)->init->set_conf($constraints);
 
-ok( $pt->stop_dispatcher, 'stop dispatcher' );
+# }}}
+# {{{ invalidity testing
+
+# }}}
+# {{{ plugin testing
+
+my $disp_conf;
+my $config;
+ok( $config = LoadFile("$Bin/conf/constraints.test.yaml"), "plugin load yaml" );
+lives_ok { $disp_conf = LoadFile("$Bin/conf/dispatcher.conf"); } 'load dispatcher conf';
+Pogo::Engine->init($disp_conf)->namespace('example')->set_conf($config);
+
+# }}}
+
+ok( $pt->stop_dispatcher, 'stop dispatcher' ) and $stopped = 1;
 
 1;
 

@@ -39,7 +39,10 @@ my $js = JSON->new;
 my $t;
 
 # start pogo-dispatcher
-ok( $pt->start_dispatcher, 'start dispatcher' );
+my $stopped = 0;
+my $pid;
+ok( $pid = $pt->start_dispatcher, 'start dispatcher' );
+END { kill 15, $pid unless $stopped; }
 
 my $conf;
 eval { $conf = LoadFile("$Bin/conf/dispatcher.conf"); };
@@ -63,12 +66,12 @@ ok( $t->[0]->{errmsg} eq qq/unknown rpc command 'weird'/, 'weird 2' );
 
 # loadconf
 my $conf_to_load = LoadFile("$Bin/conf/constraints.test.yaml");
-$t = $pt->dispatcher_rpc( ["loadconf", $conf_to_load] )
+$t = $pt->dispatcher_rpc( [ "loadconf", 'example', $conf_to_load ] )
   or print Dumper $t;
-
+ok( $t->[0]->{status} eq 'OK', "loadconf rpc ok" ) or print Dumper $t;
 
 # stop
-ok( $pt->stop_dispatcher, 'stop dispatcher' );
+ok( $pt->stop_dispatcher, 'stop dispatcher' ) and $stopped = 1;
 
 1;
 

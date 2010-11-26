@@ -36,6 +36,7 @@ sub new
     ns    => $nsname,
     path  => "/pogo/ns/$nsname",
     slots => {},
+    _plugin_cache => {},
   };
 
   bless $self, $class;
@@ -178,7 +179,7 @@ sub set_conf
   foreach my $deployment_name ( keys %$conf_in )
   {
     DEBUG "processing '$deployment_name'";
-    eval { $conf = _parse_deployment( $conf_in, $deployment_name, $conf_in->{$deployment_name} ); };
+    eval { $conf = $self->parse_deployment( $conf_in, $deployment_name, $conf_in->{$deployment_name} ); };
   }
 
   if ($@)
@@ -191,12 +192,26 @@ sub set_conf
   {
     LOGDIE "couldn't load config: $@";
   }
+
   return $self;
 }
 
-sub _parse_deployment
+sub get_plugin
 {
-  my ( $conf_in, $deployment_name, $data ) = @_;
+  my ($self,$name) = @_;
+
+  if (!exists $self->{_plugin_cache}->{$name})
+  {
+    eval "use Pogo::Plugin::Target::Inline;";
+    $self->{_plugin_cache}->{inline} = Pogo::Plugin::Target::Inline->new();
+  }
+
+  return $self->{_plugin_cache}->{$name};
+}
+
+sub parse_deployment
+{
+  my ( $self, $conf_in, $deployment_name, $data ) = @_;
   my $conf_out = {};
 
   foreach my $app ( keys %{ $data->{apps} } )
@@ -204,6 +219,14 @@ sub _parse_deployment
     DEBUG "processing '$deployment_name/app/$app'";
 
     # provider-processing code goes here
+    my $out = {};
+    foreach my $plugin_name (keys %{ $data->{apps}->{$app} })
+    {
+      DEBUG "got $plugin_name";
+      my $plugin = $self->get_plugin($plugin_name);
+      my $meta = $plugin->fetch_apps( $data->{apps}->{$app}->{$plugin_name} );
+    }
+
     $conf_out->{apps}->{$app} = delete $data->{apps}->{$app};
   }
 

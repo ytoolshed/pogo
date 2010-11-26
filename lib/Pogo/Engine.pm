@@ -431,10 +431,12 @@ sub loadconf
     return $resp->set_error("no configuration specified");
   }
 
-  if ( ref $ns )
+  if ( ref $ns || $ns !~ m/^[a-z0-9\.\-\_]+/i)
   {
-    return $resp->set_error("bad call to loadconf");
+    return $resp->set_error("bad call to loadconf: invalid namespace '$ns'");
   }
+
+  INFO "loading new config for namespace '$ns'";
 
   if ( $instance->namespace($ns)->init->set_conf($conf) )
   {

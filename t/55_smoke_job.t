@@ -16,7 +16,7 @@
 
 use common::sense;
 
-use Test::More 'no_plan';
+use Test::More tests => 13;
 
 use Data::Dumper;
 use FindBin qw($Bin);
@@ -44,65 +44,64 @@ my $js = JSON->new;
 my $t;
 
 # start pogo-dispatcher
+my $stopped = 0;
 my $pid;
 ok( $pid = $pt->start_dispatcher, "start dispatcher $pid" );
+END { kill 15, $pid unless $stopped; }
 
-eval {
+my $conf;
+$conf = LoadFile("$Bin/conf/dispatcher.conf");
+ok( !$@, "loadconf" );
 
-  my $conf;
-  $conf = LoadFile("$Bin/conf/dispatcher.conf");
-  ok( !$@, "loadconf" );
+# ping
+$t = $pt->dispatcher_rpc( ["ping"] );
+ok( $t->[1]->[0] == 0xDEADBEEF, 'ping' )
+  or print Dumper $t;
 
-  # ping
-  $t = $pt->dispatcher_rpc( ["ping"] );
-  ok( $t->[1]->[0] == 0xDEADBEEF, 'ping' )
-    or print Dumper $t;
+# stats
+$t = $pt->dispatcher_rpc( ["stats"] );
+ok( $t->[1]->[0]->{hostname} eq hostname(), 'stats' )
+  or print Dumper $t;
 
-  # stats
-  $t = $pt->dispatcher_rpc( ["stats"] );
-  ok( $t->[1]->[0]->{hostname} eq hostname(), 'stats' )
-    or print Dumper $t;
+# ensure no workers are connected
+foreach my $dispatcher ( @{ $t->[1] } )
+{
+  ok( exists $dispatcher->{workers_idle}, "exists workers_idle" )
+    or print Dumper $dispatcher;
+  ok( exists $dispatcher->{workers_busy}, "exists workers_busy" )
+    or print Dumper $dispatcher;
+  ok( $dispatcher->{workers_idle} == 0, "zero workers_idle" )
+    or print Dumper $dispatcher;
+  ok( $dispatcher->{workers_busy} == 0, "zero workers_busy" )
+    or print Dumper $dispatcher;
+}
 
-  # ensure no workers are connected
-  foreach my $dispatcher ( @{ $t->[1] } )
-  {
-    ok( exists $dispatcher->{workers_idle}, "exists workers_idle" )
-      or print Dumper $dispatcher;
-    ok( exists $dispatcher->{workers_busy}, "exists workers_busy" )
-      or print Dumper $dispatcher;
-    ok( $dispatcher->{workers_idle} == 0,   "zero workers_idle" )
-      or print Dumper $dispatcher;
-    ok( $dispatcher->{workers_busy} == 0,   "zero workers_busy" )
-      or print Dumper $dispatcher;
-  }
+# loadconf
+my $conf_to_load = LoadFile("$Bin/conf/constraints.test.yaml");
+$t = $pt->dispatcher_rpc( [ "loadconf", 'example', $conf_to_load ] )
+  or print Dumper $t;
+ok( $t->[0]->{status} eq 'OK', "loadconf rpc OK" ) or print Dumper $t;
 
-  # loadconf
-  my $conf_to_load = LoadFile("$Bin/conf/constraints.test.yaml");
-  $t = $pt->dispatcher_rpc( [ "loadconf", $conf_to_load ] )
-    or print Dumper $t;
+# get our local store up (dispatcher process's is separate)
+ok( Pogo::Engine::Store->init($conf), "store up" );
 
-  # get the store up
-  ok( Pogo::Engine::Store->init($conf), "store up" );
+# start a job
+my %job1 = (
+  user        => 'test',
+  run_as      => 'test',
+  command     => 'echo job1',
+  target      => [ 'foo.example.com', ],
+  namespace   => 'example',
+  password    => 'foo',
+  timeout     => 1800,
+  job_timeout => 1800,
+);
 
-  # start a job
-  my %job1 = (
-    user        => 'test',
-    run_as      => 'test',
-    command     => 'echo job1',
-    target      => [ 'foo.example.com', ],
-    namespace   => 'example',
-    password    => 'foo',
-    timeout     => 1800,
-    job_timeout => 1800,
-  );
-
-  ok( my $job = Pogo::Engine::Job->new( \%job1 ), "job->new");
-  $job->start();
-
-};
+ok( my $job = Pogo::Engine::Job->new( \%job1 ), "job->new" );
+$job->start();
 
 # stop
-ok( $pt->stop_dispatcher, 'stop dispatcher' );
+ok( $pt->stop_dispatcher, 'stop dispatcher' ) and $stopped = 1;
 
 1;
 
