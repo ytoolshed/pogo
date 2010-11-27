@@ -65,7 +65,7 @@ ok( $t->[0]->{status} eq 'ERROR', 'weird' )
 ok( $t->[0]->{errmsg} eq qq/unknown rpc command 'weird'/, 'weird 2' );
 
 # loadconf
-my $conf_to_load = LoadFile("$Bin/conf/constraints.test.yaml");
+my $conf_to_load = LoadFile("$Bin/conf/example.yaml");
 $t = $pt->dispatcher_rpc( [ "loadconf", 'example', $conf_to_load ] )
   or print Dumper $t;
 ok( $t->[0]->{status} eq 'OK', "loadconf rpc ok" ) or print Dumper $t;

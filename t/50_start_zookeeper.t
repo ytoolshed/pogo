@@ -36,6 +36,7 @@ chdir($Bin);
 ok( Log::Log4perl::init("$Bin/conf/log4perl.conf"), "log4perl" );
 
 # start
+$pt->stop_zookeeper; # just in case
 ok( $pt->start_zookeeper,  'start zookeeper' );
 
 1;

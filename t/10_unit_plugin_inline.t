@@ -30,7 +30,7 @@ chdir($Bin);
 
 ok( Log::Log4perl::init("$Bin/conf/log4perl.conf"), "log4perl" );
 
-use Pogo::Engine::Job;
+use Pogo::Plugin::Target::Inline;
 
 sub hsort
 {
@@ -57,7 +57,7 @@ my %input = (
 
 while ( my ( $expr, $res ) = each %input )
 {
-  my @flat = Pogo::Engine::Job::_expand_targets( [$expr] );
+  my @flat = Pogo::Plugin::Target::Inline->_expand_targets( [$expr] );
   $size_flat = scalar @flat;
   $size_expr = scalar @$res;
   ok( $size_flat == $size_expr, "$expr size" )
@@ -71,7 +71,7 @@ my @all_res;
 foreach my $res ( values %input ) { push @all_res, @$res; }
 @all_res = sort hsort @all_res;
 
-my @all_flat      = Pogo::Engine::Job::_expand_targets($all_expr);
+my @all_flat      = Pogo::Plugin::Target::Inline->_expand_targets($all_expr);
 my $all_res_size  = scalar @all_res;
 my $all_flat_size = scalar @all_flat;
 

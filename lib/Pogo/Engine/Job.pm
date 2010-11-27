@@ -39,10 +39,10 @@ our $UPDATE_INTERVAL = 0.10;
 # hosts
 our $POLL_INTERVAL = 10;
 
+# {{{ new
 # Pogo::Engine::Job->new() creates a new job from the ether
 # Pogo::Engine::Job->get(jobid) vivifies a job object from
 # an existing jobid
-# {{{ new
 
 sub new
 {
@@ -216,6 +216,396 @@ sub info
 }
 
 # }}}
+# {{{ host stuff
+
+sub host
+{
+  my ( $self, $hostname, $defstate ) = @_;
+  if ( !exists $self->{_hosts}->{$hostname} )
+  {
+    $self->{_hosts}->{$hostname} = Pogo::Engine::Job::Host->new( $self, $hostname, $defstate );
+  }
+  return $self->{_hosts}->{$hostname};
+}
+
+sub has_host
+{
+  my ( $self, $host ) = @_;
+  return store->exists( $self->{path} . "/host/$host" );
+}
+
+sub hosts
+{
+  my ($self) = @_;
+  if ( !exists $self->{_hostlist} )
+  {
+    $self->{_hostlist} = [ map { $self->host($_) } store->get_children( $self->{path} . '/host' ) ];
+  }
+  return @{ $self->{_hostlist} };
+}
+
+sub hosts_in_slot
+{
+  my ( $self, $slot ) = @_;
+  my $id = $slot->id;
+  return map { $self->host($_) } store->get_children( $self->{path} . "/slot/$id" );
+}
+
+sub runnable_hosts
+{
+  my ($self) = @_;
+  return grep { $_->is_runnable } $self->hosts;
+}
+
+sub unfinished_hosts
+{
+  my ($self) = @_;
+  return grep { !$_->is_finished } $self->hosts;
+}
+
+sub unfinished_hosts_in_slot
+{
+  my ( $self, $slot ) = @_;
+  return grep { !$_->is_finished } $self->hosts_in_slot($slot);
+}
+
+sub unsuccessful_hosts_in_slot
+{
+  my ( $self, $slot ) = @_;
+  return grep { $_->is_failed && $_->is_finished } $self->hosts_in_slot($slot);
+}
+
+sub running_hosts
+{
+  my ($self) = @_;
+  return grep { $_->is_running } $self->hosts;
+}
+
+sub failed_hosts
+{
+  my ($self) = @_;
+  return grep { $_->is_failed } $self->hosts;
+}
+
+sub runnable_hostinfo
+{
+  my ($self) = @_;
+  my @runnable = $self->runnable_hosts;
+  return { map { $_->name, $_->info } @runnable };
+}
+
+# }}}
+# {{{ slot stuff
+
+sub is_slot_done
+{
+  my ( $self, $slot ) = @_;
+  return scalar $self->unfinished_hosts_in_slot($slot) == 0;
+}
+
+sub is_slot_successful
+{
+  my ( $self, $slot ) = @_;
+  return scalar $self->unsuccessful_hosts_in_slot($slot) == 0;
+}
+
+sub init_slot
+{
+  my ( $self, $slot, $hostname ) = @_;
+  my $id = $slot->id;
+  store->create( $self->{path} . "/slot/$id",           '' );
+  store->create( $self->{path} . "/slot/$id/$hostname", '' );
+}
+
+# }}}
+# {{{ job state stuff
+sub is_running
+{
+  my $self  = shift;
+  my $state = $self->state;
+  return ( $state eq 'running' or $state eq 'gathering' )
+    ? 1
+    : 0;
+}
+
+# }}}
+# {{{ timeout
+
+sub start_job_timeout
+{
+  my $self    = shift;
+  my $jobid   = $self->id;
+  my $timeout = $self->job_timeout;
+
+  DEBUG "starting $jobid timeout timer for $timeout sec";
+  my $timeout_tmr;
+  $timeout_tmr = AnyEvent->timer(
+    after => $timeout,
+    cb    => sub {
+      local *__ANON__ = 'AE:cb:job_timeout';
+      my $job = Pogo::Server->job($jobid);
+
+      if ( $job->is_running )
+      {
+        $job->halt('timeout reached');
+      }
+
+      # archiving goes here
+
+      undef $timeout_tmr;
+    }
+  );
+}
+
+# }}}
+# {{{ various accessors
+
+sub password      { return $_[0]->_get_pwent()->[0]; }
+sub pkg_passwords { return $_[0]->_get_pwent()->[1]; }
+sub namespace     { return $_[0]->{ns} }
+sub id            { return $_[0]->{id} }
+sub user          { return $_[0]->meta('user'); }
+sub run_as        { return $_[0]->meta('run_as'); }
+sub timeout       { return $_[0]->meta('timeout'); }
+sub job_timeout   { return $_[0]->meta('job_timeout'); }
+sub retry         { return $_[0]->meta('retry'); }
+sub command       { return $_[0]->meta('command'); }
+sub concurrent    { return $_[0]->meta('concurrent'); }
+sub state         { return store->get( $_[0]->{path} ); }
+
+sub set_state
+{
+  my ( $self, $state, $msg, @extra ) = @_;
+  $self->{state} = $state;
+  store->set( $self->{path}, $state );
+  $self->log( 'jobstate', { state => $state, @extra }, $msg );
+}
+
+sub set_host_state
+{
+  my ( $self, $host, $state, $msg, @extra ) = @_;
+  if ( $host->set_state( $state, $msg, @extra ) )
+  {
+    @extra = map { _shrink_meta_value( $_, 150 ) } @extra;
+    $self->log( 'hoststate', { host => $host->{name}, state => $state, @extra }, $msg );
+  }
+}
+
+# }}}
+# {{{ start
+
+# Job->start is called from _poll when 'startjob' tasks are encountered.
+sub start
+{
+  my ( $self, $errc, $cont ) = @_;
+
+  # do hostinfo lookup for the targets
+  my $target     = from_json( $self->meta('target') );
+  my $ns         = $self->namespace;
+  my $concurrent = $self->concurrent;
+  my $joblock    = $self->lock("Pogo::Engine::Job::start:before_hostinfo");
+
+  my @flat_targets = $ns->target_plugin->_expand_targets($target);
+
+  $self->set_state(
+    'gathering',
+    'job created; fetching host info',
+    target => $self->meta('target')
+  );
+  INFO "starting job " . $self->id;
+
+  my $all_host_meta = {};
+  my @dead_hosts    = ();
+
+  eval {
+
+    # constrained codepath
+    # fetch all meta before we add to the job
+
+    if ( !$concurrent )
+    {
+      my $fetch_errc = sub {
+        local *__ANON__ = 'AE:cb:fetch_target_meta:errc';
+        ERROR $self->id . ": unable to obtain meta info for target: $@";
+        $self->set_state( 'halted', "unable to obtain meta info for target: $@" );
+        return $errc->();
+      };
+
+      my $fetch_cont = sub {
+        local *__ANON__ = 'AE:cb:fetch_target_meta:cont';
+        DEBUG $self->id . ": adding hosts";
+        DEBUG $self->id . ": computing slots";
+        $self->fetch_runnable_hosts();
+      };
+
+      $self->fetch_target_meta( \@flat_targets, $ns->name, $fetch_errc, $fetch_cont, );
+    }
+    else    # concurrent codepath
+    {
+      foreach my $hostname (@flat_targets)
+      {
+        my $host = $self->host( $hostname, 'waiting' );
+
+        # note that i think we should probably store host meta here anyway
+        # since we don't want a concurrent and a constrained job to overlap
+        # and allow too many hosts down
+        # lack of hinfo just isn't an error in that case
+
+        my $hmeta = { _concurrent => $concurrent };
+        $host->set_hostinfo($hmeta);
+        $all_host_meta->{$hostname} = $hmeta;
+      }
+    }
+    $self->start_job_timeout();
+  };
+
+  if ($@)
+  {
+    ERROR $@;
+    $self->unlock($joblock);
+    $errc->($@);
+  }
+
+  $self->unlock($joblock);
+
+  $ns->fetch_all_slots(
+    $self,
+    $all_host_meta,
+    $errc,
+    sub {
+      my ( $allslots, $hostslots ) = @_;
+      local *__ANON__ = 'start:fetch_all_slots:cont';
+
+      # create pre-computed slot lookups for all hosts in the job
+      while ( my ( $hostname, $slots ) = each %$hostslots )
+      {
+        map { $self->init_slot( $_, $hostname ) } @$slots;
+      }
+
+      # reserve a slot for all our dead hosts
+      foreach my $hostname (@dead_hosts)
+      {
+        map { $_->reserve( $self, $hostname ) } @{ $hostslots->{$hostname} };
+      }
+
+      # continue the job
+      $self->continue( $all_host_meta, $errc, $cont );
+    }
+  );
+}
+
+sub continue
+{
+  my ( $self, $all_host_meta, $errc, $cont ) = @_;
+
+  if ( !$self->is_running )
+  {
+    DEBUG "job $self->{id} is $self->{state}; not continuing job";
+    return;
+  }
+
+  # scan the entire hostlist for hosts that can be run and add
+  # tasks for them; this will have to be repeated
+  DEBUG "continuing job $self->{id}";
+  my $ns = $self->namespace;
+
+  $ns->fetch_runnable_hosts(
+    $self,
+    $all_host_meta,
+    $errc,
+    sub {
+      my ( $runnable, $unrunnable, $global_lock ) = @_;
+      my ( $nqueued, $nwaiting ) = ( 0, 0 );
+      local *__ANON__ = 'continue:fetch_runnable_hosts:cont';
+
+      foreach my $hostname ( sort { $a cmp $b } @$runnable )
+      {
+        DEBUG "enqueueing $hostname";
+        $self->set_host_state( $self->host($hostname), 'ready', 'preparing to connect...' );
+        Pogo::Engine->add_task( 'runhost', $self->{id}, $hostname );
+        $nqueued++;
+      }
+
+      while ( my ( $hostname, $blocker ) = each(%$unrunnable) )
+      {
+        DEBUG "not runnable yet: $hostname - $blocker";
+        $self->set_host_state( $self->host($hostname), 'waiting', "waiting for $blocker" );
+        $nwaiting++;
+      }
+
+      store->unlock($global_lock);
+
+      # are we done?
+      if ( scalar $self->unfinished_hosts == 0 )
+      {
+        DEBUG "job $self->{id} appears to be finished";
+        $self->set_state( 'finished', 'no more hosts to run' );
+        $self->unlock_all();
+        return;
+      }
+
+      if ( $nqueued == 0 && $nwaiting > 0 )
+      {
+
+        # are any hosts running/ready at all?
+        if ( scalar $self->running_hosts == 0 )
+        {
+          DEBUG "job $self->{id} appears to be stuck";
+          $self->set_state( 'deadlocked', 'unable to run more hosts due to failures' );
+
+          # TODO: mass-change 'waiting' hosts to 'deadlocked';
+          $self->unlock_all();
+          return;
+        }
+      }
+
+      return $cont->( $nqueued, $nwaiting );
+    }
+  );
+}
+
+# }}}
+# {{{ fetch_target_meta
+
+sub fetch_target_meta
+{
+  my ( $self, $targets, $namespace, $errc, $cont ) = @_;
+
+  my $plugin_cont = sub {
+    local *__ANON__ = 'plugin_cont';
+
+    # after fetching, we should check if we're last and
+    # if so, call the original cont
+    DEBUG "got a batch";
+  };
+
+  my $plugin_err = sub {
+    local *__ANON__ = 'plugin_err';
+    ERROR "plugin error";
+  };
+
+  # dig up the namespace configuration
+  foreach my $plugin ( $self->{ns}->plugins )
+  {
+    DEBUG Dumper $plugin;
+    $plugin->fetch_meta( $targets, $plugin_err, $plugin_cont );
+  }
+}
+
+# }}}
+# {{{ locking
+
+sub lock
+{
+  my ( $self, $source ) = @_;
+  LOGDIE "source not supplied to job lock request" if ( !defined $source );
+  store->_lock_write( $self->{path} . "/lock", $source, 60000 )
+    or LOGDIE "timed out locking $self->{id}\n";
+}
+
+sub unlock { store->delete( $_[1] ); }
+
+# }}}
 # {{{ logging
 
 sub log
@@ -293,138 +683,8 @@ sub parse_log
 }
 
 # }}}
-# {{{ host stuff
+# {{{ worker assembly - wow this is awkward
 
-sub host
-{
-  my ( $self, $hostname, $defstate ) = @_;
-  if ( !exists $self->{_hosts}->{$hostname} )
-  {
-    $self->{_hosts}->{$hostname} = Pogo::Engine::Job::Host->new( $self, $hostname, $defstate );
-  }
-  return $self->{_hosts}->{$hostname};
-}
-
-sub has_host
-{
-  my ( $self, $host ) = @_;
-  return store->exists( $self->{path} . "/host/$host" );
-}
-
-sub hosts
-{
-  my ($self) = @_;
-  if ( !exists $self->{_hostlist} )
-  {
-    $self->{_hostlist} = [ map { $self->host($_) } store->get_children( $self->{path} . '/host' ) ];
-  }
-  return @{ $self->{_hostlist} };
-}
-
-sub hosts_in_slot
-{
-  my ( $self, $slot ) = @_;
-  my $id = $slot->id;
-  return map { $self->host($_) } store->get_children( $self->{path} . "/slot/$id" );
-}
-
-sub runnable_hosts
-{
-  my ($self) = @_;
-  return grep { $_->is_runnable } $self->hosts;
-}
-
-sub unfinished_hosts
-{
-  my ($self) = @_;
-  return grep { !$_->is_finished } $self->hosts;
-}
-
-sub unfinished_hosts_in_slot
-{
-  my ( $self, $slot ) = @_;
-  return grep { !$_->is_finished } $self->hosts_in_slot($slot);
-}
-
-sub unsuccessful_hosts_in_slot
-{
-  my ( $self, $slot ) = @_;
-  return grep { $_->is_failed && $_->is_finished } $self->hosts_in_slot($slot);
-}
-
-sub running_hosts
-{
-  my ($self) = @_;
-  return grep { $_->is_running } $self->hosts;
-}
-
-sub failed_hosts
-{
-  my ($self) = @_;
-  my $state = $self->state;
-  return $state eq 'running'
-    or $state   eq 'gathering';
-}
-
-sub runnable_hostinfo
-{
-  my ($self) = @_;
-  my @runnable = $self->runnable_hosts;
-  return { map { $_->name, $_->info } @runnable };
-}
-
-# }}}
-# {{{ slot stuff
-
-sub is_slot_done
-{
-  my ( $self, $slot ) = @_;
-  return scalar $self->unfinished_hosts_in_slot($slot) == 0;
-}
-
-sub is_slot_successful
-{
-  my ( $self, $slot ) = @_;
-  return scalar $self->unsuccessful_hosts_in_slot($slot) == 0;
-}
-
-# }}}
-# {{{ various accessors
-
-sub password      { return $_[0]->_get_pwent()->[0]; }
-sub pkg_passwords { return $_[0]->_get_pwent()->[1]; }
-sub namespace     { return $_[0]->{ns} }
-sub id            { return $_[0]->{id} }
-sub user          { return $_[0]->meta('user'); }
-sub run_as        { return $_[0]->meta('run_as'); }
-sub timeout       { return $_[0]->meta('timeout'); }
-sub job_timeout   { return $_[0]->meta('job_timeout'); }
-sub retry         { return $_[0]->meta('retry'); }
-sub command       { return $_[0]->meta('command'); }
-sub concurrent    { return $_[0]->meta('concurrent'); }
-sub state         { return store->get( $_[0]->{path} ); }
-
-sub set_state
-{
-  my ( $self, $state, $msg, @extra ) = @_;
-  $self->{state} = $state;
-  store->set( $self->{path}, $state );
-  $self->log( 'jobstate', { state => $state, @extra }, $msg );
-}
-
-sub set_host_state
-{
-  my ( $self, $host, $state, $msg, @extra ) = @_;
-  if ( $host->set_state( $state, $msg, @extra ) )
-  {
-    @extra = map { _shrink_meta_value( $_, 150 ) } @extra;
-    $self->log( 'hoststate', { host => $host->{name}, state => $state, @extra }, $msg );
-  }
-}
-
-# }}}
-
-# wow this is awkward
 sub worker_command
 {
   my ($self) = @_;
@@ -448,91 +708,8 @@ sub worker_command
   return [ 'POGOATTACHMENT!' . encode_base64($worker_stub) . $exe ];
 }
 
-# {{{ start
-
-# Job->start is called from _poll when 'startjob' tasks are encountered.
-sub start
-{
-  my ( $self, $errc, $cont ) = @_;
-
-  # do hostinfo lookup for the targets
-  my $target     = from_json( $self->meta('target') );
-  my $ns         = $self->namespace;
-  my $concurrent = $self->concurrent;
-
-  my @flat_targets = _expand_targets($target);
-
-  $self->set_state(
-    'gathering',
-    'job created; fetching host info',
-    target => $self->meta('target')
-  );
-  INFO "starting job " . $self->id;
-
-  my $fetch_errc = sub {
-    local *__ANON__ = 'AE:cb:fetch_target_meta:errc';
-    ERROR $self->id . ": unable to obtain host info for target: $@";
-    $self->set_state( 'halted', "unable to obtain hostinfo for target: $@" );
-    return $errc->();
-  };
-
-  my $fetch_cont = sub {
-    local *__ANON__ = 'AE:cb:fetch_target_meta:cont';
-    DEBUG $self->id . ": adding hosts";
-    DEBUG $self->id . ": computing slots";
-    $self->fetch_runnable_hosts();
-  };
-
-  $self->fetch_target_meta( \@flat_targets, $ns->name, $fetch_errc, $fetch_cont, );
-}
-
-# }}}
-# {{{ fetch_target_meta
-
-sub fetch_target_meta
-{
-  my ( $self, $targets, $namespace, $errc, $cont ) = @_;
-
-  # dig up the namespace configuration
-  my $ns_conf = $self->{ns}->get_conf();
-  DEBUG Dumper $ns_conf;
-
-  # new all plugins
-  # for each plugin, fetch_meta()
-
-}
-
 # }}}
 # {{{ misc helper
-
-# this is where we need to include support for expansion plugins a la range
-sub _expand_targets
-{
-  my $targets = shift;
-
-  # $targets should always be an arrayref
-  LOGDIE "malformed target parameter: $targets" unless ref $targets eq 'ARRAY';
-
-  my @flat;
-  foreach my $elem (@$targets)
-  {
-    push @flat, string_glob_permute($elem);
-  }
-
-  # we also need to uniq this, methinks
-  my %uniq = map { $_ => 1 } @flat;
-
-  return sort _hostsort keys %uniq;
-}
-
-sub _hostsort
-{
-  my $ahost = join( '.', reverse split /[\.\-]/, $a );
-  my $bhost = join( '.', reverse split /[\.\-]/, $b );
-
-  return $ahost cmp $bhost
-    || $a cmp $b;
-}
 
 # odd, why is this here?
 sub _get_pwent

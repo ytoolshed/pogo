@@ -14,16 +14,83 @@ package Pogo::Plugin::Target;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-1;
+use Data::Dumper;
+
+use 5.008;
+use common::sense;
+
+use AnyEvent;
+use Log::Log4perl qw(:easy);
+
+our $BATCH_SIZE = 200;
 
 sub new
 {
   my $class = shift;
-  my $self = {};
+  my $self  = {};
 
   bless $self, $class;
   return $self;
 }
+
+sub set_batch_size
+{
+  my ( $self, $batch_size ) = @_;
+  $BATCH_SIZE = $batch_size;
+}
+
+sub _expand_targets
+{
+  my ($self, $targets) = @_;
+  my @flat;
+  foreach my $elem (@$targets)
+  {
+    push @flat, $self->expand_target($elem);
+  }
+
+  # we also need to uniq this, methinks
+  my %uniq = map { $_ => 1 } @flat;
+
+  return sort _hostsort keys %uniq;
+}
+
+sub _fetch_apps
+{
+  my ( $self, $targets, $errc, $cont ) = @_;
+  my $info;
+
+  my $cv = AnyEvent->condvar;
+
+  DEBUG Dumper $targets;
+  foreach my $target (@$targets)
+  {
+    $cv->send( $self->meta_for_host($target) );
+    if ($info)
+    {
+      $cont->($info);
+    }
+    else
+    {
+      $errc->();
+    }
+  }
+}
+
+sub _fetch_envs
+{
+
+}
+
+sub _hostsort
+{
+  my $ahost = join( '.', reverse split /[\.\-]/, $a );
+  my $bhost = join( '.', reverse split /[\.\-]/, $b );
+
+  return $ahost cmp $bhost
+    || $a cmp $b;
+}
+
+1;
 
 =pod
 

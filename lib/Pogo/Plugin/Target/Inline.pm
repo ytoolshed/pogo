@@ -23,19 +23,30 @@ use String::Glob::Permute qw(string_glob_permute);
 
 use base qw(Pogo::Plugin::Target);
 
-sub fetch_apps
+sub get_apps
 {
-  my ($self, $expressions) = @_;
+  my ( $self, $expressions ) = @_;
   DEBUG Dumper $expressions;
 }
 
-
-sub fetch_envs
+sub get_envs
 {
-  my ($self, $expressions) = @_;
+  my ( $self, $expressions ) = @_;
   DEBUG Dumper $expressions;
 }
 
+sub expand_target
+{
+  my ( $self, $target ) = @_;
+
+  my @flat;
+  push @flat, string_glob_permute($target);
+
+  # we also need to uniq this, methinks
+  my %uniq = map { $_ => 1 } @flat;
+
+  return keys %uniq;
+}
 
 1;
 

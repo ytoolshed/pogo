@@ -14,6 +14,182 @@ package Pogo::Engine::Job::Host;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+use 5.008;
+use common::sense;
+
+use JSON qw(to_json from_json);
+use Log::Log4perl qw(:easy);
+use Pogo::Engine::Store qw(store);
+
+sub new
+{
+  my ( $class, $job, $hostname, $defstate ) = @_;
+
+  my $self = {
+    name => $hostname,
+    path => $job->{path} . "/host/$hostname",
+  };
+
+  bless $self, $class;
+
+  if ( !store->exists( $self->path ) )
+  {
+    if ( !defined $defstate )
+    {
+      LOGCONFESS "No such host $hostname in job " . $job->id;
+    }
+
+    # state is cached here, host objects are recreated on every request
+    my $state = ( $defstate || 'waiting' ) . $;;
+    store->create( $self->path, $state )
+      or LOGDIE "error creating $self->{path}: " . store->get_error_name();
+
+  }
+
+  return $self;
+}
+
+sub _get
+{
+  my ( $self, $k ) = @_;
+  return store->get( $self->path . '/' . $k );
+}
+
+sub _set
+{
+  my ( $self, $k, $v ) = @_;
+  my $node = $self->path . '/' . $k;
+  if ( !store->create( $node, $v ) )
+  {
+    if ( store->exists($node) )
+    {
+      store->set( $node, $v )
+        or ERROR "Couldn't set $node: " . store->get_error_name;
+    }
+    else
+    {
+      LOGDIE "error creating $node: " . store->get_error_name;
+    }
+  }
+}
+
+sub add_outputurl
+{
+  my ( $self, $url ) = @_;
+  my $old = from_json( $self->_get('_output') );
+  if ( defined $old )
+  {
+    push @$old, $url;
+  }
+  else
+  {
+    $old = [$url];
+  }
+  return $self->_set( '_output', to_json($old) );
+}
+
+sub outputurls
+{
+  my $self = shift;
+  return from_json( $self->_get('_output') );
+}
+
+sub set_hostinfo
+{
+  my ( $self, $info ) = @_;
+  $self->{info} = $info;
+  $info = to_json($info);
+  return $self->_set( '_info', $info );
+}
+
+sub info
+{
+  my $self = shift;
+  if ( !exists $self->{info} )
+  {
+    my $hinfo = $self->_get('_info');
+    if ( !defined $hinfo )
+    {
+      WARN "no hostinfo found for " . $self->name;
+      return;
+    }
+    $self->{info} = from_json($hinfo);
+  }
+
+  return $self->{info};
+}
+
+sub state
+{
+  my $self = shift;
+  my ( $state, $extstate ) = split /$;/, store->get( $self->path );
+  return wantarray ? ( $state, $extstate ) : $state;    # <-- ugh
+}
+
+sub _is_finished
+{
+  my $state = shift;
+  return (
+         $state eq 'finished'
+      or $state eq 'unreachable'
+      or $state eq 'failed'
+      or $state eq 'skipped'
+      or $state eq 'halted'
+      or $state eq 'deadlocked'
+  ) ? 1 : 0;
+}
+
+sub _is_failed
+{
+  my $state = shift;
+  return (
+         $state eq 'unreachable'
+      or $state eq 'offline'
+      or $state eq 'failed'
+      or $state eq 'deadlocked'
+  ) ? 1 : 0;
+}
+
+sub _is_running
+{
+  my $state = shift;
+  return ( $state eq 'ready' or $state eq 'running' )
+    ? 1
+    : 0;
+}
+
+sub _is_runnable
+{
+  my $state = shift;
+  return ( $state eq 'waiting' or $state eq 'deadlocked' )
+    ? 1
+    : 0;
+}
+
+# Monitor state transitions and keep tally of finished hosts as an optimization
+# (otherwise we have to scan the entire host list to figure out when a job is
+# done)
+sub set_state
+{
+  my ( $self, $state, $ext, @extrastate ) = @_;
+  my ( $prevstate, $prevext ) = $self->state;
+
+  return if ( $prevstate eq $state and $prevext eq $ext and !@extrastate );
+
+  store->set( $self->{path}, $state . $; . $ext );
+
+  return 1;
+}
+
+sub is_finished { return $_[0]->_is_finished( $_[0]->state ) }
+sub is_runnable { return $_[0]->_is_runnable( $_[0]->state ) }
+sub is_running  { return $_[0]->_is_running( $_[0]->state ) }
+sub is_failed   { return $_[0]->_is_failed( $_[0]->state ) }
+
+sub job  { return $_[0]->{job}; }
+sub name { return $_[0]->{name}; }
+sub path { return $_[0]->{path}; }
+
 1;
 
 =pod

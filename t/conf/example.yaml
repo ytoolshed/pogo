@@ -1,0 +1,31 @@
+# example constraints
+---
+plugins:
+  apps: Pogo::Plugin::Target::Inline
+  envs: Pogo::Plugin::Target::Inline
+  targets: Pogo::Plugin::Target::Inline
+
+apps:
+  frontend:
+    - foo[1-100].east.example.com
+    - foo[1-100].west.example.com
+  backend:
+    - bar[1-10].east.example.com
+    - bar[1-10].west.example.com
+
+envs:
+  coast:
+    east:
+      - foo[1-100].east.example.com
+      - bar[1-10].east.example.com
+    west:
+      - foo[1-100].west.example.com
+      - bar[1-10].west.example.com
+
+constraints:
+  coast:
+    concurrency:
+      - frontend: 25%
+      - backend: 1
+    sequence:
+      - [ backend, frontend ]

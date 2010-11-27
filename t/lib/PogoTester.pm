@@ -141,6 +141,8 @@ sub stop_zookeeper
   my $self = shift;
   sleep(0.2);
 
+  return unless -r ZOO_PID_FILE;
+
   open my $fh, '<', ZOO_PID_FILE
     or LOGDIE "couldn't open file: $!";
 

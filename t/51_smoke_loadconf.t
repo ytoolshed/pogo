@@ -18,7 +18,7 @@ use Data::Dumper;
 
 use common::sense;
 
-use Test::More 'no_plan';
+use Test::More tests => 27;
 use Test::Exception;
 
 use FindBin qw($Bin);
@@ -50,45 +50,42 @@ END { kill 15, $pid unless $stopped; }
 $valid->{valid1} = <<___VALID1___;
 # example constraints
 ---
-valid1:
-  apps:
-    frontend:
-      inline:
-        - foo[1-100].east.example.com
-        - foo[1-100].west.example.com
-    backend:
-      inline:
-        - bar[1-10].east.example.com
-        - bar[1-10].west.example.com
+plugins:
+apps:
+  frontend:
+    - foo[1-100].east.example.com
+    - foo[1-100].west.example.com
+  backend:
+    - bar[1-10].east.example.com
+    - bar[1-10].west.example.com
 
-  envs:
-    coast:
-      inline:
-        east:
-          - foo[1-100].east.example.com
-          - bar[1-10].east.example.com
-        west:
-          - foo[1-100].west.example.com
-          - bar[1-10].west.example.com
+envs:
+  coast:
+    east:
+      - foo[1-100].east.example.com
+      - bar[1-10].east.example.com
+    west:
+      - foo[1-100].west.example.com
+      - bar[1-10].west.example.com
 
-  constraints:
-    coast:
-      concurrency:
-        - frontend: 25%
-        - backend: 1
-      sequence:
-        - [ backend, frontend ]
+constraints:
+  coast:
+    concurrency:
+      - frontend: 25%
+      - backend: 1
+    sequence:
+      - [ backend, frontend ]
 ___VALID1___
 
 #}}}
 #{{{ VALID2
 $valid->{valid2} = <<___VALID2___;
 # example constraints
----
-valid2:  # minimal constraints should be valid
-  apps:
-  envs:
-  constraints:
+---   # minimal constraints should be valid
+plugins:
+apps:
+envs:
+constraints:
 ___VALID2___
 
 #}}}
@@ -96,51 +93,38 @@ ___VALID2___
 $valid->{valid3} = <<___VALID3___;
 # example constraints
 ---
-valid3:  # minimal constraints should be valid
+{} # minimal constraints should be valid
 ___VALID3___
-
-#}}}
-#{{{ VALID4
-$valid->{valid4} = <<___VALID4___;
-# example constraints
----
-# minimal constraints should be valid
-___VALID4___
-delete $valid->{valid4};    # skip broken test
 
 #}}}
 #{{{ INVALID1
 $invalid->{invalid1} = <<___INVALID1___;
 # example constraints
 ---
-invalid1:
-  apps:
-    frontend:
-      inline:
-        - foo[1-100].east.example.com
-        - foo[1-100].west.example.com
-    backend:
-      inline:
-        - bar[1-10].east.example.com
-        - bar[1-10].west.example.com
+apps:
+  frontend:
+    - foo[1-100].east.example.com
+    - foo[1-100].west.example.com
+  backend:
+    - bar[1-10].east.example.com
+    - bar[1-10].west.example.com
 
-  envs:
-    coast:
-      inline:
-        east:
-          - foo[1-100].east.example.com
-          - bar[1-10].east.example.com
-        west:
-          - foo[1-100].west.example.com
-          - bar[1-10].west.example.com
+envs:
+  coast:
+    east:
+      - foo[1-100].east.example.com
+      - bar[1-10].east.example.com
+    west:
+      - foo[1-100].west.example.com
+      - bar[1-10].west.example.com
 
-  constraints:
-    coast:
-      concurrency:
-        - front: 25%      # <-- here we reference an application that doesn't exist
-        - backend: 1
-      sequence:
-        - [ backend, frontend ]
+constraints:
+  coast:
+    concurrency:
+      - front: 25%      # <-- here we reference an application that doesn't exist
+      - backend: 1
+    sequence:
+      - [ backend, frontend ]
 ___INVALID1___
 
 #}}}
@@ -148,34 +132,30 @@ ___INVALID1___
 $invalid->{invalid2} = <<___INVALID2___;
 # example constraints
 ---
-invalid2:
-  app:        # <--- should be 'apps' not 'app'
-    frontend:
-      inline:
-        - foo[1-100].east.example.com
-        - foo[1-100].west.example.com
-    backend:
-      inline:
-        - bar[1-10].east.example.com
-        - bar[1-10].west.example.com
+app:        # <--- should be 'apps' not 'app'
+  frontend:
+    - foo[1-100].east.example.com
+    - foo[1-100].west.example.com
+  backend:
+    - bar[1-10].east.example.com
+    - bar[1-10].west.example.com
 
-  envs:
-    coast:
-      inline:
-        east:
-          - foo[1-100].east.example.com
-          - bar[1-10].east.example.com
-        west:
-          - foo[1-100].west.example.com
-          - bar[1-10].west.example.com
+envs:
+  coast:
+    east:
+      - foo[1-100].east.example.com
+      - bar[1-10].east.example.com
+    west:
+      - foo[1-100].west.example.com
+      - bar[1-10].west.example.com
 
-  constraints:
-    coast:
-      concurrency:
-        - frontend: 25%
-        - backend: 1
-      sequence:
-        - [ backend, frontend ]
+constraints:
+  coast:
+    concurrency:
+      - frontend: 25%
+      - backend: 1
+    sequence:
+      - [ backend, frontend ]
 ___INVALID2___
 
 #}}}
@@ -183,34 +163,30 @@ ___INVALID2___
 $invalid->{invalid3} = <<___INVALID3___;
 # example constraints
 ---
-invalid3:
-  apps:
-    frontend:
-      inline:
-        - foo[1-100].east.example.com
-        - foo[1-100].west.example.com
-    backend:
-      inline:
-        - bar[1-10].east.example.com
-        - bar[1-10].west.example.com
+apps:
+  frontend:
+    - foo[1-100].east.example.com
+    - foo[1-100].west.example.com
+  backend:
+    - bar[1-10].east.example.com
+    - bar[1-10].west.example.com
 
-  envs:
-    coast:
-      inline:
-        east:
-          - foo[1-100].east.example.com
-          - bar[1-10].east.example.com
-        west:
-          - foo[1-100].west.example.com
-          - bar[1-10].west.example.com
+envs:
+  coast:
+    east:
+      - foo[1-100].east.example.com
+      - bar[1-10].east.example.com
+    west:
+      - foo[1-100].west.example.com
+      - bar[1-10].west.example.com
 
-  constraints:
-    coast:
-      concurrency:  # <-- concurrency is supposed to be an array
-        frontend: 25%
-        backend: 1
-      sequence:
-        - [ backend, frontend ]
+constraints:
+  coast:
+    concurrency:  # <-- concurrency is supposed to be an array
+      frontend: 25%
+      backend: 1
+    sequence:
+      - [ backend, frontend ]
 ___INVALID3___
 
 #}}}
@@ -218,25 +194,22 @@ ___INVALID3___
 $invalid->{invalid4} = <<___INVALID4___;
 # example constraints
 ---
-apps:  #<-- missing top-level 'deployment' hash
+apps:
   frontend:
-    inline:
-      - foo[1-100].east.example.com
-      - foo[1-100].west.example.com
+    - foo[1-100].east.example.com
+    - foo[1-100].west.example.com
   backend:
-    inline:
-      - bar[1-10].east.example.com
-      - bar[1-10].west.example.com
+    - bar[1-10].east.example.com
+    - bar[1-10].west.example.com
 
 envs:
   coast:
-    inline:
-      east:
-        - foo[1-100].east.example.com
-        - bar[1-10].east.example.com
-      west:
-        - foo[1-100].west.example.com
-        - bar[1-10].west.example.com
+    east:
+      - foo[1-100].east.example.com
+      - bar[1-10].east.example.com
+    west:
+      - foo[1-100].west.example.com
+      - bar[1-10].west.example.com
 
 constraints:
   coast:
@@ -260,14 +233,13 @@ foreach my $cname ( sort keys %$valid )
 
   # first test non-rpc
   lives_ok { $const_conf = Load( $valid->{$cname} ); } "$cname eval yaml";
-  ok( $ns = Pogo::Engine->init($disp_conf)->loadconf( $namespace, $const_conf ),
-    "$cname set_conf" );
-  ok( $gotconf = Pogo::Engine->namespace($namespace)->get_conf, "$cname get_conf" );
+  lives_ok { $ns = Pogo::Engine->init($disp_conf)->loadconf( $namespace, $const_conf ); } "$cname set_conf";
+  lives_ok { $gotconf = Pogo::Engine->namespace($namespace)->get_conf;  } "$cname get_conf";
 
   # now test rpc
   undef $gotconf;
   ok( $r = $pt->dispatcher_rpc( [ 'loadconf', $namespace, $const_conf ] ), "$cname rpc loadconf" );
-  ok( $r->[0]->{status} eq 'OK', "$cname rpc loadconf OK" );
+  ok( $r->[0]->{status} eq 'OK', "$cname rpc loadconf OK: " . $r->[0]->{errmsg} );
   ok( $gotconf = Pogo::Engine->namespace($namespace)->get_conf, "$cname rpc get_conf" );
 }
 
@@ -283,7 +255,7 @@ foreach my $cname ( sort keys %$valid )
 
 my $disp_conf;
 my $config;
-ok( $config = LoadFile("$Bin/conf/constraints.test.yaml"), "plugin load yaml" );
+ok( $config = LoadFile("$Bin/conf/example.yaml"), "plugin load yaml" );
 lives_ok { $disp_conf = LoadFile("$Bin/conf/dispatcher.conf"); } 'load dispatcher conf';
 Pogo::Engine->init($disp_conf)->namespace('example')->set_conf($config);
 

@@ -16,8 +16,9 @@
 
 use common::sense;
 
-use Test::More tests => 13;
+use Test::More 'no_plan';
 
+use Carp qw(confess);
 use Data::Dumper;
 use FindBin qw($Bin);
 use JSON;
@@ -77,7 +78,7 @@ foreach my $dispatcher ( @{ $t->[1] } )
 }
 
 # loadconf
-my $conf_to_load = LoadFile("$Bin/conf/constraints.test.yaml");
+my $conf_to_load = LoadFile("$Bin/conf/example.yaml");
 $t = $pt->dispatcher_rpc( [ "loadconf", 'example', $conf_to_load ] )
   or print Dumper $t;
 ok( $t->[0]->{status} eq 'OK', "loadconf rpc OK" ) or print Dumper $t;
@@ -90,15 +91,17 @@ my %job1 = (
   user        => 'test',
   run_as      => 'test',
   command     => 'echo job1',
-  target      => [ 'foo.example.com', ],
+  target      => [ 'foo[1-10].example.com', ],
   namespace   => 'example',
   password    => 'foo',
   timeout     => 1800,
   job_timeout => 1800,
+  concurrent  => 1,
 );
 
 ok( my $job = Pogo::Engine::Job->new( \%job1 ), "job->new" );
-$job->start();
+#$job->start( sub { ok( 1, "started" ); confess; }, sub { ok( 0, "started" ); confess; } );
+$job->start( sub { ok( 1, "started" ); confess; }, sub { ok( 1, "started" ); confess; } );
 
 # stop
 ok( $pt->stop_dispatcher, 'stop dispatcher' ) and $stopped = 1;

@@ -14,8 +14,11 @@ package Pogo::Engine::Namespace;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+use Data::Dumper;
+
 use common::sense;
 
+use Clone qw(clone);
 use List::Util qw(min max);
 use Log::Log4perl qw(:easy);
 
@@ -172,82 +175,58 @@ sub set_conf
   my ( $self, $conf_ref ) = @_;
 
   # copy the conf ref, since we're going to modify the crap out of it below
-  my $conf_in = { %{$conf_ref} };
+  my $conf_in = clone $conf_ref;
   my $conf    = {};
 
-  # flatten and merge with fail on overwrite
-  foreach my $deployment_name ( keys %$conf_in )
+  # use default plugins if none are defined
+  if (!defined $conf_in->{plugins})
   {
-    DEBUG "processing '$deployment_name'";
-    eval { $conf = $self->parse_deployment( $conf_in, $deployment_name, $conf_in->{$deployment_name} ); };
+    $conf_in->{plugins}->{targets} = 'Pogo::Plugin::Target::Inline';
+    $conf_in->{plugins}->{apps} = 'Pogo::Plugin::Target::Inline';
+    $conf_in->{plugins}->{envs} = 'Pogo::Plugin::Target::Inline';
   }
 
-  if ($@)
+  my $name = $self->name;
+
+  # plugin processing
+  foreach my $plugin ( keys %{ $conf_in->{plugins} } )
   {
-    LOGDIE "couldn't load config: $@";
+    DEBUG "processing '$name/plugin/$plugin'";
+    $conf->{plugins}->{$plugin} = delete $conf_in->{plugins}->{$plugin};
   }
 
-  eval { _write_conf( $self->{path}, $conf ) };
-  if ($@)
+  delete $conf_in->{plugins};
+
+  # app processing
+  foreach my $app ( keys %{ $conf_in->{apps} } )
   {
-    LOGDIE "couldn't load config: $@";
+    DEBUG "processing '$name/app/$app'";
+
+    $conf->{apps}->{$app} = delete $conf_in->{apps}->{$app};
   }
 
-  return $self;
-}
+  delete $conf_in->{apps};
 
-sub get_plugin
-{
-  my ($self,$name) = @_;
-
-  if (!exists $self->{_plugin_cache}->{$name})
+  # env processing
+  foreach my $env ( keys %{ $conf_in->{envs} } )
   {
-    eval "use Pogo::Plugin::Target::Inline;";
-    $self->{_plugin_cache}->{inline} = Pogo::Plugin::Target::Inline->new();
-  }
-
-  return $self->{_plugin_cache}->{$name};
-}
-
-sub parse_deployment
-{
-  my ( $self, $conf_in, $deployment_name, $data ) = @_;
-  my $conf_out = {};
-
-  foreach my $app ( keys %{ $data->{apps} } )
-  {
-    DEBUG "processing '$deployment_name/app/$app'";
+    DEBUG "processing '$name/env/$env'";
 
     # provider-processing code goes here
-    my $out = {};
-    foreach my $plugin_name (keys %{ $data->{apps}->{$app} })
-    {
-      DEBUG "got $plugin_name";
-      my $plugin = $self->get_plugin($plugin_name);
-      my $meta = $plugin->fetch_apps( $data->{apps}->{$app}->{$plugin_name} );
-    }
-
-    $conf_out->{apps}->{$app} = delete $data->{apps}->{$app};
+    $conf->{envs}->{$env} = delete $conf_in->{envs}->{$env};
   }
 
-  foreach my $env ( keys %{ $data->{envs} } )
-  {
-    DEBUG "processing '$deployment_name/env/$env'";
+  delete $conf_in->{envs};
 
-    # provider-processing code goes here
-    $conf_out->{envs}->{$env} = delete $data->{envs}->{$env};
-  }
-
-  my $constraints = delete $data->{constraints};
-  foreach my $c_env_type ( keys %$constraints )
+  # constraint processing
+  foreach my $c_env_type ( keys %{ $conf_in->{constraints} } )
   {
-    DEBUG "processing '$deployment_name/constraints/$c_env_type'";
+    DEBUG "processing '$name/constraints/$c_env_type'";
 
     # ensure that the apps we're constraining actually exist
-    my $cur = delete $constraints->{$c_env_type}->{concurrency};
-    my $seq = delete $constraints->{$c_env_type}->{sequence};
-
-    my @err = keys %{ $constraints->{$c_env_type} };
+    my $cur = delete $conf_in->{constraints}->{$c_env_type}->{concurrency};
+    my $seq = delete $conf_in->{constraints}->{$c_env_type}->{sequence};
+    my @err = keys %{ $conf_in->{constraints}->{$c_env_type} };
 
     if ( @err > 0 )
     {
@@ -256,7 +235,7 @@ sub parse_deployment
 
     # map sequences
     LOGDIE "config error: sequences expects an array"
-      unless ( ref $seq eq 'ARRAY' );
+      unless ( $seq && ref $seq eq 'ARRAY' );
 
     #    $conf_out->{seq}->{pred}->{$c_env_type};
     #    $conf_out->{seq}->{succ}->{$c_env_type};
@@ -273,17 +252,17 @@ sub parse_deployment
         my ( $first, $second ) = @{$seq_c}[ $i - 1, $i ];
 
         LOGDIE "unknown application '$first'"
-          unless exists $conf_out->{apps}->{$first};
+          unless exists $conf->{apps}->{$first};
 
         LOGDIE "unknown application '$second'"
-          unless exists $conf_out->{apps}->{$second};
+          unless exists $conf->{apps}->{$second};
 
         # $second requires $first to go first within $env
         # $first is a predecessor of $second
         # $second is a successor of $first
         # we just make sure these exist, don't define them
-        $conf_out->{seq}->{pred}->{$c_env_type}->{$second}->{$first};
-        $conf_out->{seq}->{succ}->{$c_env_type}->{$first}->{$second};
+        $conf->{seq}->{pred}->{$c_env_type}->{$second}->{$first};
+        $conf->{seq}->{succ}->{$c_env_type}->{$first}->{$second};
       }
     }
 
@@ -293,15 +272,43 @@ sub parse_deployment
       while ( my ( $app, $max ) = each %$cur_c )
       {
         LOGDIE "unknown application '$app'"
-          unless exists $conf_out->{apps}->{$app};
+          unless exists $conf->{apps}->{$app};
         if ( $max !~ /^\d+$/ && $max !~ /^(\d+)%$/ )
         {
           LOGDIE "invalid constraint for '$app': '$max'";
         }
-        $conf_out->{cur}->{$c_env_type}->{$app} = $max;
+        $conf->{cur}->{$c_env_type}->{$app} = $max;
       }
     }
   }
+
+  delete $conf_in->{constraints};
+
+  my @err = keys %{ $conf_in };
+
+  if ( @err > 0 )
+  {
+    LOGDIE "unknown config parameter '$err[0]'";
+  }
+
+  undef $conf_in;
+
+  eval { _write_conf( $self->{path}, $conf ) };
+  if ($@)
+  {
+    LOGDIE "couldn't load config: $@";
+  }
+
+  return $self;
+}
+
+sub parse_deployment
+{
+  my ( $self, $conf_in, $deployment_name, $data ) = @_;
+  my $conf_out = {};
+
+
+
 
   return $conf_out;
 }
@@ -436,7 +443,7 @@ sub get_conf_apps
 #}}}
 
 # i'm not sure we need this if we move to the new config format
-#{{{ appgroup stuff
+# {{{ appgroup stuff
 sub translate_appgroups
 {
   my ( $self, $apps ) = @_;
@@ -470,6 +477,51 @@ sub appgroup_members
 }
 
 #}}}
+# {{{ plugin stuff
+
+sub target_plugin
+{
+  my $self = shift;
+  my $name = 'Pogo::Plugin::Target::Inline';
+
+  if (!exists $self->{_plugin_cache}->{$name})
+  {
+    eval "use $name;";
+    $self->{_plugin_cache}->{$name} = $name->new();
+  }
+
+  return $self->{_plugin_cache}->{$name};
+}
+
+sub app_plugin
+{
+  my $self = shift;
+  my $name = 'Pogo::Plugin::Target::Inline';
+
+  if (!exists $self->{_plugin_cache}->{$name})
+  {
+    eval "use $name;";
+    $self->{_plugin_cache}->{target} = $name->new();
+  }
+
+  return $self->{_plugin_cache}->{$name};
+}
+
+sub env_plugin
+{
+  my $self = shift;
+  my $name = 'Pogo::Plugin::Target::Inline';
+
+  if (!exists $self->{_plugin_cache}->{$name})
+  {
+    eval "use $name;";
+    $self->{_plugin_cache}->{target} = $name->new();
+  }
+
+  return $self->{_plugin_cache}->{$name};
+}
+
+# }}}
 
 # remove active host from all environments
 # apparently this is deprecated?
@@ -534,6 +586,125 @@ sub path
   my ( $self, @parts ) = @_;
   return join( '', $self->{path}, @parts );
 }
+
+# {{{ constraint logic
+sub fetch_all_slots
+{
+  my ($self, $job, $hostinfo_map, $errc, $cont ) = @_;
+  my $slots = $self->{slots};
+
+  my %hostslots;
+  my @slotlookups;
+
+  my $concurrent = $job->concurrent;
+  if (defined $concurrent)
+  {
+    my $maxdown = $concurrent;
+    my $slot = $self->slot('locks', $job->id, 'concurrent' );
+
+    if ($maxdown =~ m/^(\d+)%$/)
+    {
+      # maxdown will be a percentage of the hosts in the job
+      my $pct = $1;
+      $maxdown = max( 1, int( $pct * scalar( $job->hosts ) / 100 ) );
+    }
+    elsif ( ! $maxdown )
+    {
+      # if $concurrent is 0, we run all hosts in parallel
+      $maxdown = scalar $job->hosts;
+    }
+    $slot->{maxdown} = $maxdown;
+
+    # fill out our hostslots hash
+    while (my ($hostname, $hostinfo) = each %$hostinfo_map )
+    {
+      $hostslots{$hostname} = [$slot];
+    }
+
+    # our work here should be done
+    return $cont->( $slots, \%hostslots );
+  }
+
+  # this is where we handle the more complex, non-concurrent case
+}
+
+sub slot
+{
+  my ($self, $app, $envk, $envv ) = @_;
+  my $slots = $self->{slots};
+  $slots->{ $app, $envk, $envv } ||= Pogo::Engine::Namespace::Slot->new( $self, $app, $envk, $envv );
+  return $slots->{ $app, $envk, $envv };
+}
+
+sub fetch_runnable_hosts
+{
+  my ($self, $job, $hostinfo_map, $errc, $cont) = @_;
+  my @runnable;
+  my %unrunnable;
+
+  $self->fetch_all_slots(
+    $job,
+    $hostinfo_map,
+    $errc,
+    sub {
+      my ( $allslots, $hostslots) = @_;
+      local *__ANON__ = 'fetch_runnable_hosts:fetch_all_slots:cont';
+
+      my $global_lock = store->lock( 'fetch_runnable_hosts:' . $job->id );
+      eval {
+        foreach my $hostname ( sort { $a cmp $b } keys %$hostslots )
+        {
+          my $slots = $hostslots->{$hostname};
+
+          # is this host runnable?
+          next unless $job->host($hostname)->is_runnable;
+
+          # if any slots have predecessors, then check that they're done
+          my @pred_slots;
+          foreach my $slot (@$slots)
+          {
+            if (exists $slot->{pred})
+            {
+              push @pred_slots, @{ $slot->{pred} };
+            }
+          }
+
+          #DEBUG "predecessors for $hostname: " . join ', ', map { $_->name } @pred_slots;
+          my @fullpredslots = map { $_->name } ( grep { !$job->is_slot_done($_) } @pred_slots );
+          if (@fullpredslots)
+          {
+            $unrunnable{$hostname} = join ', ', @fullpredslots;
+          }
+          else
+          {
+            my @fullslots = map { $_->name } ( grep { $_->is_full( $job, $hostname ) } @$slots );
+            if (@fullslots)
+            {
+              $unrunnable{$hostname} = join ', ', @fullslots;
+            }
+            else
+            {
+              map { DEBUG "reserving $_->{path} for $hostname"; $_->reserve( $job, $hostname ) } @$slots;
+              push @runnable, $hostname;
+            }
+          }
+        }
+      };
+
+      if ($@)
+      {
+        store->unlock($global_lock);
+        return $errc->($@);
+      }
+
+      return $cont->( \@runnable, \%unrunnable, $global_lock );
+    }
+  );
+}
+
+
+
+
 
 1;
 

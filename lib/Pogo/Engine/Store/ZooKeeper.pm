@@ -167,6 +167,90 @@ sub delete_r
   return 1;
 }
 
+sub _lock_wait
+{
+  my ( $self, $lockpath, $pattern, $timeout ) = @_;
+  LOGDIE "$lockpath has no sequence number?" if ( !$lockpath =~ m/^(.*)\/\S+-(\d+)$/ );
+  my $path  = $1;
+  my $seqno = $2;
+
+  while (1)
+  {
+    my ( $path_to_wait, $seq_to_wait );
+    {
+      foreach my $child ( $self->get_children($path) )
+      {
+        if ( $child =~ /$pattern(\d+)$/ )
+        {
+          my $pseq = $1;
+          if ( $pseq < $seqno && ( !defined $seq_to_wait || $pseq > $seq_to_wait ) )
+          {
+            $path_to_wait = $child;
+            $seq_to_wait  = $pseq;
+          }
+        }
+      }
+    }
+
+    # If we don't have to wait for anything, we are done
+    if ( !defined $path_to_wait )
+    {
+      return $lockpath;
+    }
+
+    my $watch = $self->{handle}->watch( 'timeout' => $timeout );
+    if ( $self->exists( $path_to_wait, watch => $watch ) )
+    {
+
+      # if exists() returns true, wait for a notification for the pathname
+      # from the previous step
+      if ( !$watch->wait() )
+      {
+
+        # timed out
+        $self->delete($lockpath);
+        return;
+      }
+    }
+  }
+}
+
+sub _lock_read
+{
+  my ( $self, $path, $source, $timeout ) = @_;
+  my $lockpath = $self->create( $path . '/read-', $source, flags => ZOO_EPHEMERAL | ZOO_SEQUENCE, );
+  LOGDIE "unable to create read lock: " . $self->get_error_name()
+    unless defined $lockpath;
+
+  return $self->_lock_wait( $lockpath, 'write-', $timeout );
+}
+
+sub _lock_write
+{
+  my ( $self, $path, $source, $timeout ) = @_;
+  my $lockpath =
+    $self->create( $path . '/write-', $source, flags => ZOO_EPHEMERAL | ZOO_SEQUENCE, );
+  LOGDIE "unable to create write lock: " . $self->get_error_name()
+    unless defined $lockpath;
+
+  return $self->_lock_wait( $lockpath, '-', $timeout );
+}
+
+sub lock
+{
+  my ( $self, $source ) = @_;
+  LOGDIE "lock needs a source"
+    unless defined $source;
+  $self->_lock_write( '/pogo/lock', $source, 60000 )
+    or LOGDIE "timed out locking globally for $source\n";
+}
+
+sub unlock
+{
+  my ( $self, $lock ) = @_;
+  return $self->delete($lock);
+}
+
 sub stat         { return shift->{handle}->stat(@_); }
 sub exists       { return shift->{handle}->exists(@_); }
 sub get          { return shift->{handle}->get(@_); }

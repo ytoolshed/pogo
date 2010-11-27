@@ -426,10 +426,6 @@ sub loadconf
   my $resp = Pogo::Engine::Response->new()->add_header( action => 'loadconf' );
 
   # validate args
-  if ( !defined $conf || ref $conf ne 'HASH' )
-  {
-    return $resp->set_error("no configuration specified");
-  }
 
   if ( ref $ns || $ns !~ m/^[a-z0-9\.\-\_]+/i)
   {
@@ -437,6 +433,11 @@ sub loadconf
   }
 
   INFO "loading new config for namespace '$ns'";
+
+  if ( !defined $conf || ref $conf ne 'HASH' )
+  {
+    WARN "no configuration specified, using defaults";
+  }
 
   if ( $instance->namespace($ns)->init->set_conf($conf) )
   {
