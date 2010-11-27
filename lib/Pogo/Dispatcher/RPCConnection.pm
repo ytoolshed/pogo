@@ -109,7 +109,7 @@ sub accept
         eval { $resp = Pogo::Engine->$cmd(@args) };
         if ($@)
         {
-          ERROR "command '$cmd' from " . $self->id . "failed";
+          ERROR "command '$cmd' from " . $self->id . " failed";
           $resp = Pogo::Engine::Response->new;    # overwrite old possibly-bogus response
           $resp->set_error("internal error: $@");
           $h->push_write( json => $resp->unblessed );
