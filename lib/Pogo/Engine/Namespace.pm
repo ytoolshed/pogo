@@ -30,6 +30,8 @@ use JSON qw(to_json from_json);
 # fetch_* retrieves something asynchronously, taking an error callback
 # and a continuation as the last two args
 
+# {{{ constructors
+
 sub new
 {
   my ( $class, $nsname ) = @_;
@@ -64,9 +66,139 @@ sub init
   return $self;
 }
 
+# }}}
+# {{{ accessors
+
+sub path
+{
+  my ( $self, @parts ) = @_;
+  return join( '', $self->{path}, @parts );
+}
+
 sub name
 {
   return shift->{ns};
+}
+
+# }}}
+# {{{ constraint logic
+
+sub fetch_runnable_hosts
+{
+  my ( $self, $job, $hostinfo_map, $errc, $cont ) = @_;
+  my @runnable;
+  my %unrunnable;
+
+  $self->fetch_all_slots(
+    $job,
+    $hostinfo_map,
+    $errc,
+    sub {
+      my ( $allslots, $hostslots ) = @_;
+      local *__ANON__ = 'fetch_runnable_hosts:fetch_all_slots:cont';
+
+      my $global_lock = store->lock( 'fetch_runnable_hosts:' . $job->id );
+      eval {
+        foreach my $hostname ( sort { $a cmp $b } keys %$hostslots )
+        {
+          my $slots = $hostslots->{$hostname};
+
+          # is this host runnable?
+          next unless $job->host($hostname)->is_runnable;
+
+          # if any slots have predecessors, then check that they're done
+          my @pred_slots;
+          foreach my $slot (@$slots)
+          {
+            if ( exists $slot->{pred} )
+            {
+              push @pred_slots, @{ $slot->{pred} };
+            }
+          }
+
+          #DEBUG "predecessors for $hostname: " . join ', ', map { $_->name } @pred_slots;
+          my @fullpredslots = map { $_->name } ( grep { !$job->is_slot_done($_) } @pred_slots );
+          if (@fullpredslots)
+          {
+            $unrunnable{$hostname} = join ', ', @fullpredslots;
+          }
+          else
+          {
+            my @fullslots = map { $_->name } ( grep { $_->is_full( $job, $hostname ) } @$slots );
+            if (@fullslots)
+            {
+              $unrunnable{$hostname} = join ', ', @fullslots;
+            }
+            else
+            {
+              map { DEBUG "reserving $_->{path} for $hostname"; $_->reserve( $job, $hostname ) }
+                @$slots;
+              push @runnable, $hostname;
+            }
+          }
+        }
+      };
+
+      if ($@)
+      {
+        store->unlock($global_lock);
+        return $errc->($@);
+      }
+
+      return $cont->( \@runnable, \%unrunnable, $global_lock );
+    }
+  );
+}
+
+sub fetch_all_slots
+{
+  my ( $self, $job, $hostinfo_map, $errc, $cont ) = @_;
+  my $slots = $self->{slots};
+
+  my %hostslots;
+  my @slotlookups;
+
+  my $concurrent = $job->concurrent;
+  if ( defined $concurrent )
+  {
+    my $maxdown = $concurrent;
+    my $slot = $self->slot( 'locks', $job->id, 'concurrent' );
+
+    if ( $maxdown =~ m/^(\d+)%$/ )
+    {
+
+      # maxdown will be a percentage of the hosts in the job
+      my $pct = $1;
+      $maxdown = max( 1, int( $pct * scalar( $job->hosts ) / 100 ) );
+    }
+    elsif ( !$maxdown )
+    {
+
+      # if $concurrent is 0, we run all hosts in parallel
+      $maxdown = scalar $job->hosts;
+    }
+    $slot->{maxdown} = $maxdown;
+
+    # fill out our hostslots hash
+    while ( my ( $hostname, $hostinfo ) = each %$hostinfo_map )
+    {
+      $hostslots{$hostname} = [$slot];
+    }
+
+    # our work here should be done
+    return $cont->( $slots, \%hostslots );
+  }
+
+  # this is where we handle the more complex, non-concurrent case
+}
+
+sub slot
+{
+  my ( $self, $app, $envk, $envv ) = @_;
+  my $slots = $self->{slots};
+  $slots->{ $app, $envk, $envv }
+    ||= Pogo::Engine::Namespace::Slot->new( $self, $app, $envk, $envv );
+  return $slots->{ $app, $envk, $envv };
 }
 
 sub _has_constraints
@@ -104,70 +236,9 @@ sub unlock_job
   }
 }
 
-# sequences
+# }}}
+# {{{ config setters
 
-sub is_sequence_blocked
-{
-  my ( $self, $job, $host ) = @_;
-
-  my ( $nblockers, @bywhat ) = (0);
-
-  foreach my $env ( @{ $host->info->{env} } )
-  {
-    my $k = $env->{key};
-    my $v = $env->{value};
-
-    foreach my $app ( @{ $host->info->{apps} } )
-    {
-      my @preds = store->get_children( $self->path("/conf/sequences/pred/$k/$app") );
-      foreach my $pred (@preds)
-      {
-        my $n = store->get_children( $job->{path} . "/seq/$pred" . "_$k" . "_$v" );
-        if ($n)
-        {
-          $nblockers += $n;
-          push @bywhat, "$k $v $pred";
-        }
-      }
-    }
-  }
-  return ( $nblockers, join( ', ', @bywhat ) );    # cosmetic, this is what shows up in the UI
-}
-
-sub get_seq_successors
-{
-  my ( $self, $envk, $app ) = @_;
-
-  my @successors = ($app);
-  my @results;
-
-  while (@successors)
-  {
-    $app = pop @successors;
-    my @s = store->get_children( $self->path("/conf/sequences/succ/$envk/$app") );
-    push @results,    @s;
-    push @successors, @s;
-  }
-
-  return @results;
-}
-
-# apps
-
-sub filter_apps
-{
-  my ( $self, $apps ) = @_;
-
-  my %constraints = map { $_ => 1 } store->get_children( $self->path('/conf/constraints') );
-
-  # FIXME: if you have sequences for which there are no constraints, we might
-  # improperly ignore them here.  Can't think of a straightforward fix and
-  # can't tell whether it will ever be a problem, so leaving for now.
-
-  return [ grep { exists $constraints{$_} } @$apps ];
-}
-
-#{{{ config setters
 sub set_conf
 {
   my ( $self, $conf_ref ) = @_;
@@ -361,7 +432,8 @@ sub _set_conf_r
 }
 
 #}}}
-#{{{ config getters
+# {{{ config getters
+
 # recursively traverse conf/ dir and build hash
 sub _get_conf_r
 {
@@ -436,42 +508,71 @@ sub get_conf_apps
 }
 
 #}}}
+# {{{ apps
 
-# i'm not sure we need this if we move to the new config format
-# {{{ appgroup stuff
-sub translate_appgroups
+sub filter_apps
 {
   my ( $self, $apps ) = @_;
 
-  my %g;
+  my %constraints = map { $_ => 1 } store->get_children( $self->path('/conf/constraints') );
 
-  foreach my $app (@$apps)
+  # FIXME: if you have sequences for which there are no constraints, we might
+  # improperly ignore them here.  Can't think of a straightforward fix and
+  # can't tell whether it will ever be a problem, so leaving for now.
+
+  return [ grep { exists $constraints{$_} } @$apps ];
+}
+
+# }}}
+# {{{ sequences
+
+sub is_sequence_blocked
+{
+  my ( $self, $job, $host ) = @_;
+
+  my ( $nblockers, @bywhat ) = (0);
+
+  foreach my $env ( @{ $host->info->{env} } )
   {
-    my @groups = store->get_children( $self->path("/conf/appgroups/byrole/$app") );
-    if (@groups)
+    my $k = $env->{key};
+    my $v = $env->{value};
+
+    foreach my $app ( @{ $host->info->{apps} } )
     {
-      map { $g{$_} = 1 } @groups;
-    }
-    else
-    {
-      $g{$app} = 1;
+      my @preds = store->get_children( $self->path("/conf/sequences/pred/$k/$app") );
+      foreach my $pred (@preds)
+      {
+        my $n = store->get_children( $job->{path} . "/seq/$pred" . "_$k" . "_$v" );
+        if ($n)
+        {
+          $nblockers += $n;
+          push @bywhat, "$k $v $pred";
+        }
+      }
     }
   }
-
-  return [ keys %g ];
+  return ( $nblockers, join( ', ', @bywhat ) );    # cosmetic, this is what shows up in the UI
 }
 
-sub appgroup_members
+sub get_seq_successors
 {
-  my ( $self, $appgroup ) = @_;
+  my ( $self, $envk, $app ) = @_;
 
-  my @members = store->get_children( $self->path("/conf/appgroups/bygroup/$appgroup") );
+  my @successors = ($app);
+  my @results;
 
-  return @members if @members;
-  return $appgroup;
+  while (@successors)
+  {
+    $app = pop @successors;
+    my @s = store->get_children( $self->path("/conf/sequences/succ/$envk/$app") );
+    push @results,    @s;
+    push @successors, @s;
+  }
+
+  return @results;
 }
 
-#}}}
+# }}}
 # {{{ plugin stuff
 
 sub target_plugin
@@ -517,10 +618,46 @@ sub env_plugin
 }
 
 # }}}
+# {{{ deprecated appgroup stuff
+# i'm not sure we need this if we move to the new config format
 
+sub translate_appgroups
+{
+  my ( $self, $apps ) = @_;
+
+  my %g;
+
+  foreach my $app (@$apps)
+  {
+    my @groups = store->get_children( $self->path("/conf/appgroups/byrole/$app") );
+    if (@groups)
+    {
+      map { $g{$_} = 1 } @groups;
+    }
+    else
+    {
+      $g{$app} = 1;
+    }
+  }
+
+  return [ keys %g ];
+}
+
+sub appgroup_members
+{
+  my ( $self, $appgroup ) = @_;
+
+  my @members = store->get_children( $self->path("/conf/appgroups/bygroup/$appgroup") );
+
+  return @members if @members;
+  return $appgroup;
+}
+
+#}}}
+# {{{ deprecated unlock_host
 # remove active host from all environments
 # apparently this is deprecated?
-sub unlock_host    # {{{ deprecated unlock_host
+sub unlock_host
 {
   my ( $self, $job, $host, $unlockseq ) = @_;
 
@@ -574,132 +711,6 @@ sub unlock_host    # {{{ deprecated unlock_host
 
   return $n;
 }    # }}}
-
-# lazy
-sub path
-{
-  my ( $self, @parts ) = @_;
-  return join( '', $self->{path}, @parts );
-}
-
-# {{{ constraint logic
-sub fetch_all_slots
-{
-  my ( $self, $job, $hostinfo_map, $errc, $cont ) = @_;
-  my $slots = $self->{slots};
-
-  my %hostslots;
-  my @slotlookups;
-
-  my $concurrent = $job->concurrent;
-  if ( defined $concurrent )
-  {
-    my $maxdown = $concurrent;
-    my $slot = $self->slot( 'locks', $job->id, 'concurrent' );
-
-    if ( $maxdown =~ m/^(\d+)%$/ )
-    {
-
-      # maxdown will be a percentage of the hosts in the job
-      my $pct = $1;
-      $maxdown = max( 1, int( $pct * scalar( $job->hosts ) / 100 ) );
-    }
-    elsif ( !$maxdown )
-    {
-
-      # if $concurrent is 0, we run all hosts in parallel
-      $maxdown = scalar $job->hosts;
-    }
-    $slot->{maxdown} = $maxdown;
-
-    # fill out our hostslots hash
-    while ( my ( $hostname, $hostinfo ) = each %$hostinfo_map )
-    {
-      $hostslots{$hostname} = [$slot];
-    }
-
-    # our work here should be done
-    return $cont->( $slots, \%hostslots );
-  }
-
-  # this is where we handle the more complex, non-concurrent case
-}
-
-sub slot
-{
-  my ( $self, $app, $envk, $envv ) = @_;
-  my $slots = $self->{slots};
-  $slots->{ $app, $envk, $envv }
-    ||= Pogo::Engine::Namespace::Slot->new( $self, $app, $envk, $envv );
-  return $slots->{ $app, $envk, $envv };
-}
-
-sub fetch_runnable_hosts
-{
-  my ( $self, $job, $hostinfo_map, $errc, $cont ) = @_;
-  my @runnable;
-  my %unrunnable;
-
-  $self->fetch_all_slots(
-    $job,
-    $hostinfo_map,
-    $errc,
-    sub {
-      my ( $allslots, $hostslots ) = @_;
-      local *__ANON__ = 'fetch_runnable_hosts:fetch_all_slots:cont';
-
-      my $global_lock = store->lock( 'fetch_runnable_hosts:' . $job->id );
-      eval {
-        foreach my $hostname ( sort { $a cmp $b } keys %$hostslots )
-        {
-          my $slots = $hostslots->{$hostname};
-
-          # is this host runnable?
-          next unless $job->host($hostname)->is_runnable;
-
-          # if any slots have predecessors, then check that they're done
-          my @pred_slots;
-          foreach my $slot (@$slots)
-          {
-            if ( exists $slot->{pred} )
-            {
-              push @pred_slots, @{ $slot->{pred} };
-            }
-          }
-
-          #DEBUG "predecessors for $hostname: " . join ', ', map { $_->name } @pred_slots;
-          my @fullpredslots = map { $_->name } ( grep { !$job->is_slot_done($_) } @pred_slots );
-          if (@fullpredslots)
-          {
-            $unrunnable{$hostname} = join ', ', @fullpredslots;
-          }
-          else
-          {
-            my @fullslots = map { $_->name } ( grep { $_->is_full( $job, $hostname ) } @$slots );
-            if (@fullslots)
-            {
-              $unrunnable{$hostname} = join ', ', @fullslots;
-            }
-            else
-            {
-              map { DEBUG "reserving $_->{path} for $hostname"; $_->reserve( $job, $hostname ) }
-                @$slots;
-              push @runnable, $hostname;
-            }
-          }
-        }
-      };
-
-      if ($@)
-      {
-        store->unlock($global_lock);
-        return $errc->($@);
-      }
-
-      return $cont->( \@runnable, \%unrunnable, $global_lock );
-    }
-  );
-}
 
 1;
 

@@ -68,12 +68,24 @@ sub reserve
 {
   my ( $self, $job, $hostname ) = @_;
   my $lockname = $job->id . '_' . $hostname;
-  my $path     = $self->{path} . '/' . $lockname;
 
-  # we're going to ASSume if this fails it's because $path DNE
-  if ( !store->create( $path, '' ) )
+  if ( !store->create( $self->{path} . '/' . $lockname, '' ) )
   {
-    LOGDIE "unable to create environment slot '$path': " . store->get_error_name;
+
+    # ASSume if this fails it's because $path DNE
+    if ( !store->create( $self->{path}, '' ) )
+    {
+      LOGDIE "unable to create environment slot '$self->{path}': " . store->get_error_name;
+    }
+
+    # now we try to create the base path or die
+    if ( !store->create( $self->{path} . '/' . $lockname, '' ) )
+    {
+      LOGDIE "unable to create environment slot '"
+        . $self->{path} . '/'
+        . $lockname . ": "
+        . store->get_error_name;
+    }
   }
 }
 

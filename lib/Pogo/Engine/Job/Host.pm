@@ -161,9 +161,7 @@ sub _is_running
 sub _is_runnable
 {
   my $state = shift;
-  return ( $state eq 'waiting' or $state eq 'deadlocked' )
-    ? 1
-    : 0;
+  return ( $state eq 'waiting' or $state eq 'deadlocked' ) ? 1 : 0;
 }
 
 # Monitor state transitions and keep tally of finished hosts as an optimization
@@ -181,10 +179,10 @@ sub set_state
   return 1;
 }
 
-sub is_finished { return $_[0]->_is_finished( $_[0]->state ) }
-sub is_runnable { return $_[0]->_is_runnable( $_[0]->state ) }
-sub is_running  { return $_[0]->_is_running( $_[0]->state ) }
-sub is_failed   { return $_[0]->_is_failed( $_[0]->state ) }
+sub is_finished { return _is_finished( $_[0]->state ) }
+sub is_runnable { return _is_runnable( $_[0]->state ) }
+sub is_running  { return _is_running( $_[0]->state ) }
+sub is_failed   { return _is_failed( $_[0]->state ) }
 
 sub job  { return $_[0]->{job}; }
 sub name { return $_[0]->{name}; }

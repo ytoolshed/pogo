@@ -19,7 +19,7 @@ use common::sense;
 #use File::Slurp qw(read_file);
 #use List::Util qw(min max);
 use AnyEvent;
-use Data::Dumper qw(Dumper);    # note we actually use this
+use Data::Dumper;    # note we actually use this
 use JSON;
 use Log::Log4perl qw(:easy);
 use MIME::Base64 qw(encode_base64);
@@ -39,6 +39,8 @@ our $UPDATE_INTERVAL = 1;
 # re-check constraints after 10 seconds if a job is unable to run more
 # hosts
 our $POLL_INTERVAL = 10;
+
+#$Data::Dumper::Deparse = 1;
 
 # {{{ new
 # Pogo::Engine::Job->new() creates a new job from the ether
@@ -132,9 +134,10 @@ sub get
     return;
   }
   my $self = {
-    id    => $jobid,
-    path  => $jobpath,
-    state => $state,
+    id     => $jobid,
+    path   => $jobpath,
+    state  => $state,
+    _hosts => {},
   };
 
   bless $self, $class;
@@ -222,6 +225,7 @@ sub info
 sub host
 {
   my ( $self, $hostname, $defstate ) = @_;
+  DEBUG "adding host $hostname";
   if ( !exists $self->{_hosts}->{$hostname} )
   {
     $self->{_hosts}->{$hostname} = Pogo::Engine::Job::Host->new( $self, $hostname, $defstate );
@@ -442,7 +446,7 @@ sub start
     # constrained codepath
     # fetch all meta before we add to the job
 
-    if ( !$concurrent )
+    if ( !defined $concurrent )
     {
       my $fetch_errc = sub {
         local *__ANON__ = 'AE:cb:fetch_target_meta:errc';
@@ -462,6 +466,7 @@ sub start
     }
     else    # concurrent codepath
     {
+      DEBUG "we are concurrent!";
       foreach my $hostname (@flat_targets)
       {
         my $host = $self->host( $hostname, 'waiting' );
@@ -534,9 +539,9 @@ sub continue
     $all_host_meta,
     $errc,
     sub {
+      local *__ANON__ = 'continue:fetch_runnable_hosts:cont';
       my ( $runnable, $unrunnable, $global_lock ) = @_;
       my ( $nqueued, $nwaiting ) = ( 0, 0 );
-      local *__ANON__ = 'continue:fetch_runnable_hosts:cont';
 
       foreach my $hostname ( sort { $a cmp $b } @$runnable )
       {
