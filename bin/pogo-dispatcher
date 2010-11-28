@@ -33,16 +33,18 @@ sub main
 
   # we'll load a simple default logger thinger here
   # until we load the real conf below
-  Log::Log4perl::init(\q{
+  Log::Log4perl::init(
+    \q{
     log4perl.rootLogger             = INFO, Screen
     log4perl.appender.Screen        = Log::Log4perl::Appender::Screen
     log4perl.appender.Screen.stderr = 0
     log4perl.appender.Screen.layout = Log::Log4perl::Layout::SimpleLayout
-  });
+  }
+  );
 
   # Defaults
   my $DEFAULT_CONFIG_FILE = "$POGO_ROOT/etc/pogo/dispatcher.conf.yaml";
-  my $opts = {
+  my $opts                = {
     log_conf        => "$POGO_ROOT/etc/pogo/dispatcher.log.conf",
     pid_file        => "$POGO_ROOT/var/run/pogo-dispatcher.pid",
     dispatcher_key  => "$POGO_ROOT/etc/ssl/pogo_dispatcher.key",
@@ -54,11 +56,11 @@ sub main
 
   my $log_conf;
   my $log_level;
-  my $cmdline_opts = {};
+  my $cmdline_opts     = {};
   my $config_file_opts = {};
 
   GetOptions(
-    'h|help'             => sub { pod2usage; exit -1 },
+    'h|help' => sub { pod2usage; exit -1 },
     'f|config-file=s'    => \$cmdline_opts->{config_file},
     'l|logger-config=s'  => \$cmdline_opts->{log_conf},
     'P|pid-file=s'       => \$cmdline_opts->{pid_file},
@@ -75,9 +77,10 @@ sub main
 
   if ( my $config_file = delete $cmdline_opts->{config_file} )
   {
+
     # Config file was specified on command-line - fatal if doesn't exist
     # or is non-parseable
-    eval { $config_file_opts = LoadFile( $config_file ); };
+    eval { $config_file_opts = LoadFile($config_file); };
     if ($@)
     {
       LOGDIE "problem processing '$config_file': $@";
@@ -85,8 +88,9 @@ sub main
   }
   elsif ( -r $DEFAULT_CONFIG_FILE )
   {
+
     # Config file not specified - load the default only if it exists
-    eval { $config_file_opts = LoadFile( $DEFAULT_CONFIG_FILE ); };
+    eval { $config_file_opts = LoadFile($DEFAULT_CONFIG_FILE); };
     if ($@)
     {
       LOGDIE "problem processing '$config_file_opts': $@";
@@ -96,12 +100,13 @@ sub main
   # merge config-file options over defaults
   while ( my ( $k, $v ) = each %$config_file_opts )
   {
-      $opts->{$k} = $v if defined $v;
+    $opts->{$k} = $v if defined $v;
   }
+
   # command-line options take precedence over all
   while ( my ( $k, $v ) = each %$cmdline_opts )
   {
-      $opts->{$k} = $v if defined $v;;
+    $opts->{$k} = $v if defined $v;
   }
 
   # init logger
@@ -111,12 +116,12 @@ sub main
   }
   else
   {
-      Log::Log4perl->easy_init unless Log::Log4perl->initialized;
+    Log::Log4perl->easy_init unless Log::Log4perl->initialized;
   }
   delete $opts->{log_conf};
   if ( defined $log_level )
   {
-    Log::Log4perl::get_logger->level( $log_level );
+    Log::Log4perl::get_logger->level($log_level);
   }
 
   # Perform some basic sanity checks.
@@ -130,6 +135,7 @@ sub main
 
   # Log something if we die.
   $SIG{__DIE__} = sub {
+
     # Don't log if die() is called in eval context; see "die" in perlfunc
     die @_ if $^S;
     FATAL "Process terminated: " . shift;
@@ -146,7 +152,7 @@ sub main
     exit 0;
   };
 
-  open (my $fd, '>', $opts->{pid_file})
+  open(my $fd, '>', $opts->{pid_file} )
     or LOGDIE "couldn't open pid file '$opts->{pid_file}': $!\n";
   print $fd $$;
   close $fd or LOGDIE "problem with $opts->{pid_file}: $!\n";

@@ -77,7 +77,6 @@ sub new
   bless $self, $class;
 
   INFO "Connected to '$serverlist'";
-  DEBUG $self->get_error_name;
   DEBUG sprintf( "Session timeout is %.2f seconds.\n", $self->{handle}->{session_timeout} / 1000 );
 
   $self->{handle}->{data_read_len} = 1048576;
@@ -95,6 +94,8 @@ sub new
 
   $self->ping
     or LOGDIE "unable to ping?!: " . $self->get_error;
+
+  DEBUG $self->get_error_name;
 
   return $self;
 }
