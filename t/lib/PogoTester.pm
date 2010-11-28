@@ -81,8 +81,8 @@ sub start_dispatcher
 
   if ( $dispatcher_pid == 0 )
   {
-    exec( "/usr/local/bin/perl", "-I$Bin/../lib", "-I$Bin/lib", "$Bin/../bin/pogo-dispatcher", '-f',
-      $conf )
+    exec( "/usr/local/bin/perl", "-I$Bin/../lib", "-I$Bin/lib", "$Bin/../bin/pogo-dispatcher.pl",
+      '-f', $conf )
       or LOGDIE $!;
   }
   else
@@ -114,6 +114,7 @@ sub start_zookeeper
 
   if ( $zookeeper_pid == 0 )
   {
+
     #open STDIN, '/dev/null';
     open STDOUT, '>/dev/null';
     open STDERR, '>&STDOUT';

@@ -61,7 +61,7 @@ sub run    #{{
 
   # start these puppies up
   Pogo::Engine->init($instance);
-  Pogo::Dispatcher::AuthStore->start($instance);
+  Pogo::Dispatcher::AuthStore->init($instance);
 
   # handle workers
   tcp_server(
@@ -86,7 +86,7 @@ sub run    #{{
   my $poll_timer = AnyEvent->timer(
     after    => 1,
     interval => 1,
-    cb       => sub { _poll(); },
+    cb       => sub { poll(); },
   );
 
   # periodically record stats
@@ -99,7 +99,7 @@ sub run    #{{
   AnyEvent->condvar->recv;
 }    #}}}
 
-sub _poll
+sub poll
 {
   foreach my $task ( store->get_children('/pogo/taskq') )
   {
@@ -137,8 +137,7 @@ sub _poll
     elsif ( $reqtype eq 'startjob' )
     {
 
-      #if ( store->delete("/pogo/taskq/$task") )
-      if ( store->get("/pogo/taskq/$task") )
+      if ( store->delete("/pogo/taskq/$task") )
       {
         my $job = Pogo::Engine->job($jobid);
 

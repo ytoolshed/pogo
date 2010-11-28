@@ -14,19 +14,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+use 5.008;
 use common::sense;
 
+use Test::Exception;
 use Test::More tests => 3;
 
+use Carp qw(confess);
 use Data::Dumper;
 use FindBin qw($Bin);
 use JSON;
 use Log::Log4perl qw(:easy);
 use Net::SSLeay qw();
-use YAML::XS qw(LoadFile);
 use Sys::Hostname qw(hostname);
+use YAML::XS qw(Load LoadFile);
 
-use lib "$Bin/lib/";
+use lib "$Bin/../lib";
+use lib "$Bin/lib";
+
+use PogoTester qw(derp);
+
+$SIG{ALRM} = sub { confess; };
+alarm(60);
 
 use PogoTester qw(derp);
 ok( my $pt = PogoTester->new(), "new pt" );
@@ -36,7 +45,7 @@ chdir($Bin);
 ok( Log::Log4perl::init("$Bin/conf/log4perl.conf"), "log4perl" );
 
 # start
-$pt->stop_zookeeper; # just in case
-ok( $pt->start_zookeeper,  'start zookeeper' );
+$pt->stop_zookeeper;    # just in case
+ok( $pt->start_zookeeper, 'start zookeeper' );
 
 1;

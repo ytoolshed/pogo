@@ -13,18 +13,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-use Test::More 'no_plan';
+use 5.008;
+use common::sense;
 
+use Test::Exception;
+use Test::More tests => 15;
+
+use Carp qw(confess);
 use Data::Dumper;
 use FindBin qw($Bin);
 use JSON;
 use Log::Log4perl qw(:easy);
 use Net::SSLeay qw();
-use YAML::XS qw(LoadFile);
 use Sys::Hostname qw(hostname);
+use YAML::XS qw(Load LoadFile);
 
-use lib "$Bin/lib/";
-use lib "$Bin/../lib/";
+use lib "$Bin/../lib";
+use lib "$Bin/lib";
+
+use PogoTester qw(derp);
+
+$SIG{ALRM} = sub { confess; };
+alarm(60);
 
 chdir($Bin);
 
@@ -57,9 +67,9 @@ my %input = (
 
 while ( my ( $expr, $res ) = each %input )
 {
-  my @flat = Pogo::Plugin::Target::Inline->_expand_targets( [$expr] );
-  $size_flat = scalar @flat;
-  $size_expr = scalar @$res;
+  my @flat      = Pogo::Plugin::Target::Inline->_expand_targets( [$expr] );
+  my $size_flat = scalar @flat;
+  my $size_expr = scalar @$res;
   ok( $size_flat == $size_expr, "$expr size" )
     or print STDERR Dumper { flat => \@flat, res => $res };
   is_deeply( \@flat, $res, "$expr expand" )

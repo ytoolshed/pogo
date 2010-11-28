@@ -12,7 +12,8 @@ hudson-clean :
 	rm -rf $(TESTRESULTDIR)
 
 test: $(TESTS)
-	prove --timer $(TESTS) 2>/dev/null
+	prove --timer $(TESTS)
+#	prove --timer $(TESTS) 2>/dev/null
 
 $(TESTS) : | $(TESTRESULTDIR)
 

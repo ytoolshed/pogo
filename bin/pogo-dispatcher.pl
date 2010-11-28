@@ -135,24 +135,28 @@ sub main
 
   # Log something if we die.
   $SIG{__DIE__} = sub {
-
-    # Don't log if die() is called in eval context; see "die" in perlfunc
-    die @_ if $^S;
-    FATAL "Process terminated: " . shift;
+    die @_ if $^S;    # Don't log if die() is called in eval context; see "die" in perlfunc
+    LOGCONFESS "Process terminated: " . shift;
     unlink $opts->{pid_file} if -e $opts->{pid_file};
     exit 2;
   };
 
   # Log something and clean up if we are terminated by SIGTERM or SIGINT.
-  $SIG{INT} = $SIG{TERM} = sub {
-    my $name = shift;
+  $SIG{INT} = sub {
     local *__ANON__ = 'sighandler';
-    FATAL "Process terminated by SIG$name";
+    unlink $opts->{pid_file} if -e $opts->{pid_file};
+    LOGCONFESS "Process terminated by SIGTERM";
+    exit 0;
+  };
+
+  $SIG{TERM} = sub {
+    local *__ANON__ = 'sighandler';
+    FATAL "Process terminated by SIGTERM";
     unlink $opts->{pid_file} if -e $opts->{pid_file};
     exit 0;
   };
 
-  open(my $fd, '>', $opts->{pid_file} )
+  open( my $fd, '>', $opts->{pid_file} )
     or LOGDIE "couldn't open pid file '$opts->{pid_file}': $!\n";
   print $fd $$;
   close $fd or LOGDIE "problem with $opts->{pid_file}: $!\n";

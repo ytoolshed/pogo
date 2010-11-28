@@ -14,9 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+use 5.008;
 use common::sense;
 
-use Test::More 'no_plan';
+use Test::Exception;
+use Test::More tests => 15;
 
 use Carp qw(confess);
 use Data::Dumper;
@@ -24,17 +26,21 @@ use FindBin qw($Bin);
 use JSON;
 use Log::Log4perl qw(:easy);
 use Net::SSLeay qw();
-use YAML::XS qw(LoadFile);
 use Sys::Hostname qw(hostname);
+use YAML::XS qw(Load LoadFile);
 
-use lib "$Bin/lib";
 use lib "$Bin/../lib";
+use lib "$Bin/lib";
+
+use PogoTester qw(derp);
 
 use Pogo::Engine;
 use Pogo::Engine::Job;
 use Pogo::Engine::Store qw(store);
 
-use PogoTester qw(derp);
+$SIG{ALRM} = sub { confess; };
+alarm(60);
+
 ok( my $pt = PogoTester->new(), "new pt" );
 
 chdir($Bin);
@@ -72,9 +78,9 @@ foreach my $dispatcher ( @{ $t->[1] } )
   ok( exists $dispatcher->{workers_busy}, "exists workers_busy" )
     or print Dumper $dispatcher;
   ok( $dispatcher->{workers_idle} == 0, "zero workers_idle" )
-    or print Dumper $dispatcher;
+    or LOGDIE "eek! bailing, don't want to *actually* run tasks";
   ok( $dispatcher->{workers_busy} == 0, "zero workers_busy" )
-    or print Dumper $dispatcher;
+    or LOGDIE "eek! bailing, don't want to *actually* run tasks";
 }
 
 # loadconf
@@ -100,8 +106,9 @@ my %job1 = (
 );
 
 ok( my $job = Pogo::Engine::Job->new( \%job1 ), "job->new" );
+
 #$job->start( sub { ok( 1, "started" ); confess; }, sub { ok( 0, "started" ); confess; } );
-$job->start( sub { ok( 1, "started" ); confess; }, sub { ok( 1, "started" ); confess; } );
+$job->start( sub { ok( 0, "started" ); }, sub { ok( 1, "started" ); } );
 
 # stop
 ok( $pt->stop_dispatcher, 'stop dispatcher' ) and $stopped = 1;
