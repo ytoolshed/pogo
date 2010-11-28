@@ -102,10 +102,10 @@ sub new
       {
         INFO "passwords for $self->{id} stored to local dispatcher";
       }
-      $cv->send(1);
+      $cv->send;
     }
   );
-  $cv->recv();
+  $cv->recv;
 
   # store all non-secure items in zk
   while ( my ( $k, $v ) = each %$args ) { $self->set_meta( $k, $v ); }

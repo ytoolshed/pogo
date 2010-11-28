@@ -14,13 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-use Data::Dumper;
-
+use 5.008;
 use common::sense;
 
-use Test::More tests => 27;
 use Test::Exception;
+use Test::More tests => 27;
 
+use Carp qw(confess);
+use Data::Dumper;
 use FindBin qw($Bin);
 use JSON;
 use Log::Log4perl qw(:easy);
@@ -28,14 +29,20 @@ use Net::SSLeay qw();
 use Sys::Hostname qw(hostname);
 use YAML::XS qw(Load LoadFile);
 
-use lib "$Bin/lib/";
-use lib "$Bin/../lib/";
+use lib "$Bin/../lib";
+use lib "$Bin/lib";
+
+use PogoTester qw(derp);
+
+$SIG{ALRM} = sub { confess; };
+alarm(60);
 
 use Pogo::Engine;
 use PogoTester qw(derp);
 
 ok( my $pt = PogoTester->new(), "new pt" );
 chdir($Bin);
+
 ok( Log::Log4perl::init("$Bin/conf/log4perl.conf"), "log4perl" );
 my $js      = JSON->new;
 my $valid   = {};
@@ -233,8 +240,9 @@ foreach my $cname ( sort keys %$valid )
 
   # first test non-rpc
   lives_ok { $const_conf = Load( $valid->{$cname} ); } "$cname eval yaml";
-  lives_ok { $ns = Pogo::Engine->init($disp_conf)->loadconf( $namespace, $const_conf ); } "$cname set_conf";
-  lives_ok { $gotconf = Pogo::Engine->namespace($namespace)->get_conf;  } "$cname get_conf";
+  lives_ok { $ns = Pogo::Engine->init($disp_conf)->loadconf( $namespace, $const_conf ); }
+  "$cname set_conf";
+  lives_ok { $gotconf = Pogo::Engine->namespace($namespace)->get_conf; } "$cname get_conf";
 
   # now test rpc
   undef $gotconf;
