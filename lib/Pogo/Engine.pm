@@ -427,7 +427,7 @@ sub loadconf
 
   # validate args
 
-  if ( ref $ns || $ns !~ m/^[a-z0-9\.\-\_]+/i)
+  if ( ref $ns || $ns !~ m/^[a-z0-9\.\-\_]+/i )
   {
     return $resp->set_error("bad call to loadconf: invalid namespace '$ns'");
   }
@@ -475,9 +475,9 @@ sub _ping { return store->ping(@_); }
 # this should only ever happen via the API.
 sub run
 {
-  my ($class, %args) = @_;
+  my ( $class, %args ) = @_;
   my $resp = Pogo::Engine::Response->new()->add_header( action => 'run' );
-  foreach my $arg (qw(user run_as command range password namespace pkg_passwords))
+  foreach my $arg (qw(user run_as command range password namespace secrets))
   {
     if ( !exists $args{$arg} )
     {
@@ -493,11 +493,11 @@ sub run
   $args{timeout}     ||= 600;
   $args{job_timeout} ||= 1800;
   $args{retry}       ||= 0;
-  $args{pkg_passwords} = to_json( $args{pkg_passwords} );
+  $args{secrets} = to_json( $args{secrets} );
 
   my $opts = {};
   foreach my $arg (
-    qw(invoked_as namespace range user run_as password timeout job_timeout command retry prehook posthook pkg_passwords email im_handle client requesthost concurrent exe_name exe_data)
+    qw(invoked_as namespace range user run_as password timeout job_timeout command retry prehook posthook secrets email im_handle client requesthost concurrent exe_name exe_data)
     )
   {
     $opts->{$arg} = $args{$arg} if exists $args{$arg};

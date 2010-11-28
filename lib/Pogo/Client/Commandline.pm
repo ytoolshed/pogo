@@ -42,10 +42,9 @@ use constant POGO_WORKER_CERT     => $Pogo::Common::WORKER_CERT;
 use constant POGO_PASSPHRASE_FILE => 'bar';
 
 my %LOG_SUBST = (
-  'jobstate' => 'job',
+  'jobstate'  => 'job',
   'hoststate' => 'host',
 );
-
 
 sub run_from_commandline
 {
@@ -267,7 +266,7 @@ $key,                  $value
   $opts->{run_as}   = $self->{userid};
   $opts->{password} = $cryptpw;
 
-  $opts->{pkg_passwords} =
+  $opts->{secrets} =
     { map { $_ => encode_base64( $rsa_pub->encrypt( $passphrase->{$_} ) ) } keys %$passphrase };
 
   my $resp = $self->_client->run(%$opts);
@@ -451,7 +450,7 @@ sub cmd_status
 
   # output status
   my $records = $resp->records;
-  my $status = shift @$records;
+  my $status  = shift @$records;
   printf "$pat", "job status", $status;
   while ( my $rec = shift @$records )
   {
@@ -485,7 +484,7 @@ sub cmd_log
   if ( defined $jobid )
   {
     $jobid = $self->to_jobid($jobid);
-    if (!defined $jobid)
+    if ( !defined $jobid )
     {
       print "No jobs found\n";
       return 1;
@@ -500,19 +499,20 @@ sub cmd_log
   my $hosts;
   my $target = shift @ARGV;
 
-  if (defined $target )
+  if ( defined $target )
   {
     $hosts = $self->expand_expression($target);
   }
 
-  my $idx = 0;
-  my $limit = 100;
+  my $idx      = 0;
+  my $limit    = 100;
   my $finished = 0;
   my $resp;
 
-  do {
+  do
+  {
     $resp = $self->_client->joblog( $jobid, $idx, $limit );
-    if (!$resp->is_success)
+    if ( !$resp->is_success )
     {
       ERROR "%s: %s\n", $self->{api}, $resp->status_msg;
       return -1;
@@ -524,20 +524,20 @@ sub cmd_log
     {
       $idx = ( shift @$record ) + 1;
       display_log_event( $jobid, $record, $opts->{verbose}, $hosts );
-      if ($record->[1] eq 'jobstate' )
+      if ( $record->[1] eq 'jobstate' )
       {
         my $newstate = $record->[2]->{state};
         $finished = 1 if ( $newstate eq 'finished' or $newstate eq 'halted' );
       }
     }
-  } while (scalar $resp->records == $limit );
+  } while ( scalar $resp->records == $limit );
 
-  if ($opts->{tail})
+  if ( $opts->{tail} )
   {
-    while (!$finished)
+    while ( !$finished )
     {
       $resp = $self->_client->joblog( $jobid, $idx, $limit );
-      if (!$resp->is_success)
+      if ( !$resp->is_success )
       {
         ERROR "ERROR: %s: %s\n", $self->api, $resp->status_msg;
       }
@@ -565,24 +565,24 @@ sub cmd_log
 
 sub display_log_event
 {
-  my ($jobid, $event, $verbose, $hosts) = @_;
-  my ($ts, $type, $details, $summary) = @$event;
+  my ( $jobid, $event, $verbose, $hosts )   = @_;
+  my ( $ts,    $type,  $details, $summary ) = @$event;
 
   $ts = to_ts($ts);
 
   # cosmetic crap
-  if (defined $LOG_SUBST{$type})
+  if ( defined $LOG_SUBST{$type} )
   {
     $type = $LOG_SUBST{$type};
   }
 
   my $ok = 1;
-  if (defined $hosts && $type eq 'host' && ref $details eq 'HASH' )
+  if ( defined $hosts && $type eq 'host' && ref $details eq 'HASH' )
   {
-    $ok = $hosts->has($details->{host});
+    $ok = $hosts->has( $details->{host} );
   }
 
-  if (ref $details eq 'HASH')
+  if ( ref $details eq 'HASH' )
   {
     if ( defined $details->{host} )
     {
@@ -612,7 +612,7 @@ $ts,                     $type, $summary
     if ($verbose)
     {
       format_name STDOUT 'JOBLOG_VERBOSE';
-      $keys = join "\n", keys %$details;
+      $keys   = join "\n", keys %$details;
       $values = join "\n", values %$details;
       write;
     }
@@ -627,7 +627,7 @@ $ts,                     $type, $summary
 sub to_ts
 {
   my $ts = shift;
-  my ( $secs, $msecs) = split /\./, $ts;
+  my ( $secs, $msecs ) = split /\./, $ts;
   $ts = strftime '%b %e %H:%M:%S UTC%z', localtime($secs);
   return $ts;
 }
@@ -804,7 +804,7 @@ sub load_passphrases
 # we're just always going to have to do this server-side for now
 sub expand_expression
 {
-  my ($self, @foo) = @_;
+  my ( $self, @foo ) = @_;
 
   my @hosts;
   foreach my $exp (@foo)
@@ -812,8 +812,8 @@ sub expand_expression
     DEBUG "expanding $exp";
 
     my $resp;
-    eval { $resp = $self->_client()->expand(\@foo); };
-    if ($@ || !$resp->is_success)
+    eval { $resp = $self->_client()->expand( \@foo ); };
+    if ( $@ || !$resp->is_success )
     {
       LOGDIE "unable to expand '$exp': " . $@ || $resp->status_msg;
     }

@@ -46,17 +46,19 @@ our %ALLOWED_RPC_METHODS = (
   listjobs      => 1,
   loadconf      => 1,
   ping          => 1,
-#  run           => 1,
-  stats         => 1,
-  add_task      => 1,
+
+  #  run           => 1,
+  stats        => 1,
+  storesecrets => 1,
+  add_task     => 1,
 );
 
 sub accept
 {
-  my ( $class, $fh, $host, $port )  = @_;
+  my ( $class, $fh, $host, $port ) = @_;
 
   my $self = {
-    fh => $fh,
+    fh   => $fh,
     host => $host,
     port => $port,
   };
@@ -67,56 +69,75 @@ sub accept
     fh      => $fh,
     tls     => 'accept',
     tls_ctx => {
-      key_file => Pogo::Dispatcher->dispatcher_key,
+      key_file  => Pogo::Dispatcher->dispatcher_key,
       cert_file => Pogo::Dispatcher->dispatcher_cert,
     },
     on_connect => sub {
       local *__ANON__ = 'AE:cb:on_connect';
-      INFO sprintf("Received RPC connection from %s:%d", $host, $port);
+      INFO sprintf( "Received RPC connection from %s:%d", $host, $port );
     },
-    on_eof  => sub {
+    on_eof => sub {
       local *__ANON__ = 'AE:cb:on_eof';
       $self->{handle}->destroy;
-      ERROR sprintf("EOF received from RPC client at %s:%d", $host, $port);
+      ERROR sprintf( "EOF received from RPC client at %s:%d", $host, $port );
     },
     on_error => sub {
       local *__ANON__ = 'AE:cb:on_error';
       my $msg = $_[2];
       $self->{handle}->destroy;
-      ERROR sprintf( "I/O error occurred while communicating with RPC client at %s:%d: %s", $host, $port, $msg);
+      ERROR sprintf( "I/O error occurred while communicating with RPC client at %s:%d: %s",
+        $host, $port, $msg );
     },
     on_read => sub {
       local *__ANON__ = 'AE:cb:on_read';
-      $self->{handle}->push_read(json => sub {
-        my ( $h,   $req )  = @_;
-        my ( $cmd, @args ) = @$req;
-        local *__ANON__ = 'AE:cb:on_read:push_read';
+      $self->{handle}->push_read(
+        json => sub {
+          my ( $h,   $req )  = @_;
+          my ( $cmd, @args ) = @$req;
+          local *__ANON__ = 'AE:cb:on_read:push_read';
 
-        # $cmd is either store or expire
+          # $cmd is either store or expire
 
-        DEBUG "rpc '$cmd' from " . $self->id;
-        if ( !exists $ALLOWED_RPC_METHODS{$cmd} )
-        {
-          ERROR "unknown command '$cmd' from " . $self->id;
-          my $resp = Pogo::Engine::Response->new;    # we're gonna fake it here.
-          $resp->set_error("unknown rpc command '$cmd'");
+          DEBUG "rpc '$cmd' from " . $self->id;
+          if ( !exists $ALLOWED_RPC_METHODS{$cmd} )
+          {
+            ERROR "unknown command '$cmd' from " . $self->id;
+            my $resp = Pogo::Engine::Response->new;    # we're gonna fake it here.
+            $resp->set_error("unknown rpc command '$cmd'");
+            $h->push_write( json => $resp->unblessed );
+            return;
+          }
+
+          # intercept storesecrets
+          if ( $cmd eq 'storesecrets' )
+          {
+            DEBUG 'got passwords for job ' . $args[0] . ' from local RPC';
+            my $resp = Pogo::Engine::Response->new()->add_header( action => 'storesecrets' );
+            if ( Pogo::Dispatcher::AuthStore->instance->store(@args) )
+            {
+              $resp->set_ok;
+            }
+            else
+            {
+              $resp->set_error('error storing secrets');
+            }
+            return $resp;
+          }
+
+          # presumably we have something valid here
+          my $resp;
+          eval { $resp = Pogo::Engine->$cmd(@args) };
+          if ($@)
+          {
+            ERROR "command '$cmd' from " . $self->id . " failed";
+            $resp = Pogo::Engine::Response->new;    # overwrite old possibly-bogus response
+            $resp->set_error("internal error: $@");
+            $h->push_write( json => $resp->unblessed );
+            return;
+          }
           $h->push_write( json => $resp->unblessed );
-          return;
         }
-
-        # presumably we have something valid here
-        my $resp;
-        eval { $resp = Pogo::Engine->$cmd(@args) };
-        if ($@)
-        {
-          ERROR "command '$cmd' from " . $self->id . " failed";
-          $resp = Pogo::Engine::Response->new;    # overwrite old possibly-bogus response
-          $resp->set_error("internal error: $@");
-          $h->push_write( json => $resp->unblessed );
-          return;
-        }
-        $h->push_write( json => $resp->unblessed );
-      });
+      );
     },
   );
 

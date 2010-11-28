@@ -34,7 +34,7 @@ sub new
 
   if ( !store->create( $self->{path}, '' ) )
   {
-    ERROR "couldn't create '" . $self->{path} . "': " . store->get_error;
+    ERROR "couldn't create '" . $self->{path} . "': " . store->get_error_name;
     return;
   }
 

@@ -72,9 +72,9 @@ foreach my $dispatcher ( @{ $t->[1] } )
   ok( exists $dispatcher->{workers_busy}, "exists workers_busy" )
     or print Dumper $dispatcher;
   ok( $dispatcher->{workers_idle} == 0, "zero workers_idle" )
-    or print Dumper $dispatcher;
+    or LOGDIE "eek! bailing, don't want to *actually* run tasks";
   ok( $dispatcher->{workers_busy} == 0, "zero workers_busy" )
-    or print Dumper $dispatcher;
+    or LOGDIE "eek! bailing, don't want to *actually* run tasks";
 }
 
 # loadconf
@@ -100,8 +100,9 @@ my %job1 = (
 );
 
 ok( my $job = Pogo::Engine::Job->new( \%job1 ), "job->new" );
+
 #$job->start( sub { ok( 1, "started" ); confess; }, sub { ok( 0, "started" ); confess; } );
-$job->start( sub { ok( 1, "started" ); confess; }, sub { ok( 1, "started" ); confess; } );
+$job->start( sub { ok( 0, "started" ); }, sub { ok( 1, "started" ); } );
 
 # stop
 ok( $pt->stop_dispatcher, 'stop dispatcher' ) and $stopped = 1;

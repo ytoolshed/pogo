@@ -85,13 +85,13 @@ sub new
   # 'higher security tier' job arguments like encrypted passwords & passphrases
   # get stuffed into the distributed password store instead of zookeeper
   # (because we don't want them to show up in zk's disk snapshot)
-  my $pw     = delete $args->{password};
-  my $pp     = delete $args->{pkg_passwords};
-  my $expire = $args->{job_timeout} + time();
+  my $pw      = delete $args->{password};
+  my $secrets = delete $args->{secrets};
+  my $expire  = $args->{job_timeout} + time();
 
   my $cv = AnyEvent->condvar;
   Pogo::Engine->rpcclient(
-    [ 'storepw', $self->{id}, $pw, $pp, $expire ],
+    [ 'storesecrets', $self->{id}, $pw, $secrets, $expire ],
     sub {
       my ( $ret, $err ) = @_;
       if ( !defined $ret )
@@ -360,18 +360,18 @@ sub start_job_timeout
 # }}}
 # {{{ various accessors
 
-sub password      { return $_[0]->_get_pwent()->[0]; }
-sub pkg_passwords { return $_[0]->_get_pwent()->[1]; }
-sub namespace     { return $_[0]->{ns} }
-sub id            { return $_[0]->{id} }
-sub user          { return $_[0]->meta('user'); }
-sub run_as        { return $_[0]->meta('run_as'); }
-sub timeout       { return $_[0]->meta('timeout'); }
-sub job_timeout   { return $_[0]->meta('job_timeout'); }
-sub retry         { return $_[0]->meta('retry'); }
-sub command       { return $_[0]->meta('command'); }
-sub concurrent    { return $_[0]->meta('concurrent'); }
-sub state         { return store->get( $_[0]->{path} ); }
+sub password    { return $_[0]->_get_secrets()->[0]; }
+sub secrets     { return $_[0]->_get_secrets()->[1]; }
+sub namespace   { return $_[0]->{ns} }
+sub id          { return $_[0]->{id} }
+sub user        { return $_[0]->meta('user'); }
+sub run_as      { return $_[0]->meta('run_as'); }
+sub timeout     { return $_[0]->meta('timeout'); }
+sub job_timeout { return $_[0]->meta('job_timeout'); }
+sub retry       { return $_[0]->meta('retry'); }
+sub command     { return $_[0]->meta('command'); }
+sub concurrent  { return $_[0]->meta('concurrent'); }
+sub state       { return store->get( $_[0]->{path} ); }
 
 sub set_state
 {
@@ -585,11 +585,11 @@ sub fetch_target_meta
   };
 
   # dig up the namespace configuration
-  foreach my $plugin ( $self->{ns}->plugins )
-  {
-    DEBUG Dumper $plugin;
-    $plugin->fetch_meta( $targets, $plugin_err, $plugin_cont );
-  }
+  #  foreach my $plugin ( $self->{ns}->plugins )
+  #  {
+  #    DEBUG Dumper $plugin;
+  #    $plugin->fetch_meta( $targets, $plugin_err, $plugin_cont );
+  #  }
 }
 
 # }}}
@@ -711,8 +711,7 @@ sub worker_command
 # }}}
 # {{{ misc helper
 
-# odd, why is this here?
-sub _get_pwent
+sub _get_secrets
 {
   my ($self) = @_;
   my $entry = Pogo::Dispatcher->instance->pwstore->get( $self->{id} );

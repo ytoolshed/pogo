@@ -77,13 +77,10 @@ sub _rpc_run
   $args{job_timeout} ||= 1800;
   $args{retry}       ||= 0;
 
-  # why are we encoding this twice? dumb
-  # $args{pkg_passwords} = to_json( $args{pkg_passwords} );
-
   my $opts = {};
   foreach my $arg (
     qw(invoked_as namespace target user run_as password timeout job_timeout
-    command retry prehook posthook pkg_passwords email im_handle client
+    command retry prehook posthook secrets email im_handle client
     requesthost concurrent exe_name exe_data)
     )
   {
@@ -91,7 +88,7 @@ sub _rpc_run
   }
   my $job = Pogo::Engine::Job->new($opts);
   $resp->set_ok;
-  DEBUG $job->id . ": running $command as $run_as on: " . to_json($target);
+  DEBUG $job->id . ": running '$command' as $run_as on: " . to_json($target);
   $resp->add_record( $job->id );
   return $resp;
 }

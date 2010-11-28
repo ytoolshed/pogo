@@ -36,25 +36,27 @@ sub start
 {
   my ( $class, $conf ) = @_;
 
-  if ( !defined $conf->{peers} or !scalar @{$conf->{peers}} )
+  if ( !defined $conf->{peers} or !scalar @{ $conf->{peers} } )
   {
-    WARN "Authstore peer list not configured.  Not storing passwords.";
-    $instance = bless { passwords => {} }, $class;
+    WARN "Authstore peer list not configured.  Not storing secrets.";
+    $instance = bless { secrets => {} }, $class;
     return;
   }
 
-  my %peers = map { _resolve_host($_) => $_ } @{$conf->{peers}};
+  my %peers = map { _resolve_host($_) => $_ } @{ $conf->{peers} };
 
   # seppuku
-  delete $peers{ _resolve_host( hostname ) };
+  delete $peers{ _resolve_host(hostname) };
 
-  $instance = bless({
-    peers          => \%peers,
-    passwords      => {},
-    authstore_port => $conf->{authstore_port} || DEFAULT_PORT,
-  }, $class);
+  $instance = bless(
+    { peers   => \%peers,
+      secrets => {},
+      port    => $conf->{rpc_port} || DEFAULT_PORT,
+    },
+    $class
+  );
 
-  start_server();
+  #start_server();
   start_client( rand(5), $_ ) for values %{ $instance->{peers} };
 }
 
@@ -66,72 +68,84 @@ sub start_server
     $instance->{bind_address},
     $instance->{authstore_port},
     sub {
-      my ($fh, $host, $port) = @_;
+      my ( $fh, $host, $port ) = @_;
       local *__ANON__ = 'AE:cb:connect_cb';
       INFO "Received connection from authstore peer at $host:$port";
 
-      my $handle; $handle = AnyEvent::Handle->new(
-        fh       => $fh,
-        tls      => 'accept',
-        tls_ctx  => {
-          key_file => Pogo::Dispatcher->dispatcher_key,
+      my $handle;
+      $handle = AnyEvent::Handle->new(
+        fh      => $fh,
+        tls     => 'accept',
+        tls_ctx => {
+          key_file  => Pogo::Dispatcher->dispatcher_key,
           cert_file => Pogo::Dispatcher->dispatcher_cert,
-          ca_file => Pogo::Dispatcher->dispatcher_cert,
-          verify => 1,
+          ca_file   => Pogo::Dispatcher->dispatcher_cert,
+          verify    => 1,
           verify_cb => sub {
             local *__ANON__ = 'AE:cb:verify_cb';
             my $preverify_ok = $_[4];
-            my $cert = $_[6];
-            DEBUG sprintf("certificate: %s", AnyEvent::TLS::certname($cert));
+            my $cert         = $_[6];
+            DEBUG sprintf( "certificate: %s", AnyEvent::TLS::certname($cert) );
             return $preverify_ok;
           },
         },
-        keepalive => 1,
+        keepalive   => 1,
         on_starttls => sub {
           local *__ANON__ = 'AE:cb:on_starttls';
           my $success = $_[1];
-          my $msg = $_[2];
-          if ($success) {
-            INFO sprintf("SSL/TLS handshake completed with authstore peer at %s:%d", $host, $port);
-          } else {
+          my $msg     = $_[2];
+          if ($success)
+          {
+            INFO
+              sprintf( "SSL/TLS handshake completed with authstore peer at %s:%d", $host, $port );
+          }
+          else
+          {
             $handle->destroy;
-            ERROR sprintf("Failed to complete SSL/TLS handshake with authstore peer at %s:%d: %s", $host, $port, $msg);
+            ERROR sprintf( "Failed to complete SSL/TLS handshake with authstore peer at %s:%d: %s",
+              $host, $port, $msg );
           }
         },
-        on_eof  => sub {
+        on_eof => sub {
           $handle->destroy;
-          ERROR sprintf("Unexpected EOF received from authstore peer at %s:%d", $host, $port);
+          ERROR sprintf( "Unexpected EOF received from authstore peer at %s:%d", $host, $port );
         },
         on_error => sub {
           $handle->destroy;
           my $msg = $_[2];
-          ERROR sprintf( "I/O error occurred while communicating with authstore peer at %s:%d: %s", $host, $port, $msg);
+          ERROR sprintf( "I/O error occurred while communicating with authstore peer at %s:%d: %s",
+            $host, $port, $msg );
         },
         on_read => sub {
-          $handle->push_read(json => sub {
-            my ( $h,   $req )  = @_;
-            my ( $cmd, @args ) = @$req;
+          $handle->push_read(
+            json => sub {
+              my ( $h,   $req )  = @_;
+              my ( $cmd, @args ) = @$req;
 
-            if ( $cmd eq 'store' )
-            {
-              my ( $jobid, $pw, $passphrase, $expire ) = @args;
-              DEBUG "got passwords for job $jobid from authstore peer $host:$port";
-              _store_local( $jobid, $pw, $passphrase, $expire );
+              if ( $cmd eq 'store' )
+              {
+                my ( $jobid, $pw, $secrets, $expire ) = @args;
+                DEBUG "got secretss for job $jobid from authstore peer $host:$port";
+                _store_local( $jobid, $pw, $secrets, $expire );
+              }
+              elsif ( $cmd eq 'expire' )
+              {
+                my ($job) = @args;
+                delete $instance->{secrets}->{$job};
+              }
+              elsif ( $cmd eq 'ping' )
+              {
+                $h->push_write( json => ['pong'] );
+              }
             }
-            elsif ( $cmd eq 'expire' )
-            {
-              my ($job) = @args;
-              delete $instance->{passwords}->{$job};
-            }
-            elsif ( $cmd eq 'ping' )
-            {
-              $h->push_write( json => ['pong'] );
-            }
-          });
+          );
         },
       );
     },
-    sub { local *__ANON__ = 'AE:cb:prepare_cb'; INFO "Accepting authstore peer connections on $_[1]:$_[2]"; },
+    sub {
+      local *__ANON__ = 'AE:cb:prepare_cb';
+      INFO "Accepting authstore peer connections on $_[1]:$_[2]";
+    },
   );
 }
 
@@ -143,67 +157,75 @@ sub start_client
   my ( $interval, $host ) = @_;
 
   DEBUG sprintf( "Initiating connection to authstore peer %s in %0.2f secs", $host, $interval );
-  my $port = $instance->{authstore_port};
+  my $port = $instance->{port};
 
-  my $timer; $timer = AnyEvent->timer(
+  my $timer;
+  $timer = AnyEvent->timer(
     after => $interval,
     cb    => sub {
       local *__ANON__ = 'AE:cb:timer_cb';
       undef $timer;
       INFO sprintf( "initializing connection to authstore %s:%d", $host, $port );
-      my $handle; $handle = AnyEvent::Handle->new(
-        connect  => [ $host, $port ],
-        tls      => 'connect',
-        tls_ctx  => {
-          key_file => Pogo::Dispatcher->dispatcher_key,
+      my $handle;
+      $handle = AnyEvent::Handle->new(
+        connect => [ $host, $port ],
+        tls     => 'connect',
+        tls_ctx => {
+          key_file  => Pogo::Dispatcher->dispatcher_key,
           cert_file => Pogo::Dispatcher->dispatcher_cert,
-          ca_file => Pogo::Dispatcher->dispatcher_cert,
-          verify => 1,
+          ca_file   => Pogo::Dispatcher->dispatcher_cert,
+          verify    => 1,
           verify_cb => sub {
             local *__ANON__ = 'AE:cb:verify_cb';
             my $preverify_ok = $_[4];
-            my $cert = $_[6];
-            DEBUG sprintf("certificate: %s", AnyEvent::TLS::certname($cert));
+            my $cert         = $_[6];
+            DEBUG sprintf( "certificate: %s", AnyEvent::TLS::certname($cert) );
             return $preverify_ok;
           },
         },
         on_connect => sub {
           local *__ANON__ = 'AE:cb:on_connect';
-          INFO sprintf("Connected to authstore peer at %s:%d", $host, $port);
+          INFO sprintf( "Connected to authstore peer at %s:%d", $host, $port );
         },
         on_starttls => sub {
           local *__ANON__ = 'AE:cb:on_starttls';
           my $success = $_[1];
-          my $msg = $_[2];
-          if ($success) {
-            INFO sprintf("SSL/TLS handshake completed with authstore peer at %s:%d", $host, $port);
+          my $msg     = $_[2];
+          if ($success)
+          {
+            INFO
+              sprintf( "SSL/TLS handshake completed with authstore peer at %s:%d", $host, $port );
             $instance->{clients}->{$host} = $handle;
 
             # send over all the goods
-            while ( my ( $job, $pwent ) = each %{ $instance->{passwords} } )
+            while ( my ( $job, $pwent ) = each %{ $instance->{secrets} } )
             {
               $handle->push_write( json => [ 'store', $job, @$pwent ] );
             }
-          } else {
+          }
+          else
+          {
             $handle->destroy;
-            ERROR sprintf("Failed to complete SSL/TLS handshake with authstore peer at %s:%d: %s", $host, $port, $msg);
-            start_client(rand(5), $host);
+            ERROR sprintf( "Failed to complete SSL/TLS handshake with authstore peer at %s:%d: %s",
+              $host, $port, $msg );
+            start_client( rand(5), $host );
           }
         },
         keepalive => 1,
-        no_delay => 1,
-        on_eof  => sub {
+        no_delay  => 1,
+        on_eof    => sub {
           local *__ANON__ = 'AE:cb:on_eof';
           $handle->destroy;
-          ERROR sprintf("Unexpected EOF received from authstore peer at %s:%d", $host, $port);
-          start_client(rand(5), $host);
+          ERROR sprintf( "Unexpected EOF received from authstore peer at %s:%d", $host, $port );
+          start_client( rand(5), $host );
         },
         on_error => sub {
           local *__ANON__ = 'AE:cb:on_error';
           my $msg = $_[2];
           $handle->destroy;
-          ERROR sprintf( "I/O error occurred while communicating with authstore peer at %s:%d: %s", $host, $port, $msg);
-          start_client(rand(5), $host);
+          ERROR sprintf( "I/O error occurred while communicating with authstore peer at %s:%d: %s",
+            $host, $port, $msg );
+          start_client( rand(5), $host );
         },
       );
     }
@@ -214,13 +236,13 @@ sub store
 {
   LOGDIE "Authstore not initialized yet" unless defined $instance;
 
-  my ( $job, $pw, $passphrase, $expire ) = @_;
+  my ( $job, $pw, $secrets, $expire ) = @_;
 
   # stash locally
-  _store_local( $job, $pw, $passphrase, $expire );
+  _store_local( $job, $pw, $secrets, $expire );
 
   # store on hosts in the peerlist
-  $_->push_write( json => [ 'store', $job, $pw, $passphrase, $expire ] )
+  $_->push_write( json => [ 'store', $job, $pw, $secrets, $expire ] )
     for values %{ $instance->{clients} };
 }
 
@@ -228,16 +250,16 @@ sub _store_local
 {
   LOGDIE "Authstore not initialized yet" unless defined $instance;
 
-  my ( $job, $pw, $passphrase, $expire ) = @_;
+  my ( $job, $pw, $secrets, $expire ) = @_;
 
-  $instance->{passwords}->{$job} = [ $pw, $passphrase, $expire ];
+  $instance->{secrets}->{$job} = [ $pw, $secrets, $expire ];
 
   # start expiration timer
   my $timer;
   $timer = AnyEvent->timer(
     after => $expire - time(),
     cb    => sub {
-      delete $instance->{passwords}->{$job};
+      delete $instance->{secrets}->{$job};
       undef $timer;
     },
   );
@@ -246,7 +268,7 @@ sub _store_local
 sub get
 {
   my $job = shift;
-  return $instance->{passwords}->{$job};
+  return $instance->{secrets}->{$job};
 }
 
 sub _resolve_host
