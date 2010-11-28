@@ -1,0 +1,111 @@
+#!/usr/bin/env perl -w
+package main;
+use strict;
+use warnings;
+use Fcntl;
+use File::Temp qw(tempfile);
+use Sys::Hostname qw(hostname);
+use constant LOCKFILE     => '/var/run/pogo_worker.lock';
+use constant POST_HOOKDIR => '/etc/pogo/post.d/';
+use constant PRE_HOOKDIR  => '/etc/pogo/pre.d/';
+use constant TEMPDIR      => '/tmp';
+$SIG{HUP} = $SIG{INT} = $SIG{TERM} = $SIG{__DIE__} = \&cleanup;
+my $hostname = hostname();
+my $locked   = 0;
+my $lockfh   = undef;
+my $opts     = undef;
+my $tempfile = undef;
+
+sub cleanup {
+  my $msg = shift;
+  if ( $msg =~ m/^[A-Z]+$/ ) { $msg = 'got SIG' . $msg; }
+  if ( $tempfile && -e $tempfile ) {
+    unlink $tempfile;
+  }
+  if ($locked) {
+    print "pogo-worker: unlocking\n";
+    close $lockfh;
+    unlink LOCKFILE;
+  }
+  die "ERROR: pogo-worker died: $msg\n\n";
+}
+
+sub run_hooks {
+  my $dir = shift;
+  if ( !-r $dir || !-d $dir ) { return 0; }
+  opendir( my $dh, $dir ) or die "hook failed, can't open $dir: $!";
+  my @files = map { $dir . $_ } sort grep { !/^\./ && -x $dir . $_ } readdir($dh);
+  closedir($dh);
+  foreach my $run (@files) {
+    print "pogo-worker: running hook '$run'\n";
+    my $ret = system($run) >> 8;
+    if ( $ret != 0 ) { die "hook '$run' exited $ret, bailing out\n"; }
+  }
+}
+
+sub main {
+  print "\n";
+  $opts = eval(<DATA>);
+  die "bad options\n"
+    unless $opts->{job}
+      && $opts->{command}
+      && exists $opts->{retry}
+      && exists $opts->{timeout};
+  print "pogo-worker: loaded; retry=$opts->{retry}, timeout=$opts->{timeout}\n";
+  print "pogo-worker: command='$opts->{command}'\n";
+  if ( !sysopen( $lockfh, LOCKFILE, O_CREAT | O_EXCL | O_WRONLY ) ) {
+    my $cmd = 'cat ' . LOCKFILE;
+    chomp( my $otherpid = qx($cmd) );
+    if ( $otherpid && -d "/proc/$otherpid" ) {
+      &cleanup("another pogo-worker is running (pid $otherpid), bailing out");
+    }
+    print "pogo-worker: cleaning up stale lockfile\n";
+    unlink LOCKFILE;
+    if ( !sysopen( $lockfh, LOCKFILE, O_CREAT | O_EXCL | O_WRONLY ) ) {
+      &cleanup("can't obtain lockfile, bailing out");
+    }
+  }
+  $locked = 1;
+  select $lockfh;
+  $| = 1;
+  print "$$\n";
+  select STDOUT;
+  if ( exists $opts->{exe_name} ) {
+    my ( $h, $f ) = tempfile( sprintf( 'pogo_%s_XXXX', $opts->{exe_name} ), DIR => TEMPDIR() );
+    {
+      local $/;
+      print $h <DATA>;
+    }
+    close($h);
+    chmod 0700, $tempfile = $opts->{command} = $f;
+  }
+  run_hooks(PRE_HOOKDIR) if ( $opts->{prehook} );
+  print "pogo-worker: running command '$opts->{command}'\n";
+  my $count = 0;
+  my $ret   = -1;
+  while ( $ret != 0 && $count <= $opts->{retry} ) {
+    eval {
+      $SIG{ALRM} = sub { die "command timed out\n"; };
+      alarm $opts->{timeout};
+      $ret = system( $opts->{command} ) >> 8;
+      alarm 0;
+    };
+    if ($@) { die "command timed out\n"; }
+    last if $ret == 0;
+    print "WARNING: pogo-worker: command exited $ret";
+    $count ? print ", retry $count of $opts->{retry}\n" : print "\n";
+    $count++;
+    sleep 5;
+  }
+  if ( $ret != 0 ) { die "command exited $ret\n"; }
+  print "pogo-worker: command exit $ret\n";
+  run_hooks(POST_HOOKDIR) if $opts->{posthook};
+  if ( $tempfile && -e $tempfile ) {
+    unlink $tempfile;
+  }
+  unlink LOCKFILE;
+  print "\n";
+  return $ret;
+}
+exit &main;
+__DATA__
