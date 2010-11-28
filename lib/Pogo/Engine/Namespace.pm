@@ -14,8 +14,6 @@ package Pogo::Engine::Namespace;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-use Data::Dumper;
-
 use common::sense;
 
 use Clone qw(clone);
@@ -36,9 +34,9 @@ sub new
 {
   my ( $class, $nsname ) = @_;
   my $self = {
-    ns    => $nsname,
-    path  => "/pogo/ns/$nsname",
-    slots => {},
+    ns            => $nsname,
+    path          => "/pogo/ns/$nsname",
+    slots         => {},
     _plugin_cache => {},
   };
 
@@ -179,11 +177,11 @@ sub set_conf
   my $conf    = {};
 
   # use default plugins if none are defined
-  if (!defined $conf_in->{plugins})
+  if ( !defined $conf_in->{plugins} )
   {
     $conf_in->{plugins}->{targets} = 'Pogo::Plugin::Target::Inline';
-    $conf_in->{plugins}->{apps} = 'Pogo::Plugin::Target::Inline';
-    $conf_in->{plugins}->{envs} = 'Pogo::Plugin::Target::Inline';
+    $conf_in->{plugins}->{apps}    = 'Pogo::Plugin::Target::Inline';
+    $conf_in->{plugins}->{envs}    = 'Pogo::Plugin::Target::Inline';
   }
 
   my $name = $self->name;
@@ -284,7 +282,7 @@ sub set_conf
 
   delete $conf_in->{constraints};
 
-  my @err = keys %{ $conf_in };
+  my @err = keys %{$conf_in};
 
   if ( @err > 0 )
   {
@@ -306,9 +304,6 @@ sub parse_deployment
 {
   my ( $self, $conf_in, $deployment_name, $data ) = @_;
   my $conf_out = {};
-
-
-
 
   return $conf_out;
 }
@@ -484,7 +479,7 @@ sub target_plugin
   my $self = shift;
   my $name = 'Pogo::Plugin::Target::Inline';
 
-  if (!exists $self->{_plugin_cache}->{$name})
+  if ( !exists $self->{_plugin_cache}->{$name} )
   {
     eval "use $name;";
     $self->{_plugin_cache}->{$name} = $name->new();
@@ -498,7 +493,7 @@ sub app_plugin
   my $self = shift;
   my $name = 'Pogo::Plugin::Target::Inline';
 
-  if (!exists $self->{_plugin_cache}->{$name})
+  if ( !exists $self->{_plugin_cache}->{$name} )
   {
     eval "use $name;";
     $self->{_plugin_cache}->{target} = $name->new();
@@ -512,7 +507,7 @@ sub env_plugin
   my $self = shift;
   my $name = 'Pogo::Plugin::Target::Inline';
 
-  if (!exists $self->{_plugin_cache}->{$name})
+  if ( !exists $self->{_plugin_cache}->{$name} )
   {
     eval "use $name;";
     $self->{_plugin_cache}->{target} = $name->new();
@@ -590,33 +585,35 @@ sub path
 # {{{ constraint logic
 sub fetch_all_slots
 {
-  my ($self, $job, $hostinfo_map, $errc, $cont ) = @_;
+  my ( $self, $job, $hostinfo_map, $errc, $cont ) = @_;
   my $slots = $self->{slots};
 
   my %hostslots;
   my @slotlookups;
 
   my $concurrent = $job->concurrent;
-  if (defined $concurrent)
+  if ( defined $concurrent )
   {
     my $maxdown = $concurrent;
-    my $slot = $self->slot('locks', $job->id, 'concurrent' );
+    my $slot = $self->slot( 'locks', $job->id, 'concurrent' );
 
-    if ($maxdown =~ m/^(\d+)%$/)
+    if ( $maxdown =~ m/^(\d+)%$/ )
     {
+
       # maxdown will be a percentage of the hosts in the job
       my $pct = $1;
       $maxdown = max( 1, int( $pct * scalar( $job->hosts ) / 100 ) );
     }
-    elsif ( ! $maxdown )
+    elsif ( !$maxdown )
     {
+
       # if $concurrent is 0, we run all hosts in parallel
       $maxdown = scalar $job->hosts;
     }
     $slot->{maxdown} = $maxdown;
 
     # fill out our hostslots hash
-    while (my ($hostname, $hostinfo) = each %$hostinfo_map )
+    while ( my ( $hostname, $hostinfo ) = each %$hostinfo_map )
     {
       $hostslots{$hostname} = [$slot];
     }
@@ -630,15 +627,16 @@ sub fetch_all_slots
 
 sub slot
 {
-  my ($self, $app, $envk, $envv ) = @_;
+  my ( $self, $app, $envk, $envv ) = @_;
   my $slots = $self->{slots};
-  $slots->{ $app, $envk, $envv } ||= Pogo::Engine::Namespace::Slot->new( $self, $app, $envk, $envv );
+  $slots->{ $app, $envk, $envv }
+    ||= Pogo::Engine::Namespace::Slot->new( $self, $app, $envk, $envv );
   return $slots->{ $app, $envk, $envv };
 }
 
 sub fetch_runnable_hosts
 {
-  my ($self, $job, $hostinfo_map, $errc, $cont) = @_;
+  my ( $self, $job, $hostinfo_map, $errc, $cont ) = @_;
   my @runnable;
   my %unrunnable;
 
@@ -647,7 +645,7 @@ sub fetch_runnable_hosts
     $hostinfo_map,
     $errc,
     sub {
-      my ( $allslots, $hostslots) = @_;
+      my ( $allslots, $hostslots ) = @_;
       local *__ANON__ = 'fetch_runnable_hosts:fetch_all_slots:cont';
 
       my $global_lock = store->lock( 'fetch_runnable_hosts:' . $job->id );
@@ -663,7 +661,7 @@ sub fetch_runnable_hosts
           my @pred_slots;
           foreach my $slot (@$slots)
           {
-            if (exists $slot->{pred})
+            if ( exists $slot->{pred} )
             {
               push @pred_slots, @{ $slot->{pred} };
             }
@@ -684,7 +682,8 @@ sub fetch_runnable_hosts
             }
             else
             {
-              map { DEBUG "reserving $_->{path} for $hostname"; $_->reserve( $job, $hostname ) } @$slots;
+              map { DEBUG "reserving $_->{path} for $hostname"; $_->reserve( $job, $hostname ) }
+                @$slots;
               push @runnable, $hostname;
             }
           }
@@ -701,10 +700,6 @@ sub fetch_runnable_hosts
     }
   );
 }
-
-
-
-
 
 1;
 

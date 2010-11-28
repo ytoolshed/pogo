@@ -18,7 +18,9 @@ use 5.008;
 use common::sense;
 
 use Test::Exception;
-use Test::More tests => 15;
+use Test::More 'no_plan';
+
+#use Test::More tests => 15;
 
 use Carp qw(confess);
 use Data::Dumper;
@@ -27,6 +29,7 @@ use JSON;
 use Log::Log4perl qw(:easy);
 use Net::SSLeay qw();
 use Sys::Hostname qw(hostname);
+use Time::HiRes qw(sleep);
 use YAML::XS qw(Load LoadFile);
 
 use lib "$Bin/../lib";
@@ -100,15 +103,17 @@ my %job1 = (
   target      => [ 'foo[1-10].example.com', ],
   namespace   => 'example',
   password    => 'foo',
-  timeout     => 1800,
-  job_timeout => 1800,
+  timeout     => 3,
+  job_timeout => 3,
   concurrent  => 1,
 );
 
 ok( my $job = Pogo::Engine::Job->new( \%job1 ), "job->new" );
 
 #$job->start( sub { ok( 1, "started" ); confess; }, sub { ok( 0, "started" ); confess; } );
-$job->start( sub { ok( 0, "started" ); }, sub { ok( 1, "started" ); } );
+#$job->start( sub { ok( 0, "started" ); }, sub { ok( 1, "started" ); } );
+sleep 3.5;
+ok( $job->state eq 'halted', 'job timeout' );
 
 # stop
 ok( $pt->stop_dispatcher, 'stop dispatcher' ) and $stopped = 1;

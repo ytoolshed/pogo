@@ -19,7 +19,7 @@ use common::sense;
 #use File::Slurp qw(read_file);
 #use List::Util qw(min max);
 use AnyEvent;
-use Data::Dumper;
+use Data::Dumper qw(Dumper);    # note we actually use this
 use JSON;
 use Log::Log4perl qw(:easy);
 use MIME::Base64 qw(encode_base64);
@@ -33,7 +33,8 @@ use Pogo::Engine::Job::Host;
 
 # wait 100ms for other hosts to finish before finding the next set of
 # runnable hosts
-our $UPDATE_INTERVAL = 0.10;
+#our $UPDATE_INTERVAL = 0.10;
+our $UPDATE_INTERVAL = 1;
 
 # re-check constraints after 10 seconds if a job is unable to run more
 # hosts
@@ -317,6 +318,16 @@ sub init_slot
   store->create( $self->{path} . "/slot/$id/$hostname", '' );
 }
 
+sub unlock_all
+{
+  my $self = shift;
+  my $ns   = $self->namespace;
+
+  my $joblock = $self->lock('Pogo::Engine::Job::unlock_all');
+  $ns->unlock_job($self);
+  $self->unlock($joblock);
+}
+
 # }}}
 # {{{ job state stuff
 sub is_running
@@ -326,6 +337,15 @@ sub is_running
   return ( $state eq 'running' or $state eq 'gathering' )
     ? 1
     : 0;
+}
+
+sub halt
+{
+  my ( $self, $reason ) = @_;
+  $reason ||= 'halted by user';    # TODO: which user?
+  DEBUG "halting " . $self->id;
+  $self->set_state( 'halted', $reason );
+  $self->unlock_all();
 }
 
 # }}}
@@ -343,7 +363,7 @@ sub start_job_timeout
     after => $timeout,
     cb    => sub {
       local *__ANON__ = 'AE:cb:job_timeout';
-      my $job = Pogo::Server->job($jobid);
+      my $job = Pogo::Engine->job($jobid);
 
       if ( $job->is_running )
       {
@@ -584,12 +604,6 @@ sub fetch_target_meta
     ERROR "plugin error";
   };
 
-  # dig up the namespace configuration
-  #  foreach my $plugin ( $self->{ns}->plugins )
-  #  {
-  #    DEBUG Dumper $plugin;
-  #    $plugin->fetch_meta( $targets, $plugin_err, $plugin_cont );
-  #  }
 }
 
 # }}}

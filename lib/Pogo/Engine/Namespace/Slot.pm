@@ -32,12 +32,6 @@ sub new
     maxdown => undef,    # this gets initialized by Namespace.pm
   };
 
-  if ( !store->create( $self->{path}, '' ) )
-  {
-    ERROR "couldn't create '" . $self->{path} . "': " . store->get_error_name;
-    return;
-  }
-
   return bless $self, $class;
 }
 
@@ -79,7 +73,7 @@ sub reserve
   # we're going to ASSume if this fails it's because $path DNE
   if ( !store->create( $path, '' ) )
   {
-    LOGDIE "unable to create environment slot '$path': " . store->get_error;
+    LOGDIE "unable to create environment slot '$path': " . store->get_error_name;
   }
 }
 
@@ -91,12 +85,12 @@ sub unreserve
 
   if ( !store->delete($path) )
   {
-    ERROR "something amiss? couldn't unreserve '$path':" . store->get_error;
+    ERROR "something amiss? couldn't unreserve '$path':" . store->get_error_name;
   }
 
   # will only succeed when there is nothing else reserved but that's what we
   # want; otherwise we need to do a more expensive get_children call here
-  store->delete( $self->{path} );
+  return store->delete( $self->{path} );
 }
 
 1;
