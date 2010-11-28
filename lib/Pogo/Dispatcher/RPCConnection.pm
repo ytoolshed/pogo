@@ -111,7 +111,7 @@ sub accept
           # intercept storesecrets
           if ( $cmd eq 'storesecrets' )
           {
-            DEBUG 'got passwords for job ' . $args[0] . ' from local RPC';
+            DEBUG 'got secrets for job ' . $args[0] . ' from local RPC';
             my $resp = Pogo::Engine::Response->new()->add_header( action => 'storesecrets' );
             if ( Pogo::Dispatcher::AuthStore->instance->store(@args) )
             {
@@ -121,7 +121,8 @@ sub accept
             {
               $resp->set_error('error storing secrets');
             }
-            return $resp;
+            $h->push_write( json => $resp->unblessed );
+            return;
           }
 
           # presumably we have something valid here

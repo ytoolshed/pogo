@@ -135,10 +135,8 @@ sub main
 
   # Log something if we die.
   $SIG{__DIE__} = sub {
-
-    # Don't log if die() is called in eval context; see "die" in perlfunc
-    die @_ if $^S;
-    FATAL "Process terminated: " . shift;
+    die @_ if $^S;    # Don't log if die() is called in eval context; see "die" in perlfunc
+    LOGCONFESS "Process terminated: " . shift;
     unlink $opts->{pid_file} if -e $opts->{pid_file};
     exit 2;
   };
@@ -158,7 +156,7 @@ sub main
     exit 0;
   };
 
-  open(my $fd, '>', $opts->{pid_file} )
+  open( my $fd, '>', $opts->{pid_file} )
     or LOGDIE "couldn't open pid file '$opts->{pid_file}': $!\n";
   print $fd $$;
   close $fd or LOGDIE "problem with $opts->{pid_file}: $!\n";

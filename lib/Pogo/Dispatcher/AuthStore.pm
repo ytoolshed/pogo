@@ -32,7 +32,7 @@ sub instance
   return $instance;
 }
 
-sub start
+sub init
 {
   my ( $class, $conf ) = @_;
 
@@ -47,6 +47,7 @@ sub start
 
   # seppuku
   delete $peers{ _resolve_host(hostname) };
+  delete $peers{ _resolve_host('localhost') };
 
   $instance = bless(
     { peers   => \%peers,
@@ -57,10 +58,11 @@ sub start
   );
 
   #start_server();
-  start_client( rand(5), $_ ) for values %{ $instance->{peers} };
+  start_client( 0, $_ ) for values %{ $instance->{peers} };
+  return $instance;
 }
 
-sub start_server
+sub start_server    # {{{
 {
   LOGDIE "Authstore not initialized yet" unless defined $instance;
 
@@ -147,7 +149,7 @@ sub start_server
       INFO "Accepting authstore peer connections on $_[1]:$_[2]";
     },
   );
-}
+}    # }}}
 
 # called for each peer
 sub start_client
@@ -236,13 +238,13 @@ sub store
 {
   LOGDIE "Authstore not initialized yet" unless defined $instance;
 
-  my ( $job, $pw, $secrets, $expire ) = @_;
+  my ( $self, $job, $pw, $secrets, $expire ) = @_;
 
   # stash locally
   _store_local( $job, $pw, $secrets, $expire );
 
   # store on hosts in the peerlist
-  $_->push_write( json => [ 'store', $job, $pw, $secrets, $expire ] )
+  $_->push_write( json => [ 'storesecrets', $job, $pw, $secrets, $expire ] )
     for values %{ $instance->{clients} };
 }
 
@@ -252,6 +254,7 @@ sub _store_local
 
   my ( $job, $pw, $secrets, $expire ) = @_;
 
+  INFO "stored secrets for job $job";
   $instance->{secrets}->{$job} = [ $pw, $secrets, $expire ];
 
   # start expiration timer
@@ -259,6 +262,7 @@ sub _store_local
   $timer = AnyEvent->timer(
     after => $expire - time(),
     cb    => sub {
+      INFO "expiring secrets for job $job";
       delete $instance->{secrets}->{$job};
       undef $timer;
     },

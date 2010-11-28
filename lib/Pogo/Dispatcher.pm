@@ -61,7 +61,7 @@ sub run    #{{
 
   # start these puppies up
   Pogo::Engine->init($instance);
-  Pogo::Dispatcher::AuthStore->start($instance);
+  Pogo::Dispatcher::AuthStore->init($instance);
 
   # handle workers
   tcp_server(
