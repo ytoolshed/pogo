@@ -34,6 +34,8 @@ use Pogo::Dispatcher::AuthStore;
 use Pogo::Dispatcher::RPCConnection;
 use Pogo::Dispatcher::WorkerConnection;
 
+# this is maximum the number of queued up tasks to send to a worker, not the
+# total concurrent limit (which is controlled in the worker itself)
 use constant MAX_WORKER_TASKS => 50;
 
 my $instance;
@@ -58,6 +60,8 @@ sub run    #{{
     workers_busy => 0,
     workers_idle => 0,
   };
+
+  bless $instance, $class;
 
   # start these puppies up
   Pogo::Engine->init($instance);
@@ -122,9 +126,9 @@ sub poll
     if ( $reqtype eq 'runhost' )
     {
       next if ( !scalar @workers );    # skip if we have no workers.
-      next
-        if ( !Pogo::Dispatcher::AuthStore->get($jobid) )
-        ;                              # skip for now if we have no passwords (yet?)
+      next unless Pogo::Dispatcher::AuthStore->get($jobid);
+
+      # skip for now if we have no passwords (yet?)
 
       if ( store->delete("/pogo/taskq/$task") )
       {
@@ -197,6 +201,8 @@ sub _write_stats
     or WARN "couldn't update stats node: " . $store->get_error;
 }
 
+# {{{ worker stuff
+
 sub idle_worker
 {
   LOGDIE "dispatcher not yet initialized" unless defined $instance;
@@ -218,6 +224,22 @@ sub retire_worker
   DEBUG sprintf( "Retired worker %s", $worker->id );
 }
 
+sub busy_worker
+{
+  LOGDIE "dispatcher not yet initialized" unless defined $instance;
+  my ( $class, $worker ) = @_;
+  $worker->{tasks}++;
+  if ( $worker->{tasks} >= MAX_WORKER_TASKS )
+  {
+    delete $instance->{workers}->{idle}->{ $worker->id() };
+    $instance->{workers}->{busy}->{ $worker->id() } = $worker;
+    DEBUG "marked worker busy: " . $worker->id;
+  }
+}
+
+# }}}
+# {{{ accessors
+
 sub dispatcher_cert
 {
   LOGDIE "dispatcher not yet initialized" unless defined $instance;
@@ -236,10 +258,19 @@ sub worker_cert
   return $instance->{worker_cert};
 }
 
-sub instance    #{{{
+sub worker_script
 {
+  LOGDIE "Dispatcher not initialized yet" unless defined $instance;
+  return $instance->{worker_script};
+}
+
+sub instance
+{
+  LOGDIE "dispatcher not yet initialized" unless defined $instance;
   return $instance;
-}               #}}}
+}
+
+# }}}
 
 1;
 

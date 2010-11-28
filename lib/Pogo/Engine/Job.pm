@@ -16,15 +16,15 @@ package Pogo::Engine::Job;
 
 use common::sense;
 
-#use File::Slurp qw(read_file);
 #use List::Util qw(min max);
 use AnyEvent;
 use Data::Dumper;    # note we actually use this
+use File::Slurp qw(read_file);
 use JSON;
 use Log::Log4perl qw(:easy);
 use MIME::Base64 qw(encode_base64);
-use Time::HiRes qw(time);
 use String::Glob::Permute qw(string_glob_permute);
+use Time::HiRes qw(time);
 
 use Pogo::Common;
 use Pogo::Engine;
@@ -706,13 +706,13 @@ sub parse_log
 
 sub worker_command
 {
-  my ($self) = @_;
-  my %meta = $self->all_meta;
-  my $exe = delete $meta{exe_data} || '';
-  my $worker_stub = read_file( Pogo::Dispatcher->instance()->worker_script() )
+  my $self        = shift;
+  my %meta        = $self->all_meta;
+  my $exe         = delete $meta{exe_data} || '';
+  my $worker_stub = read_file( Pogo::Dispatcher->instance->worker_script )
     . encode_perl(
     { job => $self->id,
-      api => Pogo::Server->instance()->{api_uri},
+      api => Pogo::Engine->instance()->{api_uri},
       %meta
     }
     );
@@ -733,7 +733,7 @@ sub worker_command
 sub _get_secrets
 {
   my ($self) = @_;
-  my $entry = Pogo::Dispatcher->instance->pwstore->get( $self->{id} );
+  my $entry = Pogo::Dispatcher::AuthStore->get( $self->{id} );
   LOGDIE "No password entry found for job $self->{id}!" if ( !$entry );
   return $entry;
 }

@@ -42,6 +42,8 @@ sub new
   my ( $class, %opts ) = @_;
   mkdir "$Bin/.tmp"
     unless -d "$Bin/.tmp";
+  mkdir "$Bin/.tmp/pogo_output"
+    unless -d "$Bin/.tmp/pogo_output";
 
   my $conf = $opts{conf} || "$Bin/conf/dispatcher.conf";
   my $self = LoadFile($conf);

@@ -132,9 +132,8 @@ sub main
 
     # Don't log if die() is called in eval context; see "die" in perlfunc
     die @_ if $^S;
-    FATAL "Process terminated: " . shift;
     unlink $opts->{pid_file} if -e $opts->{pid_file};
-    exit 2;
+    LOGCONFESS "Process terminated: " . shift;
   };
 
   # Log something and clean up if we are terminated by SIGTERM or SIGINT.

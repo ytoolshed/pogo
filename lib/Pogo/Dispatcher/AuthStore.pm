@@ -14,6 +14,8 @@ package Pogo::Dispatcher::AuthStore;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+use Data::Dumper;
+
 use 5.008;
 use common::sense;
 
@@ -271,7 +273,7 @@ sub _store_local
 
 sub get
 {
-  my $job = shift;
+  my ( undef, $job ) = @_;
   return $instance->{secrets}->{$job};
 }
 

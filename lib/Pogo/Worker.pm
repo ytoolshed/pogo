@@ -16,85 +16,92 @@ package Pogo::Worker;
 
 use common::sense;
 
-use AnyEvent;
 use AnyEvent::Socket;
 use AnyEvent::TLS;
+use AnyEvent;
 use Carp;
-use Log::Log4perl qw(:easy);
+use JSON qw(encode_json);
 use LWP::UserAgent;
+use Log::Log4perl qw(:easy);
 use Pogo::Worker::Connection;
-use Sys::Hostname;
 use Scalar::Util qw(refaddr);
+use Sys::Hostname;
 
 use constant DEFAULT_PORT => 9697;
 
 my $instance;
 
-sub run # {{{
+sub run    # {{{
 {
   my $class = shift;
-  $instance = bless({ @_ }, $class);
+  $instance = bless( {@_}, $class );
 
   # Initialize response queue
-  $instance->{connections} = {};
+  $instance->{connections}   = {};
   $instance->{responsequeue} = [];
   my $port = $instance->{dispatcher_port} || DEFAULT_PORT;
 
-  foreach my $host (@{$instance->{dispatchers}})  {
-    INFO sprintf( "Connecting to dispatcher at %s:%d", $host, $port);
-    Pogo::Worker::Connection->new(host => $host,
-                                  port => $port,
-                                  worker_key => $instance->{worker_key},
-                                  worker_cert => $instance->{worker_cert},
-                                  dispatcher_cert => $instance->{dispatcher_cert})->run;
+  foreach my $host ( @{ $instance->{dispatchers} } )
+  {
+    INFO sprintf( "Connecting to dispatcher at %s:%d", $host, $port );
+    Pogo::Worker::Connection->new(
+      host            => $host,
+      port            => $port,
+      worker_key      => $instance->{worker_key},
+      worker_cert     => $instance->{worker_cert},
+      dispatcher_cert => $instance->{dispatcher_cert}
+    )->run;
   }
 
   # Start event loop
   AnyEvent->condvar->recv();
 
   ERROR "Event loop terminated - this should not have happened!";
-} # }}}
+}    # }}}
 
-sub add_connection #{{{
+sub add_connection    #{{{
 {
   LOGDIE "Worker not initialized yet" unless defined $instance;
   my $conn = $_[1];
-  $instance->{connections}->{refaddr($conn)} = $conn;
-} #}}}
+  $instance->{connections}->{ refaddr($conn) } = $conn;
+}                     #}}}
 
 sub delete_connection #{{{
-{ 
+{
   LOGDIE "Worker not initialized yet" unless defined $instance;
   my $conn = $_[1];
-  delete $instance->{connections}->{refaddr($conn)};
-} #}}}
+  delete $instance->{connections}->{ refaddr($conn) };
+}                     #}}}
 
 # Response queue {{{
 sub send_response
 {
   LOGDIE "Worker not initialized yet" unless defined $instance;
   my ( $class, $msg ) = @_;
-  my @k = keys %{$instance->{connections}};
-  if(!@k) {
-    DEBUG sprintf("queuing response: %s", encode_json($msg));
-    push @{$instance->{responsequeue}}, $msg;
-  } else {
+  my @k = keys %{ $instance->{connections} };
+  if ( !@k )
+  {
+    DEBUG sprintf( "queuing response: %s", encode_json($msg) );
+    push @{ $instance->{responsequeue} }, $msg;
+  }
+  else
+  {
+
     # send to a dispatcher
-    my $n = int(rand(scalar @k));
-    my $c = $instance->{connections}->{$k[$n]};
+    my $n = int( rand( scalar @k ) );
+    my $c = $instance->{connections}->{ $k[$n] };
     $c->send_response($msg);
   }
 }
 
-sub dequeue_msg #{{{
+sub dequeue_msg    #{{{
 {
   LOGDIE "Worker not initialized yet" unless defined $instance;
-  return unshift @{$instance->{responsequeue}};
-} #}}}
-
+  return unshift @{ $instance->{responsequeue} };
+}                  #}}}
 
 # Properties {{{
-sub instance    #{{{
+sub instance       #{{{
 {
   return $instance;
 }
@@ -153,10 +160,10 @@ sub scp_options
   return @{ $instance->{scp_options} };
 }
 
-sub data_dir
+sub output_dir
 {
   LOGDIE "Worker not initialized yet" unless defined $instance;
-  return $instance->{data_dir};
+  return $instance->{output_dir};
 }
 
 sub output_uri
@@ -170,6 +177,13 @@ sub max_output
   LOGDIE "Worker not initialized yet" unless defined $instance;
   return $instance->{max_output};
 }
+
+sub num_workers
+{
+  LOGDIE "Worker not initialized yet" unless defined $instance;
+  return $instance->{num_workers};
+}
+
 #}}}
 
 1;
