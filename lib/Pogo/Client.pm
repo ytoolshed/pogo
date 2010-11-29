@@ -22,7 +22,7 @@ use Log::Log4perl qw(:easy);
 use HTTP::Request::Common qw(POST);
 
 use Pogo::Engine::Response;
-use Pogo::Common qw($VERSION fetch_yaml);
+use Pogo::Common qw($VERSION $USERAGENT fetch_yaml);
 
 our $AUTOLOAD;
 
@@ -37,12 +37,7 @@ sub new
 
 sub ua
 {
-  my ($self) = @_;
-  if ( !defined $self->{ua} )
-  {
-    $self->{ua} = LWP::UserAgent->new();
-  }
-  return $self->{ua};
+  return $USERAGENT;
 }
 
 # why are we overriding this again?
