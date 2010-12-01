@@ -1,7 +1,9 @@
-#!/usr/bin/env perl -w
-package main;
-use strict;
+#!/usr/bin/env perl
+
+use 5.008;
 use warnings;
+use strict;
+
 use Fcntl;
 use File::Temp qw(tempfile);
 use Sys::Hostname qw(hostname);
@@ -9,7 +11,9 @@ use constant LOCKFILE     => '/var/run/pogo_worker.lock';
 use constant POST_HOOKDIR => '/etc/pogo/post.d/';
 use constant PRE_HOOKDIR  => '/etc/pogo/pre.d/';
 use constant TEMPDIR      => '/tmp';
+
 $SIG{HUP} = $SIG{INT} = $SIG{TERM} = $SIG{__DIE__} = \&cleanup;
+
 my $hostname = hostname();
 my $locked   = 0;
 my $lockfh   = undef;

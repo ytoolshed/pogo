@@ -1,8 +1,7 @@
-#!/usr/bin/env perl -w
-# $Id: export.pl 261440 2009-11-02 17:22:53Z asloane $
+#!/usr/bin/env perl
 
-use strict;
 use warnings;
+use strict;
 
 use Net::ZooKeeper qw(:node_flags :acls :errors);
 
@@ -21,4 +20,3 @@ sub dumptree
 }
 
 dumptree("/");
-

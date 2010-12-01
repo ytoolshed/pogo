@@ -17,7 +17,7 @@ package Pogo::Engine::Job::Host;
 use 5.008;
 use common::sense;
 
-use JSON qw(to_json from_json);
+use JSON qw(encode_json decode_json);
 use Log::Log4perl qw(:easy);
 use Pogo::Engine::Store qw(store);
 
@@ -76,7 +76,7 @@ sub _set
 sub add_outputurl
 {
   my ( $self, $url ) = @_;
-  my $old = from_json( $self->_get('_output') );
+  my $old = decode_json( $self->_get('_output') );
   if ( defined $old )
   {
     push @$old, $url;
@@ -85,20 +85,20 @@ sub add_outputurl
   {
     $old = [$url];
   }
-  return $self->_set( '_output', to_json($old) );
+  return $self->_set( '_output', encode_json($old) );
 }
 
 sub outputurls
 {
   my $self = shift;
-  return from_json( $self->_get('_output') );
+  return decode_json( $self->_get('_output') );
 }
 
 sub set_hostinfo
 {
   my ( $self, $info ) = @_;
   $self->{info} = $info;
-  $info = to_json($info);
+  $info = encode_json($info);
   return $self->_set( '_info', $info );
 }
 
@@ -113,7 +113,7 @@ sub info
       WARN "no hostinfo found for " . $self->name;
       return;
     }
-    $self->{info} = from_json($hinfo);
+    $self->{info} = decode_json($hinfo);
   }
 
   return $self->{info};

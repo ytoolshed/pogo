@@ -21,7 +21,6 @@ use common::sense;
 use Log::Log4perl qw(:easy);
 use Net::ZooKeeper qw(:node_flags :acls :errors);
 use Time::HiRes qw(sleep);
-use JSON qw(to_json);
 
 use constant ZK_ACL        => ZOO_OPEN_ACL_UNSAFE;
 use constant ZK_SERVERLIST => qw(localhost);

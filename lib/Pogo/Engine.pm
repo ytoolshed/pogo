@@ -19,7 +19,7 @@ use common::sense;
 use AnyEvent;
 use AnyEvent::Handle;
 use AnyEvent::Socket qw(tcp_connect);
-use JSON qw(from_json to_json);
+use JSON qw(decode_json encode_json);
 use Log::Log4perl qw(:easy);
 use YAML::XS qw(LoadFile);
 
@@ -493,7 +493,7 @@ sub run
   $args{timeout}     ||= 600;
   $args{job_timeout} ||= 1800;
   $args{retry}       ||= 0;
-  $args{secrets} = to_json( $args{secrets} );
+  $args{secrets} = encode_json( $args{secrets} );
 
   my $opts = {};
   foreach my $arg (
@@ -504,7 +504,7 @@ sub run
   }
 
   my $job = Pogo::Engine::Job->new($opts);
-  DEBUG $job->id . ": running $command as $run_as on " . to_json($range);
+  DEBUG $job->id . ": running $command as $run_as on " . encode_json($range);
 
   $resp->add_record( "OK " . $job->id );
   $resp->set_ok;
@@ -529,7 +529,7 @@ sub stats
       or WARN "race condition? $path should exist but doesn't: " . store->get_error;
 
     my $host_stats;
-    eval { $host_stats = from_json($raw_stats) };
+    eval { $host_stats = decode_json($raw_stats) };
     if ($@)
     {
       WARN "json decode of $path failed: $@";
@@ -547,7 +547,7 @@ sub stats
 sub add_task
 {
   my ( $class, @task ) = @_;
-  DEBUG "adding task: " . to_json( \@task );
+  DEBUG "adding task: " . encode_json( \@task );
   store->create( '/pogo/taskq/' . join( ';', @task ), '' )
     or LOGDIE store->get_error_name;
 }

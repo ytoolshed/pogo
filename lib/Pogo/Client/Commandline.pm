@@ -21,7 +21,7 @@ use common::sense;
 use Getopt::Long qw(:config bundling no_ignore_case pass_through);
 use Crypt::OpenSSL::RSA;
 use Crypt::OpenSSL::X509;
-use JSON qw(to_json);
+use JSON qw(encode_json);
 use Log::Log4perl qw(:easy);
 use Log::Log4perl::Level;
 use MIME::Base64 qw(encode_base64);
@@ -334,7 +334,7 @@ sub cmd_jobs
   delete $opts->{user} if $opts->{all};
   delete $opts->{all}  if $opts->{all};
 
-  DEBUG "cmd_jobs: " . to_json($opts);
+  DEBUG "cmd_jobs: " . encode_json($opts);
 
   my $resp = $self->_client()->listjobs(%$opts);
   if ( !$resp->is_success )

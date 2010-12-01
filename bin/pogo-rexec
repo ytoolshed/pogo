@@ -1,4 +1,4 @@
-#!/usr/bin/env perl -w
+#!/usr/bin/env perl
 
 # Copyright (c) 2010, Yahoo! Inc. All rights reserved.
 #
@@ -13,6 +13,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+use 5.008;
+use common::sense;
 
 use File::Temp qw();
 use Getopt::Long qw(GetOptions);
