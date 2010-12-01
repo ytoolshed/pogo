@@ -51,6 +51,7 @@ sub main
     dispatcher_cert => "$POGO_ROOT/etc/ssl/pogo_dispatcher.crt",
     worker_cert     => "$POGO_ROOT/etc/ssl/pogo_worker.crt",
     bind_address    => undef,
+    store           => "zookeeper",
     peers           => [],
   };
 

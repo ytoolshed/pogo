@@ -16,7 +16,7 @@ package Pogo::Engine::Response;
 
 use common::sense;
 
-use JSON qw(to_json);
+use JSON qw(decode_json);
 use YAML::XS qw(Dump);
 use Log::Log4perl qw(:easy);
 use Sys::Hostname qw(hostname);
@@ -55,7 +55,7 @@ sub load_data
 {
   my ( $self, $content ) = @_;
   my $data;
-  eval { $data = JSON::from_json($content); };
+  eval { $data = decode_json($content); };
   if ($@)
   {
     ERROR "Unable to parse content: $@";
@@ -297,7 +297,7 @@ sub to_string
   my $string;
   if ( $self->format eq 'json' )
   {
-    eval { $string = to_json( $data, { allow_nonref => 1 } ); };
+    eval { $string = JSON->new->utf8->allow_nonref->encode( $data ); };
     if ($@)
     {
       ERROR "Error formatting output: $@";
@@ -307,7 +307,7 @@ sub to_string
   }
   elsif ( $self->format eq 'json-pretty' )
   {
-    eval { $string = to_json( $data, { pretty => 1 } ); };
+    eval { $string = JSON->new->utf8->pretty->encode( $data ); };
     if ($@)
     {
       ERROR "Error formatting output: $@";

@@ -25,7 +25,6 @@ use AnyEvent::Socket qw(tcp_connect);
 use AnyEvent::TLS;
 use YAML::XS qw(LoadFile);
 use Net::SSLeay;
-use JSON qw(to_json from_json);
 use Data::Dumper;
 use Carp qw(croak confess);
 use Exporter 'import';

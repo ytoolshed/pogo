@@ -14,15 +14,15 @@ package Pogo::Client;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+use 5.008;
 use common::sense;
 
 use Exporter 'import';
-use JSON qw(to_json from_json);
+use JSON qw(encode_json);
 use Log::Log4perl qw(:easy);
 use HTTP::Request::Common qw(POST);
 
 use Pogo::Engine::Response;
-use Pogo::Common qw($VERSION $USERAGENT fetch_yaml);
 
 our $AUTOLOAD;
 
@@ -37,7 +37,7 @@ sub new
 
 sub ua
 {
-  return $USERAGENT;
+  return $Pogo::Common::USERAGENT;
 }
 
 # why are we overriding this again?
@@ -50,7 +50,7 @@ sub AUTOLOAD
   $AUTOLOAD =~ /(\w+)$/ or LOGDIE "cannot parse '$AUTOLOAD'";
   my $method = $1;
 
-  my $rpc = to_json( [ $method, @stuff ] );
+  my $rpc = encode_json( [ $method, @stuff ] );
   my $post = POST $self->{api}, [ r => $rpc ];
 
   DEBUG "request: $rpc";

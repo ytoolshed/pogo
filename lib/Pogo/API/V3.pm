@@ -17,7 +17,7 @@ package Pogo::API::V3;
 use common::sense;
 
 use Log::Log4perl qw(:easy);
-use JSON qw(to_json);
+use JSON qw(encode_json);
 use Sys::Hostname qw(hostname);
 use YAML::XS qw(LoadFile);
 
@@ -88,7 +88,7 @@ sub _rpc_run
   }
   my $job = Pogo::Engine::Job->new($opts);
   $resp->set_ok;
-  DEBUG $job->id . ": running '$command' as $run_as on: " . to_json($target);
+  DEBUG $job->id . ": running '$command' as $run_as on: " . encode_json($target);
   $resp->add_record( $job->id );
   return $resp;
 }

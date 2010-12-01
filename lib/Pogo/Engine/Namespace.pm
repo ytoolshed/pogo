@@ -16,14 +16,14 @@ package Pogo::Engine::Namespace;
 
 use common::sense;
 
-use Clone qw(clone);
+use Storable qw(dclone);
 use List::Util qw(min max);
 use Log::Log4perl qw(:easy);
 
 use Pogo::Engine::Namespace::Slot;
 use Pogo::Engine::Store qw(store);
 use Pogo::Common qw(merge_hash);
-use JSON qw(to_json from_json);
+use JSON qw(encode_json decode_json);
 
 # Naming convention:
 # get_* retrieves something synchronously
@@ -244,7 +244,7 @@ sub set_conf
   my ( $self, $conf_ref ) = @_;
 
   # copy the conf ref, since we're going to modify the crap out of it below
-  my $conf_in = clone $conf_ref;
+  my $conf_in = dclone $conf_ref;
   my $conf    = {};
 
   # use default plugins if none are defined
@@ -394,6 +394,7 @@ sub _write_conf
 sub _set_conf_r
 {
   my ( $path, $node ) = @_;
+  my $json = JSON->new->utf8->allow_nonref;
   foreach my $k ( keys %$node )
   {
     my $v = $node->{$k};
@@ -405,7 +406,7 @@ sub _set_conf_r
     {
       store->create( $p, '' )
         or WARN "couldn't create '$p': " . store->get_error_name;
-      store->set( $p, to_json( $v, { allow_nonref => 1 } ) )
+      store->set( $p, $json->encode( $v ) )
         or WARN "couldn't set '$p': " . store->get_error_name;
     }
     elsif ( $r eq 'HASH' )
@@ -423,7 +424,7 @@ sub _set_conf_r
         store->create( "$p/$node", '' )
           or WARN "couldn't create '$p/$node': " . store->get_error_name;
 
-        store->set( "$p/$node", to_json( $v->[$node], { allow_nonref => 1 } ) )
+        store->set( "$p/$node", $json->encode( $v->[$node] ) )
           or WARN "couldn't set '$p/$node': " . store->get_error_name;
 
       }
@@ -445,7 +446,7 @@ sub _get_conf_r
     my $v = store->get($p);
     if ($v)
     {
-      $c->{$node} = from_json( $v, { allow_nonref => 1 } );
+      $c->{$node} = JSON->new->utf8->allow_nonref->decode( $v );
     }
     else
     {

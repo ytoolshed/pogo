@@ -23,7 +23,6 @@ use File::Slurp qw(read_file);
 use JSON;
 use Log::Log4perl qw(:easy);
 use MIME::Base64 qw(encode_base64);
-use String::Glob::Permute qw(string_glob_permute);
 use Time::HiRes qw(time);
 
 use Pogo::Common;
@@ -112,7 +111,7 @@ sub new
 
   # store all non-secure items in zk
   while ( my ( $k, $v ) = each %$args ) { $self->set_meta( $k, $v ); }
-  $self->set_meta( 'target', to_json($target) );
+  $self->set_meta( 'target', encode_json($target) );
 
   Pogo::Engine->add_task( 'startjob', $self->{id} );
 
@@ -424,7 +423,7 @@ sub start
   my ( $self, $errc, $cont ) = @_;
 
   # do hostinfo lookup for the targets
-  my $target     = from_json( $self->meta('target') );
+  my $target     = decode_json( $self->meta('target') );
   my $ns         = $self->namespace;
   my $concurrent = $self->concurrent;
   my $joblock    = $self->lock("Pogo::Engine::Job::start:before_hostinfo");
@@ -631,7 +630,7 @@ sub log
 {
   my ( $self, @stuff ) = @_;
   my $t = time();
-  my $entry = to_json( [ $t, @stuff ] );
+  my $entry = encode_json( [ $t, @stuff ] );
   store->create_sequence( $self->{path} . '/log/l', $entry )
     or ERROR "couldn't create log sequence: " . store->get_error_name;
 }
@@ -642,7 +641,7 @@ sub start_time
   my ($self) = @_;
   if ( my $data = store->get( $self->{path} . '/log/' . _lognode(0) ) )
   {
-    return eval { $data = from_json $data; return $data->[0]; };
+    return eval { $data = decode_json $data; return $data->[0]; };
   }
 }
 
@@ -669,7 +668,7 @@ sub read_log
 
   while ( $limit-- && ( my $data = store->get( $path . _lognode($offset) ) ) )
   {
-    my $logentry = eval { from_json($data); };
+    my $logentry = eval { decode_json($data); };
     if ($@)
     {
       push @log,
