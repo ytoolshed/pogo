@@ -14,12 +14,13 @@ package PogoDummyWorker;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+use Log::Log4perl qw(:easy);
 use Pogo::Worker;
 
 our $opts    = {};
 our $execute = undef;
 
-sub instance()
+sub instance
 {
   if ( defined $opts->{log4perl} && -r $opts->{log4perl} )
   {
@@ -31,13 +32,16 @@ sub instance()
   }
 
   {
-    die "Please set PogoDummyWorker::execute to a coderef" unless ref $execute eq 'CODE';
+    LOGDIE "Please set PogoDummyWorker::execute to a coderef" unless ref $execute eq 'CODE';
 
     no strict 'refs';
     *{'Pogo::Worker::Connection::real_execute'} = \&Pogo::Worker::Connection::execute;
     *{'Pogo::Worker::Connection::execute'}      = $execute;
   }
-  return Pogo::Worker->instance($opts);
+
+  DEBUG "sup!";
+  my $i = Pogo::Worker->run(%$opts);
+  return $i;
 }
 
 "The proles don't matter.";
