@@ -29,10 +29,13 @@ use Data::Dumper;
 use Carp qw(croak confess);
 use Exporter 'import';
 use FindBin qw($Bin);
+use Template;
+use LWP;
 
 our $dispatcher_pid;
 
 use constant ZOO_PID_FILE => "$Bin/.tmp/zookeeper.pid";
+use constant HTTPD_PORT   => 9414;
 
 our @EXPORT_OK = qw(derp);
 
@@ -305,6 +308,93 @@ sub worker_rpc
   }
 
   return $cv->recv;
+}
+
+# check the configured httpd to make sure it's the correct version
+sub check_httpd_version
+{
+  my ( $self, $httpd ) = @_;
+  return unless -x $httpd;
+  chomp(my ($verline) = grep { /Server version:/ } `$httpd -v`);
+  return defined $verline && $verline =~ m/Apache\/2\./;
+}
+
+# build the httpd.conf we'll use to start the test httpd
+sub build_httpd_conf
+{
+  my ( $self, %args ) = @_;
+
+  my $Bin   = $args{bin};
+  my $root  = $args{root};
+
+  my $conf_dir  = "$Bin/apache/conf";
+  my $conf_file = "$conf_dir/httpd.conf";
+
+  my $t = Template->new({ INCLUDE_PATH => $conf_dir });
+
+  my $template_params = {
+    'include_root'  => $root,
+    'server_root'   => "$Bin/apache",
+    'document_root' => "$Bin/apache/htdocs",
+    'perl_lib'      => "$Bin/../lib",
+    'template_dir'  => "$Bin/../templates",
+    'httpd_port'    => HTTPD_PORT(),
+    'httpd_user'    => scalar(getpwuid($>)),
+    'httpd_group'   => scalar(getgrgid($))),
+  };
+
+  INFO "creating conf_file $conf_file";
+  open(my $FH, ">$conf_file") || LOGDIE "Unable to open $conf_file for writing: $!";
+  print $t->process( 'httpd.conf.tpl', $template_params, $FH );
+  close($FH);
+
+  return 1;
+}
+
+# start our test httpd instance
+sub start_httpd
+{
+  my ( $self, %args ) = @_;
+
+  my $Bin   = $args{bin};
+  my $httpd = $args{httpd};
+
+  my $conf_file = "$Bin/apache/conf/httpd.conf";
+  my $pid_file  = "$Bin/apache/logs/httpd.pid";
+  LOGDIE "pid_file $pid_file exists! is apache already running?" if -e $pid_file;
+  LOGDIE "conf_file $conf_file missing or unreadable" unless -r $conf_file;
+
+  return ( system( $httpd, '-f', $conf_file ) == 0 ) ? 1 : 0;
+}
+
+# stop our test httpd instance
+sub stop_httpd
+{
+  my ( $self, %args ) = @_;
+
+  my $Bin = $args{bin};
+
+  my $pid_file = "$Bin/apache/logs/httpd.pid";
+  LOGDIE "pid_file $pid_file missing or unreadable" unless -r $pid_file;
+
+  open( my $FH, '<', $pid_file ) || LOGDIE "Unable to open $pid_file for reading: $!";
+  chomp( my $httpd_pid = <$FH> );
+  close($FH);
+
+  INFO "killing $httpd_pid";
+  kill( 15, $httpd_pid );
+
+  return 1;
+}
+
+# check that our test httpd instance is online
+sub check_httpd
+{
+  my ( $self ) = @_;
+
+  my $ua  = LWP::UserAgent->new();
+  my $res = $ua->get( sprintf( "http://localhost:%d/index.html", HTTPD_PORT ) );
+  return ( $res && $res->is_success && $res->decoded_content =~ m/^POGO_OK/ );
 }
 
 # pretty-print a test failure
