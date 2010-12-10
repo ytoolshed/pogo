@@ -35,6 +35,12 @@ use LWP;
 our $dispatcher_pid;
 
 use constant ZOO_PID_FILE => "$Bin/.tmp/zookeeper.pid";
+
+# path to apache2 httpd
+use constant HTTPD_BIN    => '/opt/local/apache2/bin/httpd';
+# apache2 ServerRoot, our conf will include modules form HTTPD_ROOT/modules/
+use constant HTTPD_ROOT   => '/opt/local/apache2';
+# port to run the test instance on
 use constant HTTPD_PORT   => 9414;
 
 our @EXPORT_OK = qw(derp);
@@ -310,11 +316,19 @@ sub worker_rpc
   return $cv->recv;
 }
 
+
+# check whether httpd exists
+sub httpd_exists
+{
+  my ( $self ) = @_;
+  return -x HTTPD_BIN;
+}
+
 # check the configured httpd to make sure it's the correct version
 sub check_httpd_version
 {
   my ( $self, $httpd ) = @_;
-  return unless -x $httpd;
+  my $httpd = HTTPD_BIN;
   chomp(my ($verline) = grep { /Server version:/ } `$httpd -v`);
   return defined $verline && $verline =~ m/Apache\/2\./;
 }
@@ -322,10 +336,9 @@ sub check_httpd_version
 # build the httpd.conf we'll use to start the test httpd
 sub build_httpd_conf
 {
-  my ( $self, %args ) = @_;
+  my ( $self, $Bin ) = @_;
 
-  my $Bin   = $args{bin};
-  my $root  = $args{root};
+  my $root = HTTPD_ROOT;
 
   my $conf_dir  = "$Bin/apache/conf";
   my $conf_file = "$conf_dir/httpd.conf";
@@ -354,10 +367,9 @@ sub build_httpd_conf
 # start our test httpd instance
 sub start_httpd
 {
-  my ( $self, %args ) = @_;
+  my ( $self, $Bin ) = @_;
 
-  my $Bin   = $args{bin};
-  my $httpd = $args{httpd};
+  my $httpd = HTTPD_BIN;
 
   my $conf_file = "$Bin/apache/conf/httpd.conf";
   my $pid_file  = "$Bin/apache/logs/httpd.pid";
@@ -370,9 +382,7 @@ sub start_httpd
 # stop our test httpd instance
 sub stop_httpd
 {
-  my ( $self, %args ) = @_;
-
-  my $Bin = $args{bin};
+  my ( $self, $Bin ) = @_;
 
   my $pid_file = "$Bin/apache/logs/httpd.pid";
   LOGDIE "pid_file $pid_file missing or unreadable" unless -r $pid_file;

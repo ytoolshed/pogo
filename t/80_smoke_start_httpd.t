@@ -27,11 +27,6 @@ use FindBin qw($Bin);
 use lib "$Bin/../lib";
 use lib "$Bin/lib";
 
-# path to apache2 httpd
-my $HTTPD_BIN = '/opt/local/apache2/bin/httpd';
-# path to apache2 server root, conf expects modules to be under $HTTPD_ROOT/modules
-my $HTTPD_ROOT = '/opt/local/apache2';
-
 $SIG{ALRM} = sub { confess; };
 alarm(60);
 
@@ -42,18 +37,26 @@ chdir($Bin);
 
 ok( Log::Log4perl::init("$Bin/conf/log4perl.conf"), "log4perl" );
 
-# check that httpd exists and is the correct version
-my $ver_ok = $pt->check_httpd_version($HTTPD_BIN);
-ok( $ver_ok, 'httpd version' );
+# check to see if httpd exists
+my $has_httpd = $pt->httpd_exists();
+
+# check to see if httpd is the correct version
+my $ver_ok = 0;
+SKIP: {
+  skip 'missing httpd', 1, unless $has_httpd;
+  $ver_ok = $pt->check_httpd_version();
+  ok( $ver_ok, 'httpd_version' );
+}
 
 SKIP: {
-  skip 'missing or bad version of httpd', 3, unless $ver_ok;
+  skip 'missing httpd', 3, unless $has_httpd;
+  skip 'bad version of httpd', 3, unless $ver_ok;
 
   # generate our httpd.conf
-  ok( $pt->build_httpd_conf( bin => $Bin, root => $HTTPD_ROOT ), 'httpd conf' );
+  ok( $pt->build_httpd_conf( $Bin ), 'httpd conf' );
 
   # start httpd
-  ok( $pt->start_httpd( bin => $Bin, httpd => $HTTPD_BIN ), 'httpd start' );
+  ok( $pt->start_httpd( $Bin ), 'httpd start' );
 
   # check httpd
   ok( $pt->check_httpd(), 'httpd OK' );
