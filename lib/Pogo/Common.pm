@@ -29,7 +29,7 @@ our $USERAGENT = LWP::UserAgent->new(
   agent   => "Pogo/$VERSION",
 );
 
-our $CONFIGDIR = '/Users/nrh/projects/pogo/t/conf/';
+our $CONFIGDIR = '/Users/nep/git/pogo/t/conf/';
 
 #our $CONFIGDIR = '/usr/local/etc/pogo/';
 our $WORKER_CERT = "$CONFIGDIR/worker.cert";

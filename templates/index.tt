@@ -1,1 +1,82 @@
-Hello, world!
+[% INCLUDE _page_header.tt %]
+
+[% IF running_jobs.0 %]
+<!-- running job list -->
+<center><h1>running jobs</h1></center>
+<table cellpadding="0" cellspacing="0" border="0" class="joblist">
+  <tr class="header">
+    <th>Pogo&nbsp;ID</th>
+    <th>User</th>
+    <th>State</th>
+    <th>Time</th>
+    <th>Command</th>
+    <th>Target</th>
+    <th>Hosts</th>
+  </tr>
+  [% FOREACH job IN running_jobs %]
+  <tr class="job">
+    <td><span class="pogo-id"><a href="[% base_cgi_path %]/[% job.jobid %]">[% job.jobid %]</a></span></td>
+    <td><a href="[% base_cgi_path %]?user=[% job.user %]">[% job.user %]</a></td>
+    <td>[% job.state %]</td>
+    <td nowrap>[% job.start_time %]</td>
+    <td>[% job.command FILTER truncate(50, '&hellip;') %]</td>
+    <td>[% job.target_list FILTER truncate(100, '&hellip;') %]</td>
+    <td>[% job.host_count %]</td>
+  </tr>
+  [% END %]
+</table>
+[% END %]
+
+<!-- all job list -->
+<center><h1>all jobs</h1></center>
+<table cellpadding="0" cellspacing="0" border="0" class="joblist">
+  <tr class="header">
+    <th>Pogo&nbsp;ID</th>
+    <th>User</th>
+    <th>State</th>
+    <th>Time</th>
+    <th>Command</th>
+    <th>Target</th>
+    <th>Hosts</th>
+  </tr>
+  [% FOREACH job IN jobs %]
+  <tr class="job">
+    <td><span class="pogo-id"><a href="[% base_cgi_path %]/[% job.jobid %]">[% job.jobid %]</a></span></td>
+    <td><a href="[% base_cgi_path %]?user=[% job.user %]">[% job.user %]</a></td>
+    <td>[% job.state %]</td>
+    <td nowrap>[% job.start_time %]</td>
+    <td>[% job.command FILTER truncate(50, '&hellip;') %]</td>
+    <td>[% job.target_list FILTER truncate(100, '&hellip;') %]</td>
+    <td>[% job.host_count %]</td>
+  </tr>
+  [% END %]
+</table>
+
+[% IF pager.defined %]
+<!-- pager -->
+<table cellpadding="0" cellspacing="0" border="0" class="pager">
+  <tr>
+    <!-- first page -->
+    <td class="first"><a href="[% base_cgi_path %]?cur=1[% IF user.defined %];user=[% user %][% END %]">First</a></td>
+
+    <!-- previous page -->
+    <td class="prev"><a href="[% base_cgi_path %]?cur=[% pager.prev_page %][% IF user.defined %];user=[% user %][% END %]">&lt; Prev</a></td>
+
+    [% FOREACH page IN pager.pages %]
+      [% IF page.number == pager.cur %]
+        <td class="current">[% page.number %]</td>
+      [% ELSE %]
+        <td class="page"><a href="[% base_cgi_path %]?cur=[% page.number %][% IF user.defined %];user=[% user %][% END %]">[% page.number %]</a></td>
+      [% END %]
+    [% END %]
+
+    <!-- next page -->
+    <td class="next"><a href="[% base_cgi_path %]?cur=[% pager.next_page %][% IF user.defined %];user=[% user %][% END %]">Next &gt;</a></td>
+
+    <!-- last page -->
+    <td class="last"><a href="[% base_cgi_path %]?cur=[% pager.last_page %][% IF user.defined %];user=[% user %][% END %]">Last</a></td>
+  </tr>
+</table>
+[% END %]
+
+[% INCLUDE _page_footer.tt %]
