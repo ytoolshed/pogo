@@ -258,7 +258,7 @@ sub records
     ERROR "response has no records";
     return;
   }
-  return $self->{_records};
+  return @{ $self->{_records} };
 }
 
 sub record

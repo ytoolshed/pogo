@@ -22,6 +22,7 @@ use JSON qw(encode_json);
 use Log::Log4perl qw(:easy);
 use HTTP::Request::Common qw(POST);
 
+use Pogo::Common;
 use Pogo::Engine::Response;
 
 our $AUTOLOAD;
