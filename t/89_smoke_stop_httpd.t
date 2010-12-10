@@ -37,12 +37,19 @@ chdir($Bin);
 
 ok( Log::Log4perl::init("$Bin/conf/log4perl.conf"), "log4perl" );
 
-# stop httpd
-ok( $pt->stop_httpd( bin => $Bin ), 'stop httpd' );
+# check to see if httpd exists
+my $has_httpd = $pt->httpd_exists();
 
-# make sure it's stopped
-ok( ! $pt->check_httpd(), 'httpd stopped' );
+SKIP: {
+  skip 'missing httpd', 2, unless $has_httpd;
 
-# clear out the error_log
-my $error_log = "$Bin/apache/logs/error_log";
-if( open(my $FH, '>', $error_log) ) { close( $FH ); }
+  # stop httpd
+  ok( $pt->stop_httpd( $Bin ), 'stop httpd' );
+
+  # make sure it's stopped
+  ok( ! $pt->check_httpd(), 'httpd stopped' );
+
+  # clear out the error_log
+  my $error_log = "$Bin/apache/logs/error_log";
+  if( open(my $FH, '>', $error_log) ) { close( $FH ); }
+}
