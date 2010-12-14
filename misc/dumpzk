@@ -5,18 +5,26 @@ use strict;
 
 use Net::ZooKeeper qw(:node_flags :acls :errors);
 
-my $zkh = Net::ZooKeeper->new($ARGV[0] || 'localhost:2181');
+my $zkh = Net::ZooKeeper->new($ARGV[0] || 'localhost:18121');
 
 sub dumptree
 {
-  my ($node) = @_;
+  my ($node,$indent) = @_;
+  if (!defined $indent) {
+    $indent=0;
+    print "node $node has child nodes:\n";
+  }
   foreach my $path (sort $zkh->get_children($node)) { 
     my $p = $node . "/" . $path;
     $p = "/" . $path if($node eq '/');
     my $contents = $zkh->get($p);
-    printf("%s,%s\n", $p, $contents);
-    dumptree($p);
+    if (defined $contents && $contents ne '') {
+      printf("%*s%s: %s\n", $indent, '', $path, $contents);
+    } else {
+      printf("%*s%s\n", $indent, '', $path);
+    }
+    dumptree($p, $indent+2);
   }
 }
 
-dumptree("/");
+dumptree($ARGV[1] || "/");

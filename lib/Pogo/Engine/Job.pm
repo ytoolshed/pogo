@@ -16,7 +16,7 @@ package Pogo::Engine::Job;
 
 use common::sense;
 
-#use List::Util qw(min max);
+use List::Util qw(min max);
 use AnyEvent;
 use Data::Dumper;    # note we actually use this
 use File::Slurp qw(read_file);
@@ -653,7 +653,7 @@ sub _lognode
 sub cur_logidx
 {
   my ($self) = @_;
-  return store->_get_children_version( $self->{path} . '/log' );
+  return store->get_children_version( $self->{path} . '/log' );
 }
 
 sub read_log
@@ -693,11 +693,128 @@ sub read_log
 sub parse_log
 {
   my ( $self, $limit, $offset ) = @_;
-  my $path = $self->{path} . '/log/';
 
+  my $path = $self->{path} . '/log/';
   my $snap = {};
 
   # NEED MORE MOJO HERE
+  my $update_state = sub {
+    my ( $ts, $obj, $args, $msg ) = @_;
+
+    $snap->{$obj} ||= {};
+
+    while ( my( $k, $v ) = each %$args )
+    {
+      if ( $k eq 'state' )
+      {
+        if ( $v eq 'running' )
+        {
+          # create new run with start time @ $ts
+          # each block in runs has:
+          #   s => start timestamp
+          #   o => output url
+          #   e => end timestamp
+          #   x => exit code
+          #   m => exit msg
+          push @{ $snap->{$obj}->{runs} }, { s => $ts, o => $args->{output} };
+        }
+        elsif ( Pogo::Engine::Job::Host::_is_finished( $v ) )
+        {
+          # mark end time of last run
+          $snap->{$obj}->{runs} ||= [ {} ];
+          $snap->{$obj}->{runs}->[-1]->{e} = $ts;
+        }
+        $snap->{$obj}->{$k} = $v;
+      }
+      elsif ( $k eq 'exitstatus' )
+      {
+        $snap->{$obj}->{runs} ||= [ {} ];
+        $snap->{$obj}->{runs}->[-1]->{x} = $v;
+        $snap->{$obj}->{runs}->[-1]->{m} = $msg;
+      }
+      elsif ( $k eq 'output' )
+      {
+        # this might get parsed before state => running, so it's handled there
+        if ( $args->{state} ne 'running' )
+        {
+          # this resulted from an out-of-order log message, so we need to
+          # estimate the start time
+          $snap->{$obj}->{runs} ||= [ {} ];
+          $snap->{$obj}->{runs}->[-1]->{s} = $ts;
+          $snap->{$obj}->{runs}->[-1]->{o} = $v;
+          my $e = $snap->{$obj}->{runs}->[-1]->{e};
+          if ( defined $e && $e < $ts )
+          {
+            $snap->{$obj}->{runs}->[-1]->{s} = $e;
+          }
+        }
+      }
+      else
+      {
+        $snap->{$obj}->{$k} = $v;
+      }
+    }
+    $snap->{$obj}->{msg} = $msg;
+  };
+
+  while ( $limit-- && ( my $data = store->get( $path . _lognode( $offset++ ) ) ) )
+  {
+    my $logentry = eval { JSON::from_json( $data ); };
+    # TODO: shouldn't this be reported or something?
+    next if $@;
+    my ( $ts, $type, $state, $msg ) = @$logentry;
+    $update_state->( $ts, 'job', $state, $msg ) if ( $type eq 'jobstate' );
+    $update_state->( $ts, $state->{host}, $state, $msg ) if ( $type eq 'hoststate' );
+  }
+
+  return $snap;
+}
+
+sub snapshot
+{
+  my ( $self, $offset ) = @_;
+
+  my $idx       = $self->cur_logidx;
+  my $path      = $self->{path};
+  my $cacheidx  = store->get( $path . '/_snapidx' );
+  $offset ||= 0;
+
+  # do we have a cached snapshot, and is it a) current and b) actually existent
+  # and c) of the latest format?
+  if ( $offset  == 0
+    && defined $cacheidx
+    && $cacheidx == $idx
+    && store->exists( $path . '/_snapshot0' )
+    && store->get( $path . '/_snapver' ) eq '1' )
+  {
+    my $snap = '';
+    my $i = 0;
+    while ( defined( my $data = store->get( $path . "/_snapshot$i" ) ) )
+    {
+      $snap .= $data;
+      $i++;
+    }
+    return ( $cacheidx, $snap );
+  }
+
+  my $snap = JSON::to_json( $self->parse_log( $idx - $offset, $offset ) );
+
+  if ( $offset == 0 )
+  {
+    # store the snapshot in 1-meg chunks (ZK can't store >1 meg in a node)
+    # _snapshot0 .. _snapshotN
+    my ( $i, $off, $snaplen ) = ( 0, 0, length( $snap ) );
+    while ( ( my $len = min( 524288, $snaplen - $off ) ) > 0 )
+    {
+      store->create( $path . "/_snapshot$i", substr( $snap, $off, $len ) );
+      $off += $len;
+      $i++;
+    }
+    store->create( $path . '/_snapidx', $idx );
+    store->create( $path . '/_snapver', '1' );
+  }
+
+  return ( $idx, $snap );
 }
 
 # }}}
