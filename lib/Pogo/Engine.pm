@@ -318,7 +318,7 @@ sub jobskip
 
 sub jobsnapshot
 {
-  my ( $jobid, $offset ) = @_;
+  my ( $class, $jobid, $offset ) = @_;
   my $job = $instance->job($jobid);
   my $resp = Pogo::Engine::Response->new()->add_header( action => 'jobsnapshot' );
 
@@ -335,7 +335,8 @@ sub jobsnapshot
   # i guess this means it'll have to be double-decoded in the client until we
   # can make Response.pm do what we want
 
-  $resp->add_raw_record( [ $idx, $snap ] );
+  $resp->add_record( $idx );
+  $resp->add_record( $snap );
   $resp->set_ok;
 
   return $resp;
