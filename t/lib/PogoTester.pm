@@ -360,6 +360,7 @@ sub build_httpd_conf
     'httpd_port'    => HTTPD_PORT(),
     'httpd_user'    => scalar( getpwuid($>) ),
     'httpd_group'   => scalar( getgrgid($)) ),
+    'config_dir'    => $Pogo::Common::CONFIGDIR
   };
 
   INFO "creating conf_file $conf_file";

@@ -33,4 +33,5 @@ PerlSwitches -I[% perl_lib %]
   SetHandler perl-script
   PerlResponseHandler Pogo::API
   PerlOptions +GlobalRequest
+  PerlSetVar POGO_CONFIG_DIR [% config_dir %]
 </Location>
