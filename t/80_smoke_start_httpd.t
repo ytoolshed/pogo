@@ -27,7 +27,6 @@ use LWP::UserAgent;
 
 use lib "$Bin/../lib";
 use lib "$Bin/lib";
-use Pogo::Common;
 
 $SIG{ALRM} = sub { confess; };
 alarm(60);
@@ -67,6 +66,4 @@ SKIP:
   ok( my $ua = LWP::UserAgent->new(), 'new UA' );
   ok( my $res = $ua->get( $baseuri . '/index.html' ), 'get index.html' );
   ok( $res->is_success, "200 OK" );
-  print Dumper $res;
-
 }
