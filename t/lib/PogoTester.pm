@@ -348,12 +348,12 @@ sub build_httpd_conf
   my $conf_dir  = "$Bin/.tmp/apache";
   my $conf_file = "$conf_dir/httpd.conf";
 
-  my $t = Template->new( { INCLUDE_PATH => $conf_dir } );
+  my $t = Template->new( { INCLUDE_PATH => "$Bin/conf" } );
 
   my $template_params = {
     'include_root'  => $root,
-    'server_root'   => "$Bin/apache",
-    'document_root' => "$Bin/apache/htdocs",
+    'server_root'   => "$Bin/",
+    'document_root' => "$Bin/htdocs",
     'perl_lib'      => "$Bin/../lib",
     'template_dir'  => "$Bin/../templates",
     'log_dir'       => "$Bin/.tmp/apache/",
@@ -377,8 +377,8 @@ sub start_httpd
 
   my $httpd = HTTPD_BIN;
 
-  my $conf_file = "$Bin/apache/conf/httpd.conf";
-  my $pid_file  = "$Bin/apache/logs/httpd.pid";
+  my $conf_file = "$Bin/.tmp/apache/httpd.conf";
+  my $pid_file  = "$Bin/.tmp/apache/httpd.pid";
   if ( -e $pid_file )
   {
     ERROR "pid_file $pid_file exists! is apache already running?";
@@ -401,7 +401,7 @@ sub stop_httpd
 {
   my ( $self, $Bin ) = @_;
 
-  my $pid_file = "$Bin/apache/logs/httpd.pid";
+  my $pid_file = "$Bin/.tmp/apache/httpd.pid";
   if ( !-r $pid_file )
   {
     ERROR "pid_file $pid_file missing or unreadable";

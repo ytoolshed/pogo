@@ -1,5 +1,6 @@
 ServerRoot [% server_root %]
 Listen [% httpd_port %]
+PidFile [% log_dir %]/httpd.pid
 
 LoadModule mime_module [% include_root %]/modules/mod_mime.so
 LoadModule perl_module [% include_root %]/modules/mod_perl.so
