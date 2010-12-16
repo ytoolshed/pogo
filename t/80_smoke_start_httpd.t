@@ -17,15 +17,17 @@
 use 5.008;
 use common::sense;
 
+use Test::More 'no_plan';    #tests => 7;
 use Test::Exception;
-use Test::More tests => 6;
 
 use Carp qw(confess);
 use Data::Dumper;
 use FindBin qw($Bin);
+use LWP::UserAgent;
 
 use lib "$Bin/../lib";
 use lib "$Bin/lib";
+use Pogo::Common;
 
 $SIG{ALRM} = sub { confess; };
 alarm(60);
@@ -42,22 +44,29 @@ my $has_httpd = $pt->httpd_exists();
 
 # check to see if httpd is the correct version
 my $ver_ok = 0;
-SKIP: {
+SKIP:
+{
   skip 'missing httpd', 1, unless $has_httpd;
   $ver_ok = $pt->check_httpd_version();
   ok( $ver_ok, 'httpd_version' );
 }
 
-SKIP: {
-  skip 'missing httpd', 3, unless $has_httpd;
-  skip 'bad version of httpd', 3, unless $ver_ok;
+SKIP:
+{
+  skip 'missing httpd',        4, unless $has_httpd;
+  skip 'bad version of httpd', 4, unless $ver_ok;
 
   # generate our httpd.conf
-  ok( $pt->build_httpd_conf( $Bin ), 'httpd conf' );
+  ok( my $baseuri = $pt->build_httpd_conf($Bin), 'httpd conf' );
 
   # start httpd
-  ok( $pt->start_httpd( $Bin ), 'httpd start' );
+  $pt->stop_httpd($Bin);
+  ok( $pt->start_httpd($Bin), 'httpd start' );
 
   # check httpd
-  ok( $pt->check_httpd(), 'httpd OK' );
+  ok( my $ua = LWP::UserAgent->new(), 'new UA' );
+  ok( my $res = $ua->get( $baseuri . '/index.html' ), 'get index.html' );
+  ok( $res->is_success, "200 OK" );
+  print Dumper $res;
+
 }

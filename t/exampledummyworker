@@ -38,7 +38,7 @@ $PogoDummyWorker::execute = sub {
   my @lines = ( "Fuck you, whale!\n", "Fuck you, dolphin!\n" );
   foreach (@lines)
   {
-    $self->write_json( { task => $task_id, type => 'STDOUT' }, $_ );
+    $self->write_output_entry( { task => $task_id, type => 'STDOUT' }, $_ );
   }
 
   $self->reset( $task_id, 0 );    # DO NOT EXIT THIS SUB WITHOUT CALLING RESET!
