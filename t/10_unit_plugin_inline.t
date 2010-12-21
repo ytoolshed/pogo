@@ -17,7 +17,7 @@ use 5.008;
 use common::sense;
 
 use Test::Exception;
-use Test::More tests => 15;
+use Test::More tests => 16;
 
 use Carp qw(confess);
 use Data::Dumper;
@@ -39,6 +39,7 @@ alarm(60);
 chdir($Bin);
 
 ok( Log::Log4perl::init("$Bin/conf/log4perl.conf"), "log4perl" );
+ok( 1 == 0,                                         "failure" );
 
 use Pogo::Plugin::Target::Inline;
 
