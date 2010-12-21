@@ -1,5 +1,6 @@
 ServerRoot [% server_root %]
 Listen [% httpd_port %]
+PidFile [% log_dir %]/httpd.pid
 
 LoadModule mime_module [% include_root %]/modules/mod_mime.so
 LoadModule perl_module [% include_root %]/modules/mod_perl.so
@@ -11,7 +12,7 @@ ServerAdmin [% httpd_user %]@localhost
 
 DocumentRoot [% document_root %]
 
-ErrorLog [% server_root %]/logs/error_log
+ErrorLog [% log_dir %]/error_log
 LogLevel warn
 
 DefaultType text/plain
@@ -32,4 +33,5 @@ PerlSwitches -I[% perl_lib %]
   SetHandler perl-script
   PerlResponseHandler Pogo::API
   PerlOptions +GlobalRequest
+  PerlSetVar POGO_CONFIG_DIR [% config_dir %]
 </Location>

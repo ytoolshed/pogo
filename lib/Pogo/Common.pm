@@ -29,9 +29,7 @@ our $USERAGENT = LWP::UserAgent->new(
   agent   => "Pogo/$VERSION",
 );
 
-our $CONFIGDIR = '/Users/nep/git/pogo/t/conf/';
-
-#our $CONFIGDIR = '/usr/local/etc/pogo/';
+our $CONFIGDIR   = '/usr/local/etc/pogo/';
 our $WORKER_CERT = "$CONFIGDIR/worker.cert";
 
 our %EXPORT_TAGS = ( vars => [ $VERSION, $POGO_BASE ] );

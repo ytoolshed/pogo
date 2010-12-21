@@ -37,11 +37,13 @@ our $dispatcher_pid;
 use constant ZOO_PID_FILE => "$Bin/.tmp/zookeeper.pid";
 
 # path to apache2 httpd
-use constant HTTPD_BIN    => '/opt/local/apache2/bin/httpd';
+use constant HTTPD_BIN => '/opt/local/apache2/bin/httpd';
+
 # apache2 ServerRoot, our conf will include modules form HTTPD_ROOT/modules/
-use constant HTTPD_ROOT   => '/opt/local/apache2';
+use constant HTTPD_ROOT => '/opt/local/apache2';
+
 # port to run the test instance on
-use constant HTTPD_PORT   => 9414;
+use constant HTTPD_PORT => 9414;
 
 our @EXPORT_OK = qw(derp);
 
@@ -52,6 +54,10 @@ sub new
     unless -d "$Bin/.tmp";
   mkdir "$Bin/.tmp/pogo_output"
     unless -d "$Bin/.tmp/pogo_output";
+  mkdir "$Bin/.tmp/apache"
+    unless -d "$Bin/.tmp/apache";
+
+  $Pogo::Common::CONFIGDIR = "$Bin/conf/";
 
   my $conf = $opts{conf} || "$Bin/conf/dispatcher.conf";
   my $self = LoadFile($conf);
@@ -316,11 +322,10 @@ sub worker_rpc
   return $cv->recv;
 }
 
-
 # check whether httpd exists
 sub httpd_exists
 {
-  my ( $self ) = @_;
+  my ($self) = @_;
   return -x HTTPD_BIN;
 }
 
@@ -329,7 +334,7 @@ sub check_httpd_version
 {
   my ( $self, $httpd ) = @_;
   my $httpd = HTTPD_BIN;
-  chomp(my ($verline) = grep { /Server version:/ } `$httpd -v`);
+  chomp( my ($verline) = grep {/Server version:/} `$httpd -v` );
   return defined $verline && $verline =~ m/Apache\/2\./;
 }
 
@@ -340,28 +345,30 @@ sub build_httpd_conf
 
   my $root = HTTPD_ROOT;
 
-  my $conf_dir  = "$Bin/apache/conf";
+  my $conf_dir  = "$Bin/.tmp/apache";
   my $conf_file = "$conf_dir/httpd.conf";
 
-  my $t = Template->new({ INCLUDE_PATH => $conf_dir });
+  my $t = Template->new( { INCLUDE_PATH => "$Bin/conf" } );
 
   my $template_params = {
     'include_root'  => $root,
-    'server_root'   => "$Bin/apache",
-    'document_root' => "$Bin/apache/htdocs",
+    'server_root'   => "$Bin/",
+    'document_root' => "$Bin/htdocs",
     'perl_lib'      => "$Bin/../lib",
     'template_dir'  => "$Bin/../templates",
+    'log_dir'       => "$Bin/.tmp/apache/",
     'httpd_port'    => HTTPD_PORT(),
-    'httpd_user'    => scalar(getpwuid($>)),
-    'httpd_group'   => scalar(getgrgid($))),
+    'httpd_user'    => scalar( getpwuid($>) ),
+    'httpd_group'   => scalar( getgrgid($)) ),
+    'config_dir'    => $Pogo::Common::CONFIGDIR
   };
 
   INFO "creating conf_file $conf_file";
-  open(my $FH, ">$conf_file") || LOGDIE "Unable to open $conf_file for writing: $!";
+  open( my $FH, ">$conf_file" ) || LOGDIE "Unable to open $conf_file for writing: $!";
   print $t->process( 'httpd.conf.tpl', $template_params, $FH );
   close($FH);
 
-  return 1;
+  return sprintf( 'http://localhost:%s/', HTTPD_PORT );
 }
 
 # start our test httpd instance
@@ -371,12 +378,23 @@ sub start_httpd
 
   my $httpd = HTTPD_BIN;
 
-  my $conf_file = "$Bin/apache/conf/httpd.conf";
-  my $pid_file  = "$Bin/apache/logs/httpd.pid";
-  LOGDIE "pid_file $pid_file exists! is apache already running?" if -e $pid_file;
-  LOGDIE "conf_file $conf_file missing or unreadable" unless -r $conf_file;
+  my $conf_file = "$Bin/.tmp/apache/httpd.conf";
+  my $pid_file  = "$Bin/.tmp/apache/httpd.pid";
+  if ( -e $pid_file )
+  {
+    ERROR "pid_file $pid_file exists! is apache already running?";
+    return;
+  }
 
-  return ( system( $httpd, '-f', $conf_file ) == 0 ) ? 1 : 0;
+  if ( !-r $conf_file )
+  {
+    ERROR "conf_file $conf_file missing or unreadable";
+    return;
+  }
+
+  my $res = system( $httpd, '-f', $conf_file );
+  sleep 0.25;
+  return $res == 0 ? 1 : 0;
 }
 
 # stop our test httpd instance
@@ -384,8 +402,12 @@ sub stop_httpd
 {
   my ( $self, $Bin ) = @_;
 
-  my $pid_file = "$Bin/apache/logs/httpd.pid";
-  LOGDIE "pid_file $pid_file missing or unreadable" unless -r $pid_file;
+  my $pid_file = "$Bin/.tmp/apache/httpd.pid";
+  if ( !-r $pid_file )
+  {
+    ERROR "pid_file $pid_file missing or unreadable";
+    return;
+  }
 
   open( my $FH, '<', $pid_file ) || LOGDIE "Unable to open $pid_file for reading: $!";
   chomp( my $httpd_pid = <$FH> );
@@ -393,6 +415,7 @@ sub stop_httpd
 
   INFO "killing $httpd_pid";
   kill( 15, $httpd_pid );
+  sleep 0.25;
 
   return 1;
 }
@@ -400,9 +423,9 @@ sub stop_httpd
 # check that our test httpd instance is online
 sub check_httpd
 {
-  my ( $self ) = @_;
+  my ($self) = @_;
 
-  my $ua  = LWP::UserAgent->new();
+  my $ua = LWP::UserAgent->new();
   my $res = $ua->get( sprintf( "http://localhost:%d/index.html", HTTPD_PORT ) );
   return ( $res && $res->is_success && $res->decoded_content =~ m/^POGO_OK/ );
 }

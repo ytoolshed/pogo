@@ -16,29 +16,41 @@
 
 use common::sense;
 
+use AnyEvent;
 use YAML::XS qw(LoadFile);
+use FindBin qw($Bin);
+use Log::Log4perl qw(:easy);
+
+use lib "$Bin/lib";
+use lib "$Bin/../lib";
 
 use PogoDummyWorker;
 
-$PogoDummyWorker::opts                = YAML::LoadFile("/usr/local/etc/pogo/worker.conf");
+Log::Log4perl::init("$Bin/conf/log4perl.conf");
+chdir($Bin);
+
+$PogoDummyWorker::opts = LoadFile("conf/worker.conf");
+
 $PogoDummyWorker::opts->{num_workers} = 2;
-$PogoDummyWorker::execute             = sub {
+
+$PogoDummyWorker::execute = sub {
   my ( $self, $task_id ) = @_;
   my @lines = ( "Fuck you, whale!\n", "Fuck you, dolphin!\n" );
   foreach (@lines)
   {
-    $self->write_json( { task => $task_id, type => 'STDOUT' }, $_ );
+    $self->write_output_entry( { task => $task_id, type => 'STDOUT' }, $_ );
   }
 
   $self->reset( $task_id, 0 );    # DO NOT EXIT THIS SUB WITHOUT CALLING RESET!
 };
 
-my $worker = PogoDummyWorker::instance();
+my $worker = PogoDummyWorker::instance()
+  or LOGCONFESS;
 
 #$worker->run(); # This is a real Pogo::Worker object
 
 # Let's do our own AnyEvent loop
-use AnyEvent;
+
 $worker->connect( 1, 1 );
 AnyEvent->condvar->recv();
 
@@ -85,3 +97,5 @@ Apache 2.0
   Robert Phan <rphan@yahoo-inc.com>
 
 =cut
+
+# vim:ts=2:sw=2:syntax=perl

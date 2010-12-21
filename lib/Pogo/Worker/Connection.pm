@@ -14,6 +14,8 @@ package Pogo::Worker::Connection;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+use common::sense;
+
 use AnyEvent;
 use AnyEvent::Handle;
 use IPC::Open3;

@@ -43,6 +43,10 @@ sub handler
     $version = uc($thing);
   }
 
+  # before we create our instance, see if we have an alternate config dir
+  $Pogo::Common::CONFIGDIR = $r->dir_config( 'POGO_CONFIG_DIR' )
+    if $r->dir_config( 'POGO_CONFIG_DIR' );
+
   my $class = 'Pogo::API::' . $version;
   my $api   = $class->instance;
 
