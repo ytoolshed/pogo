@@ -33,6 +33,12 @@ use FindBin qw($Bin);
 use Template;
 use LWP;
 
+use lib "$Bin/../lib";
+use lib "$Bin/../../lib";
+
+use Pogo::Engine;
+use Pogo::Engine::Store;
+
 our @EXPORT = qw(test_pogo derp dispatcher_rpc worker_rpc authstore_rpc);
 
 Log::Log4perl::init("$Bin/conf/log4perl.conf");
@@ -55,7 +61,7 @@ sub test_pogo(&)
     unless -d "$Bin/.tmp/pogo_output";
 
   $dispatcher_conf = LoadFile("$Bin/conf/dispatcher.conf");
-  $worker_conf = LoadFile("$Bin/conf/worker.conf");
+  $worker_conf     = LoadFile("$Bin/conf/worker.conf");
 
   start_zookeeper();
   sleep 2.5;
@@ -66,10 +72,11 @@ sub test_pogo(&)
   start_worker();
   $cb->();
 }
-END {
-  stop_worker();
-  stop_dispatcher();
-  stop_zookeeper();
+
+sub cleanup_tmpdir
+{
+  chdir($Bin);
+  system("rm -rf $Bin/.tmp");
 }
 
 sub start_dispatcher
@@ -79,9 +86,10 @@ sub start_dispatcher
 
   if ( $dispatcher_pid == 0 )
   {
-    exec( "/usr/bin/env", "perl", "-I$Bin/../lib", "-I$Bin/lib", 
-          "$Bin/../bin/pogo-dispatcher", '-f', "$Bin/conf/dispatcher.conf" )
-      or LOGDIE $!;
+    exec(
+      "/usr/bin/env",                "perl", "-I$Bin/../lib", "-I$Bin/lib",
+      "$Bin/../bin/pogo-dispatcher", '-f',   "$Bin/conf/dispatcher.conf"
+    ) or LOGDIE $!;
   }
   else
   {
@@ -100,7 +108,8 @@ sub stop_dispatcher
 sub start_zookeeper
 {
   return if $zookeeper_pid;
-  my $zookeeper_cmd = `$Bin/../build/zookeeper/bin/zkServer.sh print-cmd $Bin/conf/zookeeper.conf 2>/dev/null`;
+  my $zookeeper_cmd =
+    `$Bin/../build/zookeeper/bin/zkServer.sh print-cmd $Bin/conf/zookeeper.conf 2>/dev/null`;
   DEBUG "using '$zookeeper_cmd'";
 
   $zookeeper_pid = fork();
@@ -133,9 +142,10 @@ sub start_worker
 
   if ( $worker_pid == 0 )
   {
-    exec( "/usr/bin/env", "perl", "-I$Bin/../lib", "-I$Bin/lib", 
-          "$Bin/../bin/pogo-worker", '-f', "$Bin/conf/worker.conf" )
-      or LOGDIE $!;
+    exec(
+      "/usr/bin/env",            "perl", "-I$Bin/../lib", "-I$Bin/lib",
+      "$Bin/../bin/pogo-worker", '-f',   "$Bin/conf/worker.conf"
+    ) or LOGDIE $!;
   }
   else
   {
@@ -205,27 +215,23 @@ sub authstore_rpc
   return $cv->recv;
 }
 
-sub dispatcher_rpc 
+sub dispatcher_rpc
 {
   my $rpc = shift;
-  my $url = sprintf('http://%s:%d/v3', 
-                    $bind_address, $dispatcher_conf->{http_port});
-  my $res = LWP::UserAgent->new->post(
-    $url, 
-    { 'r' => JSON::XS::encode_json($rpc) }
-  );
-  return JSON::XS::decode_json($res->decoded_content);
+  my $url = sprintf( 'http://%s:%d/v3', $bind_address, $dispatcher_conf->{http_port} );
+  my $res = LWP::UserAgent->new->post( $url, { 'r' => JSON::XS::encode_json($rpc) } );
+  return JSON::XS::decode_json( $res->decoded_content );
 }
 
 sub worker_rpc
 {
   my $rpc = shift;
-  my $cv = AnyEvent->condvar;
+  my $cv  = AnyEvent->condvar;
   my $handle;
   $handle = AnyEvent::Handle->new(
-    connect  => [ $bind_address, $dispatcher_conf->{worker_port} ],
-    tls      => 'connect',
-    tls_ctx  => {
+    connect => [ $bind_address, $dispatcher_conf->{worker_port} ],
+    tls     => 'connect',
+    tls_ctx => {
       key_file  => "$Bin/conf/worker.key",
       cert_file => "$Bin/conf/worker.cert",
       ca_file   => "$Bin/conf/dispatcher.cert",
@@ -241,19 +247,19 @@ sub worker_rpc
     on_error => sub {
       $handle->destroy;
       my $fatal = $_[1];
-      LOGDIE
-        sprintf( "%s:%d reported %s error: %s", 
-                 $bind_address, $dispatcher_conf->{worker_port},
-                 $fatal ? 'fatal' : 'non-fatal', 
-                 $! );
+      LOGDIE sprintf(
+        "%s:%d reported %s error: %s",
+        $bind_address,
+        $dispatcher_conf->{worker_port},
+        $fatal ? 'fatal' : 'non-fatal', $!
+      );
     },
   );
   $handle->push_write( json => $rpc );
-  $handle->push_read( json => sub { $cv->send( $_[1] ); });
+  $handle->push_read( json => sub { $cv->send( $_[1] ); } );
 
   return $cv->recv;
 }
-
 
 # pretty-print a test failure
 sub derp
@@ -268,10 +274,12 @@ __DERP__
   return $str;
 }
 
-END {
-  stop_worker;
-  stop_dispatcher;
-  stop_zookeeper;
+END
+{
+  stop_worker();
+  stop_dispatcher();
+  stop_zookeeper();
+  cleanup_tmpdir();
 }
 
 1;

@@ -26,35 +26,37 @@ use Log::Log4perl qw(:easy);
 use Sys::Hostname qw(hostname);
 use YAML::XS qw(LoadFile);
 
+use lib "$Bin/lib";
 use PogoTester;
 
 $SIG{ALRM} = sub { confess; };
 alarm(60);
 
-test_pogo {
-    my $t;
+test_pogo
+{
+  my $t;
 
-    # ping
-    $t = dispatcher_rpc( ["ping"] );
-    ok( $t->[1]->[0] == 0xDEADBEEF, 'ping' )
-      or print Dumper $t;
+  # ping
+  $t = dispatcher_rpc( ["ping"] );
+  ok( $t->[1]->[0] == 0xDEADBEEF, 'ping' )
+    or print Dumper $t;
 
-    # stats
-    $t = dispatcher_rpc( ["stats"] );
-    ok( $t->[1]->[0]->{hostname} eq hostname(), 'stats' )
-      or print Dumper $t;
+  # stats
+  $t = dispatcher_rpc( ["stats"] );
+  ok( $t->[1]->[0]->{hostname} eq hostname(), 'stats' )
+    or print Dumper $t;
 
-    # badcmd
-    $t = dispatcher_rpc( ["weird"] );
-    ok( $t->[0]->{status} eq 'ERROR', 'weird' )
-      or print Dumper $t;
-    ok( $t->[0]->{errmsg} eq qq/unknown rpc command 'weird'/, 'weird 2' );
+  # badcmd
+  $t = dispatcher_rpc( ["weird"] );
+  ok( $t->[0]->{status} eq 'ERROR', 'weird' )
+    or print Dumper $t;
+  ok( $t->[0]->{errmsg} eq qq/unknown rpc command 'weird'/, 'weird 2' );
 
-    # loadconf
-    my $conf_to_load = LoadFile("$Bin/conf/example.yaml");
-    $t = dispatcher_rpc( [ "loadconf", 'example', $conf_to_load ] )
-      or print Dumper $t;
-    ok( $t->[0]->{status} eq 'OK', "loadconf rpc ok" ) or print Dumper $t;
+  # loadconf
+  my $conf_to_load = LoadFile("$Bin/conf/example.yaml");
+  $t = dispatcher_rpc( [ "loadconf", 'example', $conf_to_load ] )
+    or print Dumper $t;
+  ok( $t->[0]->{status} eq 'OK', "loadconf rpc ok" ) or print Dumper $t;
 };
 
 done_testing;

@@ -12,7 +12,7 @@ hudson-clean :
 	rm -rf $(TESTRESULTDIR)
 
 test: $(TESTS)
-	prove --timer $(TESTS)
+	prove -I../lib -I../t/lib --timer $(TESTS)
 #	prove --timer $(TESTS) 2>/dev/null
 
 $(TESTS) : | $(TESTRESULTDIR)
@@ -21,7 +21,7 @@ $(TESTRESULTDIR) :
 	mkdir $(TESTRESULTDIR)
 
 $(TESTRESULTDIR)/%.xml : $(TESTDIR)/%.t
-	prove --timer $(FORMATTER) $< > $@ || exit 0
+	prove -I../lib -I../t/lib --timer $(FORMATTER) $< > $@ || exit 0
 
 
 
