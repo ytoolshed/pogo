@@ -87,12 +87,6 @@ sub run    #{{{
       ERROR sprintf( "Failed to connect to %s:%d: %s", $self->{host}, $self->{port}, $msg );
       $self->reconnect;
     },
-    on_eof => sub {
-      $self->{dispatcher_handle}->destroy;
-      Pogo::Worker->delete_connection($self);
-      ERROR sprintf( "Unexpected EOF received from %s:%d", $self->{host}, $self->{port} );
-      $self->reconnect;
-    },
     on_error => sub {
       my $msg = $_[2];
       $self->{dispatcher_handle}->destroy;

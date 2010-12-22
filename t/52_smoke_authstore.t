@@ -18,49 +18,30 @@ use 5.008;
 use common::sense;
 
 use Test::Exception;
-use Test::More tests => 5;
+use Test::More;
 
 use Carp qw(confess);
-use Data::Dumper;
 use FindBin qw($Bin);
-use JSON;
-use Log::Log4perl qw(:easy);
-use Net::SSLeay qw();
-use Sys::Hostname qw(hostname);
-use YAML::XS qw(Load LoadFile);
 
 use lib "$Bin/../lib";
 use lib "$Bin/lib";
 
-use PogoTester qw(derp);
+use PogoTester;
 
 $SIG{ALRM} = sub { confess; };
 alarm(60);
 
-ok( my $pt = PogoTester->new(), "new pt" );
 
-chdir($Bin);
+test_pogo {
+    SKIP:
+    {
+      skip "broken for some reason", 1;
+      ok( authstore_rpc( ["ping"] )->[0] eq 'pong', 'ping' );
+    }
 
-my $js = JSON->new;
+};
 
-# start pogo-dispatcher
-my $stopped = 0;
-my $pid;
-ok( $pid = $pt->start_dispatcher, "start dispatcher $pid" );
-END { kill 15, $pid unless $stopped; }
-
-my $conf;
-eval { $conf = LoadFile("$Bin/conf/dispatcher.conf"); };
-ok( !$@, "loadconf" );
-
-SKIP:
-{
-  skip "broken for some reason", 1;
-  ok( $pt->authstore_rpc( ["ping"] )->[0] eq 'pong', 'ping' );
-}
-
-# stop
-ok( $pt->stop_dispatcher, 'stop dispatcher' ) and $stopped = 1;
+done_testing;
 
 1;
 

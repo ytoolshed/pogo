@@ -22,8 +22,10 @@ package Pogo::Dispatcher;
 use 5.008;
 use common::sense;
 
+use Carp ();
 use AnyEvent::Socket qw(tcp_server);
 use AnyEvent::TLS;
+use AnyEvent::HTTPD;
 use AnyEvent;
 use JSON::XS qw(encode_json);
 use Log::Log4perl qw(:easy);
@@ -42,8 +44,10 @@ my $instance;
 
 sub run    #{{
 {
+  Carp::croak "Server already running" if $instance;
   my $class = shift;
-  $instance = {@_};
+  $instance = { @_ };
+  bless $instance, $class;
 
   $instance->{workers} = {
     idle => {},
@@ -61,8 +65,6 @@ sub run    #{{
     workers_idle => 0,
   };
 
-  bless $instance, $class;
-
   # start these puppies up
   Pogo::Engine->init($instance);
   Pogo::Dispatcher::AuthStore->init($instance);
@@ -79,6 +81,7 @@ sub run    #{{
   );
 
   # accept rpc connections from the (local) http API
+  # TODO: Deprecate this in favor of the HTTP service.
   tcp_server(
     '127.0.0.1',    # rpc server binds to localhost only
     $instance->{rpc_port} || Pogo::Dispatcher::RPCConnection->DEFAULT_PORT,

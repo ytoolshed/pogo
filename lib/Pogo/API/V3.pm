@@ -16,6 +16,7 @@ package Pogo::API::V3;
 
 use common::sense;
 
+use Carp ();
 use Log::Log4perl qw(:easy);
 use JSON qw(encode_json);
 use Sys::Hostname qw(hostname);
@@ -26,24 +27,46 @@ use Pogo::Engine;
 use Pogo::Engine::Job;
 use Pogo::Engine::Response;
 
-our $instance;
+my %METHODS = (
+  err           => 'err',
+  globalstatus  => 'globalstatus',
+  hostinfo      => 'hostinfo',
+  hostlog_url   => 'hostlog_url',
+  jobalter      => 'jobalter',
+  jobhalt       => 'jobhalt',
+  jobhoststatus => 'jobhoststatus',
+  jobinfo       => 'jobinfo',
+  joblog        => 'joblog',
+  jobresume     => 'jobresume',
+  jobretry      => 'jobretry',
+  jobskip       => 'jobskip',
+  jobsnapshot   => 'jobsnapshot',
+  jobstatus     => 'jobstatus',
+  lastjob       => 'lastjob',
+  listjobs      => 'listjobs',
+  loadconf      => 'loadconf',
+  ping          => 'ping',
+  run           => 'run',
+  stats         => 'stats',
+  storesecrets  => 'storesecrets',
+  add_task      => 'add_task',
+);
 
-sub init
-{
-  my $class = shift;
-  my $self = { hostname => hostname(), };
-  DEBUG "new instance [$$]";
-  my $conf;
-  eval { $conf = LoadFile( $Pogo::Common::CONFIGDIR . '/dispatcher.conf' ); };
-  Pogo::Engine->init($conf);
-  return bless $self, $class;
+sub AUTOLOAD {
+  use vars '$AUTOLOAD';
+  my ($methodname) = ($AUTOLOAD =~ m/(\w+)$/);
+  if (my $method = $METHODS{$methodname}) {
+    shift @_; # throw out classname
+    Pogo::Engine->$method(@_);
+  } else {
+    my $response =  Pogo::Engine::Response->new;
+    $response->set_error("unknown rpc command '$methodname'");
+    return $response;
+  }
 }
 
-sub instance
-{
-  my ( $class, %opts ) = @_;
-  $instance ||= $class->init(%opts);
-  return $instance;
+# Explicitly declare DESTROY method so it's not autoloaded
+sub DESTROY { 
 }
 
 # all rpc methods return an Engine::Response object
@@ -54,6 +77,16 @@ sub _rpc_jobinfo     { my $self = shift; return Pogo::Engine->jobinfo(@_); }
 sub _rpc_jobstatus   { my $self = shift; return Pogo::Engine->jobstatus(@_); }
 sub _rpc_jobsnapshot { my $self = shift; return Pogo::Engine->jobsnapshot(@_); }
 sub _rpc_joblog      { my $self = shift; return Pogo::Engine->joblog(@_); }
+
+sub ping        { shift; return Pogo::Engine->ping(@_); }
+sub stats       { shift; return Pogo::Engine->stats(@_); }
+sub listjobs    { shift; return Pogo::Engine->listjobs(@_); }
+sub jobinfo     { shift; return Pogo::Engine->jobinfo(@_); }
+sub jobstatus   { shift; return Pogo::Engine->jobstatus(@_); }
+sub jobsnapshot { shift; return Pogo::Engine->jobsnapshot(@_); }
+sub joblog      { shift; return Pogo::Engine->joblog(@_); }
+
+sub run { _rpc_run(@_) };
 
 sub _rpc_run
 {

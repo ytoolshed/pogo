@@ -23,6 +23,7 @@ use AnyEvent;
 use AnyEvent::Handle;
 use AnyEvent::Socket qw(tcp_connect);
 use AnyEvent::TLS;
+use JSON::XS ();
 use YAML::XS qw(LoadFile);
 use Net::SSLeay;
 use Data::Dumper;
@@ -32,149 +33,127 @@ use FindBin qw($Bin);
 use Template;
 use LWP;
 
-our $dispatcher_pid;
+our @EXPORT = qw(test_pogo derp dispatcher_rpc worker_rpc authstore_rpc);
 
-use constant ZOO_PID_FILE => "$Bin/.tmp/zookeeper.pid";
+Log::Log4perl::init("$Bin/conf/log4perl.conf");
 
-# path to apache2 httpd
-use constant HTTPD_BIN => '/opt/local/apache2/bin/httpd';
+my $bind_address = '127.0.0.1';
+my $dispatcher_conf;
+my $worker_conf;
+my $zookeeper_pid;
+my $dispatcher_pid;
+my $worker_pid;
 
-# apache2 ServerRoot, our conf will include modules form HTTPD_ROOT/modules/
-use constant HTTPD_ROOT => '/opt/local/apache2';
-
-# port to run the test instance on
-use constant HTTPD_PORT => 9414;
-
-our @EXPORT_OK = qw(derp);
-
-sub new
+sub test_pogo(&)
 {
-  my ( $class, %opts ) = @_;
+  my $cb = shift;
+
+  chdir($Bin);
   mkdir "$Bin/.tmp"
     unless -d "$Bin/.tmp";
   mkdir "$Bin/.tmp/pogo_output"
     unless -d "$Bin/.tmp/pogo_output";
-  mkdir "$Bin/.tmp/apache"
-    unless -d "$Bin/.tmp/apache";
 
-  $Pogo::Common::CONFIGDIR = "$Bin/conf/";
+  $dispatcher_conf = LoadFile("$Bin/conf/dispatcher.conf");
+  $worker_conf = LoadFile("$Bin/conf/worker.conf");
 
-  my $conf = $opts{conf} || "$Bin/conf/dispatcher.conf";
-  my $self = LoadFile($conf);
+  start_zookeeper();
+  sleep 2.5;
+  init_store();
+  start_dispatcher();
 
-  # use the anyevent stuff here even though we don't need to be
-  # event-driven in the test suite.  we want to use the same
-  # client code we normally do.
-  $self->{worker_ctx} = AnyEvent::TLS->new(
-    key_file                   => "$Bin/conf/worker.key",
-    cert_file                  => "$Bin/conf/worker.cert",
-    verify_require_client_cert => 1,
-    verify                     => 0,
-  ) || LOGDIE "Couldn't init: $!";
-  $self->{authstore_ctx} = AnyEvent::TLS->new(
-    key_file                   => "$Bin/conf/authstore.key",
-    cert_file                  => "$Bin/conf/authstore.cert",
-    verify_require_client_cert => 1,
-    verify                     => 0,
-  ) || LOGDIE "Couldn't init: $!";
-  $self->{dispatcher_ctx} = AnyEvent::TLS->new(
-    key_file                   => "$Bin/conf/dispatcher.key",
-    cert_file                  => "$Bin/conf/dispatcher.cert",
-    verify_require_client_cert => 1,
-    verify                     => 0,
-  ) || LOGDIE "Couldn't init: $!";
-
-  $self->{bind_address} ||= '127.0.0.1';
-
-  return bless $self, $class;
+  sleep 2.5;
+  start_worker();
+  $cb->();
+}
+END {
+  stop_worker();
+  stop_dispatcher();
+  stop_zookeeper();
 }
 
 sub start_dispatcher
 {
-  my ( $self, %opts ) = @_;
-  my $conf = $opts{conf} || "$Bin/conf/dispatcher.conf";
+  return if $dispatcher_pid;
   $dispatcher_pid = fork();
 
   if ( $dispatcher_pid == 0 )
   {
-    exec( "/usr/bin/env", "perl", "-I$Bin/../lib", "-I$Bin/lib", "$Bin/../bin/pogo-dispatcher",
-      '-f', $conf )
+    exec( "/usr/bin/env", "perl", "-I$Bin/../lib", "-I$Bin/lib", 
+          "$Bin/../bin/pogo-dispatcher", '-f', "$Bin/conf/dispatcher.conf" )
       or LOGDIE $!;
   }
   else
   {
-    sleep(2.5);
     INFO "spawned dispatcher (pid $dispatcher_pid)";
   }
-
-  return $dispatcher_pid;
 }
 
 sub stop_dispatcher
 {
-  my $self = shift;
-  sleep(0.2);
+  return unless $dispatcher_pid;
   INFO "killing $dispatcher_pid";
-  kill( 15, $dispatcher_pid );
-  return 1;
+  kill( TERM => $dispatcher_pid );
+  undef $dispatcher_pid;
 }
 
 sub start_zookeeper
 {
-  my ( $self, %opts ) = @_;
-  my $conf = $opts{zookeeper_conf} || "$Bin/conf/zookeeper.conf";
-  my $zookeeper_pid = fork();
-
-  my $zookeeper_cmd = `$Bin/../build/zookeeper/bin/zkServer.sh print-cmd $conf 2>/dev/null`;
+  return if $zookeeper_pid;
+  my $zookeeper_cmd = `$Bin/../build/zookeeper/bin/zkServer.sh print-cmd $Bin/conf/zookeeper.conf 2>/dev/null`;
   DEBUG "using '$zookeeper_cmd'";
+
+  $zookeeper_pid = fork();
 
   if ( $zookeeper_pid == 0 )
   {
-
-    #open STDIN, '/dev/null';
     open STDOUT, '>/dev/null';
     open STDERR, '>&STDOUT';
-
     close STDIN;
-    exec($zookeeper_cmd)
-      or LOGDIE "$zookeeper_cmd failed: $!";
+    exec($zookeeper_cmd) or LOGDIE "$zookeeper_cmd failed: $!";
   }
   else
   {
-    sleep(2.5);
     INFO "spawned zookeeper (pid $zookeeper_pid)";
-    open my $fh, '>', ZOO_PID_FILE
-      or LOGDIE "couldn't open file: $!";
-
-    print $fh $zookeeper_pid;
-    close $fh;
   }
-
-  return 1;
 }
 
 sub stop_zookeeper
 {
-  my $self = shift;
-  sleep(0.2);
-
-  return unless -r ZOO_PID_FILE;
-
-  open my $fh, '<', ZOO_PID_FILE
-    or LOGDIE "couldn't open file: $!";
-
-  chomp( my $zookeeper_pid = <$fh> );
-  close $fh;
-
-  if ( !defined $zookeeper_pid || $zookeeper_pid !~ /^\d+$/ )
-  {
-    LOGDIE "invalid pid: $zookeeper_pid";
-  }
-
+  return unless $zookeeper_pid;
   INFO "killing $zookeeper_pid";
-  kill( 15, $zookeeper_pid );
-  unlink ZOO_PID_FILE;
-  return 1;
+  kill( TERM => $zookeeper_pid );
+  undef $zookeeper_pid;
+}
+
+sub start_worker
+{
+  return if $worker_pid;
+  $worker_pid = fork();
+
+  if ( $worker_pid == 0 )
+  {
+    exec( "/usr/bin/env", "perl", "-I$Bin/../lib", "-I$Bin/lib", 
+          "$Bin/../bin/pogo-worker", '-f', "$Bin/conf/worker.conf" )
+      or LOGDIE $!;
+  }
+  else
+  {
+    INFO "spawned worker (pid $worker_pid)";
+  }
+}
+
+sub stop_worker
+{
+  return unless $worker_pid;
+  INFO "killing $worker_pid";
+  kill( TERM => $worker_pid );
+  undef $worker_pid;
+}
+
+sub init_store
+{
+  Pogo::Engine::Store->init($dispatcher_conf);
 }
 
 # send raw json-rpc back and forth to our authstore port
@@ -226,209 +205,55 @@ sub authstore_rpc
   return $cv->recv;
 }
 
-sub dispatcher_rpc
+sub dispatcher_rpc 
 {
-  my ( $self, $rpc ) = @_;
-  my $cv = AnyEvent->condvar;
-  if ( !defined $self->{dispatcher_handle} )
-  {
-    DEBUG "creating new dispatcher handle: $self->{bind_address}:$self->{rpc_port}";
-    tcp_connect(
-      $self->{bind_address},
-      $self->{rpc_port},
-      sub {
-        local *__ANON__ = 'AE:cb:connect_cb';
-        my ( $fh, $host, $port ) = @_;
-        if ( !$host && !$port )
-        {
-          LOGDIE "connection failed: $!";
-        }
-        DEBUG "connection successful, starting SSL negotiation";
-        $self->{dispatcher_handle} = AnyEvent::Handle->new(
-          fh       => $fh,
-          tls      => 'connect',
-          tls_ctx  => $self->{dispatcher_ctx},
-          no_delay => 1,
-          on_eof   => sub {
-            delete $self->{dispatcher_handle};
-            INFO "connection closed to $host:$port";
-          },
-          on_error => sub {
-            delete $self->{dispatcher_handle};
-            my $fatal = $_[1];
-            LOGDIE
-              sprintf( "$host:$port reported %s error: %s", $fatal ? 'fatal' : 'non-fatal', $! );
-          },
-        ) || LOGDIE "couldn't create handle: $!";
-        $self->{dispatcher_handle}->push_write( json => $rpc );
-        $self->{dispatcher_handle}->push_read( json => sub { $cv->send( $_[1] ); }, );
-      },
-    );
-  }
-  else
-  {
-    $self->{dispatcher_handle}->push_write( json => $rpc );
-    $self->{dispatcher_handle}->push_read( json => sub { $cv->send( $_[1] ); }, );
-  }
-
-  return $cv->recv;
+  my $rpc = shift;
+  my $url = sprintf('http://%s:%d/v3', 
+                    $bind_address, $dispatcher_conf->{http_port});
+  my $res = LWP::UserAgent->new->post(
+    $url, 
+    { 'r' => JSON::XS::encode_json($rpc) }
+  );
+  return JSON::XS::decode_json($res->decoded_content);
 }
 
 sub worker_rpc
 {
-  my ( $self, $rpc ) = @_;
+  my $rpc = shift;
   my $cv = AnyEvent->condvar;
-  if ( !defined $self->{worker_handle} )
-  {
-    DEBUG "creating new worker handle";
-    tcp_connect(
-      $self->{bind_address},
-      $self->{worker_port},
-      sub {
-        my ( $fh, $host, $port ) = @_;
-        if ( !$host && !$port )
-        {
-          ERROR "connection failed: $!";
-          return;
-        }
-        DEBUG "connection successful, starting SSL negotiation";
-        $self->{worker_handle} = AnyEvent::Handle->new(
-          fh       => $fh,
-          tls      => 'connect',
-          tls_ctx  => $self->{worker_ctx},
-          no_delay => 1,
-          on_eof   => sub {
-            delete $self->{worker_handle};
-            INFO "connection closed to $host:$port";
-          },
-          on_error => sub {
-            delete $self->{worker_handle};
-            my $fatal = $_[1];
-            LOGDIE
-              sprintf( "$host:$port reported %s error: %s", $fatal ? 'fatal' : 'non-fatal', $! );
-          },
-        ) || LOGDIE "couldn't create handle: $!";
-        $self->{worker_handle}->push_write( json => $rpc );
-        $self->{worker_handle}->push_read( json => sub { $cv->send( $_[1] ); }, );
+  my $handle;
+  $handle = AnyEvent::Handle->new(
+    connect  => [ $bind_address, $dispatcher_conf->{worker_port} ],
+    tls      => 'connect',
+    tls_ctx  => {
+      key_file  => "$Bin/conf/worker.key",
+      cert_file => "$Bin/conf/worker.cert",
+      ca_file   => "$Bin/conf/dispatcher.cert",
+      verify    => 1,
+      verify_cb => sub {
+        my $preverify_ok = $_[4];
+        my $cert         = $_[6];
+        DEBUG sprintf( "certificate: %s", AnyEvent::TLS::certname($cert) );
+        return $preverify_ok;
       },
-    );
-  }
-  else
-  {
-    $self->{worker_handle}->push_write( json => $rpc );
-    $self->{worker_handle}->push_read( json => sub { $cv->send( $_[1] ); }, );
-  }
+    },
+    no_delay => 1,
+    on_error => sub {
+      $handle->destroy;
+      my $fatal = $_[1];
+      LOGDIE
+        sprintf( "%s:%d reported %s error: %s", 
+                 $bind_address, $dispatcher_conf->{worker_port},
+                 $fatal ? 'fatal' : 'non-fatal', 
+                 $! );
+    },
+  );
+  $handle->push_write( json => $rpc );
+  $handle->push_read( json => sub { $cv->send( $_[1] ); });
 
   return $cv->recv;
 }
 
-# check whether httpd exists
-sub httpd_exists
-{
-  my ($self) = @_;
-  return -x HTTPD_BIN;
-}
-
-# check the configured httpd to make sure it's the correct version
-sub check_httpd_version
-{
-  my ( $self, $httpd ) = @_;
-  my $httpd = HTTPD_BIN;
-  chomp( my ($verline) = grep {/Server version:/} `$httpd -v` );
-  return defined $verline && $verline =~ m/Apache\/2\./;
-}
-
-# build the httpd.conf we'll use to start the test httpd
-sub build_httpd_conf
-{
-  my ( $self, $Bin ) = @_;
-
-  my $root = HTTPD_ROOT;
-
-  my $conf_dir  = "$Bin/.tmp/apache";
-  my $conf_file = "$conf_dir/httpd.conf";
-
-  my $t = Template->new( { INCLUDE_PATH => "$Bin/conf" } );
-
-  my $template_params = {
-    'include_root'  => $root,
-    'server_root'   => "$Bin/",
-    'document_root' => "$Bin/htdocs",
-    'perl_lib'      => "$Bin/../lib",
-    'template_dir'  => "$Bin/../templates",
-    'log_dir'       => "$Bin/.tmp/apache/",
-    'httpd_port'    => HTTPD_PORT(),
-    'httpd_user'    => scalar( getpwuid($>) ),
-    'httpd_group'   => scalar( getgrgid($)) ),
-    'config_dir'    => $Pogo::Common::CONFIGDIR
-  };
-
-  INFO "creating conf_file $conf_file";
-  open( my $FH, ">$conf_file" ) || LOGDIE "Unable to open $conf_file for writing: $!";
-  print $t->process( 'httpd.conf.tpl', $template_params, $FH );
-  close($FH);
-
-  return sprintf( 'http://localhost:%s/', HTTPD_PORT );
-}
-
-# start our test httpd instance
-sub start_httpd
-{
-  my ( $self, $Bin ) = @_;
-
-  my $httpd = HTTPD_BIN;
-
-  my $conf_file = "$Bin/.tmp/apache/httpd.conf";
-  my $pid_file  = "$Bin/.tmp/apache/httpd.pid";
-  if ( -e $pid_file )
-  {
-    ERROR "pid_file $pid_file exists! is apache already running?";
-    return;
-  }
-
-  if ( !-r $conf_file )
-  {
-    ERROR "conf_file $conf_file missing or unreadable";
-    return;
-  }
-
-  my $res = system( $httpd, '-f', $conf_file );
-  sleep 0.25;
-  return $res == 0 ? 1 : 0;
-}
-
-# stop our test httpd instance
-sub stop_httpd
-{
-  my ( $self, $Bin ) = @_;
-
-  my $pid_file = "$Bin/.tmp/apache/httpd.pid";
-  if ( !-r $pid_file )
-  {
-    ERROR "pid_file $pid_file missing or unreadable";
-    return;
-  }
-
-  open( my $FH, '<', $pid_file ) || LOGDIE "Unable to open $pid_file for reading: $!";
-  chomp( my $httpd_pid = <$FH> );
-  close($FH);
-
-  INFO "killing $httpd_pid";
-  kill( 15, $httpd_pid );
-  sleep 0.25;
-
-  return 1;
-}
-
-# check that our test httpd instance is online
-sub check_httpd
-{
-  my ($self) = @_;
-
-  my $ua = LWP::UserAgent->new();
-  my $res = $ua->get( sprintf( "http://localhost:%d/index.html", HTTPD_PORT ) );
-  return ( $res && $res->is_success && $res->decoded_content =~ m/^POGO_OK/ );
-}
 
 # pretty-print a test failure
 sub derp
@@ -441,6 +266,12 @@ Result: $dump
 __DERP__
 
   return $str;
+}
+
+END {
+  stop_worker;
+  stop_dispatcher;
+  stop_zookeeper;
 }
 
 1;
