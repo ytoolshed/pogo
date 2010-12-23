@@ -349,7 +349,7 @@ sub finish_host
     # FIXME: we need to find extended status messages here once we get the pogo-worker stuff going
     $self->set_host_state(
       $host, 'failed',
-      $msg || "exited with status $exitstatus",
+      length($msg) || "exited with status $exitstatus",
       exitstatus => $exitstatus,
     );
     Pogo::Dispatcher->instance()->{stats}->{tasks_failed}++;
