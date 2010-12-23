@@ -298,6 +298,71 @@ sub runnable_hostinfo
   return { map { $_->name, $_->info } @runnable };
 }
 
+sub start_host
+{
+  my ( $self, $hostname, $output_url ) = @_;
+  DEBUG $self->id . " task for $hostname started; output=$output_url";
+  my $host = $self->host($hostname);
+
+  $host->add_outputurl($output_url);
+
+  # there is a race condition here: it's possible that the host is done already
+  # and was reported done to another dispatcher before we process this message.
+  # in that case, we want to set the outputurl in the log without changing the
+  # state.
+  my ( $state, $ext ) = $host->state;
+  if ( $state eq 'ready' )
+  {
+
+    # normally, this is what happens
+    $self->set_host_state( $host, 'running', 'started', output => $output_url );
+  }
+  else
+  {
+
+    # craft a redundant host state log message which just updates the output url
+    $self->log( 'hoststate', { host => $host->{name}, state => $state, output => $output_url },
+      $ext );
+  }
+}
+
+sub finish_host
+{
+  my ( $self, $hostname, $exitstatus, $msg ) = @_;
+  DEBUG "host $hostname exited $exitstatus; attempting to continue job";
+  my $host = $self->host($hostname);
+
+  # FIXME: set end time meta value on host
+
+  # TODO: if all workers are idle and the job isn't finished, mark it stuck
+  # also check for deadlocks somehow
+  Pogo::Dispatcher->instance()->{stats}->{tasks_run}++;
+
+  if ( $exitstatus == 0 )
+  {
+    $self->set_host_state( $host, 'finished', $msg || 'ok', exitstatus => 0 );
+    $self->release_host( $host, sub { $self->continue_deferred() } );
+  }
+  else
+  {
+
+    # FIXME: we need to find extended status messages here once we get the pogo-worker stuff going
+    $self->set_host_state(
+      $host, 'failed',
+      $msg || "exited with status $exitstatus",
+      exitstatus => $exitstatus,
+    );
+    Pogo::Dispatcher->instance()->{stats}->{tasks_failed}++;
+
+    if ( !$self->is_running )
+    {
+      $self->release_host( $host, sub { } );
+      return;
+    }
+    $self->continue_deferred();
+  }
+}
+
 # }}}
 # {{{ slot stuff
 
@@ -703,12 +768,13 @@ sub parse_log
 
     $snap->{$obj} ||= {};
 
-    while ( my( $k, $v ) = each %$args )
+    while ( my ( $k, $v ) = each %$args )
     {
       if ( $k eq 'state' )
       {
         if ( $v eq 'running' )
         {
+
           # create new run with start time @ $ts
           # each block in runs has:
           #   s => start timestamp
@@ -718,8 +784,9 @@ sub parse_log
           #   m => exit msg
           push @{ $snap->{$obj}->{runs} }, { s => $ts, o => $args->{output} };
         }
-        elsif ( Pogo::Engine::Job::Host::_is_finished( $v ) )
+        elsif ( Pogo::Engine::Job::Host::_is_finished($v) )
         {
+
           # mark end time of last run
           $snap->{$obj}->{runs} ||= [ {} ];
           $snap->{$obj}->{runs}->[-1]->{e} = $ts;
@@ -734,9 +801,11 @@ sub parse_log
       }
       elsif ( $k eq 'output' )
       {
+
         # this might get parsed before state => running, so it's handled there
         if ( $args->{state} ne 'running' )
         {
+
           # this resulted from an out-of-order log message, so we need to
           # estimate the start time
           $snap->{$obj}->{runs} ||= [ {} ];
@@ -759,11 +828,12 @@ sub parse_log
 
   while ( $limit-- && ( my $data = store->get( $path . _lognode( $offset++ ) ) ) )
   {
-    my $logentry = eval { JSON::from_json( $data ); };
+    my $logentry = eval { JSON::from_json($data); };
+
     # TODO: shouldn't this be reported or something?
     next if $@;
     my ( $ts, $type, $state, $msg ) = @$logentry;
-    $update_state->( $ts, 'job', $state, $msg ) if ( $type eq 'jobstate' );
+    $update_state->( $ts, 'job',          $state, $msg ) if ( $type eq 'jobstate' );
     $update_state->( $ts, $state->{host}, $state, $msg ) if ( $type eq 'hoststate' );
   }
 
@@ -774,21 +844,21 @@ sub snapshot
 {
   my ( $self, $offset ) = @_;
 
-  my $idx       = $self->cur_logidx;
-  my $path      = $self->{path};
-  my $cacheidx  = store->get( $path . '/_snapidx' );
+  my $idx      = $self->cur_logidx;
+  my $path     = $self->{path};
+  my $cacheidx = store->get( $path . '/_snapidx' );
   $offset ||= 0;
 
   # do we have a cached snapshot, and is it a) current and b) actually existent
   # and c) of the latest format?
-  if ( $offset  == 0
+  if ( $offset == 0
     && defined $cacheidx
     && $cacheidx == $idx
     && store->exists( $path . '/_snapshot0' )
     && store->get( $path . '/_snapver' ) eq '1' )
   {
     my $snap = '';
-    my $i = 0;
+    my $i    = 0;
     while ( defined( my $data = store->get( $path . "/_snapshot$i" ) ) )
     {
       $snap .= $data;
@@ -801,9 +871,10 @@ sub snapshot
 
   if ( $offset == 0 )
   {
+
     # store the snapshot in 1-meg chunks (ZK can't store >1 meg in a node)
     # _snapshot0 .. _snapshotN
-    my ( $i, $off, $snaplen ) = ( 0, 0, length( $snap ) );
+    my ( $i, $off, $snaplen ) = ( 0, 0, length($snap) );
     while ( ( my $len = min( 524288, $snaplen - $off ) ) > 0 )
     {
       store->create( $path . "/_snapshot$i", substr( $snap, $off, $len ) );

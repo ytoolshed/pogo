@@ -76,7 +76,8 @@ sub _set
 sub add_outputurl
 {
   my ( $self, $url ) = @_;
-  my $old = decode_json( $self->_get('_output') );
+  my $old;
+  eval { $old = decode_json( $self->_get('_output') ); };
   if ( defined $old )
   {
     push @$old, $url;
