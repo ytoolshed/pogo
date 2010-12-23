@@ -18,68 +18,48 @@ use 5.008;
 use common::sense;
 
 use Test::Exception;
-use Test::More tests => 10;
+use Test::More;
 
 use Carp qw(confess);
-use Data::Dumper;
 use FindBin qw($Bin);
-use JSON;
 use Log::Log4perl qw(:easy);
-use Net::SSLeay qw();
 use Sys::Hostname qw(hostname);
-use YAML::XS qw(Load LoadFile);
+use YAML::XS qw(LoadFile);
 
-use lib "$Bin/../lib";
 use lib "$Bin/lib";
-
-use PogoTester qw(derp);
+use PogoTester;
 
 $SIG{ALRM} = sub { confess; };
 alarm(60);
 
-ok( my $pt = PogoTester->new(), "new pt" );
+test_pogo
+{
+  my $t;
 
-chdir($Bin);
+  # ping
+  $t = dispatcher_rpc( ["ping"] );
+  ok( $t->[1]->[0] == 0xDEADBEEF, 'ping' )
+    or print Dumper $t;
 
-ok( Log::Log4perl::init("$Bin/conf/log4perl.conf"), "log4perl" );
+  # stats
+  $t = dispatcher_rpc( ["stats"] );
+  ok( $t->[1]->[0]->{hostname} eq hostname(), 'stats' )
+    or print Dumper $t;
 
-my $js = JSON->new;
-my $t;
+  # badcmd
+  $t = dispatcher_rpc( ["weird"] );
+  ok( $t->[0]->{status} eq 'ERROR', 'weird' )
+    or print Dumper $t;
+  ok( $t->[0]->{errmsg} eq qq/unknown rpc command 'weird'/, 'weird 2' );
 
-# start pogo-dispatcher
-my $stopped = 0;
-my $pid;
-ok( $pid = $pt->start_dispatcher, 'start dispatcher' );
-END { kill 15, $pid unless $stopped; }
+  # loadconf
+  my $conf_to_load = LoadFile("$Bin/conf/example.yaml");
+  $t = dispatcher_rpc( [ "loadconf", 'example', $conf_to_load ] )
+    or print Dumper $t;
+  ok( $t->[0]->{status} eq 'OK', "loadconf rpc ok" ) or print Dumper $t;
+};
 
-my $conf;
-eval { $conf = LoadFile("$Bin/conf/dispatcher.conf"); };
-ok( !$@, "loadconf" );
-
-# ping
-$t = $pt->dispatcher_rpc( ["ping"] );
-ok( $t->[1]->[0] == 0xDEADBEEF, 'ping' )
-  or print Dumper $t;
-
-# stats
-$t = $pt->dispatcher_rpc( ["stats"] );
-ok( $t->[1]->[0]->{hostname} eq hostname(), 'stats' )
-  or print Dumper $t;
-
-# badcmd
-$t = $pt->dispatcher_rpc( ["weird"] );
-ok( $t->[0]->{status} eq 'ERROR', 'weird' )
-  or print Dumper $t;
-ok( $t->[0]->{errmsg} eq qq/unknown rpc command 'weird'/, 'weird 2' );
-
-# loadconf
-my $conf_to_load = LoadFile("$Bin/conf/example.yaml");
-$t = $pt->dispatcher_rpc( [ "loadconf", 'example', $conf_to_load ] )
-  or print Dumper $t;
-ok( $t->[0]->{status} eq 'OK', "loadconf rpc ok" ) or print Dumper $t;
-
-# stop
-ok( $pt->stop_dispatcher, 'stop dispatcher' ) and $stopped = 1;
+done_testing;
 
 1;
 

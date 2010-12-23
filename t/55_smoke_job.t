@@ -17,26 +17,19 @@
 use 5.008;
 use common::sense;
 
+use Test::More;
 use Test::Exception;
-use Test::More 'no_plan';
-
-#use Test::More tests => 15;
 
 use Carp qw(confess);
-use Data::Dumper;
 use FindBin qw($Bin);
-use JSON;
-use Log::Log4perl qw(:easy);
-use Net::SSLeay qw();
 use Sys::Hostname qw(hostname);
 use Time::HiRes qw(sleep);
-use YAML::XS qw(Load LoadFile);
+use YAML::XS qw(LoadFile);
 
 use lib "$Bin/../lib";
 use lib "$Bin/lib";
 
-use PogoTester qw(derp);
-
+use PogoTester;
 use Pogo::Engine;
 use Pogo::Engine::Job;
 use Pogo::Engine::Store qw(store);
@@ -44,79 +37,56 @@ use Pogo::Engine::Store qw(store);
 $SIG{ALRM} = sub { confess; };
 alarm(60);
 
-ok( my $pt = PogoTester->new(), "new pt" );
+test_pogo {
+    my $t;
+    $t = dispatcher_rpc( ["ping"] );
+    is( $t->[1]->[0], 0xDEADBEEF, 'ping' ) 
+        or diag explain $t;
 
-chdir($Bin);
+    $t = dispatcher_rpc( ["stats"] );
+    is( $t->[1]->[0]->{hostname}, hostname(), 'stats' ) 
+        or diag explain $t;
 
-ok( Log::Log4perl::init("$Bin/conf/log4perl.conf"), "log4perl" );
+    foreach my $dispatcher ( @{ $t->[1] } )
+    {
+      ok( exists $dispatcher->{workers_idle}, "exists workers_idle" )
+        or diag explain $dispatcher;
+      ok( exists $dispatcher->{workers_busy}, "exists workers_busy" )
+        or diag explain $dispatcher;
+      ok( $dispatcher->{workers_idle} == 0, "zero workers_idle" )
+        or die "eek! bailing, don't want to *actually* run tasks";
+      ok( $dispatcher->{workers_busy} == 0, "zero workers_busy" )
+        or die "eek! bailing, don't want to *actually* run tasks";
+    }
 
-my $js = JSON->new;
-my $t;
+    # loadconf
+    my $conf_to_load;
+    lives_ok { $conf_to_load = LoadFile("$Bin/conf/example.yaml") };
+    $t = dispatcher_rpc( [ 'loadconf', 'example', $conf_to_load ] );
+    is( $t->[0]->{status}, 'OK', 'loadconf rpc OK' ) 
+        or diag explain $t;
 
-# start pogo-dispatcher
-my $stopped = 0;
-my $pid;
-ok( $pid = $pt->start_dispatcher, "start dispatcher $pid" );
-END { kill 15, $pid unless $stopped; }
+    # start a job
+    my %job1 = (
+      user        => 'test',
+      run_as      => 'test',
+      command     => 'echo job1',
+      target      => [ 'foo[1-10].example.com', ],
+      namespace   => 'example',
+      password    => 'foo',
+      timeout     => 3,
+      job_timeout => 3,
+      concurrent  => 1,
+    );
 
-my $conf;
-$conf = LoadFile("$Bin/conf/dispatcher.conf");
-ok( !$@, "loadconf" );
+    ok( my $job = Pogo::Engine::Job->new( \%job1 ), "job->new" );
 
-# ping
-$t = $pt->dispatcher_rpc( ["ping"] );
-ok( $t->[1]->[0] == 0xDEADBEEF, 'ping' )
-  or print Dumper $t;
+    #$job->start( sub { ok( 1, "started" ); confess; }, sub { ok( 0, "started" ); confess; } );
+    #$job->start( sub { ok( 0, "started" ); }, sub { ok( 1, "started" ); } );
+    sleep 3.5;
+    is( $job->state, 'halted', 'job timeout' );
+};
 
-# stats
-$t = $pt->dispatcher_rpc( ["stats"] );
-ok( $t->[1]->[0]->{hostname} eq hostname(), 'stats' )
-  or print Dumper $t;
-
-# ensure no workers are connected
-foreach my $dispatcher ( @{ $t->[1] } )
-{
-  ok( exists $dispatcher->{workers_idle}, "exists workers_idle" )
-    or print Dumper $dispatcher;
-  ok( exists $dispatcher->{workers_busy}, "exists workers_busy" )
-    or print Dumper $dispatcher;
-  ok( $dispatcher->{workers_idle} == 0, "zero workers_idle" )
-    or LOGDIE "eek! bailing, don't want to *actually* run tasks";
-  ok( $dispatcher->{workers_busy} == 0, "zero workers_busy" )
-    or LOGDIE "eek! bailing, don't want to *actually* run tasks";
-}
-
-# loadconf
-my $conf_to_load = LoadFile("$Bin/conf/example.yaml");
-$t = $pt->dispatcher_rpc( [ "loadconf", 'example', $conf_to_load ] )
-  or print Dumper $t;
-ok( $t->[0]->{status} eq 'OK', "loadconf rpc OK" ) or print Dumper $t;
-
-# get our local store up (dispatcher process's is separate)
-ok( Pogo::Engine::Store->init($conf), "store up" );
-
-# start a job
-my %job1 = (
-  user        => 'test',
-  run_as      => 'test',
-  command     => 'echo job1',
-  target      => [ 'foo[1-10].example.com', ],
-  namespace   => 'example',
-  password    => 'foo',
-  timeout     => 3,
-  job_timeout => 3,
-  concurrent  => 1,
-);
-
-ok( my $job = Pogo::Engine::Job->new( \%job1 ), "job->new" );
-
-#$job->start( sub { ok( 1, "started" ); confess; }, sub { ok( 0, "started" ); confess; } );
-#$job->start( sub { ok( 0, "started" ); }, sub { ok( 1, "started" ); } );
-sleep 3.5;
-ok( $job->state eq 'halted', 'job timeout' );
-
-# stop
-ok( $pt->stop_dispatcher, 'stop dispatcher' ) and $stopped = 1;
+done_testing();
 
 1;
-

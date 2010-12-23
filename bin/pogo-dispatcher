@@ -23,8 +23,9 @@ use YAML::XS qw(LoadFile);
 use Log::Log4perl qw(:easy);
 
 use Pogo::Dispatcher;
+use Pogo::HTTP::Server;
 
-our $VERSION = '4.0';
+our $VERSION = 4.0;
 
 sub main
 {
@@ -50,6 +51,10 @@ sub main
     dispatcher_key  => "$POGO_ROOT/etc/ssl/pogo_dispatcher.key",
     dispatcher_cert => "$POGO_ROOT/etc/ssl/pogo_dispatcher.crt",
     worker_cert     => "$POGO_ROOT/etc/ssl/pogo_worker.crt",
+    worker_port     => 7654,
+    rpc_port        => 7655,
+    authstore_port  => 7656,
+    http_port       => 8080,
     bind_address    => undef,
     store           => "zookeeper",
     peers           => [],
@@ -69,7 +74,8 @@ sub main
     'k|ssl-key=s'        => \$cmdline_opts->{dispatcher_key},
     'C|worker-cert=s'    => \$cmdline_opts->{worker_cert},
     'A|bind-address=s'   => \$cmdline_opts->{bind_address},
-    'p|rpc-port=i'       => \$cmdline_opts->{rpc_port},
+    'p|http-port=i'      => \$cmdline_opts->{http_port},
+    'r|rpc-port=i'       => \$cmdline_opts->{rpc_port},
     'w|worker-port=i'    => \$cmdline_opts->{worker_port},
     'a|authstore-port=i' => \$cmdline_opts->{authstore_port},
     'peers=s@'           => \$cmdline_opts->{peers},
@@ -163,6 +169,10 @@ sub main
   close $fd or LOGDIE "problem with $opts->{pid_file}: $!\n";
 
   # here we go
+  Pogo::HTTP::Server->run(
+    host => $opts->{bind_address},
+    port => $opts->{http_port}
+  );
   Pogo::Dispatcher->run(%$opts);
 
   # This should never be reached.
