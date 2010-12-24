@@ -18,7 +18,7 @@ use 5.008;
 use common::sense;
 
 use Test::Exception;
-use Test::More;
+use Test::More tests => 1;
 
 use Carp qw(confess);
 use FindBin qw($Bin);
@@ -31,13 +31,13 @@ use PogoTester;
 $SIG{ALRM} = sub { confess; };
 alarm(60);
 
-
-test_pogo {
-    SKIP:
-    {
-      skip "broken for some reason", 1;
-      ok( authstore_rpc( ["ping"] )->[0] eq 'pong', 'ping' );
-    }
+test_pogo
+{
+SKIP:
+  {
+    skip "broken for some reason", 1;
+    ok( authstore_rpc( ["ping"] )->[0] eq 'pong', 'ping' );
+  }
 
 };
 

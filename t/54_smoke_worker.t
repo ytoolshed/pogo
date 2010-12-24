@@ -18,7 +18,7 @@ use 5.008;
 use common::sense;
 
 use Test::Exception;
-use Test::More;
+use Test::More tests => 1;
 
 use Carp qw(confess);
 use FindBin qw($Bin);
@@ -31,8 +31,9 @@ use PogoTester;
 $SIG{ALRM} = sub { confess; };
 alarm(60);
 
-test_pogo {
-    ok( worker_rpc( ["ping"] )->[0] eq 'pong', 'ping' );
+test_pogo
+{
+  ok( worker_rpc( ["ping"] )->[0] eq 'pong', 'ping' );
 };
 
 done_testing();

@@ -17,7 +17,7 @@
 use 5.008;
 use common::sense;
 
-use Test::More;
+use Test::More tests => 10;
 use Test::Exception;
 
 use Data::Dumper;

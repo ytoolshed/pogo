@@ -18,7 +18,7 @@ use 5.008;
 use common::sense;
 
 use Test::Exception;
-use Test::More;
+use Test::More tests => 23;
 
 use Carp qw(confess);
 use FindBin qw($Bin);
@@ -34,7 +34,8 @@ alarm(60);
 
 use Pogo::Engine;
 
-test_pogo {
+test_pogo
+{
   my $valid   = {};
   my $invalid = {};
 
@@ -225,7 +226,8 @@ ___INVALID4___
 
     # first test non-rpc
     lives_ok { $const_conf = Load( $valid->{$cname} ); } "$cname eval yaml";
-    lives_ok { $ns = Pogo::Engine->init($disp_conf)->loadconf( $namespace, $const_conf ); } "$cname set_conf";
+    lives_ok { $ns = Pogo::Engine->init($disp_conf)->loadconf( $namespace, $const_conf ); }
+    "$cname set_conf";
     lives_ok { $gotconf = Pogo::Engine->namespace($namespace)->get_conf; } "$cname get_conf";
 
     # now test rpc

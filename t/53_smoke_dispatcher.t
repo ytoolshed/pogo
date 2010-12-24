@@ -18,7 +18,7 @@ use 5.008;
 use common::sense;
 
 use Test::Exception;
-use Test::More;
+use Test::More tests => 5;
 
 use Carp qw(confess);
 use FindBin qw($Bin);
