@@ -39,6 +39,9 @@ our $UPDATE_INTERVAL = 1;
 # hosts
 our $POLL_INTERVAL = 10;
 
+# collect jobs to continue
+my %CONTINUE_DEFERRED = ();
+
 #$Data::Dumper::Deparse = 1;
 
 # {{{ new
@@ -581,6 +584,50 @@ sub start
       $self->continue( $all_host_meta, $errc, $cont );
     }
   );
+}
+
+sub continue_deferred
+{
+  my ($self) = @_;
+  return if ( exists $CONTINUE_DEFERRED{ $self->id } );
+
+  if ( !$self->is_running )
+  {
+    DEBUG $self->id . " is $self->{state}; not continuing";
+    return;
+  }
+
+  my $errc = sub { ERROR $?; };
+  my $cont = sub {
+    my ( $nqueued, $nwaiting ) = @_;
+
+    if ( $nqueued == 0 && $nwaiting > 0 )
+    {
+
+      # we aren't able to do anything right now, try again later.
+
+      my $tmr;
+      $tmr = AnyEvent->timer(
+        after => $POLL_INTERVAL,
+        cb    => sub {
+          undef $tmr;
+          $self->continue_deferred();
+        }
+      );
+    }
+  };
+
+  my $tmr;
+  $tmr = AnyEvent->timer(
+    after => $UPDATE_INTERVAL,
+    cb    => sub {
+      $tmr = undef;
+      delete $CONTINUE_DEFERRED{ $self->id };
+      return $self->continue( $self->runnable_hostinfo, $errc, $cont );
+    }
+  );
+
+  return $CONTINUE_DEFERRED{ $self->id } = 1;
 }
 
 sub continue
