@@ -55,6 +55,7 @@ sub test_pogo(&)
   my $cb = shift;
 
   chdir($Bin);
+  system("rm -rf $Bin/.tmp");
   mkdir "$Bin/.tmp"
     unless -d "$Bin/.tmp";
   mkdir "$Bin/.tmp/pogo_output"
@@ -71,12 +72,6 @@ sub test_pogo(&)
   sleep 2.5;
   start_worker();
   $cb->();
-}
-
-sub cleanup_tmpdir
-{
-  chdir($Bin);
-  system("rm -rf $Bin/.tmp");
 }
 
 sub start_dispatcher
@@ -279,7 +274,6 @@ END
   stop_worker();
   stop_dispatcher();
   stop_zookeeper();
-  cleanup_tmpdir();
 }
 
 1;
