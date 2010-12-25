@@ -36,7 +36,6 @@ sub main
   my $DEFAULT_CONFIG_FILE = "$POGO_ROOT/etc/pogo/worker.conf.yaml";
   my $opts                = {
     num_workers     => 100,
-    data_dir        => "$POGO_ROOT/var/pogo/",
     exec_helper     => "$POGO_ROOT/libexec/pogo/pogo-pw",
     log_conf        => "$POGO_ROOT/etc/pogo/worker.log.conf",
     pid_file        => "$POGO_ROOT/var/run/pogo-worker.pid",

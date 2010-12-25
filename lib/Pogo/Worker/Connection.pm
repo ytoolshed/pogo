@@ -14,6 +14,7 @@ package Pogo::Worker::Connection;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+use 5.008;
 use common::sense;
 
 use AnyEvent;
@@ -27,15 +28,15 @@ use Time::HiRes qw(time);
 use IO::File;
 use Scalar::Util qw(refaddr);
 
-sub new    #{{{
+sub new
 {
   my $class = shift;
   my $self  = {@_};
 
   return bless( $self, $class );
-}          #}}}
+}
 
-sub run    #{{{
+sub run
 {
   my $self = shift;
 
@@ -112,12 +113,12 @@ sub run    #{{{
       );
     }
   );
-}    #}}}
+}
 
 sub host { return shift->{host}; }
 sub port { return shift->{port}; }
 
-sub run_command    #{{{
+sub run_command
 {
 
   # Currently the only thing that ever comes down this pipe is a request to
@@ -149,9 +150,9 @@ sub run_command    #{{{
     INFO "[$task_id] Received invalid command '$cmd'";
     $self->reset( $task_id, "500", "Invalid command" );
   }
-}    #}}}
+}
 
-sub execute    #{{{
+sub execute
 {
   my ( $self, $task_id ) = @_;
   my $task = $self->{tasks}->{$task_id};
@@ -170,7 +171,11 @@ sub execute    #{{{
   # Launch our helper program
   my ( $writer, $reader ) = ( IO::Handle->new, IO::Handle->new );
   my $pid;
-  eval { $pid = open3( $writer, $reader, undef, Pogo::Worker->exec_helper ); };
+  eval {
+    $pid =
+      open3( $writer, $reader, undef, Pogo::Worker->exec_helper, '-e', Pogo::Worker->expect_wrapper,
+      '-k', Pogo::Worker->worker_key );
+  };
   if ($@)
   {
     ERROR "[$task_id] Error: $@";
@@ -251,32 +256,32 @@ sub execute    #{{{
     },
     on_read => $write_stdout
   );
-}    #}}}
+}
 
-sub send_response    #{{{
+sub send_response
 {
   my ( $self, $msg ) = @_;
   $self->{dispatcher_handle}->push_write( json => $msg );
-}                    #}}}
+}
 
-sub write_output_entry    #{{{
+sub write_output_entry
 {
   my ( $self, $fh, $args, $data ) = @_;
   $args->{ts} = time();
   $fh->syswrite( encode_json( [ $args, $data ] ) );
   $fh->syswrite("\n");
-}                         #}}}
+}
 
-sub reset                 #{{{
+sub reset
 {
   my ( $self, $task_id, $code, $msg ) = @_;
   my $task = $self->{tasks}->{$task_id};
   Pogo::Worker->send_response(
     [ 'finish', $task->{args}->{job_id}, $task->{args}->{host}, $code, $msg ] );
   delete $self->{tasks}->{$task_id};
-}                         #}}}
+}
 
-sub reconnect             #{{{
+sub reconnect
 {
   my ( $self, $interval ) = @_;
   $interval ||= rand(30);
@@ -287,7 +292,7 @@ sub reconnect             #{{{
     after => $interval,
     cb    => sub { undef $reconnect_timer; $self->run(); }
   );
-}                         #}}}
+}
 
 1;
 

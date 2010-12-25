@@ -14,6 +14,7 @@ package Pogo::Worker;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+use 5.008;
 use common::sense;
 
 use AnyEvent::Socket;
@@ -31,7 +32,9 @@ use constant DEFAULT_PORT => 9697;
 
 my $instance;
 
-sub run    # {{{
+# {{{ run
+
+sub run
 {
   my $class = shift;
   $instance = bless( {@_}, $class );
@@ -57,23 +60,28 @@ sub run    # {{{
   AnyEvent->condvar->recv();
 
   ERROR "Event loop terminated - this should not have happened!";
-}    # }}}
+}
 
-sub add_connection    #{{{
+# }}}
+# {{{ connection handling
+
+sub add_connection
 {
   LOGDIE "Worker not initialized yet" unless defined $instance;
   my $conn = $_[1];
   $instance->{connections}->{ refaddr($conn) } = $conn;
-}                     #}}}
+}
 
-sub delete_connection #{{{
+sub delete_connection
 {
   LOGDIE "Worker not initialized yet" unless defined $instance;
   my $conn = $_[1];
   delete $instance->{connections}->{ refaddr($conn) };
-}                     #}}}
+}
 
-# Response queue {{{
+# }}}
+# {{{ response queue
+
 sub send_response
 {
   LOGDIE "Worker not initialized yet" unless defined $instance;
@@ -94,14 +102,16 @@ sub send_response
   }
 }
 
-sub dequeue_msg    #{{{
+sub dequeue_msg
 {
   LOGDIE "Worker not initialized yet" unless defined $instance;
   return unshift @{ $instance->{responsequeue} };
-}                  #}}}
+}
 
-# Properties {{{
-sub instance       #{{{
+# }}}
+# {{{ properties
+
+sub instance
 {
   return $instance;
 }
@@ -140,6 +150,12 @@ sub exec_helper
 {
   LOGDIE "Worker not initialized yet" unless defined $instance;
   return $instance->{exec_helper};
+}
+
+sub expect_wrapper
+{
+  LOGDIE "Worker not initialized yet" unless defined $instance;
+  return $instance->{expect_wrapper};
 }
 
 sub dist_server
@@ -184,7 +200,7 @@ sub num_workers
   return $instance->{num_workers};
 }
 
-#}}}
+# }}}
 
 1;
 

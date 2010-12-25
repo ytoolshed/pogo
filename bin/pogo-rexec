@@ -17,9 +17,14 @@
 use 5.008;
 use common::sense;
 
+use Crypt::OpenSSL::RSA qw();
+use File::Slurp qw(read_file);
 use File::Temp qw();
 use Getopt::Long qw(GetOptions);
+use IPC::Open3 qw(open3);
+use JSON qw(decode_json);
 use Log::Log4perl qw(:easy);
+use MIME::Base64 qw(decode_base64);
 
 BEGIN
 {
@@ -27,8 +32,8 @@ BEGIN
 }
 
 my $opts = {
-  expect_wrapper => "/usr/local/libexec/pogo/pogo-pw",
-  worker_key     => "/usr/local/etc/pogo/worker.key",
+  expect_wrapper => "pogo-pw",
+  worker_key     => undef,
   scp_options    => [
     qw(-q -o RSAAuthentication=no -o PubkeyAuthentication=no -o StrictHostKeyChecking=no -o LogLevel=error -o GlobalKnownHostsFile=/dev/null -o UserKnownHostsFile=/dev/null)
   ],
@@ -87,8 +92,6 @@ sub main
   STDERR->autoflush(1);
   STDOUT->autoflush(1);
 
-  $ENV{"POGO_WORKER_CONFIG_FILE"} ||= "/home/y/conf/pogo_worker/worker.conf";
-
   # Override default option values with those in configuration file.
   if ( -r $ENV{"POGO_WORKER_CONFIG_FILE"} )
   {
@@ -113,6 +116,11 @@ sub main
   unless ( -x $opts->{expect_wrapper} )
   {
     LOGDIE "Can't execute " . $opts->{expect_wrapper};
+  }
+
+  unless ( -r $opts->{worker_key} )
+  {
+    LOGDIE "Can't read private key " . $opts->{worker_key};
   }
 
   $opts->{private_key} =
