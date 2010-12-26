@@ -75,6 +75,8 @@ sub new
   $self->{path} = $jobpath;
   $self->{ns}   = Pogo::Engine->namespace($ns);
 
+  DEBUG "new $self->{id}";
+
   # TODO: ensure namespace exists
 
   store->create( "$jobpath/host", '' );
@@ -107,7 +109,7 @@ sub new
       {
         INFO "passwords for $self->{id} stored to local dispatcher";
       }
-      $cv->send;
+      return $cv->send(1);
     }
   );
   $cv->recv;
