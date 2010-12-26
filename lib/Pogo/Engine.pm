@@ -110,7 +110,7 @@ sub hostinfo
       $resp->add_header( hosts => join( ',', @$hosts ) );
       $resp->set_ok;
       $resp->set_records($results);
-      $w->send;
+      $w->send;    # TODO: this will fail in AnyEvent::HTTPD
     },
   );
 
@@ -335,8 +335,8 @@ sub jobsnapshot
   # i guess this means it'll have to be double-decoded in the client until we
   # can make Response.pm do what we want
 
-  $resp->add_record( $idx );
-  $resp->add_record( $snap );
+  $resp->add_record($idx);
+  $resp->add_record($snap);
   $resp->set_ok;
 
   return $resp;

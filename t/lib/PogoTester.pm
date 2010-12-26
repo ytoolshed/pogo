@@ -81,6 +81,9 @@ sub start_dispatcher
 
   if ( $dispatcher_pid == 0 )
   {
+    open STDOUT, "|tee $Bin/.tmp/dispatcher.log";
+    open STDERR, '>&STDOUT';
+    close STDIN;
     exec(
       "/usr/bin/env",                "perl", "-I$Bin/../lib", "-I$Bin/lib",
       "$Bin/../bin/pogo-dispatcher", '-f',   "$Bin/conf/dispatcher.conf"
@@ -89,13 +92,23 @@ sub start_dispatcher
   else
   {
     INFO "spawned dispatcher (pid $dispatcher_pid)";
+    open my $pidfile, '>', "$Bin/.tmp/dispatcher.pid";
+    print $pidfile $dispatcher_pid;
+    close $pidfile;
   }
 }
 
 sub stop_dispatcher
 {
+  if ( !defined $dispatcher_pid && -r "$Bin/.tmp/dispatcher.pid" )
+  {
+    open my $pidfile, '<', "$Bin/.tmp/dispatcher.pid";
+    $dispatcher_pid = <$pidfile>;
+    close $pidfile;
+    unlink "$Bin/.tmp/dispatcher.pid";
+  }
+
   return unless $dispatcher_pid;
-  return if defined $ENV{POGO_PERSIST};
   INFO "killing $dispatcher_pid";
   kill( TERM => $dispatcher_pid );
   undef $dispatcher_pid;
@@ -112,7 +125,7 @@ sub start_zookeeper
 
   if ( $zookeeper_pid == 0 )
   {
-    open STDOUT, '>/dev/null';
+    open STDOUT, "|tee $Bin/.tmp/zookeeper.log";
     open STDERR, '>&STDOUT';
     close STDIN;
     exec($zookeeper_cmd) or LOGDIE "$zookeeper_cmd failed: $!";
@@ -120,13 +133,23 @@ sub start_zookeeper
   else
   {
     INFO "spawned zookeeper (pid $zookeeper_pid)";
+    open my $pidfile, '>', "$Bin/.tmp/zookeeper.pid";
+    print $pidfile $zookeeper_pid;
+    close $pidfile;
   }
 }
 
 sub stop_zookeeper
 {
+  if ( !defined $zookeeper_pid && -r "$Bin/.tmp/zookeeper.pid" )
+  {
+    open my $pidfile, '<', "$Bin/.tmp/zookeeper.pid";
+    $zookeeper_pid = <$pidfile>;
+    close $pidfile;
+    unlink "$Bin/.tmp/zookeeper.pid";
+  }
+
   return unless $zookeeper_pid;
-  return if defined $ENV{POGO_PERSIST};
   INFO "killing $zookeeper_pid";
   kill( TERM => $zookeeper_pid );
   undef $zookeeper_pid;
@@ -139,6 +162,9 @@ sub start_worker
 
   if ( $worker_pid == 0 )
   {
+    open STDOUT, "|tee $Bin/.tmp/worker.log";
+    open STDERR, '>&STDOUT';
+    close STDIN;
     exec(
       "/usr/bin/env",            "perl", "-I$Bin/../lib", "-I$Bin/lib",
       "$Bin/../bin/pogo-worker", '-f',   "$Bin/conf/worker.conf"
@@ -147,13 +173,23 @@ sub start_worker
   else
   {
     INFO "spawned worker (pid $worker_pid)";
+    open my $pidfile, '>', "$Bin/.tmp/worker.pid";
+    print $pidfile $worker_pid;
+    close $pidfile;
   }
 }
 
 sub stop_worker
 {
+  if ( !defined $worker_pid && -r "$Bin/.tmp/worker.pid" )
+  {
+    open my $pidfile, '<', "$Bin/.tmp/worker.pid";
+    $worker_pid = <$pidfile>;
+    close $pidfile;
+    unlink "$Bin/.tmp/worker.pid";
+  }
+
   return unless $worker_pid;
-  return if defined $ENV{POGO_PERSIST};
   INFO "killing $worker_pid";
   kill( TERM => $worker_pid );
   undef $worker_pid;
@@ -274,6 +310,11 @@ __DERP__
 
 END
 {
+  if ( defined $ENV{POGO_PERSIST} )
+  {
+    INFO "persisting started services";
+    return;
+  }
   stop_worker();
   stop_dispatcher();
   stop_zookeeper();
