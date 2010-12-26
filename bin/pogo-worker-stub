@@ -7,7 +7,7 @@ use strict;
 use Fcntl;
 use File::Temp qw(tempfile);
 use Sys::Hostname qw(hostname);
-use constant LOCKFILE     => '/var/run/pogo_worker.lock';
+use constant LOCKFILE     => '/tmp/pogo_worker.lock';
 use constant POST_HOOKDIR => '/etc/pogo/post.d/';
 use constant PRE_HOOKDIR  => '/etc/pogo/pre.d/';
 use constant TEMPDIR      => '/tmp';

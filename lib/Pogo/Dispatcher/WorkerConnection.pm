@@ -95,14 +95,14 @@ sub accept
             my ( $jobid, $host, $outputurl ) = @args;
             my $job = Pogo::Engine->job($jobid);
             LOGDIE "Nonexistent job $jobid sent from worker " . $self->id unless $job;
-            $job->start_host( $host, $outputurl );
+            $job->start_task( $host, $outputurl );
           }
           elsif ( $cmd eq 'finish' )
           {
             my ( $jobid, $host, $exitcode, $msg ) = @args;
             my $job = Pogo::Engine->job($jobid);
             LOGDIE "Nonexistent job $jobid sent from worker " . $self->id unless $job;
-            $job->finish_host( $host, $exitcode, $msg );
+            $job->finish_task( $host, $exitcode, $msg );
           }
           elsif ( $cmd eq 'ping' )
           {
