@@ -140,7 +140,7 @@ sub main
     }
   }
 
-  # insert POGO_JOB_ID into the remote environment for bz2999820
+  # insert POGO_JOB_ID into the remote environment
   $remote_env->{POGO_JOB_ID} = $args->{job_id};
 
   if ( ${ $args->{command} }[0] =~ /^POGOATTACHMENT!(.+)/s )
