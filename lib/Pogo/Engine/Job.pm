@@ -301,7 +301,7 @@ sub runnable_hostinfo
   return { map { $_->name, $_->info } @runnable };
 }
 
-sub start_host
+sub start_task
 {
   my ( $self, $hostname, $output_url ) = @_;
   DEBUG $self->id . " task for $hostname started; output=$output_url";
@@ -329,7 +329,7 @@ sub start_host
   }
 }
 
-sub finish_host
+sub finish_task
 {
   my ( $self, $hostname, $exitstatus, $msg ) = @_;
   DEBUG "host $hostname exited $exitstatus; attempting to continue job";
@@ -585,6 +585,23 @@ sub start
     }
   );
 }
+
+# continue_deferred queues up continue requests on task completion
+# we do this to avoid running continue() (expensive, walks zk) on every
+# completed task, instead batching them up in $POLL_INTERVAL intervals
+#
+# inputs: none
+# outputs: none
+# side effects:
+#   - manipulates %CONTINUED_DEFERRED
+#   - sets up timer to call $job->continue() wkth a continuation
+#   to...itself! (continue_deferred).
+# so there's a loop of:
+#   - add_task
+#   - finish_task
+#   - continue_deferred
+#   - continue
+#   - back to add_task
 
 sub continue_deferred
 {
