@@ -63,6 +63,8 @@ sub run_from_commandline
 
   $self->{api} = delete $self->{opts}->{api};
 
+  DEBUG Dumper $self;
+
   my $method = 'cmd_' . $cmd;
   if ( !$self->can($method) )
   {
@@ -83,6 +85,7 @@ sub cmd_run
     client      => $Pogo::Client::VERSION,
     user        => $self->{userid},
     requesthost => hostname || '',
+    passfile    => POGO_PASSPHRASE_FILE,
   };
   GetOptions(
     my $cmdline_opts = {}, 'cookbook|C=s',
@@ -185,7 +188,7 @@ sub cmd_run
 
   # package passphrases
   my $passphrase;
-  if ( $opts->{passfile} )
+  if ( defined $opts->{passfile} && $opts->{passfile} ne '' )
   {
     $passphrase = load_passphrases( $opts->{passfile} );
 
@@ -193,10 +196,6 @@ sub cmd_run
     {
       ERROR "Can't load passphrases from $opts->{passfile}: $!";
     }
-  }
-  else
-  {
-    $passphrase = load_passphrases(POGO_PASSPHRASE_FILE);
   }
 
   # --unconstrained means we're 100% in parallel
@@ -256,7 +255,7 @@ $key,                  $value
 
   # bring the crypto
   Crypt::OpenSSL::RSA->import_random_seed();
-  my $x509    = Crypt::OpenSSL::X509->new_from_file(POGO_WORKER_CERT);
+  my $x509    = Crypt::OpenSSL::X509->new_from_file( $opts->{worker_cert} );
   my $rsa_pub = Crypt::OpenSSL::RSA->new_public_key( $x509->pubkey() );
 
   # encrypt the password
@@ -640,11 +639,15 @@ sub process_options
   my $self = shift;
 
   my $command;
-  my $opts         = {};
+  my $opts = {
+    worker_cert => POGO_WORKER_CERT,
+    configfile  => POGO_GLOBAL_CONF,
+  };
   my $cmdline_opts = {};
 
   # first, process global options and see if we have an alt config file
-  GetOptions( $cmdline_opts, 'help|?', 'api=s', 'configfile=s', 'debug', 'namespac|ns=s', );
+  GetOptions( $cmdline_opts, 'help|?', 'api=s', 'configfile=s', 'debug', 'namespace|ns=s',
+    'worker_cert=s' );
 
   Log::Log4perl::get_logger->level($DEBUG)
     if $cmdline_opts->{debug};
@@ -661,7 +664,7 @@ sub process_options
   }
 
   # load global config
-  my $opts->{configfile} = $cmdline_opts->{configfile} || POGO_GLOBAL_CONF;
+  $opts->{configfile} ||= $cmdline_opts->{configfile};
 
   my $globalconf = {};
 

@@ -95,6 +95,7 @@ sub start_dispatcher
 sub stop_dispatcher
 {
   return unless $dispatcher_pid;
+  return if defined $ENV{POGO_PERSIST};
   INFO "killing $dispatcher_pid";
   kill( TERM => $dispatcher_pid );
   undef $dispatcher_pid;
@@ -125,6 +126,7 @@ sub start_zookeeper
 sub stop_zookeeper
 {
   return unless $zookeeper_pid;
+  return if defined $ENV{POGO_PERSIST};
   INFO "killing $zookeeper_pid";
   kill( TERM => $zookeeper_pid );
   undef $zookeeper_pid;
@@ -151,6 +153,7 @@ sub start_worker
 sub stop_worker
 {
   return unless $worker_pid;
+  return if defined $ENV{POGO_PERSIST};
   INFO "killing $worker_pid";
   kill( TERM => $worker_pid );
   undef $worker_pid;
