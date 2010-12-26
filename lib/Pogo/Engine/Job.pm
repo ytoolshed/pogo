@@ -75,8 +75,6 @@ sub new
   $self->{path} = $jobpath;
   $self->{ns}   = Pogo::Engine->namespace($ns);
 
-  DEBUG "new $self->{id}";
-
   # TODO: ensure namespace exists
 
   store->create( "$jobpath/host", '' );
@@ -109,16 +107,13 @@ sub new
       {
         INFO "passwords for $self->{id} stored to local dispatcher";
       }
-      return $cv->send(1);
+      Pogo::Engine->add_task( 'startjob', $self->{id} );
     }
   );
-  $cv->recv;
 
   # store all non-secure items in zk
   while ( my ( $k, $v ) = each %$args ) { $self->set_meta( $k, $v ); }
   $self->set_meta( 'target', encode_json($target) );
-
-  Pogo::Engine->add_task( 'startjob', $self->{id} );
 
   return $self;
 }
@@ -584,6 +579,36 @@ sub start
 
       # continue the job
       $self->continue( $all_host_meta, $errc, $cont );
+    }
+  );
+}
+
+# release_host is called on successful exit to free up slots for subsequent hosts
+# this might either be moved into a namespace method or a host method with
+# continue_deferred being a continuation but whatever
+
+sub release_host
+{
+  my ( $self, $host, $cont ) = @_;
+
+  # release slots for this host
+  my $ns       = $self->namespace;
+  my %hostinfo = ( $host->name() => $host->info );
+  my $errc     = sub { ERROR $?; };
+
+  $ns->fetch_all_slots(
+    $self,
+    \%hostinfo,
+    $errc,
+    sub {
+      my ( $allslots, $hostslots ) = @_;
+      while ( my ( $hostname, $slots ) = each %$hostslots )
+      {
+        map { DEBUG "releasing $_->{path} for $hostname"; $_->unreserve( $self, $hostname ) }
+          @$slots;
+      }
+
+      return $cont->();
     }
   );
 }

@@ -14,8 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-use Data::Dumper;
-
 use 5.008;
 use common::sense;
 
@@ -27,6 +25,7 @@ use IPC::Open3 qw(open3);
 use JSON qw(decode_json);
 use Log::Log4perl qw(:easy);
 use MIME::Base64 qw(decode_base64);
+use POSIX qw(WEXITSTATUS);
 
 BEGIN
 {
@@ -69,8 +68,6 @@ sub execute
 
   # Send timeout
   $writer->print( $args->{timeout}, "\n" );
-
-  print Dumper $opts->{private_key};
 
   # Send password
   $writer->printf( "%s\n",
@@ -133,8 +130,6 @@ sub main
 
   # Read JSON-encoded args from STDIN.
   $args = decode_json( STDIN->getline() );
-
-  print Dumper $args;
 
   # Check for required arguments
   for (qw(job_id command user run_as password host timeout))
