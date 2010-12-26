@@ -46,7 +46,7 @@ sub run    #{{
 {
   Carp::croak "Server already running" if $instance;
   my $class = shift;
-  $instance = { @_ };
+  $instance = {@_};
   bless $instance, $class;
 
   $instance->{workers} = {
@@ -194,14 +194,14 @@ sub _write_stats
     if ( !$store->exists( '/pogo/stats/' . $instance->{stats}->{hostname} ) )
     {
       $store->create( '/pogo/stats/' . $instance->{stats}->{hostname}, '' )
-        or WARN "couldn't create stats/hostname node: " . $store->get_error;
+        or WARN "couldn't create stats/hostname node: " . $store->get_error_name;
     }
     $store->create_ephemeral( $path, '' )
-      or WARN "couldn't create '$path' node: " . $store->get_error;
+      or WARN "couldn't create '$path' node: " . $store->get_error_name;
   }
 
   $store->set( $path, encode_json $instance->{stats} )
-    or WARN "couldn't update stats node: " . $store->get_error;
+    or WARN "couldn't update stats node: " . $store->get_error_name;
 }
 
 # {{{ worker stuff
