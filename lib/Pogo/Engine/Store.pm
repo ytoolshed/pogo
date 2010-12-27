@@ -17,7 +17,6 @@ package Pogo::Engine::Store;
 use strict;
 use warnings;
 
-use Time::HiRes qw(sleep);
 use Exporter 'import';
 use Log::Log4perl qw(:easy);
 
@@ -45,13 +44,13 @@ sub instance
     }
 
     # retry a few times here in case zookeeper isn't ready yet.
-    for ( my $try = 10; $try > 0; $try-- )
+    for ( my $try = 2; $try > 0; $try-- )
     {
       eval { $store = Pogo::Engine::Store::ZooKeeper->new($store_opts); };
       if ($@)
       {
-        ERROR "Couldn't init zookeeper; retrying";
-        sleep 0.2;
+        ERROR "Couldn't init zookeeper; retrying in $try..";
+        sleep $try;
         next;
       }
       return $store;
