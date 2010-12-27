@@ -223,8 +223,10 @@ sub retire_worker
 {
   LOGDIE "dispatcher not yet initialized" unless defined $instance;
   my ( $class, $worker ) = @_;
-  $instance->{stats}->{workers_idle} -= delete $instance->{workers}->{idle}->{ $worker->id } ? 1 : 0;
-  $instance->{stats}->{workers_busy} -= delete $instance->{workers}->{busy}->{ $worker->id } ? 1 : 0;
+  $instance->{stats}->{workers_idle}
+    -= delete $instance->{workers}->{idle}->{ $worker->id } ? 1 : 0;
+  $instance->{stats}->{workers_busy}
+    -= delete $instance->{workers}->{busy}->{ $worker->id } ? 1 : 0;
   DEBUG sprintf( "Retired worker %s", $worker->id );
   _write_stats();
 }
