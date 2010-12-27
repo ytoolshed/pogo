@@ -47,7 +47,7 @@ test_pogo
     or diag explain $t;
 
   # fire up authstore
-  lives_ok { Pogo::Dispatcher::AuthStore->init( peers => 'localhost' ); };
+  lives_ok { Pogo::Dispatcher::AuthStore->init( { peers => ['localhost'] } ); };
 
   # loadconf
   my $conf_to_load;

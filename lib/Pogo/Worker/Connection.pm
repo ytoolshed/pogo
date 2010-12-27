@@ -211,7 +211,8 @@ sub execute
   DEBUG sprintf( "Writing to output file %s", $output_filename );
 
   # Register callbacks to handle events from spawned process.
-  my $write_stdout = sub {
+  my $write_stdout;
+  $write_stdout = sub {
     my $buf = delete $task->{process_handle}->{rbuf};
     $self->write_output_entry( $output_file, { task => $task_id, type => 'STDOUT' }, $buf );
     $buf_count += length($buf);
@@ -228,6 +229,10 @@ sub execute
 
       # we will be called again during cleanup
       $buf_count = 0;
+    }
+    else
+    {
+      $task->{process_handle}->push_read( line => $write_stdout );
     }
   };
   my $process_exit = sub {
@@ -254,8 +259,9 @@ sub execute
       DEBUG "[$task_id] Received error: $!";
       $process_exit->();
     },
-    on_read => $write_stdout
+#    on_read => $write_stdout
   );
+  $task->{process_handle}->push_read( line => $write_stdout );
 }
 
 sub send_response
