@@ -38,13 +38,24 @@ sub instance
 
     # by default we'll use the same peerlist as everything else
     my $store_opts = $opts->{store_options};
-    if (!exists $store_opts->{serverlist} && exists $opts->{peers})
+    if ( !exists $store_opts->{serverlist} && exists $opts->{peers} )
     {
       $store_opts->{serverlist} = $opts->{peers};
     }
 
-    $store = Pogo::Engine::Store::ZooKeeper->new($store_opts);
-    return $store;
+    # retry a few times here in case zookeeper isn't ready yet.
+    for ( my $try = 2; $try > 0; $try-- )
+    {
+      eval { $store = Pogo::Engine::Store::ZooKeeper->new($store_opts); };
+      if ($@)
+      {
+        ERROR "Couldn't init zookeeper; retrying in $try..";
+        sleep $try;
+        next;
+      }
+      return $store;
+    }
+    LOGDIE "Couldn't init zookeeper";
   }
   else
   {

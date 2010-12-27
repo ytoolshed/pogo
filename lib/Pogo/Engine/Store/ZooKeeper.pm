@@ -14,8 +14,7 @@ package Pogo::Engine::Store::ZooKeeper;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-use Data::Dumper;
-
+use 5.008;
 use common::sense;
 
 use Log::Log4perl qw(:easy);
