@@ -21,8 +21,7 @@ use Log::Log4perl qw(:easy);
 use Pogo::Client::Commandline;
 
 Log::Log4perl::init(
-  { 'log4perl.rootLogger'                               => 'INFO, Client',
-  #  'log4perl.category.Pogo.Client'                     => 'INFO, Client',
+  { 'log4perl.category.Pogo'                            => 'INFO, Client',
     'log4perl.appender.Client'                          => 'Log::Log4perl::Appender::Screen',
     'log4perl.appender.Client.stderr'                   => 1,
     'log4perl.appender.Client.layout'                   => 'Log::Log4perl::Layout::PatternLayout',
@@ -34,7 +33,8 @@ my $ret;
 eval { $ret = Pogo::Client::Commandline->run_from_commandline(); };
 if ($@)
 {
-  LOGDIE "ERROR: $@";
+  chomp( my $err = $@ );
+  LOGDIE "ERROR: $err\n";
 }
 
 exit $ret;
