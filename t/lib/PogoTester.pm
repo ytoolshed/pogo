@@ -65,11 +65,8 @@ sub test_pogo(&)
   $worker_conf     = LoadFile("$Bin/conf/worker.conf");
 
   start_zookeeper();
-  sleep 2.5;
   init_store();
   start_dispatcher();
-
-  sleep 2.5;
   start_worker();
   $cb->();
 }
@@ -96,14 +93,15 @@ sub start_dispatcher
     print $pidfile $dispatcher_pid;
     close $pidfile;
   }
+  sleep 1;
 }
 
 sub stop_dispatcher
 {
-  if ( !defined $dispatcher_pid && -r "$Bin/.tmp/dispatcher.pid" )
+  if ( -r "$Bin/.tmp/dispatcher.pid" )
   {
     open my $pidfile, '<', "$Bin/.tmp/dispatcher.pid";
-    $dispatcher_pid = <$pidfile>;
+    $dispatcher_pid ||= <$pidfile>;
     close $pidfile;
     unlink "$Bin/.tmp/dispatcher.pid";
   }
@@ -141,10 +139,10 @@ sub start_zookeeper
 
 sub stop_zookeeper
 {
-  if ( !defined $zookeeper_pid && -r "$Bin/.tmp/zookeeper.pid" )
+  if ( -r "$Bin/.tmp/zookeeper.pid" )
   {
     open my $pidfile, '<', "$Bin/.tmp/zookeeper.pid";
-    $zookeeper_pid = <$pidfile>;
+    $zookeeper_pid ||= <$pidfile>;
     close $pidfile;
     unlink "$Bin/.tmp/zookeeper.pid";
   }
@@ -177,14 +175,15 @@ sub start_worker
     print $pidfile $worker_pid;
     close $pidfile;
   }
+  sleep 0.5;
 }
 
 sub stop_worker
 {
-  if ( !defined $worker_pid && -r "$Bin/.tmp/worker.pid" )
+  if ( -r "$Bin/.tmp/worker.pid" )
   {
     open my $pidfile, '<', "$Bin/.tmp/worker.pid";
-    $worker_pid = <$pidfile>;
+    $worker_pid ||= <$pidfile>;
     close $pidfile;
     unlink "$Bin/.tmp/worker.pid";
   }

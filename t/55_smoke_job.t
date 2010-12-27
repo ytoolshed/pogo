@@ -17,7 +17,7 @@
 use 5.008;
 use common::sense;
 
-use Test::More tests => 10;
+use Test::More tests => 11;
 use Test::Exception;
 
 use Data::Dumper;
@@ -34,6 +34,7 @@ use PogoTester;
 use Pogo::Engine;
 use Pogo::Engine::Job;
 use Pogo::Engine::Store qw(store);
+use Pogo::Dispatcher::AuthStore;
 
 $SIG{ALRM} = sub { confess; };
 alarm(60);
@@ -44,6 +45,9 @@ test_pogo
   $t = dispatcher_rpc( ["ping"] );
   is( $t->[1]->[0], 0xDEADBEEF, 'ping' )
     or diag explain $t;
+
+  # fire up authstore
+  lives_ok { Pogo::Dispatcher::AuthStore->init( peers => 'localhost' ); };
 
   # loadconf
   my $conf_to_load;
@@ -62,10 +66,10 @@ test_pogo
       or diag explain $dispatcher;
     ok( exists $dispatcher->{workers_busy}, "exists workers_busy" )
       or diag explain $dispatcher;
-    ok( $dispatcher->{workers_idle} == 0, "zero workers_idle" )
-      or die "eek! bailing, don't want to *actually* run tasks";
+    ok( $dispatcher->{workers_idle} == 1, "one workers_idle" )
+      or diag explain $dispatcher;
     ok( $dispatcher->{workers_busy} == 0, "zero workers_busy" )
-      or die "eek! bailing, don't want to *actually* run tasks";
+      or diag explain $dispatcher;
   }
 
   # start a job
@@ -85,7 +89,8 @@ test_pogo
 
   #$job->start( sub { ok( 1, "started" ); confess; }, sub { ok( 0, "started" ); confess; } );
   #$job->start( sub { ok( 0, "started" ); }, sub { ok( 1, "started" ); } );
-  sleep 3.5;
+
+  sleep 5;
   is( $job->state, 'halted', 'job timeout' );
 };
 
