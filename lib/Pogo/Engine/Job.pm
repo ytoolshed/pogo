@@ -29,6 +29,7 @@ use Pogo::Common;
 use Pogo::Engine;
 use Pogo::Engine::Store qw(store);
 use Pogo::Engine::Job::Host;
+use Pogo::Dispatcher::AuthStore;
 
 # wait 100ms for other hosts to finish before finding the next set of
 # runnable hosts
@@ -92,28 +93,17 @@ sub new
   # (because we don't want them to show up in zk's disk snapshot)
   my $pw      = delete $args->{password};
   my $secrets = delete $args->{secrets};
-  my $expire  = $args->{job_timeout} + time();
-
-  my $cv = AnyEvent->condvar;
-  Pogo::Engine->rpcclient(
-    [ 'storesecrets', $self->{id}, $pw, $secrets, $expire ],
-    sub {
-      my ( $ret, $err ) = @_;
-      if ( !defined $ret )
-      {
-        WARN "error storing passwords for job $self->{id}: $err";
-      }
-      else
-      {
-        INFO "passwords for $self->{id} stored to local dispatcher";
-      }
-      Pogo::Engine->add_task( 'startjob', $self->{id} );
-    }
-  );
 
   # store all non-secure items in zk
   while ( my ( $k, $v ) = each %$args ) { $self->set_meta( $k, $v ); }
+
   $self->set_meta( 'target', encode_json($target) );
+
+  my $expire = $args->{job_timeout} + time();
+
+  Pogo::Dispatcher::AuthStore->instance->store( $self->{id}, $pw, $secrets, $expire );
+
+  Pogo::Engine->add_task( 'startjob', $self->{id} );
 
   return $self;
 }
