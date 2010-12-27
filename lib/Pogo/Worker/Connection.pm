@@ -62,7 +62,7 @@ sub run
       while ( my $msg = Pogo::Worker->dequeue_msg )
       {
         DEBUG sprintf( "sending queued response to %s:%d: %s",
-          $self->{host}, $self->{port}, encode_json($msg) );
+          $self->{host}, $self->{port}, JSON->new->utf8->allow_nonref->encode($msg) );
         $self->send_response($msg);
       }
     },
@@ -182,7 +182,7 @@ sub execute
     return $self->reset( $task_id, "500", $@ );
   }
 
-  DEBUG "[$task_id] Launched " . Pogo::Worker->exec_helper . "pid $pid";
+  DEBUG "[$task_id] Launched " . Pogo::Worker->exec_helper . " pid $pid";
 
   my $job_id    = $task->{args}->{job_id};
   my $host      = $task->{args}->{host};

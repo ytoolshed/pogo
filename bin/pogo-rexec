@@ -25,6 +25,7 @@ use IPC::Open3 qw(open3);
 use JSON qw(decode_json);
 use Log::Log4perl qw(:easy);
 use MIME::Base64 qw(decode_base64);
+use POSIX qw(WEXITSTATUS);
 
 BEGIN
 {
@@ -139,7 +140,7 @@ sub main
     }
   }
 
-  # insert POGO_JOB_ID into the remote environment for bz2999820
+  # insert POGO_JOB_ID into the remote environment
   $remote_env->{POGO_JOB_ID} = $args->{job_id};
 
   if ( ${ $args->{command} }[0] =~ /^POGOATTACHMENT!(.+)/s )

@@ -16,17 +16,19 @@ package Pogo::HTTP::Server;
 
 use 5.008;
 use common::sense;
-use Carp ();
-use AnyEvent::HTTPD ();
+
+use AnyEvent::HTTPD;
+use Carp;
+use JSON::XS;
 use Log::Log4perl qw(:easy);
-use JSON::XS ();
 
 my $instance;
 
-sub run {
+sub run
+{
   Carp::croak "Server already running" if $instance;
   my $class = shift;
-  $instance = { @_ };
+  $instance = {@_};
   bless $instance, $class;
 
   $instance->{httpd} = AnyEvent::HTTPD->new(
@@ -34,24 +36,26 @@ sub run {
     port => $instance->{port}
   );
 
-  $instance->{httpd}->reg_cb(request => sub { handle_request(@_) });
+  $instance->{httpd}->reg_cb( request => sub { handle_request(@_) } );
 }
 
-sub handle_request {
-  my ($httpd, $request) = @_;
-  INFO sprintf('Received HTTP request for %s from %s:%d',
-               $request->url, $request->client_host, $request->client_port);
+sub handle_request
+{
+  my ( $httpd, $request ) = @_;
+  INFO sprintf( 'Received HTTP request for %s from %s:%d',
+    $request->url, $request->client_host, $request->client_port );
 
   # Set these to some defaults in case an exception is raised.
-  my $response = Pogo::Engine::Response->new;
-  my $response_format = $request->parm('format') || 'json-pretty';
+  my $response         = Pogo::Engine::Response->new;
+  my $response_format  = $request->parm('format') || 'json-pretty';
   my $response_headers = {
-    'Content-Type' => $response_format eq 'yaml' ? 'text/plain' 
-                                                 : 'text/javascript'
+      'Content-Type' => $response_format eq 'yaml'
+    ? 'text/plain'
+    : 'text/javascript'
   };
 
   eval {
-    my (undef, $version, $method) = split('/', $request->url);
+    my ( undef, $version, $method ) = split( '/', $request->url );
     $version = uc($version);
     die "Unsupported version '$version'" unless $version =~ /^v\d+/i;
 
@@ -60,33 +64,41 @@ sub handle_request {
     eval "require $class";
     die $@ if $@;
 
-    if ($method) {
+    if ($method)
+    {
+
       # TODO: Add supported REST methods
-      ()
-    } else {
+      ();
+    }
+    else
+    {
+
       # RPC request
-      if ($request->parm('r')) {
-        die "c/v mutually exclusive" 
+      DEBUG "request=" . $request->parm('r');
+      if ( $request->parm('r') )
+      {
+        die "c/v mutually exclusive"
           if $request->parm('c') && $request->parm('v');
         my $req = JSON::XS::decode_json( $request->parm('r') );
-        my ($action, @args) = @$req;
+        my ( $action, @args ) = @$req;
         $response = $class->$action(@args);
         $response->add_header( action => $action );
         $response->set_format($response_format);
         $response->set_callback( $request->parm('c') ) if $request->parm('c');
-        $response->set_pushvar( $request->parm('v') ) if $request->parm('v');
-        $request->respond([200, 'OK', $response_headers, $response->content]);
+        $response->set_pushvar( $request->parm('v') )  if $request->parm('v');
+        $request->respond( [ 200, 'OK', $response_headers, $response->content ] );
       }
     }
   };
-  if ($@) {
-    chomp (my $errmsg = $@);
+  if ($@)
+  {
+    chomp( my $errmsg = $@ );
     ERROR $errmsg;
     my $error = Pogo::Engine::Response->new;
-    $error->set_format( $response_format );
+    $error->set_format($response_format);
     $error->set_error($errmsg);
-    $request->respond([500, 'OK', $response_headers, $error->content]);
-  };
+    $request->respond( [ 500, 'OK', $response_headers, $error->content ] );
+  }
 }
 
 1;

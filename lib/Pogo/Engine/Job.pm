@@ -29,6 +29,7 @@ use Pogo::Common;
 use Pogo::Engine;
 use Pogo::Engine::Store qw(store);
 use Pogo::Engine::Job::Host;
+use Pogo::Dispatcher::AuthStore;
 
 # wait 100ms for other hosts to finish before finding the next set of
 # runnable hosts
@@ -92,29 +93,15 @@ sub new
   # (because we don't want them to show up in zk's disk snapshot)
   my $pw      = delete $args->{password};
   my $secrets = delete $args->{secrets};
-  my $expire  = $args->{job_timeout} + time();
-
-  my $cv = AnyEvent->condvar;
-  Pogo::Engine->rpcclient(
-    [ 'storesecrets', $self->{id}, $pw, $secrets, $expire ],
-    sub {
-      my ( $ret, $err ) = @_;
-      if ( !defined $ret )
-      {
-        WARN "error storing passwords for job $self->{id}: $err";
-      }
-      else
-      {
-        INFO "passwords for $self->{id} stored to local dispatcher";
-      }
-      $cv->send;
-    }
-  );
-  $cv->recv;
 
   # store all non-secure items in zk
   while ( my ( $k, $v ) = each %$args ) { $self->set_meta( $k, $v ); }
+
   $self->set_meta( 'target', encode_json($target) );
+
+  my $expire = $args->{job_timeout} + time();
+
+  Pogo::Dispatcher::AuthStore->instance->store( $self->{id}, $pw, $secrets, $expire );
 
   Pogo::Engine->add_task( 'startjob', $self->{id} );
 
@@ -582,6 +569,36 @@ sub start
 
       # continue the job
       $self->continue( $all_host_meta, $errc, $cont );
+    }
+  );
+}
+
+# release_host is called on successful exit to free up slots for subsequent hosts
+# this might either be moved into a namespace method or a host method with
+# continue_deferred being a continuation but whatever
+
+sub release_host
+{
+  my ( $self, $host, $cont ) = @_;
+
+  # release slots for this host
+  my $ns       = $self->namespace;
+  my %hostinfo = ( $host->name() => $host->info );
+  my $errc     = sub { ERROR $?; };
+
+  $ns->fetch_all_slots(
+    $self,
+    \%hostinfo,
+    $errc,
+    sub {
+      my ( $allslots, $hostslots ) = @_;
+      while ( my ( $hostname, $slots ) = each %$hostslots )
+      {
+        map { DEBUG "releasing $_->{path} for $hostname"; $_->unreserve( $self, $hostname ) }
+          @$slots;
+      }
+
+      return $cont->();
     }
   );
 }

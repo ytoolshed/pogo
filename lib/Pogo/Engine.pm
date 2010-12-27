@@ -110,7 +110,7 @@ sub hostinfo
       $resp->add_header( hosts => join( ',', @$hosts ) );
       $resp->set_ok;
       $resp->set_records($results);
-      $w->send;
+      $w->send;    # TODO: this will fail in AnyEvent::HTTPD
     },
   );
 
@@ -335,8 +335,8 @@ sub jobsnapshot
   # i guess this means it'll have to be double-decoded in the client until we
   # can make Response.pm do what we want
 
-  $resp->add_record( $idx );
-  $resp->add_record( $snap );
+  $resp->add_record($idx);
+  $resp->add_record($snap);
   $resp->set_ok;
 
   return $resp;
@@ -568,37 +568,6 @@ sub listtaskq
     );
   }
   return @tasks;
-}
-
-# send local rpc requests to the dispatcher
-# used mostly for storing passwords
-sub rpcclient
-{
-  my ( $class, $request, $cb ) = @_;
-  tcp_connect(
-    'localhost',
-    $instance->{rpc_port} || 7655,
-    sub {
-      my ( $fh, $host, $port ) = @_;
-      if ( !$fh )
-      {
-        return $cb->( undef, "unable to connect to local RPC port!" );
-      }
-
-      my $h;
-      $h = AnyEvent::Handle->new(
-        fh       => $fh,
-        tls      => 'connect',
-        tls_ctx  => $instance->{ssl_ctx},
-        no_delay => 1,
-        on_eof   => sub { undef $h; },
-        on_error => sub { undef $h; $cb->( undef, $! ); },
-      );
-      $h->push_write( json => $request );
-      $h->push_read(
-        json => sub { my ( $hdl, $data ) = @_; $cb->(@$data); $h->push_shutdown(); undef $h } );
-    }
-  );
 }
 
 1;

@@ -46,7 +46,7 @@ sub run    #{{
 {
   Carp::croak "Server already running" if $instance;
   my $class = shift;
-  $instance = { @_ };
+  $instance = {@_};
   bless $instance, $class;
 
   $instance->{workers} = {
@@ -91,7 +91,6 @@ sub run    #{{
 
   # periodically poll task queue for jobs
   my $poll_timer = AnyEvent->timer(
-    after    => 1,
     interval => 1,
     cb       => sub { poll(); },
   );
@@ -180,8 +179,8 @@ sub _write_stats
   my $path  = '/pogo/stats/' . $instance->{stats}->{hostname} . '/current';
   my $store = Pogo::Engine->store;
 
-  $instance->{stats}->{workers_busy} = scalar keys %{ $instance->{workers}->{busy} };
-  $instance->{stats}->{workers_idle} = scalar keys %{ $instance->{workers}->{idle} };
+  #  $instance->{stats}->{workers_busy} = scalar keys %{ $instance->{workers}->{busy} };
+  #  $instance->{stats}->{workers_idle} = scalar keys %{ $instance->{workers}->{idle} };
 
   my @tasks = Pogo::Engine->listtaskq();
 
@@ -194,14 +193,14 @@ sub _write_stats
     if ( !$store->exists( '/pogo/stats/' . $instance->{stats}->{hostname} ) )
     {
       $store->create( '/pogo/stats/' . $instance->{stats}->{hostname}, '' )
-        or WARN "couldn't create stats/hostname node: " . $store->get_error;
+        or WARN "couldn't create stats/hostname node: " . $store->get_error_name;
     }
     $store->create_ephemeral( $path, '' )
-      or WARN "couldn't create '$path' node: " . $store->get_error;
+      or WARN "couldn't create '$path' node: " . $store->get_error_name;
   }
 
   $store->set( $path, encode_json $instance->{stats} )
-    or WARN "couldn't update stats node: " . $store->get_error;
+    or WARN "couldn't update stats node: " . $store->get_error_name;
 }
 
 # {{{ worker stuff
@@ -214,7 +213,9 @@ sub idle_worker
   {
     delete $instance->{workers}->{busy}->{ $worker->id };
     $instance->{workers}->{idle}->{ $worker->id } = $worker;
+    $instance->{stats}->{workers_idle}++;
     DEBUG sprintf( "Marked worker %s idle", $worker->id );
+    _write_stats();
   }
 }
 
@@ -222,9 +223,10 @@ sub retire_worker
 {
   LOGDIE "dispatcher not yet initialized" unless defined $instance;
   my ( $class, $worker ) = @_;
-  delete $instance->{workers}->{idle}->{ $worker->id };
-  delete $instance->{workers}->{busy}->{ $worker->id };
+  $instance->{stats}->{workers_idle} -= delete $instance->{workers}->{idle}->{ $worker->id };
+  $instance->{stats}->{workers_busy} -= delete $instance->{workers}->{busy}->{ $worker->id };
   DEBUG sprintf( "Retired worker %s", $worker->id );
+  _write_stats();
 }
 
 sub busy_worker
@@ -236,7 +238,10 @@ sub busy_worker
   {
     delete $instance->{workers}->{idle}->{ $worker->id() };
     $instance->{workers}->{busy}->{ $worker->id() } = $worker;
+    $instance->{stats}->{workers_idle}--;
+    $instance->{stats}->{workers_busy}++;
     DEBUG "marked worker busy: " . $worker->id;
+    _write_stats();
   }
 }
 
