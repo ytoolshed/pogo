@@ -49,6 +49,8 @@ test_pogo
   is( $t->[0]->{status}, 'OK', 'loadconf rpc OK' )
     or diag explain $t;
 
+  sleep 1;
+
   $t = dispatcher_rpc( ["stats"] );
   is( $t->[1]->[0]->{hostname}, hostname(), 'stats' )
     or diag explain $t;
