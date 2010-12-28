@@ -17,7 +17,7 @@
 use 5.008;
 use common::sense;
 
-use Test::More tests => 11;
+use Test::More tests => 8;
 use Test::Exception;
 
 use Data::Dumper;
@@ -46,9 +46,6 @@ test_pogo
   is( $t->[1]->[0], 0xDEADBEEF, 'ping' )
     or diag explain $t;
 
-  # fire up authstore
-  lives_ok { Pogo::Dispatcher::AuthStore->init( { peers => ['localhost'] } ); };
-
   # loadconf
   my $conf_to_load;
   lives_ok { $conf_to_load = LoadFile("$Bin/conf/example.yaml") };
@@ -72,26 +69,6 @@ test_pogo
       or diag explain $dispatcher;
   }
 
-  # start a job
-  my %job1 = (
-    user        => 'test',
-    run_as      => 'test',
-    command     => 'echo job1',
-    target      => [ 'foo[1-10].example.com', ],
-    namespace   => 'example',
-    password    => 'foo',
-    timeout     => 2,
-    job_timeout => 2,
-    concurrent  => 1,
-  );
-
-  ok( my $job = Pogo::Engine::Job->new( \%job1 ), "job->new" );
-
-  #$job->start( sub { ok( 1, "started" ); confess; }, sub { ok( 0, "started" ); confess; } );
-  #$job->start( sub { ok( 0, "started" ); }, sub { ok( 1, "started" ); } );
-
-  sleep 5;
-  is( $job->state, 'halted', 'job timeout' );
 };
 
 done_testing();

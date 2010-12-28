@@ -55,19 +55,22 @@ sub test_pogo(&)
   my $cb = shift;
 
   chdir($Bin);
-  system("rm -rf $Bin/.tmp");
-  mkdir "$Bin/.tmp"
-    unless -d "$Bin/.tmp";
-  mkdir "$Bin/.tmp/pogo_output"
-    unless -d "$Bin/.tmp/pogo_output";
-
   $dispatcher_conf = LoadFile("$Bin/conf/dispatcher.conf");
   $worker_conf     = LoadFile("$Bin/conf/worker.conf");
 
-  start_zookeeper();
+  if ( !defined $ENV{POGO_PERSIST} )
+  {
+    system("rm -rf $Bin/.tmp");
+    mkdir "$Bin/.tmp"
+      unless -d "$Bin/.tmp";
+    mkdir "$Bin/.tmp/pogo_output"
+      unless -d "$Bin/.tmp/pogo_output";
+
+    start_zookeeper();
+    start_dispatcher();
+    start_worker();
+  }
   init_store();
-  start_dispatcher();
-  start_worker();
   $cb->();
 }
 
@@ -197,6 +200,7 @@ sub stop_worker
 sub init_store
 {
   Pogo::Engine::Store->init($dispatcher_conf);
+  Pogo::Dispatcher::AuthStore->init( { peers => ['localhost'] } );
 }
 
 # send raw json-rpc back and forth to our authstore port
@@ -253,6 +257,8 @@ sub dispatcher_rpc
   my $rpc = shift;
   my $url = sprintf( 'http://%s:%d/v3', $bind_address, $dispatcher_conf->{http_port} );
   my $res = LWP::UserAgent->new->post( $url, { 'r' => JSON::XS::encode_json($rpc) } );
+  LOGDIE "request failed: " . $res->status_line
+    unless $res->is_success;
   return JSON::XS::decode_json( $res->decoded_content );
 }
 
