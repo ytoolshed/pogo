@@ -128,7 +128,11 @@ sub poll
     if ( $reqtype eq 'runhost' )
     {
       next if ( !scalar @workers );    # skip if we have no workers.
-      next unless Pogo::Dispatcher::AuthStore->get($jobid);
+      if ( !Pogo::Dispatcher::AuthStore->get($jobid) )
+      {
+        DEBUG "skipping task for $jobid, no secrets found";
+        next;
+      }
 
       # skip for now if we have no passwords (yet?)
 
@@ -223,8 +227,10 @@ sub retire_worker
 {
   LOGDIE "dispatcher not yet initialized" unless defined $instance;
   my ( $class, $worker ) = @_;
-  $instance->{stats}->{workers_idle} -= delete $instance->{workers}->{idle}->{ $worker->id } ? 1 : 0;
-  $instance->{stats}->{workers_busy} -= delete $instance->{workers}->{busy}->{ $worker->id } ? 1 : 0;
+  $instance->{stats}->{workers_idle}
+    -= delete $instance->{workers}->{idle}->{ $worker->id } ? 1 : 0;
+  $instance->{stats}->{workers_busy}
+    -= delete $instance->{workers}->{busy}->{ $worker->id } ? 1 : 0;
   DEBUG sprintf( "Retired worker %s", $worker->id );
   _write_stats();
 }
