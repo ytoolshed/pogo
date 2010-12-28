@@ -17,7 +17,7 @@
 use 5.008;
 use common::sense;
 
-use Test::More tests => 8;
+use Test::More tests => 14;
 use Test::Exception;
 
 use Data::Dumper;
@@ -31,10 +31,6 @@ use lib "$Bin/../lib";
 use lib "$Bin/lib";
 
 use PogoTester;
-use Pogo::Engine;
-use Pogo::Engine::Job;
-use Pogo::Engine::Store qw(store);
-use Pogo::Dispatcher::AuthStore;
 
 $SIG{ALRM} = sub { confess; };
 alarm(60);
@@ -48,7 +44,7 @@ test_pogo
 
   # loadconf
   my $conf_to_load;
-  lives_ok { $conf_to_load = LoadFile("$Bin/conf/example.yaml") };
+  lives_ok { $conf_to_load = LoadFile("$Bin/conf/example.yaml") } 'load yaml';
   $t = dispatcher_rpc( [ 'loadconf', 'example', $conf_to_load ] );
   is( $t->[0]->{status}, 'OK', 'loadconf rpc OK' )
     or diag explain $t;
@@ -69,6 +65,39 @@ test_pogo
       or diag explain $dispatcher;
   }
 
+  my $job1 = {
+    user        => 'test',
+    run_as      => 'test',
+    password    => encrypt_secret('foo'),
+    secrets     => encrypt_secret('bar'),
+    command     => 'echo job1',
+    target      => [ 'foo[1-10].example.com', ],
+    namespace   => 'example',
+    timeout     => 5,
+    job_timeout => 5,
+    concurrent  => 1,
+  };
+
+  my $resp;
+  lives_ok { $resp = client->run(%$job1); } 'run job1'
+    or diag explain $@;
+  ok( $resp->is_success, "sent run job1" );
+
+  my $jobid = $resp->record;
+
+  ok( $jobid eq 'p0000000000', "got jobid" );
+
+  sleep 6;    # job should timeout
+
+  lives_ok { $resp = client->jobstatus($jobid) } "jobstatus $jobid"
+    or diag explain $@;
+
+  ok( $resp->is_success, "sent jobstatus $jobid" )
+    or diag explain $resp;
+
+  my @records = $resp->records;
+  ok( $records[0] eq 'halted', "job $jobid halted" )
+    or diag explain \@records;
 };
 
 done_testing();
