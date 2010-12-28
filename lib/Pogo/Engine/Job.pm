@@ -26,7 +26,6 @@ use MIME::Base64 qw(encode_base64);
 use Time::HiRes qw(time);
 
 use Pogo::Common;
-use Pogo::Engine;
 use Pogo::Engine::Store qw(store);
 use Pogo::Engine::Job::Host;
 use Pogo::Dispatcher::AuthStore;

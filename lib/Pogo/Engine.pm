@@ -90,8 +90,7 @@ sub globalstatus
 
 sub hostinfo
 {
-  my $range = shift;
-  my $ns    = shift;
+  my ( $target, $ns, $cb ) = @_;
 
   my $resp = Pogo::Engine::Response->new()->add_header( action => 'hostinfo' );
 
@@ -100,7 +99,7 @@ sub hostinfo
 
   # call this asyncronously as it may be ugly
   Pogo::Roles->instance->fetch_all(
-    $range, $ns,
+    $target, $ns,
     sub {
       $resp->set_error(shift);
       $w->send;
@@ -110,13 +109,9 @@ sub hostinfo
       $resp->add_header( hosts => join( ',', @$hosts ) );
       $resp->set_ok;
       $resp->set_records($results);
-      $w->send;    # TODO: this will fail in AnyEvent::HTTPD
+      $cb->($resp);
     },
   );
-
-  $w->recv;
-
-  return $resp;
 }
 
 sub hostlog_url
