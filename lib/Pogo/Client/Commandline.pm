@@ -14,8 +14,6 @@ package Pogo::Client::Commandline;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-use Data::Dumper;
-
 use 5.008;
 use common::sense;
 
@@ -63,8 +61,6 @@ sub run_from_commandline
     or $self->cmd_usage;
 
   $self->{api} = delete $self->{opts}->{api};
-
-  DEBUG Dumper $self;
 
   my $method = 'cmd_' . $cmd;
   if ( !$self->can($method) )
@@ -449,10 +445,10 @@ sub cmd_status
   }
 
   # output status
-  my $records = $resp->records;
-  my $status  = shift @$records;
+  my @records = $resp->records;
+  my $status  = shift @records;
   printf "$pat", "job status", $status;
-  while ( my $rec = shift @$records )
+  while ( my $rec = shift @records )
   {
     my ( $host, $status, $exit ) = @$rec;
     if ( !defined $target || $target->contains($host) )
@@ -518,7 +514,7 @@ sub cmd_log
       return -1;
     }
 
-    my (@records) = $resp->records;
+    my @records = $resp->records;
 
     foreach my $record ( sort { $a->[0] <=> $b->[0] } @records )
     {
