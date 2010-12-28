@@ -48,7 +48,7 @@ sub AUTOLOAD
 {
   my ( $self, @stuff ) = @_;
 
-  $AUTOLOAD =~ /(\w+)$/ or LOGDIE "cannot parse '$AUTOLOAD'";
+  $AUTOLOAD =~ /(\w+)$/ or die "cannot parse '$AUTOLOAD'\n";
   my $method = $1;
 
   my $rpc = encode_json( [ $method, @stuff ] );
@@ -57,14 +57,14 @@ sub AUTOLOAD
   DEBUG $self->{api} . " request: $rpc";
 
   my $r = $self->ua->request($post);
-  LOGDIE "fatal error in request '$method': " . $r->status_line
+  die "fatal error in request '$method': " . $r->status_line . "\n"
     if $r->is_error;
 
   DEBUG "response: " . $r->decoded_content;
 
   my $resp = Pogo::Engine::Response->new( $r->decoded_content );
 
-  LOGDIE "error from pogo server in request '$method': " . $resp->status_msg . "\n"
+  die "error from pogo server in request '$method': " . $resp->status_msg . "\n"
     unless $resp->is_success;
 
   return $resp;

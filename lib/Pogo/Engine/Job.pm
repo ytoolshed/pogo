@@ -94,14 +94,12 @@ sub new
   my $pw      = delete $args->{password};
   my $secrets = delete $args->{secrets};
 
+  my $expire = $args->{job_timeout} + time() + 60;
+  Pogo::Dispatcher::AuthStore->instance->store( $self->{id}, $pw, $secrets, $expire );
+
   # store all non-secure items in zk
   while ( my ( $k, $v ) = each %$args ) { $self->set_meta( $k, $v ); }
-
   $self->set_meta( 'target', encode_json($target) );
-
-  my $expire = $args->{job_timeout} + time();
-
-  Pogo::Dispatcher::AuthStore->instance->store( $self->{id}, $pw, $secrets, $expire );
 
   Pogo::Engine->add_task( 'startjob', $self->{id} );
 

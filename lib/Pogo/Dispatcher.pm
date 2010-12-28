@@ -128,7 +128,11 @@ sub poll
     if ( $reqtype eq 'runhost' )
     {
       next if ( !scalar @workers );    # skip if we have no workers.
-      next unless Pogo::Dispatcher::AuthStore->get($jobid);
+      if ( !Pogo::Dispatcher::AuthStore->get($jobid) )
+      {
+        DEBUG "skipping task for $jobid, no secrets found";
+        next;
+      }
 
       # skip for now if we have no passwords (yet?)
 

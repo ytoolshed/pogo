@@ -14,8 +14,7 @@ package Pogo::Client::Commandline;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-use Data::Dumper;
-
+use 5.008;
 use common::sense;
 
 use Getopt::Long qw(:config bundling no_ignore_case pass_through);
@@ -63,12 +62,10 @@ sub run_from_commandline
 
   $self->{api} = delete $self->{opts}->{api};
 
-  DEBUG Dumper $self;
-
   my $method = 'cmd_' . $cmd;
   if ( !$self->can($method) )
   {
-    LOGDIE "no such command: $cmd\n";
+    die "no such command: $cmd\n";
   }
 
   return $self->$method;
@@ -136,15 +133,15 @@ sub cmd_run
   # run an anonymous executable?
   if ( defined $opts->{file} )
   {
-    LOGDIE "file \"" . $opts->{file} . "\" does not exist\n" unless -e $opts->{file};
-    LOGDIE "unable to read \"" . $opts->{file} . "\"\n"      unless -r $opts->{file};
+    die "file \"" . $opts->{file} . "\" does not exist\n" unless -e $opts->{file};
+    die "unable to read \"" . $opts->{file} . "\"\n"      unless -r $opts->{file};
 
     $opts->{exe_name} = ( split( /\//, $opts->{file} ) )[-1];
     $opts->{exe_data} = encode_base64( read_file( $opts->{file} ) );
     $opts->{command}  = "Attached file: " . $opts->{exe_name};
   }
 
-  LOGDIE "run needs a command\n"
+  die "run needs a command\n"
     unless defined $opts->{command};
 
   my @targets;
@@ -161,7 +158,7 @@ sub cmd_run
       if ( -r $hostfile )
       {
         open( my $fh, '<', $hostfile )
-          or LOGDIE "Couldn't open file: $!";
+          or die "Couldn't open file: $!";
 
         while ( my $host = <$fh> )
         {
@@ -174,14 +171,14 @@ sub cmd_run
       }
       else
       {
-        LOGDIE "couldn't read '$hostfile'";
+        die "couldn't read '$hostfile'";
       }
     }
   }
 
   if ( @targets == 0 )
   {
-    LOGDIE "run needs hosts!";
+    die "run needs hosts!\n";
   }
 
   $opts->{target} = \@targets;
@@ -201,7 +198,7 @@ sub cmd_run
   # --unconstrained means we're 100% in parallel
   if ( delete $opts->{unconstrained} )
   {
-    LOGDIE "--unconstrained and --concurrent are mutually exclusive"
+    die "--unconstrained and --concurrent are mutually exclusive\n"
       if exists $opts->{concurrent};
     $opts->{concurrent} = 0;
   }
@@ -209,7 +206,7 @@ sub cmd_run
   # check the value of concurrent
   if ( exists $opts->{concurrent} )
   {
-    LOGDIE "--concurrent value must be an integer or a percentage"
+    die "--concurrent value must be an integer or a percentage\n"
       unless $opts->{concurrent} =~ m/^\d+%?$/;
   }
 
@@ -248,7 +245,7 @@ $key,                  $value
   {
     if ( !check_password( $self->{userid}, $password ) )
     {
-      LOGDIE
+      die
         "Local password check failed, bailing\nset 'check_password: 0' in your .pogoconf to disable\n";
     }
   }
@@ -272,7 +269,7 @@ $key,                  $value
 
   if ( !$resp->is_success )
   {
-    LOGDIE "Failed to start job: " . $resp->status_msg;
+    die "Failed to start job: " . $resp->status_msg;
   }
 
   my $jobid = $resp->record;
@@ -338,7 +335,7 @@ sub cmd_jobs
   my $resp = $self->_client()->listjobs(%$opts);
   if ( !$resp->is_success )
   {
-    LOGDIE "Unable to list jobs: " . $resp->status_msg;
+    die "Unable to list jobs: " . $resp->status_msg;
   }
 
   my @matches;
@@ -396,13 +393,13 @@ sub cmd_status
     $jobid = $self->to_jobid($jobid);
     if ( !defined $jobid )
     {
-      LOGDIE "No jobs found";
+      die "No jobs found";
     }
     DEBUG "Using jobid '$jobid'";
   }
   else
   {
-    LOGDIE "no jobid specified";
+    die "no jobid specified";
   }
 
   # expand the range if needed
@@ -416,7 +413,7 @@ sub cmd_status
   my $resp = $self->_client()->jobinfo( $jobid, %$opts );
   if ( !$resp->is_success )
   {
-    LOGDIE "Unable to fetch jobinfo: " . $resp->status_msg;
+    die "Unable to fetch jobinfo: " . $resp->status_msg;
   }
 
   # output job info
@@ -444,14 +441,14 @@ sub cmd_status
   $resp = $self->_client()->jobstatus($jobid);
   if ( !$resp->is_success )
   {
-    LOGDIE "Unable to fetch jobstatus: " . $resp->status_msg;
+    die "Unable to fetch jobstatus: " . $resp->status_msg;
   }
 
   # output status
-  my $records = $resp->records;
-  my $status  = shift @$records;
+  my @records = $resp->records;
+  my $status  = shift @records;
   printf "$pat", "job status", $status;
-  while ( my $rec = shift @$records )
+  while ( my $rec = shift @records )
   {
     my ( $host, $status, $exit ) = @$rec;
     if ( !defined $target || $target->contains($host) )
@@ -492,7 +489,7 @@ sub cmd_log
   }
   unless ($jobid)
   {
-    LOGDIE "no jobid specified\n";
+    die "no jobid specified\n";
   }
 
   my $hosts;
@@ -517,7 +514,7 @@ sub cmd_log
       return -1;
     }
 
-    my (@records) = $resp->records;
+    my @records = $resp->records;
 
     foreach my $record ( sort { $a->[0] <=> $b->[0] } @records )
     {
@@ -639,14 +636,11 @@ sub process_options
   my $self = shift;
 
   my $command;
-  my $opts = {
-    worker_cert => POGO_WORKER_CERT,
-    configfile  => POGO_GLOBAL_CONF,
-  };
+  my $opts = { worker_cert => POGO_WORKER_CERT, };
   my $cmdline_opts = {};
 
   # first, process global options and see if we have an alt config file
-  GetOptions( $cmdline_opts, 'help|?', 'api=s', 'configfile=s', 'debug', 'namespace|ns=s',
+  GetOptions( $cmdline_opts, 'help|?', 'api=s', 'configfile|c=s', 'debug', 'namespace|ns=s',
     'worker_cert=s' );
 
   Log::Log4perl::get_logger->level($DEBUG)
@@ -665,6 +659,7 @@ sub process_options
 
   # load global config
   $opts->{configfile} ||= $cmdline_opts->{configfile};
+  $opts->{configfile} ||= POGO_GLOBAL_CONF;
 
   my $globalconf = {};
 
@@ -818,7 +813,7 @@ sub expand_expression
     eval { $resp = $self->_client()->expand( \@foo ); };
     if ( $@ || !$resp->is_success )
     {
-      LOGDIE "unable to expand '$exp': " . $@ || $resp->status_msg;
+      die "unable to expand '$exp': " . $@ || $resp->status_msg;
     }
     push( @hosts, @{ $resp->records } );
   }

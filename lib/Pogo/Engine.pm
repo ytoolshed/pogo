@@ -244,7 +244,7 @@ sub joblog
     return $resp;
   }
 
-  $resp->set_records( $job->read_log( $offset, $limit ) );
+  $resp->set_records( [ $job->read_log( $offset, $limit ) ] );
   $resp->set_ok;
 
   return $resp;

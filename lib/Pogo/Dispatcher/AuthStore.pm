@@ -27,6 +27,8 @@ use Sys::Hostname qw(hostname);
 
 use constant DEFAULT_PORT => 9698;
 
+# {{{ constructors
+
 my $instance;
 
 sub instance
@@ -64,7 +66,53 @@ sub init
   return $instance;
 }
 
-sub start_server    # {{{
+# }}}
+# {{{ store
+
+sub store
+{
+  LOGDIE "Authstore not initialized yet" unless defined $instance;
+  my ( $self, $job, $pw, $secrets, $expire ) = @_;
+
+  # stash locally
+  _store_local( $job, $pw, $secrets, $expire );
+
+  # store on hosts in the peerlist
+  $_->push_write( json => [ 'storesecrets', $job, $pw, $secrets, $expire ] )
+    for values %{ $instance->{clients} };
+}
+
+sub _store_local
+{
+  LOGDIE "Authstore not initialized yet" unless defined $instance;
+
+  my ( $job, $pw, $secrets, $expire ) = @_;
+
+  INFO "stored secrets for job $job";
+  $instance->{secrets}->{$job} = [ $pw, $secrets, $expire ];
+
+  # start expiration timer
+  my $timer;
+  $timer = AnyEvent->timer(
+    after => $expire - time(),
+    cb    => sub {
+      INFO "expiring secrets for job $job";
+      delete $instance->{secrets}->{$job};
+      undef $timer;
+    },
+  );
+}
+
+sub get
+{
+  my ( undef, $job ) = @_;
+  return $instance->{secrets}->{$job};
+}
+
+# }}}
+# {{{ start_server
+
+sub start_server
 {
   LOGDIE "Authstore not initialized yet" unless defined $instance;
 
@@ -151,7 +199,10 @@ sub start_server    # {{{
       INFO "Accepting authstore peer connections on $_[1]:$_[2]";
     },
   );
-}    # }}}
+}
+
+# }}}
+# {{{ start_client
 
 # called for each peer
 sub start_client
@@ -236,51 +287,15 @@ sub start_client
   );
 }
 
-sub store
-{
-  LOGDIE "Authstore not initialized yet" unless defined $instance;
-
-  my ( $self, $job, $pw, $secrets, $expire ) = @_;
-
-  # stash locally
-  _store_local( $job, $pw, $secrets, $expire );
-
-  # store on hosts in the peerlist
-  $_->push_write( json => [ 'storesecrets', $job, $pw, $secrets, $expire ] )
-    for values %{ $instance->{clients} };
-}
-
-sub _store_local
-{
-  LOGDIE "Authstore not initialized yet" unless defined $instance;
-
-  my ( $job, $pw, $secrets, $expire ) = @_;
-
-  INFO "stored secrets for job $job";
-  $instance->{secrets}->{$job} = [ $pw, $secrets, $expire ];
-
-  # start expiration timer
-  my $timer;
-  $timer = AnyEvent->timer(
-    after => $expire - time(),
-    cb    => sub {
-      INFO "expiring secrets for job $job";
-      delete $instance->{secrets}->{$job};
-      undef $timer;
-    },
-  );
-}
-
-sub get
-{
-  my ( undef, $job ) = @_;
-  return $instance->{secrets}->{$job};
-}
+# }}}
+# {{{ misc
 
 sub _resolve_host
 {
   return inet_ntoa( ( gethostbyname( $_[0] ) )[4] );
 }
+
+# }}}
 
 1;
 
