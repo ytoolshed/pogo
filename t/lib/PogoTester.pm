@@ -14,41 +14,51 @@ package PogoTester;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+use 5.008;
 use common::sense;
 
 use Time::HiRes qw(sleep);
 use Log::Log4perl qw(:easy);
 
-use AnyEvent;
 use AnyEvent::Handle;
 use AnyEvent::Socket qw(tcp_connect);
 use AnyEvent::TLS;
-use JSON::XS ();
-use YAML::XS qw(LoadFile);
-use Net::SSLeay;
-use Data::Dumper;
+use AnyEvent;
 use Carp qw(croak confess);
+use Crypt::OpenSSL::RSA;
+use Crypt::OpenSSL::X509;
+use Data::Dumper;
+use MIME::Base64 qw(encode_base64);
 use Exporter 'import';
 use FindBin qw($Bin);
-use Template;
+use JSON::XS ();
 use LWP;
+use Net::SSLeay;
+use Template;
+use YAML::XS qw(LoadFile);
 
 use lib "$Bin/../lib";
 use lib "$Bin/../../lib";
 
 use Pogo::Engine;
 use Pogo::Engine::Store;
+use Pogo::Dispatcher::AuthStore;
+use Pogo::Client;
 
-our @EXPORT = qw(test_pogo derp dispatcher_rpc worker_rpc authstore_rpc);
+our @EXPORT =
+  qw(test_pogo derp dispatcher_rpc worker_rpc authstore_rpc encrypt_secret decrypt_secret client);
 
 Log::Log4perl::init("$Bin/conf/log4perl.conf");
 
 my $bind_address = '127.0.0.1';
 my $dispatcher_conf;
 my $worker_conf;
+my $client_conf;
 my $zookeeper_pid;
 my $dispatcher_pid;
 my $worker_pid;
+
+my $pogo_client;
 
 sub test_pogo(&)
 {
@@ -57,6 +67,7 @@ sub test_pogo(&)
   chdir($Bin);
   $dispatcher_conf = LoadFile("$Bin/conf/dispatcher.conf");
   $worker_conf     = LoadFile("$Bin/conf/worker.conf");
+  $client_conf     = LoadFile("$Bin/conf/client.conf");
 
   if ( !defined $ENV{POGO_PERSIST} )
   {
@@ -68,6 +79,7 @@ sub test_pogo(&)
 
     start_zookeeper();
     start_dispatcher();
+    sleep 2;
     start_worker();
   }
   init_store();
@@ -300,17 +312,30 @@ sub worker_rpc
   return $cv->recv;
 }
 
-# pretty-print a test failure
-sub derp
+sub encrypt_secret
 {
-  my ( $test, $obj ) = @_;
-  my $dump = Data::Dumper::Dumper($obj);
-  my $str  = <<"__DERP__";
-Test name: $test
-Result: $dump
-__DERP__
+  my $secret = shift;
+  Crypt::OpenSSL::RSA->import_random_seed();
+  my $x509    = Crypt::OpenSSL::X509->new_from_file( $client_conf->{worker_cert} );
+  my $rsa_pub = Crypt::OpenSSL::RSA->new_public_key( $x509->pubkey() );
+  return encode_base64( $rsa_pub->encrypt($secret) );
+}
 
-  return $str;
+sub decrypt_secret
+{
+  my $secret = shift;
+  my $private_key =
+    Crypt::OpenSSL::RSA->new_private_key( scalar read_file $worker_conf->{worker_key} );
+  return $private_key->decrypt( decode_base64($secret) );
+}
+
+sub client
+{
+  if ( !defined $pogo_client )
+  {
+    $pogo_client = Pogo::Client->new( $client_conf->{api} );
+  }
+  return $pogo_client;
 }
 
 END
