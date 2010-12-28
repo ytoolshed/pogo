@@ -232,8 +232,8 @@ ___INVALID4___
 
     # now test rpc
     undef $gotconf;
-    ok( $r = dispatcher_rpc( [ 'loadconf', $namespace, $const_conf ] ), "$cname rpc loadconf" );
-    ok( $r->[0]->{status} eq 'OK', "$cname rpc loadconf OK: " . $r->[0]->{errmsg} );
+    ok( $r = client->loadconf( $namespace, $const_conf ), "$cname rpc loadconf" );
+    ok( $r->is_success, "$cname rpc loadconf OK: " . $r->status_msg );
     ok( $gotconf = Pogo::Engine->namespace($namespace)->get_conf, "$cname rpc get_conf" );
   }
 

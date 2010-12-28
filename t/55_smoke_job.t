@@ -17,7 +17,7 @@
 use 5.008;
 use common::sense;
 
-use Test::More tests => 14;
+use Test::More tests => 19;
 use Test::Exception;
 
 use Data::Dumper;
@@ -38,24 +38,34 @@ alarm(60);
 test_pogo
 {
   my $t;
-  $t = dispatcher_rpc( ["ping"] );
-  is( $t->[1]->[0], 0xDEADBEEF, 'ping' )
+  lives_ok { $t = client->ping(); } 'ping send'
+    or diag explain $t;
+  ok( $t->is_success, 'ping success ' . $t->status_msg )
+    or diag explain $t;
+  is( $t->record, 0xDEADBEEF, 'ping recv' )
     or diag explain $t;
 
   # loadconf
+  undef $t;
   my $conf_to_load;
-  lives_ok { $conf_to_load = LoadFile("$Bin/conf/example.yaml") } 'load yaml';
-  $t = dispatcher_rpc( [ 'loadconf', 'example', $conf_to_load ] );
-  is( $t->[0]->{status}, 'OK', 'loadconf rpc OK' )
+  lives_ok { $conf_to_load = LoadFile("$Bin/conf/example.yaml") } 'load yaml'
+    or diag explain $t;
+  lives_ok { $t = client->loadconf( 'example', $conf_to_load ) } 'loadconf send'
+    or diag explain $t;
+  ok( $t->is_success, "loadconf send " . $t->status_msg )
     or diag explain $t;
 
   sleep 1;
 
-  $t = dispatcher_rpc( ["stats"] );
-  is( $t->[1]->[0]->{hostname}, hostname(), 'stats' )
+  undef $t;
+  lives_ok { $t = client->stats(); } 'stats send'
+    or diag explain $t;
+  ok( $t->is_success, 'stats success' )
+    or diag explain $t;
+  is( $t->unblessed->[1]->[0]->{hostname}, hostname(), 'stats' )
     or diag explain $t;
 
-  foreach my $dispatcher ( @{ $t->[1] } )
+  foreach my $dispatcher ( $t->records )
   {
     ok( exists $dispatcher->{workers_idle}, "exists workers_idle" )
       or diag explain $dispatcher;

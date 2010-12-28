@@ -264,10 +264,11 @@ sub authstore_rpc
   return $cv->recv;
 }
 
+# currently unused, we use the client instead
 sub dispatcher_rpc
 {
   my $rpc = shift;
-  my $url = sprintf( 'http://%s:%d/v3', $bind_address, $dispatcher_conf->{http_port} );
+  my $url = sprintf( 'http://%s:%d/api/v3', $bind_address, $dispatcher_conf->{http_port} );
   my $res = LWP::UserAgent->new->post( $url, { 'r' => JSON::XS::encode_json($rpc) } );
   LOGDIE "request failed: " . $res->status_line
     unless $res->is_success;
