@@ -20,6 +20,31 @@ use inc::Module::Install;
 name 'pogo';
 all_from 'lib/Pogo/Common.pm';
 
+postamble <<'HUDSONSTUFF';
+
+# hudson targets
+TESTRESULTDIR := ./test-results
+TESTDIR := ./t
+TESTS := $(wildcard $(TESTDIR)/*.t)
+TESTRESULTS := $(patsubst $(TESTDIR)/%.t,$(TESTRESULTDIR)/%.xml,$(TESTS))
+
+hudson : $(TESTS) $(TESTRESULTS)
+  FORMATTER := --formatter TAP::Formatter::JUnit
+
+hudson-clean :
+	rm -f $(TESTRESULTS)
+	rm -rf $(TESTRESULTDIR)
+
+$(TESTS) : | $(TESTRESULTDIR)
+
+$(TESTRESULTDIR) :
+	mkdir $(TESTRESULTDIR)
+
+$(TESTRESULTDIR)/%.xml : $(TESTDIR)/%.t
+	prove -Ilib -I$(TESTDIR)/lib --timer $(FORMATTER) $< > $@ || exit 0
+
+HUDSONSTUFF
+
 WriteAll;
 
 1;

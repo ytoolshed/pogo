@@ -4,10 +4,13 @@
 # exclude patterns (uncomment them if you want to use them):
 # *.[oa]
 # *~
-t/.tmp
-blib
-pm_to_blib
+META.yml
+Makefile
 Makefile.old
+blib
 build/test-results/*
-t/apache/conf/httpd.conf
-t/apache/logs/httpd.pid
+inc
+pm_to_blib
+t/.tmp
+test-results
+t/apache/
