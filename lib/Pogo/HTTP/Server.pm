@@ -14,6 +14,8 @@ package Pogo::HTTP::Server;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+use Data::Dumper;
+
 use 5.008;
 use common::sense;
 
@@ -21,6 +23,8 @@ use AnyEvent::HTTPD;
 use Carp;
 use JSON::XS;
 use Log::Log4perl qw(:easy);
+use MIME::Types qw(by_suffix);
+use Template;
 
 my $instance;
 
@@ -32,15 +36,26 @@ sub run
   bless $instance, $class;
 
   $instance->{httpd} = AnyEvent::HTTPD->new(
-    host => $instance->{host},
-    port => $instance->{port}
+    host => $instance->{bind_address},
+    port => $instance->{http_port},
   );
 
   $instance->{httpd}->reg_cb(
-    '/api'   => sub { handle_request(@_) },
-    '/async' => sub { handle_async_request(@_) },
+    '/favicon.ico' => sub { handle_favicon(@_); },
+    '/api'         => sub { handle_api(@_) },
+    ''             => sub { handle_ui(@_) },
+  );
+
+  $instance->{tt} ||= Template->new( { INCLUDE_PATH => $instance->{template_path} } );
+
+  INFO sprintf(
+    "Accepting HTTP requests on %s:%s",
+    $instance->{httpd}->host,
+    $instance->{httpd}->port
   );
 }
+
+# {{{ handle_async_request
 
 sub handle_async_request
 {
@@ -118,11 +133,14 @@ sub handle_async_request
   }
 }
 
-sub handle_request
+# }}}
+# {{{ handle_api
+
+sub handle_api
 {
   my ( $httpd, $request ) = @_;
-  INFO sprintf( 'Received HTTP request for %s from %s:%d',
-    $request->url, $request->client_host, $request->client_port );
+  INFO sprintf( 'Received HTTP request for %s from %s:%d - %s',
+    $request->url, $request->client_host, $request->client_port, $request->url );
 
   # Set these to some defaults in case an exception is raised.
   my $response         = Pogo::Engine::Response->new;
@@ -174,6 +192,165 @@ sub handle_request
     $error->set_error($errmsg);
     $request->respond( [ 500, 'OK', $response_headers, $error->content ] );
   }
+}
+
+# }}}
+# {{{ handle_ui
+
+sub handle_ui
+{
+  my ( $httpd, $request ) = @_;
+  my $response_headers = { 'Content-type: text/html', };
+
+  INFO sprintf( 'Received HTTP request for %s from %s:%d',
+    $request->url, $request->client_host, $request->client_port );
+
+  # extract our command or jobid from PATH_INFO, falling back to SCRIPT_NAME
+  # and trimming the base cgi path from the end. TODO: this may need to be
+  # tweaked when running this in a vhost as the PerlHandler for "/"
+  my ( undef, $method, @args ) = split( '/', $request->url );
+
+  my $cmd = ( split( m{/}, $method ) )[-1] || 'index';
+  my $cmd = "ui_${cmd}";
+  my @args;
+
+  # if the requested method isn't valid, see if it's a jobid instead
+  eval {
+    if ( !$instance->can($cmd) )
+    {
+      my $jobid;
+      eval { $jobid = to_jobid($cmd); };
+      if ($jobid)
+      {
+        $cmd = 'ui_status';
+        push @args, $jobid;
+      }
+      else
+      {
+        confess "invalid method";
+      }
+    }
+
+    # execute our requested method or die trying
+    $instance->$cmd( $request, @args );
+  };
+
+  if ($@)
+  {
+    ERROR "encountered an error with '$cmd': $@";
+    $instance->ui_error( $request, $@ ) if $@;
+  }
+}
+
+# }}}
+# {{{ handle_static
+
+sub ui_static
+{
+  my ( $self, $request ) = @_;
+
+  my $response_headers = { 'Content-type' => 'application/octet-stream', };
+
+  if ( !defined $instance->{static_path}
+    || !-d $instance->{static_path}
+    || !-r $instance->{static_path} )
+  {
+    ERROR "no static path?";
+    return $instance->ui_error( $request, "not found" );
+  }
+
+  if ( $request->url =~ m{\.\.} )
+  {
+    ERROR "suspicious url: " . $request->url;
+    return $instance->ui_error( $request, "foo" );
+  }
+
+  my $path = $request->url;
+  $path =~ s/^\/static//;
+
+  my $filepath = $instance->{static_path} . $path;
+
+  if ( !-f $filepath || !-r $filepath )
+  {
+    return $instance->ui_error( $request, "$path not found" );
+  }
+
+  my $size = -s $filepath;
+
+  if ( $size > 102400 )
+  {
+    return $instance->ui_error( $request, "too big" );
+  }
+
+  $response_headers->{'Content-length'} = $size;
+  $response_headers->{'Content-type'}   = by_suffix($filepath);
+
+  {
+    open my $fh, '<', $filepath
+      or confess "couldn't open file";
+    $request->respond(
+      [ 200, 'OK', $response_headers,
+        do { local $/; <$fh>; }
+      ]
+    );
+    close $fh
+      or confess "couldn't close file";
+  }
+
+  return;
+}
+
+# }}}
+# {{{ handle_favicon
+
+sub handle_favicon
+{
+  my ( $httpd, $request ) = @_;
+  $request->respond(
+    [ 301,
+      'Moved Permanently',
+      { 'Location' => '/static/favicon.png' },
+      '<html><head><title>Moved Permanently</title></head><body><a href="/static/favicon.png">Moved Permanently</a></body></html>'
+    ]
+  );
+}
+
+# }}}
+
+sub ui_status
+{
+}
+
+sub ui_index
+{
+  my ( $self, $request, @args ) = @_;
+
+  my $data = {};
+
+  $instance->{tt}->process(
+    'index.tt',
+    $data,
+    sub {
+      my $output = shift;
+      $request->respond( [ 200, 'OK', { 'Content-type' => 'text/html' }, $output ] );
+    },
+  );
+}
+
+sub ui_error
+{
+  my ( $self, $request, $error ) = @_;
+  DEBUG Dumper [ $error, caller ];
+  $instance->{tt}->process(
+    'error.tt',
+    { error => $error, page_title => 'ERROR', },
+    sub {
+      my $output = shift;
+      $request->respond( [ 500, 'ERROR', { 'Content-type' => 'text/html' }, $output ] );
+    },
+    )
+    or $request->respond(
+    [ 500, 'ERROR', { 'Content-type' => 'text/plain' }, "an unknown error occurred" ] );
 }
 
 1;

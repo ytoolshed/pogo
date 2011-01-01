@@ -4,6 +4,7 @@
 
     <!-- CSS -->
     <link rel="stylesheet" type="text/css" href="http://yui.yahooapis.com/combo?3.2.0/build/cssfonts/fonts-min.css&3.2.0/build/cssreset/reset-min.css&3.2.0/build/cssgrids/grids-min.css&3.2.0/build/cssbase/base-min.css">
+    <link rel="shortcut icon" href="/static/favicon.png" />
 
     <style type="text/css">
       BODY {

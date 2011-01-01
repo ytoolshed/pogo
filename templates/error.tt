@@ -1,1 +1,8 @@
-ERROR: [% error %]
+<html>
+<head><title>[% page_title %]</title></head>
+<link rel="shortcut icon" href="/static/favicon.png" />
+<body>
+  <h1>Pogo encountered an error :(</h1>
+  <font size="small"><pre>[% error %]</pre></font>
+</body>
+</html>

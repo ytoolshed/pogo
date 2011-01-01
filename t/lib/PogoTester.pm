@@ -166,6 +166,7 @@ sub stop_zookeeper
   INFO "killing $zookeeper_pid";
   kill( TERM => $zookeeper_pid );
   undef $zookeeper_pid;
+  sleep 3;
 }
 
 sub start_worker
