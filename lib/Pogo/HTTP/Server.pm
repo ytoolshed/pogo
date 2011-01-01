@@ -21,6 +21,7 @@ use common::sense;
 
 use AnyEvent::HTTPD;
 use Carp;
+use CGI ();
 use JSON::XS;
 use Log::Log4perl qw(:easy);
 use MIME::Types qw(by_suffix);
@@ -399,8 +400,6 @@ sub ui_status
       sprintf( "http://%s:%s/api/v3", $instance->{httpd}->host, $instance->{httpd}->port ),
   };
 
-  DEBUG Dumper $data;
-
   $instance->{tt}->process(
     'status.tt',
     $data,
@@ -552,6 +551,102 @@ sub _paginate
   }
 
   return \%pager;
+}
+
+# }}}
+# {{{ ui_output
+
+sub ui_output
+{
+  my ( $self, $request, @args ) = @_;
+
+  my $pogo_id  = $request->parm('pogoid') || die "No pogo job ID provided\n";
+  my $hostname = $request->parm('host')   || die "No host provided\n";
+
+  # grab the job info
+  my $resp = Pogo::Engine->jobinfo($pogo_id);
+  die "couldn't fetch jobinfo: " . $resp->status_msg if ( !$resp->is_success );
+  my $jobinfo = ( $resp->records )[0];
+
+  $resp = Pogo::Engine->jobhoststatus( $pogo_id, $hostname );
+  die "couldn't fetch host status: " . $resp->status_msg if ( !$resp->is_success );
+  my $hostinfo = {
+    hostname   => $hostname,
+    state      => ( $resp->records )[0],
+    host_state => sprintf( "%s: %s", $resp->records )
+  };
+
+  $resp = Pogo::Engine->hostlog_url( $pogo_id, $hostname );
+  die "couldn't fetch host status: " . $resp->status_msg if ( !$resp->is_success );
+  my $urls = $resp->record;
+  shift @$urls;    # toss hostname;
+
+  # output
+  # TODO: this needs to move into js in the browser
+
+  my @output;
+  my $ua  = LWP::UserAgent->new();
+  my $n   = 0;
+  my $run = 0;                       # run #
+  my $ran = 0;                       # whether or not we've appended the run to our output
+  foreach my $url (@$urls)
+  {
+    my $resp = $ua->get($url);
+    unless ( $resp->is_success )
+    {
+      die "Unable to get " . $hostinfo->{'output'} . ": " . $resp->status_line . "\n";
+    }
+    foreach my $entry ( split( /\r?\n/, $resp->decoded_content ) )
+    {
+      my $json = from_json($entry);
+      my ( $info, $lines ) = @$json;
+
+      foreach my $line ( split( /\r?\n/, $lines ) )
+      {
+        if ( $info->{type} eq 'EXIT' )
+        {
+          if ( $line eq "0" )
+          {
+            $info->{type} = 'EXIT0';
+          }
+          $line = "Exited with status $line";
+        }
+        my $rec = {
+          number => ++$n,
+          time   => strftime( "%H:%M:%S", localtime int $info->{ts} ) . "."
+            . sprintf( "%03d", 1000 * ( $info->{ts} - int $info->{ts} ) ),
+          type  => $info->{type},
+          line  => CGI::escapeHTML($line),
+          class => ( $run % 2 == 0 ) ? 'timestamp' : 'stamptime'
+        };
+        unless ($ran)
+        {
+          $ran++;
+          $rec->{run} = $run + 1;
+        }
+        push( @output, $rec );
+      }
+    }
+    $run++;
+    $ran = 0;
+  }
+
+  my $data = {
+    page_title => sprintf( "Pogo UI: %s: %s", $pogo_id, $hostname ),
+    pogo_id    => $pogo_id,
+    jobinfo    => $jobinfo,
+    hostinfo   => $hostinfo,
+    output     => \@output
+  };
+
+  $instance->{tt}->process(
+    'output.tt',
+    $data,
+    sub {
+      my $output = shift;
+      $request->respond( [ 200, 'OK', { 'Content-type' => 'text/html' }, $output ] );
+    },
+  );
 }
 
 # }}}
