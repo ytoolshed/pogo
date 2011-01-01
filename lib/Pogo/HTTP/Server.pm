@@ -28,6 +28,22 @@ use Template;
 
 my $instance;
 
+# ::Server - pogo's built-in http server
+# 1. dispatch api requests at /api/vX (currently always 3)
+#    api requests are currently syncronous, we should probably pass a callback along
+#    this is made difficult by many of the methods taking variable arguments.
+#
+# 2. serve static content from /static
+#
+# 3. respond to UI requests - any other url is handled by the UI handler
+#    Template.pm is used to generate a job index at /, and /p\d+ or /\d+ urls are
+#    interpreted as jobids
+#
+# handle_* subs need $httpd and $request and are expected
+# to $request->respond() and $httpd->stop_request()
+
+# {{{ constructors
+
 sub run
 {
   Carp::croak "Server already running" if $instance;
@@ -36,12 +52,17 @@ sub run
   bless $instance, $class;
 
   $instance->{httpd} = AnyEvent::HTTPD->new(
-    host => $instance->{bind_address},
-    port => $instance->{http_port},
+    host            => $instance->{bind_address},
+    port            => $instance->{http_port},
+    request_timeout => 10,
   );
 
+  # note that due to the way that AnyEvent::HTTPD works, any handlers must
+  # call $httpd->stop_request, or events will be generated for all handlers that match
+  # the request
   $instance->{httpd}->reg_cb(
-    '/favicon.ico' => sub { handle_favicon(@_); },
+    '/favicon.ico' => sub { handle_favicon(@_); },    # just a hack to 301 /favicon to /static
+    '/static'      => sub { handle_static(@_); },
     '/api'         => sub { handle_api(@_) },
     ''             => sub { handle_ui(@_) },
   );
@@ -55,9 +76,159 @@ sub run
   );
 }
 
+# }}}
+# {{{ handle_api
+
+sub handle_api
+{
+  my ( $httpd, $request ) = @_;
+  INFO sprintf( 'Received HTTP request for %s from %s:%d',
+    $request->url, $request->client_host, $request->client_port );
+
+  # Set these to some defaults in case an exception is raised.
+  my $response         = Pogo::Engine::Response->new;
+  my $response_format  = $request->parm('format') || 'json-pretty';
+  my $response_headers = {
+      'Content-Type' => $response_format eq 'yaml'
+    ? 'text/plain'
+    : 'text/javascript'
+  };
+
+  # we eval this whole block as a request to handle; any die()'s within the
+  # block are properly logged/responded to below
+  eval {
+    my ( undef, undef, $version, $method ) = split( '/', $request->url );
+    $version = uc($version);
+    die "Unsupported version '$version'" . $request->url unless $version =~ /^v\d+/i;
+
+    # Dynamically load the API module
+    my $class = "Pogo::API::$version";
+    eval "require $class";
+    die $@ if $@;
+
+    if ($method)
+    {
+      ();    # TODO: Add supported REST methods
+    }
+    else     # RPC request
+    {
+      if ( $request->parm('r') )
+      {
+        die "c/v mutually exclusive"
+          if $request->parm('c') && $request->parm('v');
+
+        my $req = JSON::XS::decode_json( $request->parm('r') );
+        my ( $action, @args ) = @$req;
+
+        # TODO: pass callback
+        $response = $class->$action(@args);
+
+        $response->add_header( action => $action );
+        $response->set_format($response_format);
+        $response->set_callback( $request->parm('c') ) if $request->parm('c');
+        $response->set_pushvar( $request->parm('v') )  if $request->parm('v');
+
+        $request->respond( [ 200, 'OK', $response_headers, $response->content ] );
+      }
+    }
+  };
+  if ($@)
+  {
+    chomp( my $errmsg = $@ );
+    ERROR $errmsg;
+    my $error = Pogo::Engine::Response->new;
+    $error->set_format($response_format);
+    $error->set_error($errmsg);
+    $request->respond( [ 500, 'OK', $response_headers, $error->content ] );
+  }
+  $httpd->stop_request();
+}
+
+# }}}
+# {{{ handle_static
+
+# static content is served from 'static_path' in the dispatcher.conf
+# we try to be reasonably careful here about not serving random files
+sub handle_static
+{
+  my ( $httpd, $request ) = @_;
+  INFO sprintf( 'Received HTTP request for %s from %s:%d',
+    $request->url, $request->client_host, $request->client_port );
+
+  my $response_headers = { 'Content-type' => 'application/octet-stream', };
+
+  if ( !defined $instance->{static_path}
+    || !-d $instance->{static_path}
+    || !-r $instance->{static_path} )
+  {
+    ERROR "no static path?";
+    return handle_ui_error( $httpd, $request, "not found" );
+  }
+
+  if ( $request->url =~ m{\.\.} )
+  {
+    ERROR "suspicious url: " . $request->url;
+    return handle_ui_error( $httpd, $request, "foo" );
+  }
+
+  my $path = $request->url;
+  $path =~ s/^\/static//;
+
+  my $filepath = $instance->{static_path} . $path;
+
+  if ( !-f $filepath || !-r $filepath )
+  {
+    return handle_ui_error( $httpd, $request, $request->url . " not found" );
+  }
+
+  my $size = -s $filepath;
+
+  if ( $size > 102400 )
+  {
+    return handle_ui_error( $httpd, $request, "too big" );
+  }
+
+  $response_headers->{'Content-length'} = $size;
+  $response_headers->{'Content-type'}   = by_suffix($filepath);
+
+  {
+    open my $fh, '<', $filepath
+      or confess "couldn't open file";
+    $request->respond(
+      [ 200, 'OK', $response_headers,
+        do { local $/; <$fh>; }
+      ]
+    );
+    close $fh
+      or confess "couldn't close file";
+  }
+
+  $httpd->stop_request();
+}
+
+# }}}
+# {{{ handle_favicon
+
+# quick hack for redirecting favicon requests
+sub handle_favicon
+{
+  my ( $httpd, $request ) = @_;
+  $request->respond(
+    [ 301,
+      'Moved Permanently',
+      { 'Location' => '/static/favicon.png' },
+      '<html><head><title>Moved Permanently</title></head><body><a href="/static/favicon.png">Moved Permanently</a></body></html>'
+    ]
+  );
+  $httpd->stop_request();
+}
+
+# }}}
 # {{{ handle_async_request
 
-sub handle_async_request
+# handle_async should eventually supplant handle_api
+# essentially it's a copy that supports callbacks
+sub handle_async
 {
   my ( $httpd, $request ) = @_;
   if ( $request->parm('r') )
@@ -131,67 +302,7 @@ sub handle_async_request
     $error->set_error($errmsg);
     $request->respond( [ 500, 'OK', $response_headers, $error->content ] );
   }
-}
-
-# }}}
-# {{{ handle_api
-
-sub handle_api
-{
-  my ( $httpd, $request ) = @_;
-  INFO sprintf( 'Received HTTP request for %s from %s:%d - %s',
-    $request->url, $request->client_host, $request->client_port, $request->url );
-
-  # Set these to some defaults in case an exception is raised.
-  my $response         = Pogo::Engine::Response->new;
-  my $response_format  = $request->parm('format') || 'json';
-  my $response_headers = {
-      'Content-Type' => $response_format eq 'yaml'
-    ? 'text/plain'
-    : 'text/javascript'
-  };
-
-  eval {
-    my ( undef, undef, $version, $method ) = split( '/', $request->url );
-    $version = uc($version);
-    die "Unsupported version '$version'" . $request->url unless $version =~ /^v\d+/i;
-
-    # Dynamically load the API module
-    my $class = "Pogo::API::$version";
-    eval "require $class";
-    die $@ if $@;
-
-    if ($method)
-    {
-      ();    # TODO: Add supported REST methods
-    }
-    else     # RPC request
-    {
-      DEBUG "request=" . $request->parm('r');
-      if ( $request->parm('r') )
-      {
-        die "c/v mutually exclusive"
-          if $request->parm('c') && $request->parm('v');
-        my $req = JSON::XS::decode_json( $request->parm('r') );
-        my ( $action, @args ) = @$req;
-        $response = $class->$action(@args);
-        $response->add_header( action => $action );
-        $response->set_format($response_format);
-        $response->set_callback( $request->parm('c') ) if $request->parm('c');
-        $response->set_pushvar( $request->parm('v') )  if $request->parm('v');
-        $request->respond( [ 200, 'OK', $response_headers, $response->content ] );
-      }
-    }
-  };
-  if ($@)
-  {
-    chomp( my $errmsg = $@ );
-    ERROR $errmsg;
-    my $error = Pogo::Engine::Response->new;
-    $error->set_format($response_format);
-    $error->set_error($errmsg);
-    $request->respond( [ 500, 'OK', $response_headers, $error->content ] );
-  }
+  $httpd->stop_request();
 }
 
 # }}}
@@ -205,21 +316,18 @@ sub handle_ui
   INFO sprintf( 'Received HTTP request for %s from %s:%d',
     $request->url, $request->client_host, $request->client_port );
 
-  # extract our command or jobid from PATH_INFO, falling back to SCRIPT_NAME
-  # and trimming the base cgi path from the end. TODO: this may need to be
-  # tweaked when running this in a vhost as the PerlHandler for "/"
+  # extract our command or jobid from url, falling back to index.
   my ( undef, $method, @args ) = split( '/', $request->url );
 
-  my $cmd = ( split( m{/}, $method ) )[-1] || 'index';
-  my $cmd = "ui_${cmd}";
+  my $ocmd = ( split( m{/}, $method ) )[-1] || 'index';
+  my $cmd = "ui_${ocmd}";
   my @args;
 
   # if the requested method isn't valid, see if it's a jobid instead
   eval {
     if ( !$instance->can($cmd) )
     {
-      my $jobid;
-      eval { $jobid = to_jobid($cmd); };
+      my $jobid = to_jobid($ocmd);
       if ($jobid)
       {
         $cmd = 'ui_status';
@@ -237,90 +345,46 @@ sub handle_ui
 
   if ($@)
   {
-    ERROR "encountered an error with '$cmd': $@";
-    $instance->ui_error( $request, $@ ) if $@;
+    ERROR sprintf( "encountered an error with '%s': %s", $request->url, $@ );
+    handle_ui_error( $httpd, $request, $@ ) if $@;
   }
+  $httpd->stop_request();
 }
 
 # }}}
-# {{{ handle_static
+# {{{ handle_ui_error
 
-sub ui_static
+# any ui errors
+sub handle_ui_error
 {
-  my ( $self, $request ) = @_;
-
-  my $response_headers = { 'Content-type' => 'application/octet-stream', };
-
-  if ( !defined $instance->{static_path}
-    || !-d $instance->{static_path}
-    || !-r $instance->{static_path} )
-  {
-    ERROR "no static path?";
-    return $instance->ui_error( $request, "not found" );
-  }
-
-  if ( $request->url =~ m{\.\.} )
-  {
-    ERROR "suspicious url: " . $request->url;
-    return $instance->ui_error( $request, "foo" );
-  }
-
-  my $path = $request->url;
-  $path =~ s/^\/static//;
-
-  my $filepath = $instance->{static_path} . $path;
-
-  if ( !-f $filepath || !-r $filepath )
-  {
-    return $instance->ui_error( $request, "$path not found" );
-  }
-
-  my $size = -s $filepath;
-
-  if ( $size > 102400 )
-  {
-    return $instance->ui_error( $request, "too big" );
-  }
-
-  $response_headers->{'Content-length'} = $size;
-  $response_headers->{'Content-type'}   = by_suffix($filepath);
-
-  {
-    open my $fh, '<', $filepath
-      or confess "couldn't open file";
-    $request->respond(
-      [ 200, 'OK', $response_headers,
-        do { local $/; <$fh>; }
-      ]
-    );
-    close $fh
-      or confess "couldn't close file";
-  }
-
-  return;
+  my ( $httpd, $request, $error ) = @_;
+  $instance->{tt}->process(
+    'error.tt',
+    { error => $error, page_title => 'ERROR', },
+    sub {
+      my $output = shift;
+      $request->respond( [ 500, 'ERROR', { 'Content-type' => 'text/html' }, $output ] );
+    },
+    )
+    or $request->respond(
+    [ 500, 'ERROR', { 'Content-type' => 'text/plain' }, "an unknown error occurred" ] );
+  $httpd->stop_request();
 }
 
 # }}}
-# {{{ handle_favicon
+# {{{ ui_status
 
-sub handle_favicon
-{
-  my ( $httpd, $request ) = @_;
-  $request->respond(
-    [ 301,
-      'Moved Permanently',
-      { 'Location' => '/static/favicon.png' },
-      '<html><head><title>Moved Permanently</title></head><body><a href="/static/favicon.png">Moved Permanently</a></body></html>'
-    ]
-  );
-}
-
-# }}}
-
+# individual job status, needs a jobid
 sub ui_status
 {
+  my ( $self, $request, @args ) = @_;
+  $request->respond( [ 200, 'OK', { 'Content-type' => 'text/plain' }, Dumper \@args ] );
 }
 
+# }}}
+# {{{ ui_index
+
+# the main job index, paginated
 sub ui_index
 {
   my ( $self, $request, @args ) = @_;
@@ -337,21 +401,48 @@ sub ui_index
   );
 }
 
-sub ui_error
+# }}}
+# {{{ misc
+
+# simple helper function to convert user-supplied string to a jobid.
+# TODO: move to Pogo::Common?  I think this is duplicated in the
+# client.
+sub to_jobid
 {
-  my ( $self, $request, $error ) = @_;
-  DEBUG Dumper [ $error, caller ];
-  $instance->{tt}->process(
-    'error.tt',
-    { error => $error, page_title => 'ERROR', },
-    sub {
-      my $output = shift;
-      $request->respond( [ 500, 'ERROR', { 'Content-type' => 'text/html' }, $output ] );
-    },
-    )
-    or $request->respond(
-    [ 500, 'ERROR', { 'Content-type' => 'text/plain' }, "an unknown error occurred" ] );
+  my ($jobid) = @_;
+
+  my $p = 'p';
+  my $i;
+
+  if ( $jobid eq 'last' )
+  {
+    ();    # TODO: how do we determine user?
+  }
+
+  if ( $jobid =~ m/^([a-z]+)(\d+)$/ )
+  {
+    $p = $1;
+    $i = $2;
+  }
+  elsif ( $jobid =~ m/^(\d+)$/ )
+  {
+    $i = $1;
+  }
+
+  my $new_jobid;
+  if ( defined $i )
+  {
+    $new_jobid = sprintf "%s%010d", $p, $i;
+  }
+  else
+  {
+    die "jobid not found\n";
+  }
+
+  return $new_jobid;
 }
+
+# }}}
 
 1;
 
