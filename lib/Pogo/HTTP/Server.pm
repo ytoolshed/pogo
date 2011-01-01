@@ -27,6 +27,7 @@ use MIME::Types qw(by_suffix);
 use Template;
 
 my $instance;
+my $HOST_COUNT_CACHE = {};
 
 # ::Server - pogo's built-in http server
 # 1. dispatch api requests at /api/vX (currently always 3)
@@ -41,6 +42,7 @@ my $instance;
 #
 # handle_* subs need $httpd and $request and are expected
 # to $request->respond() and $httpd->stop_request()
+# ui_(*) are subs for requests to /$1
 
 # {{{ constructors
 
@@ -67,7 +69,7 @@ sub run
     ''             => sub { handle_ui(@_) },
   );
 
-  $instance->{tt} ||= Template->new( { INCLUDE_PATH => $instance->{template_path} } );
+  $instance->{tt} ||= Template->new( { INCLUDE_PATH => $instance->{template_path}, DEBUG => 1 } );
 
   INFO sprintf(
     "Accepting HTTP requests on %s:%s",
@@ -328,6 +330,9 @@ sub handle_ui
     if ( !$instance->can($cmd) )
     {
       my $jobid = to_jobid($ocmd);
+
+      # perhaps we should redirect to the correct jobid url here
+      # if to_jobid() modifies the jobid
       if ($jobid)
       {
         $cmd = 'ui_status';
@@ -377,8 +382,33 @@ sub handle_ui_error
 # individual job status, needs a jobid
 sub ui_status
 {
-  my ( $self, $request, @args ) = @_;
-  $request->respond( [ 200, 'OK', { 'Content-type' => 'text/plain' }, Dumper \@args ] );
+  my ( $self, $request, $jobid ) = @_;
+
+  $jobid =~ m{^[a-z]\d+$}i || die "bad jobid $jobid\n";
+  my $resp = Pogo::Engine->jobinfo($jobid);
+  if ( !$resp->is_success )
+  {
+    die "Couldn't fetch jobinfo for $jobid: " . $resp->status_msg . "\n";
+  }
+
+  my $data = {
+    page_title => 'job status: ' . $jobid,
+    jobid      => $jobid,
+    jobinfo    => $resp->record,
+    pogo_api =>
+      sprintf( "http://%s:%s/api/v3", $instance->{httpd}->host, $instance->{httpd}->port ),
+  };
+
+  DEBUG Dumper $data;
+
+  $instance->{tt}->process(
+    'status.tt',
+    $data,
+    sub {
+      my $output = shift;
+      $request->respond( [ 200, 'OK', { 'Content-type' => 'text/html' }, $output ] );
+    },
+  );
 }
 
 # }}}
@@ -389,7 +419,43 @@ sub ui_index
 {
   my ( $self, $request, @args ) = @_;
 
-  my $data = {};
+  my $jobs_per_page = $request->parm('max') || 25;
+
+  # initialize filters
+  my %filters;
+  foreach my $f (qw(user state target))
+  {
+    my $value = $request->parm($f);
+    $filters{$f} = $value if defined $value;
+  }
+
+  # calculate the offset
+  my $req_page = $request->parm('cur') || 1;
+  my $offset = ( $req_page - 1 ) * $jobs_per_page;
+  $filters{offset} = $offset if $offset;
+
+  # determine the total number of jobs
+  my $max_jobid = _list_jobs( offset => 0, limit => 2 )->[0]->{jobid};
+  my $num_jobs = $jobs_per_page;
+  if ( $max_jobid =~ m/^p(\d+)$/ )
+  {
+    $num_jobs = int($1) - $instance->{jobid_offset};
+  }
+
+  DEBUG "max_jobid=$max_jobid, num_jobs=$num_jobs";
+
+  # build our data
+  my $data = {
+    page_title => 'job index',
+    jobs       => _list_jobs( page => $req_page, limit => $jobs_per_page, %filters ),
+    running_jobs  => _list_jobs( state => 'running' ),
+    jobs_per_page => $jobs_per_page,
+    num_jobs      => $num_jobs,
+    req_page      => $req_page,
+    %filters
+  };
+
+  $data->{pager} = _paginate($data);
 
   $instance->{tt}->process(
     'index.tt',
@@ -399,6 +465,93 @@ sub ui_index
       $request->respond( [ 200, 'OK', { 'Content-type' => 'text/html' }, $output ] );
     },
   );
+}
+
+sub _list_jobs
+{
+  my (%filters) = @_;
+
+  my $req_page = delete $filters{page} || 1;
+
+  my $resp = Pogo::Engine->listjobs(%filters);
+
+  # reformat the output
+  my @jobs = $resp->records;
+  my $num_jobs = @jobs > 0 ? int( substr( $jobs[0]->{jobid}, 1 ) ) : 0;
+
+  for ( my $i = 0; $i < @jobs; $i++ )
+  {
+
+    # deserialize the target list
+    $jobs[$i]->{target} = JSON::XS::decode_json( $jobs[$i]->{target} );
+    $jobs[$i]->{target_list} = join( ',', @{ $jobs[$i]->{target} } );
+
+    # format the start time
+    my $start_time = '';
+    my $start_ts   = $jobs[$i]->{start_time};
+    if ($start_ts)
+    {
+      my @t = localtime($start_ts);
+      $start_time = sprintf(
+        "%04d-%02d-%02dT%02d:%02d:%02d",
+        $t[5] + 1900,
+        $t[4] + 1,
+        $t[3], $t[2], $t[1], $t[0]
+      );
+    }
+    $jobs[$i]->{start_ts}   = $start_ts;
+    $jobs[$i]->{start_time} = $start_time;
+
+    # determine the host count
+    $jobs[$i]->{host_count} = _get_host_count( $jobs[$i]->{jobid} );
+  }
+
+  return \@jobs;
+}
+
+sub _get_host_count
+{
+  my ($jobid) = @_;
+
+  unless ( exists $HOST_COUNT_CACHE->{$jobid} )
+  {
+    my $resp = Pogo::Engine->jobstatus($jobid);
+    my ( $jobstate, @hosts ) = $resp->records;
+    $HOST_COUNT_CACHE->{$jobid} = scalar @hosts;
+  }
+
+  return $HOST_COUNT_CACHE->{$jobid};
+}
+
+sub _paginate
+{
+  my ($data) = @_;
+
+  my $jobs_per_page = $data->{jobs_per_page};
+  my $req_page      = $data->{req_page};
+  my $num_jobs      = $data->{num_jobs};
+  my %pager;
+
+  if ( $num_jobs > $jobs_per_page )
+  {
+    my $last_page = int( ( $num_jobs + $jobs_per_page - 1 ) / $jobs_per_page );
+    my $prev_page = max( 1, $req_page - 1 );
+    my $next_page = min( $last_page, $req_page + 1 );
+    my $min_page = max( 1, $req_page - 5 );
+    my $max_page = min( $last_page, $min_page + 9 );
+    my $offset   = 0;
+    my @pages    = map { { number => $_ } } ( $min_page .. $max_page );
+
+    %pager = (
+      cur       => $req_page,
+      pages     => \@pages,
+      prev_page => $prev_page,
+      next_page => $next_page,
+      last_page => $last_page
+    );
+  }
+
+  return \%pager;
 }
 
 # }}}
