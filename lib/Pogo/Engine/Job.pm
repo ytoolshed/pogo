@@ -211,7 +211,6 @@ sub info
 sub host
 {
   my ( $self, $hostname, $defstate ) = @_;
-  DEBUG "adding host $hostname";
   if ( !exists $self->{_hosts}->{$hostname} )
   {
     $self->{_hosts}->{$hostname} = Pogo::Engine::Job::Host->new( $self, $hostname, $defstate );

@@ -1,0 +1,185 @@
+[%# vim:ft=html
+%]
+[% INCLUDE _page_header.tt %]
+
+<script type="text/javascript" src="http://yui.yahooapis.com/3.0.0/build/yui/yui-min.js"></script>
+<script type="text/javascript">
+var pogoDataSource;
+var pogo_id = "[% pogo_id %]";
+var pogo_host = "[% pogo_host %]?";
+var hostname = "[% hostinfo.hostname %]";
+var counter = 11;
+var counter2 = 11;
+var timer;
+var timer2;
+
+var Y = YUI().use( 'datasource', 'json', 'dump', 'node', function( Y ) {
+  pogoDataSource = new Y.DataSource.Get( { source: "[% pogo_host %]?" } );
+  [% IF hostinfo.state == 'running' %]countdown2();[% END %]
+} );
+
+function pogorpc( r, c ) {
+  var q = 'r=' + Y.JSON.stringify( r );
+  q = q + '&c=' + c;
+
+  pogoDataSource.sendRequest( q );
+}
+
+// this is just here to ignore return value from an rpc
+function i()
+{
+  Y.one('#retry').set('innerHTML', "<i>(request received...)</i>");
+  clearTimeout( timer );
+  timer = setTimeout( countdown, 1000 );
+}
+
+function countdown()
+{
+  clearTimeout( timer );
+  Y.one('#retry').set('innerHTML', "<i>(reloading in " + --counter + "s)</i>");
+  if ( counter )
+  {
+    timer = setTimeout( countdown, 1000 );
+  }
+  else
+  {
+    window.location.reload();
+  }
+}
+
+function countdown2()
+{
+  if ( ! timer2 )
+  {
+    // if there's an anchor, focus is
+    if ( window.location.hash )
+    {
+      window.location.hash = window.location.hash;
+    }
+  }
+  clearTimeout( timer2 );
+  Y.one('#reload').set('innerHTML', " - <i>(reloading in " + --counter2 + "s) <a href=\"javascript:stop_countdown2();\">stop</a></i>");
+  if ( counter2 )
+  {
+    timer2 = setTimeout( countdown2, 1000 );
+  }
+  else
+  {
+    window.location.reload();
+  }
+}
+
+function stop_countdown2()
+{
+  clearTimeout( timer2 );
+  Y.one('#reload').set('innerHTML', "");
+}
+
+function do_retry()
+{
+  Y.one('#retry').set('innerHTML', "<i>(requesting retry for " + hostname + "...)</i>");
+  pogorpc( ["jobretry",pogo_id,hostname], "i" );
+}
+</script>
+
+<a name="top"></a>
+<table cellpadding="0" cellspacing="0" border="0" class="jobinfo">
+  <tr>
+    <td class="label">Pogo&nbsp;ID</td>
+    <td><span class="pogo-id"><a href="[% base_cgi_path %]/[% pogo_id %]">[% pogo_id %]</a></span><span id="jobhalt"></span></td>
+  </tr>
+  <tr>
+    <td class="label">Hostname</td>
+    <td>[% hostinfo.hostname %]</td>
+  </tr>
+  <tr>
+    <td class="label">User</td>
+    <td>[% jobinfo.user %]</td>
+  </tr>
+  <tr>
+    <td class="label">Command</td>
+    <td><span class="command">[% jobinfo.command %]</span></td>
+  </tr>
+  [% IF jobinfo.invoked_as.defined %]
+  <tr>
+    <td class="label">Invoked&nbsp;As</td>
+    <td><span class="command">[% jobinfo.invoked_as %]</span></td>
+  </tr>
+  [% END %]
+  [% IF jobinfo.retry.defined %]
+  <tr>
+    <td class="label">Retry</td>
+    <td>[% jobinfo.retry %]</td>
+  </tr>
+  [% END %]
+  [% IF jobinfo.job_timeout.defined %]
+  <tr>
+    <td class="label">Timeout</td>
+    <td>[% jobinfo.job_timeout %]</td>
+  </tr>
+  [% END %]
+  [% IF hostinfo.start.defined %]
+  <tr>
+    <td class="label">Start Time</td>
+    <td><script type="text/javascript">
+      try {
+        var d = new Date( [% hostinfo.start %] * 1000 );
+        document.write( d );
+      }
+      catch( e )
+      {
+        document.write('[% hostinfo.start_time %]');
+      }
+    </script></td>
+  </tr>
+  <tr>
+    <td class="label">End Time</td>
+    <td><script type="text/javascript">
+      try {
+        var d = new Date( [% hostinfo.end %] * 1000 );
+        document.write( d );
+      }
+      catch( e )
+      {
+        document.write('[% hostinfo.end_time %]');
+      }
+    </script> (+[% hostinfo.timespan %])</td>
+  </tr>
+  [% END %]
+  <tr>
+    <td class="label">Host State</td>
+    <td>[% hostinfo.host_state %]
+      [% IF hostinfo.state == 'failed' %]
+        - <span id="retry"><a href="javascript:do_retry();">retry</a></span>
+      [% END %]
+      [% IF hostinfo.state == 'running' %]
+        <span id="reload"></span>
+      [% END %]
+    </td>
+  </tr>
+</table>
+
+<table cellpadding="0" cellspacing="0" border="0">
+  <tr>
+    <td><a href="#last">v last record</a></td>
+  </tr>
+</table>
+
+<table cellpadding="0" cellspacing="0" border="0" class="output">
+  [% FOREACH o IN output %]
+  <tr>
+    <td class="[% o.class %] [% o.type %]">[% o.time %]</td>
+    <td class="[% o.class %] [% o.type %]">[% IF o.run %]<a name="run[% o.run %]"></a>[% END %]<a name="[% o.number %]"></a><a href="#[% o.number %]">[% o.number %]</a></td>
+    <td class="[% o.type %]"><span class="output_[% o.type %]">[% o.line %]</span></td>
+  </tr>
+  [% END %]
+</table>
+
+<a name="last"></a>
+<table cellpadding="0" cellspading="0" border="0">
+  <tr>
+    <td><a href="#top">^ top of page</a></td>
+  </tr>
+</table>
+
+[% INCLUDE _page_footer.tt %]

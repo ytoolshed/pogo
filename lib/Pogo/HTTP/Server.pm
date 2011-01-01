@@ -20,11 +20,12 @@ use 5.008;
 use common::sense;
 
 use AnyEvent::HTTPD;
-use Carp;
 use CGI ();
+use Carp;
 use JSON::XS;
 use Log::Log4perl qw(:easy);
 use MIME::Types qw(by_suffix);
+use POSIX qw(strftime);
 use Template;
 
 my $instance;
@@ -54,6 +55,12 @@ sub run
   $instance = {@_};
   bless $instance, $class;
 
+  if ( !defined $instance->{http_port} )
+  {
+    INFO "'http_port' not defined, not serving http";
+    return;
+  }
+
   $instance->{httpd} = AnyEvent::HTTPD->new(
     host            => $instance->{bind_address},
     port            => $instance->{http_port},
@@ -63,14 +70,50 @@ sub run
   # note that due to the way that AnyEvent::HTTPD works, any handlers must
   # call $httpd->stop_request, or events will be generated for all handlers that match
   # the request
-  $instance->{httpd}->reg_cb(
-    '/favicon.ico' => sub { handle_favicon(@_); },    # just a hack to 301 /favicon to /static
-    '/static'      => sub { handle_static(@_); },
-    '/api'         => sub { handle_api(@_) },
-    ''             => sub { handle_ui(@_) },
-  );
 
-  $instance->{tt} ||= Template->new( { INCLUDE_PATH => $instance->{template_path}, DEBUG => 1 } );
+  if ( defined $instance->{static_path} )
+  {
+    $instance->{httpd}->reg_cb(
+      '/favicon.ico' => sub { handle_favicon(@_); },    # just a hack to 301 /favicon to /static
+      '/static'      => sub { handle_static(@_); },
+    );
+  }
+  else
+  {
+    INFO "'static_path' not defined, not serving static content";
+  }
+
+  if ( defined $instance->{serve_api} && $instance->{serve_api} )
+  {
+    $instance->{httpd}->reg_cb( '/api' => sub { handle_api(@_) }, );
+  }
+  else
+  {
+    INFO "'serve_api' not defined, not serving api requests";
+  }
+
+  if ( defined $instance->{template_path} )
+  {
+    $instance->{httpd}->reg_cb( '' => sub { handle_ui(@_) }, );
+    $instance->{tt} ||= Template->new( { INCLUDE_PATH => $instance->{template_path}, DEBUG => 1 } );
+  }
+  else
+  {
+    INFO "'template_path' not defined, not serving ui requests";
+
+    $instance->{httpd}->reg_cb(
+      '' => sub {
+        $_[1]->respond(
+          [ 404,
+            'NOT FOUND',
+            { 'Content-type' => 'text/html' },
+            '<html><head><title>404 not found</title></head><body><h2>404 not found</h2></body></html>'
+          ]
+        );
+        $_[0]->stop_request();
+      }
+    );
+  }
 
   INFO sprintf(
     "Accepting HTTP requests on %s:%s",
@@ -373,7 +416,11 @@ sub handle_ui_error
     },
     )
     or $request->respond(
-    [ 500, 'ERROR', { 'Content-type' => 'text/plain' }, "an unknown error occurred" ] );
+    [ 500, 'ERROR',
+      { 'Content-type' => 'text/plain' },
+      "an unknown error occurred: " . $instance->{tt}->error
+    ]
+    );
   $httpd->stop_request();
 }
 
@@ -407,7 +454,7 @@ sub ui_status
       my $output = shift;
       $request->respond( [ 200, 'OK', { 'Content-type' => 'text/html' }, $output ] );
     },
-  );
+  ) or die $instance->{tt}->error, "\n";
 }
 
 # }}}
@@ -463,7 +510,7 @@ sub ui_index
       my $output = shift;
       $request->respond( [ 200, 'OK', { 'Content-type' => 'text/html' }, $output ] );
     },
-  );
+  ) or die $instance->{tt}->error, "\n";
 }
 
 sub _list_jobs
@@ -591,6 +638,7 @@ sub ui_output
   my $ran = 0;                       # whether or not we've appended the run to our output
   foreach my $url (@$urls)
   {
+    DEBUG "working on $url";
     my $resp = $ua->get($url);
     unless ( $resp->is_success )
     {
@@ -598,7 +646,7 @@ sub ui_output
     }
     foreach my $entry ( split( /\r?\n/, $resp->decoded_content ) )
     {
-      my $json = from_json($entry);
+      my $json = JSON::XS::decode_json($entry);
       my ( $info, $lines ) = @$json;
 
       foreach my $line ( split( /\r?\n/, $lines ) )
@@ -646,7 +694,7 @@ sub ui_output
       my $output = shift;
       $request->respond( [ 200, 'OK', { 'Content-type' => 'text/html' }, $output ] );
     },
-  );
+  ) or die $instance->{tt}->error, "\n";
 }
 
 # }}}
