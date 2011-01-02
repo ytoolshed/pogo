@@ -19,6 +19,51 @@ use inc::Module::Install;
 
 name 'pogo';
 all_from 'lib/Pogo/Common.pm';
+perl_version '5.008';
+
+requires 'AnyEvent';
+requires 'AnyEvent::HTTPD';
+requires 'Carp';
+requires 'Crypt::OpenSSL::RSA';
+requires 'Crypt::OpenSSL::X509';
+requires 'Data::Dumper';
+requires 'Digest::MD5';
+requires 'Fcntl';
+requires 'File::Slurp';
+requires 'File::Temp';
+requires 'Getopt::Long';
+requires 'HTTP::Request';
+requires 'IO::File';
+requires 'IO::Handle';
+requires 'IPC::Open3';
+requires 'JSON';
+requires 'JSON::XS';
+requires 'LWP::UserAgent';
+requires 'List::Util';
+requires 'Log::Log4perl';
+requires 'MIME::Base64';
+requires 'MIME::Types';
+requires 'Net::ZooKeeper';
+requires 'POSIX';
+requires 'Pod::Find';
+requires 'Pod::Usage';
+requires 'Scalar::Util';
+requires 'Socket';
+requires 'Storable';
+requires 'String::Glob::Permute';
+requires 'Sys::Hostname';
+requires 'Template';
+requires 'Term::ReadKey';
+requires 'Time::HiRes';
+requires 'URI';
+requires 'YAML::XS';
+requires 'common::sense';
+requires 'constant';
+
+test_requires 'FindBin';
+test_requires 'Net::SSLeay';
+test_requires 'Test::Exception';
+test_requires 'Test::More';
 
 postamble <<'HUDSONSTUFF';
 
