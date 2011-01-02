@@ -65,6 +65,8 @@ test_requires 'Net::SSLeay';
 test_requires 'Test::Exception';
 test_requires 'Test::More';
 
+requires_external_bin 'java';
+
 postamble <<'HUDSONSTUFF';
 
 # hudson targets
