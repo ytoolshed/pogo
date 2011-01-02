@@ -12,6 +12,7 @@
 -nsfs   # No space before semicolons
 -nolq   # Don't outdent long quoted strings
 -bl     # opening brace on newline
+-nbbc   # no blank lines before whole-line comments
 # Break before all operators
 -wbb="% + - * / x != == >= <= =~ !~ < > | & **= += *= &= <<= &&= -= /= |= >>= ||= .= %= ^= x="
 
