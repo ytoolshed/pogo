@@ -310,6 +310,31 @@ sub start_task
   }
 }
 
+sub retry_task
+{
+  my ( $self, $hostname ) = @_;
+  die "no host $hostname in job" if ( !$self->has_host($hostname) );
+  my $host = $self->host($hostname);
+  if ( $host->state eq 'failed' or $host->state eq 'finished' )
+  {
+    my $hinfo = $host->info;
+    if ( !defined $hinfo )
+    {
+      LOGDIE "Hostinfo missing for $hostname; cannot retry\n";
+    }
+    if ( defined $hinfo->{error} )
+    {
+      LOGDIE "Not retrying $hostname: " . $hinfo->{error} . "\n";
+    }
+    $self->set_host_state( $host, 'waiting', 'retry requested' );
+    return 1;
+  }
+  else
+  {
+    return 0;
+  }
+}
+
 sub finish_task
 {
   my ( $self, $hostname, $exitstatus, $msg ) = @_;
@@ -345,6 +370,38 @@ sub finish_task
     }
     $self->continue_deferred();
   }
+}
+
+sub resume
+{
+  my ( $self, $reason, $cb ) = @_;
+  return $cb->() if ( $self->is_running );
+
+  my @failed          = $self->failed_hosts;
+  my @failed_names    = map { $_->name } @failed;
+  my %failed_hostinfo = map { $_->name, $_->info } @failed;
+  my $ns              = $self->namespace;
+
+  my $errc = sub { ERROR $@ };
+
+  # re-lock all slots for any failed hosts in the job
+  $ns->fetch_all_slots(
+    $self,
+    \%failed_hostinfo,
+    $errc,
+    sub {
+      my ( $allslots, $hostslots ) = @_;
+
+      # reserve a slot for all our failed hosts
+      foreach my $hostname (@failed_names)
+      {
+        map { $_->reserve( $self, $hostname ) } @{ $hostslots->{$hostname} };
+      }
+
+      $self->set_state( 'running', $reason );
+      $cb->();
+    }
+  );
 }
 
 # }}}

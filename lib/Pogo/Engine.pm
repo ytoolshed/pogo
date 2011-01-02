@@ -281,7 +281,7 @@ sub jobretry
     return $resp;
   }
 
-  my $out = [ map { $job->retry_host($_) } @hostnames ];
+  my $out = [ map { $job->retry_task($_) } @hostnames ];
   $instance->add_task( 'resumejob', $job->{id} );
 
   $resp->set_records($out);

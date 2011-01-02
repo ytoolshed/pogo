@@ -46,7 +46,7 @@ sub execute
   if ( ! -r $file )
   {
     INFO "using default jobfile";
-    my $file = "jobs/t_job.yaml";
+    $file = "jobs/t_job.yaml";
   }
   my @entries;
 

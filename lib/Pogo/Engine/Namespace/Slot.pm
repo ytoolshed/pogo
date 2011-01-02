@@ -64,6 +64,9 @@ sub is_full
   return $self->nlocked( $job_ignore, $host_ignore ) >= $self->{maxdown};
 }
 
+# TODO: need to figure out how to make this more like the old code
+# 'resume' relies on this succeeding despite all paths still existing
+#
 sub reserve
 {
   my ( $self, $job, $hostname ) = @_;
@@ -71,11 +74,10 @@ sub reserve
 
   if ( !store->create( $self->{path} . '/' . $lockname, '' ) )
   {
-
     # ASSume if this fails it's because $path DNE
     if ( !store->create( $self->{path}, '' ) )
     {
-      LOGDIE "unable to create environment slot '$self->{path}': " . store->get_error_name;
+      INFO "unable to create environment slot '$self->{path}': " . store->get_error_name;
     }
 
     # now we try to create the base path or die
