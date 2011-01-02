@@ -299,13 +299,11 @@ sub start_task
   my ( $state, $ext ) = $host->state;
   if ( $state eq 'ready' )
   {
-
     # normally, this is what happens
     $self->set_host_state( $host, 'running', 'started', output => $output_url );
   }
   else
   {
-
     # craft a redundant host state log message which just updates the output url
     $self->log( 'hoststate', { host => $host->{name}, state => $state, output => $output_url },
       $ext );
@@ -531,6 +529,7 @@ sub start
         $all_host_meta->{$hostname} = $hmeta;
       }
     }
+    $self->set_state( 'running', "constraints computed" );
     $self->start_job_timeout();
   };
 

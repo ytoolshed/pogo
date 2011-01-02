@@ -43,6 +43,11 @@ sub execute
   my ( $job, $host ) = @_;
 
   my $file = sprintf("jobs/t_job_%s.yaml", $job);
+  if ( ! -r $file )
+  {
+    INFO "using default jobfile";
+    my $file = "jobs/t_job.yaml";
+  }
   my @entries;
 
   eval { @entries = LoadFile($file); };

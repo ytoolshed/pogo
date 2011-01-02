@@ -270,7 +270,7 @@ sub handle_favicon
 }
 
 # }}}
-# {{{ handle_async_request
+# {{{ handle_async
 
 # handle_async should eventually supplant handle_api
 # essentially it's a copy that supports callbacks
@@ -440,9 +440,10 @@ sub ui_status
   }
 
   my $data = {
-    page_title => 'job status: ' . $jobid,
-    jobid      => $jobid,
-    jobinfo    => $resp->record,
+    page_title  => 'job status: ' . $jobid,
+    jobid       => $jobid,
+    jobinfo     => $resp->record,
+    show_logger => 1,
     pogo_api =>
       sprintf( "http://%s:%s/api/v3", $instance->{httpd}->host, $instance->{httpd}->port ),
   };
@@ -487,8 +488,6 @@ sub ui_index
   {
     $num_jobs = int($1) - $instance->{jobid_offset};
   }
-
-  DEBUG "max_jobid=$max_jobid, num_jobs=$num_jobs";
 
   # build our data
   my $data = {
