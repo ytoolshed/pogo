@@ -36,7 +36,10 @@ sub new
 {
   my ( $class, $content ) = @_;
 
-  my $self = { _format => 'json', };
+  my $self = {
+    _format  => 'json',
+    _records => [],
+  };
   bless $self, $class;
 
   if ($content)
@@ -256,6 +259,7 @@ sub records
   if ( !defined $self->{_records} || ref $self->{_records} ne 'ARRAY' )
   {
     ERROR "response has no records";
+    DEBUG Dumper [caller];
     return;
   }
   return @{ $self->{_records} };
@@ -297,7 +301,7 @@ sub to_string
   my $string;
   if ( $self->format eq 'json' )
   {
-    eval { $string = JSON->new->utf8->allow_nonref->encode( $data ); };
+    eval { $string = JSON->new->utf8->allow_nonref->encode($data); };
     if ($@)
     {
       ERROR "Error formatting output: $@";
@@ -307,7 +311,7 @@ sub to_string
   }
   elsif ( $self->format eq 'json-pretty' )
   {
-    eval { $string = JSON->new->utf8->pretty->encode( $data ); };
+    eval { $string = JSON->new->utf8->pretty->encode($data); };
     if ($@)
     {
       ERROR "Error formatting output: $@";
