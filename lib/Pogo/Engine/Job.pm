@@ -460,7 +460,7 @@ sub halt
       $host->set_state( 'halted', $reason );
     }
   }
-  $self->snapshot(1);
+  $self->snapshot(0);
   $self->unlock_all();
 }
 

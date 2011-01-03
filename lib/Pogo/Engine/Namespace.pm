@@ -14,6 +14,7 @@ package Pogo::Engine::Namespace;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+use 5.008;
 use common::sense;
 
 use Storable qw(dclone);
@@ -156,8 +157,8 @@ sub fetch_all_slots
   my ( $self, $job, $hostinfo_map, $errc, $cont ) = @_;
   my $slots = $self->{slots};
 
-  my %hostslots   = {};
-  my %to_resolve  = {};
+  my %hostslots   = ();
+  my %to_resolve  = ();
   my @slotlookups = ();
 
   my $concurrent = $job->concurrent;
