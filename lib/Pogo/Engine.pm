@@ -79,7 +79,7 @@ sub job
 
 sub globalstatus
 {
-  my ( $ns, @args ) = @_;
+  my ( $class, $ns, @args ) = @_;
   my $resp = Pogo::Engine::Response->new()->add_header( action => 'globalstatus' );
 
   $resp->set_records( $instance->namespace($ns)->global_get_locks(@args) );
@@ -90,7 +90,7 @@ sub globalstatus
 
 sub hostinfo
 {
-  my ( $target, $ns, $cb ) = @_;
+  my ( $class, $target, $ns, $cb ) = @_;
 
   my $resp = Pogo::Engine::Response->new()->add_header( action => 'hostinfo' );
 
@@ -116,7 +116,7 @@ sub hostinfo
 
 sub hostlog_url
 {
-  my ( $jobid, @hostnames ) = @_;
+  my ( $class, $jobid, @hostnames ) = @_;
   my $job = $instance->job($jobid);
   my $resp = Pogo::Engine::Response->new()->add_header( action => 'hostlog_url' );
 
@@ -130,7 +130,7 @@ sub hostlog_url
 
   foreach my $host (@hostnames)
   {
-    my $urls = $job->host($host)->outputurl;
+    my $urls = $job->host($host)->outputurls;
     $resp->add_record( [ $host, @$urls ] );
   }
 
@@ -141,7 +141,7 @@ sub hostlog_url
 
 sub jobalter
 {
-  my ( $jobid, %alter ) = @_;
+  my ( $class, $jobid, %alter ) = @_;
   my $job = $instance->job($jobid);
   my $resp = Pogo::Engine::Response->new()->add_header( action => 'jobalter' );
 
@@ -166,9 +166,9 @@ sub jobalter
 
 sub jobhalt
 {
-  my $jobid = shift;
-  my $job   = $instance->job($jobid);
-  my $resp  = Pogo::Engine::Response->new()->add_header( action => 'jobhalt' );
+  my ( $class, $jobid ) = @_;
+  my $job = $instance->job($jobid);
+  my $resp = Pogo::Engine::Response->new()->add_header( action => 'jobhalt' );
 
   if ( !defined $job )
   {
@@ -188,7 +188,7 @@ sub jobhalt
 
 sub jobhoststatus
 {
-  my ( $jobid, $hostname ) = @_;
+  my ( $class, $jobid, $hostname ) = @_;
   my $job = $instance->job($jobid);
   my $resp = Pogo::Engine::Response->new()->add_header( action => 'jobhoststatus' );
 
@@ -198,13 +198,13 @@ sub jobhoststatus
     return $resp;
   }
 
-  if ( !job->has_host($hostname) )
+  if ( !$job->has_host($hostname) )
   {
     $resp->set_error("host $hostname not part of job $jobid");
     return $resp;
   }
 
-  $resp->set_records( $job->host($hostname)->state );
+  $resp->set_records( [ $job->host($hostname)->state ] );
   $resp->set_ok;
   return $resp;
 }
@@ -247,9 +247,9 @@ sub joblog
 
 sub jobresume
 {
-  my $jobid = shift;
-  my $job   = $instance->job($jobid);
-  my $resp  = Pogo::Engine::Response->new()->add_header( action => 'jobresume' );
+  my ( $class, $jobid ) = @_;
+  my $job = $instance->job($jobid);
+  my $resp = Pogo::Engine::Response->new()->add_header( action => 'jobresume' );
 
   if ( !defined $job )
   {
@@ -271,7 +271,7 @@ sub jobresume
 
 sub jobretry
 {
-  my ( $jobid, @hostnames ) = @_;
+  my ( $class, $jobid, @hostnames ) = @_;
   my $job = $instance->job($jobid);
   my $resp = Pogo::Engine::Response->new()->add_header( action => 'jobretry' );
 
@@ -281,7 +281,7 @@ sub jobretry
     return $resp;
   }
 
-  my $out = [ map { $job->retry_host($_) } @hostnames ];
+  my $out = [ map { $job->retry_task($_) } @hostnames ];
   $instance->add_task( 'resumejob', $job->{id} );
 
   $resp->set_records($out);
@@ -292,7 +292,7 @@ sub jobretry
 
 sub jobskip
 {
-  my ( $jobid, @hostnames ) = @_;
+  my ( $class, $jobid, @hostnames ) = @_;
   my $job = $instance->job($jobid);
   my $resp = Pogo::Engine::Response->new()->add_header( action => 'jobskip' );
 

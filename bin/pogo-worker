@@ -24,6 +24,7 @@ use YAML::XS qw(LoadFile);
 use Log::Log4perl qw(:easy);
 
 use Pogo::Worker;
+use Pogo::HTTP::Server;
 
 our $VERSION = '4.0';
 
@@ -42,7 +43,7 @@ sub main
     worker_cert     => "$POGO_ROOT/etc/ssl/pogo_worker.crt",
     worker_key      => "$POGO_ROOT/etc/ssl/pogo_worker.key",
     dispatcher_cert => "$POGO_ROOT/etc/ssl/pogo_dispatcher.crt",
-    output_uri      => 'http://' . hostname() . '/pogo_output/',
+    output_uri      => 'http://' . hostname() . '/static/',
   };
 
   my $log_conf;
@@ -149,6 +150,7 @@ sub main
   close $fd or LOGDIE "problem with $opts->{pidfile}: $!\n";
 
   # Enter worker main loop.
+  Pogo::HTTP::Server->run(%$opts);
   Pogo::Worker->run(%$opts);
 
   # This should never be reached.

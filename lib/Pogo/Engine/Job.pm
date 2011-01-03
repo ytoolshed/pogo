@@ -211,7 +211,6 @@ sub info
 sub host
 {
   my ( $self, $hostname, $defstate ) = @_;
-  DEBUG "adding host $hostname";
   if ( !exists $self->{_hosts}->{$hostname} )
   {
     $self->{_hosts}->{$hostname} = Pogo::Engine::Job::Host->new( $self, $hostname, $defstate );
@@ -300,16 +299,39 @@ sub start_task
   my ( $state, $ext ) = $host->state;
   if ( $state eq 'ready' )
   {
-
     # normally, this is what happens
     $self->set_host_state( $host, 'running', 'started', output => $output_url );
   }
   else
   {
-
     # craft a redundant host state log message which just updates the output url
     $self->log( 'hoststate', { host => $host->{name}, state => $state, output => $output_url },
       $ext );
+  }
+}
+
+sub retry_task
+{
+  my ( $self, $hostname ) = @_;
+  die "no host $hostname in job" if ( !$self->has_host($hostname) );
+  my $host = $self->host($hostname);
+  if ( $host->state eq 'failed' or $host->state eq 'finished' )
+  {
+    my $hinfo = $host->info;
+    if ( !defined $hinfo )
+    {
+      LOGDIE "Hostinfo missing for $hostname; cannot retry\n";
+    }
+    if ( defined $hinfo->{error} )
+    {
+      LOGDIE "Not retrying $hostname: " . $hinfo->{error} . "\n";
+    }
+    $self->set_host_state( $host, 'waiting', 'retry requested' );
+    return 1;
+  }
+  else
+  {
+    return 0;
   }
 }
 
@@ -319,7 +341,7 @@ sub finish_task
   DEBUG "host $hostname exited $exitstatus; attempting to continue job";
   my $host = $self->host($hostname);
 
-  # FIXME: set end time meta value on host
+  # TODO: set end time meta value on host
 
   # TODO: if all workers are idle and the job isn't finished, mark it stuck
   # also check for deadlocks somehow
@@ -332,8 +354,7 @@ sub finish_task
   }
   else
   {
-
-    # FIXME: we need to find extended status messages here once we get the pogo-worker stuff going
+    # TODO: we need to find extended status messages here once we get the pogo-worker stuff going
     $self->set_host_state(
       $host, 'failed',
       length($msg) || "exited with status $exitstatus",
@@ -348,6 +369,38 @@ sub finish_task
     }
     $self->continue_deferred();
   }
+}
+
+sub resume
+{
+  my ( $self, $reason, $cb ) = @_;
+  return $cb->() if ( $self->is_running );
+
+  my @failed          = $self->failed_hosts;
+  my @failed_names    = map { $_->name } @failed;
+  my %failed_hostinfo = map { $_->name, $_->info } @failed;
+  my $ns              = $self->namespace;
+
+  my $errc = sub { ERROR $@ };
+
+  # re-lock all slots for any failed hosts in the job
+  $ns->fetch_all_slots(
+    $self,
+    \%failed_hostinfo,
+    $errc,
+    sub {
+      my ( $allslots, $hostslots ) = @_;
+
+      # reserve a slot for all our failed hosts
+      foreach my $hostname (@failed_names)
+      {
+        map { $_->reserve( $self, $hostname ) } @{ $hostslots->{$hostname} };
+      }
+
+      $self->set_state( 'running', $reason );
+      $cb->();
+    }
+  );
 }
 
 # }}}
@@ -400,6 +453,14 @@ sub halt
   $reason ||= 'halted by user';    # TODO: which user?
   DEBUG "halting " . $self->id;
   $self->set_state( 'halted', $reason );
+  foreach my $host ( $self->unfinished_hosts )
+  {
+    if ( !$host->is_running )
+    {
+      $host->set_state( 'halted', $reason );
+    }
+  }
+  $self->snapshot(1);
   $self->unlock_all();
 }
 
@@ -532,6 +593,7 @@ sub start
         $all_host_meta->{$hostname} = $hmeta;
       }
     }
+    $self->set_state( 'running', "constraints computed" );
     $self->start_job_timeout();
   };
 
@@ -949,7 +1011,6 @@ sub snapshot
 
   if ( $offset == 0 )
   {
-
     # store the snapshot in 1-meg chunks (ZK can't store >1 meg in a node)
     # _snapshot0 .. _snapshotN
     my ( $i, $off, $snaplen ) = ( 0, 0, length($snap) );

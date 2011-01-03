@@ -179,7 +179,7 @@ sub scp_options
 sub output_dir
 {
   LOGDIE "Worker not initialized yet" unless defined $instance;
-  return $instance->{output_dir};
+  return $instance->{static_path};
 }
 
 sub output_uri

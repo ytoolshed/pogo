@@ -169,10 +169,7 @@ sub main
   close $fd or LOGDIE "problem with $opts->{pid_file}: $!\n";
 
   # here we go
-  Pogo::HTTP::Server->run(
-    host => $opts->{bind_address},
-    port => $opts->{http_port}
-  );
+  Pogo::HTTP::Server->run(%$opts);
   Pogo::Dispatcher->run(%$opts);
 
   # This should never be reached.

@@ -19,6 +19,7 @@ use common::sense;
 use Storable qw(dclone);
 use List::Util qw(min max);
 use Log::Log4perl qw(:easy);
+use Set::Scalar;
 
 use Pogo::Engine::Namespace::Slot;
 use Pogo::Engine::Store qw(store);
@@ -155,8 +156,9 @@ sub fetch_all_slots
   my ( $self, $job, $hostinfo_map, $errc, $cont ) = @_;
   my $slots = $self->{slots};
 
-  my %hostslots;
-  my @slotlookups;
+  my %hostslots   = {};
+  my %to_resolve  = {};
+  my @slotlookups = ();
 
   my $concurrent = $job->concurrent;
   if ( defined $concurrent )
@@ -190,6 +192,82 @@ sub fetch_all_slots
   }
 
   # this is where we handle the more complex, non-concurrent case
+
+  my $const = $self->get_all_constraints;
+  my $seq   = $self->get_all_sequences;
+
+  # resolve all max_down_hosts for each app-env
+  while ( my ( $hostname, $hostinfo ) = each %$hostinfo_map )
+  {
+    $hostslots{$hostname} = [];
+    foreach my $app ( @{ $hostinfo->{apps} } )
+    {
+      foreach my $env ( @{ $hostinfo->{envs} } )
+      {
+        my ( $etype, $ename ) = ( $env->{key}, $env->{value} );
+
+        # skip if there are no constraints for this environment
+        next if ( !exists $const->{app}->{$etype} );
+
+        my $slot = $self->slot( $app, $etype, $ename );
+
+        # if we have predecessors in the sequence for this app/environment, get
+        # those slots too
+        if ( exists $seq->{$etype} && exists $seq->{$ename}->{$app} )
+        {
+          $slot->{pred} = [ map { $self->slot( $_, $etype, $ename ) } @{ $seq->{$etype}->{$app} } ];
+          DEBUG "Sequence predecessors for "
+            . $slot->name . ": "
+            . join( ", ", map { $_->name } @{ $slot->{pred} } );
+        }
+        push @{ $hostslots{$hostname} }, $slot;
+
+        my $concur = $const->{$app}->{$etype};
+        if ( $concur !~ m{^(\d+)%$} )
+        {
+          # not a percentage, a literal
+          $slot->{maxdown} = $concur;
+        }
+        else
+        {
+          # we need to resolve the percentage, and we do so asyncronously.
+          my $pct    = $1;
+          my $appexp = $self->app_members($app);
+          my $envexp = $self->env_members($env);
+
+          $to_resolve{$appexp} = 1;
+          $to_resolve{$envexp} = 1;
+
+          push @slotlookups,
+            [ $slot, $appexp, $envexp, $pct ];   # $pct in these to be written by resolv $cont below
+        }
+      }
+    }
+  }
+
+  # note that we pass through this whether or not we need to do any expansions
+  # the foreach loop is skipped and we hit $cont directly.
+  $self->resolve(
+    [ keys %to_resolve ],
+    $errc,
+    sub {
+      my ($resolved) = @_;
+      foreach my $lookup (@slotlookups)
+      {
+        my ( $slot, $appexp, $envexp, $pct ) = @$lookup;
+        my $apptargets = Set::Scalar->new( @{ $resolved->{$appexp} } );
+        my $envtargets = Set::Scalar->new( @{ $resolved->{$envexp} } );
+
+        # TODO: do we need to speed this up with Bit::Vector?
+        my $nhosts = scalar @{ $apptargets->intersection($envtargets) };
+
+        $slot->{maxdown} = max( 1, int( $pct * $nhosts / 100 ) );
+        DEBUG "slot: @$lookup -> $slot->{maxdown} max down";
+      }
+
+      return $cont->( $slots, \%hostslots );
+    }
+  );
 }
 
 sub slot
@@ -406,7 +484,7 @@ sub _set_conf_r
     {
       store->create( $p, '' )
         or WARN "couldn't create '$p': " . store->get_error_name;
-      store->set( $p, $json->encode( $v ) )
+      store->set( $p, $json->encode($v) )
         or WARN "couldn't set '$p': " . store->get_error_name;
     }
     elsif ( $r eq 'HASH' )
@@ -446,7 +524,7 @@ sub _get_conf_r
     my $v = store->get($p);
     if ($v)
     {
-      $c->{$node} = JSON->new->utf8->allow_nonref->decode( $v );
+      $c->{$node} = JSON->new->utf8->allow_nonref->decode($v);
     }
     else
     {

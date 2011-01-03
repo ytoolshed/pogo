@@ -193,7 +193,7 @@ sub execute
   do
   {
     $output_filename = sprintf( "%s/%s/%s.%d.txt", Pogo::Worker->output_dir, $job_id, $host, $n );
-    $output_url      = sprintf( "%s/%s/%s.%d.txt", Pogo::Worker->output_uri, $job_id, $host, $n );
+    $output_url      = sprintf( "%s%s/%s.%d.txt",  Pogo::Worker->output_uri, $job_id, $host, $n );
     $n++;
   } while ( -f $output_filename );
 
