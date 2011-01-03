@@ -13,6 +13,7 @@
 
       TABLE {
         border-collapse: collapse;
+        margin-bottom: 2px;
       }
 
       TH, TD {
@@ -102,7 +103,7 @@
         width: 100%;
         border: 1px solid #000;
         margin-top: 5px;
-        margin-bottom: 1px;
+        margin-bottom: 2px;
       }
       TABLE.joblist TH, TABLE.joblist TD {
         padding: 2px;
@@ -131,7 +132,7 @@
         width: 100%;
         border: 1px solid #000;
         margin-top: 5px;
-        margin-bottom: 1px;
+        margin-bottom: 2px;
       }
       TABLE.jobinfo TH, TABLE.jobinfo TD {
         padding: 1px 3px;
@@ -145,6 +146,44 @@
         text-align: right;
       }
 
+      TABLE.output {
+        width: 100%;
+        border: 1px solid black;
+      }
+      TABLE.output TH, TABLE.output TD {
+        padding: 0px 2px;
+        border: 0px;
+      }
+      TABLE.output TD.STDOUT {
+        font-family: Courier, Courier New, fixed-width;
+        width: 100%;
+        background-color: #eee;
+      }
+      TABLE.output TD.EXIT {
+        background-color: #e88;
+        padding: 2px;
+        font-size: 1.1em;
+        font-weight: bold;
+      }
+      TABLE.output TD.EXIT0 {
+        background-color: #8e8;
+        padding: 2px;
+        font-size: 1.1em;
+        font-weight: bold;
+      }
+      TABLE.output TD.timestamp {
+        padding: 0px 2px;
+        font-weight: normal;
+        font-family: Helvetica, Arial, sans-serif;
+        font-size: 0.8em;
+        width: auto;
+        background-color: #999;
+        vertical-align: top;
+      }
+      TABLE.output TD.timestamp A {
+        color: #00f;
+        text-decoration: none;
+      }
     </style>
   </head>
 
