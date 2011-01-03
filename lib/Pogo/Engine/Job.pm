@@ -341,7 +341,7 @@ sub finish_task
   DEBUG "host $hostname exited $exitstatus; attempting to continue job";
   my $host = $self->host($hostname);
 
-  # FIXME: set end time meta value on host
+  # TODO: set end time meta value on host
 
   # TODO: if all workers are idle and the job isn't finished, mark it stuck
   # also check for deadlocks somehow
@@ -354,8 +354,7 @@ sub finish_task
   }
   else
   {
-
-    # FIXME: we need to find extended status messages here once we get the pogo-worker stuff going
+    # TODO: we need to find extended status messages here once we get the pogo-worker stuff going
     $self->set_host_state(
       $host, 'failed',
       length($msg) || "exited with status $exitstatus",
@@ -454,6 +453,14 @@ sub halt
   $reason ||= 'halted by user';    # TODO: which user?
   DEBUG "halting " . $self->id;
   $self->set_state( 'halted', $reason );
+  foreach my $host ( $self->unfinished_hosts )
+  {
+    if ( !$host->is_running )
+    {
+      $host->set_state( 'halted', $reason );
+    }
+  }
+  $self->snapshot(1);
   $self->unlock_all();
 }
 
@@ -1004,7 +1011,6 @@ sub snapshot
 
   if ( $offset == 0 )
   {
-
     # store the snapshot in 1-meg chunks (ZK can't store >1 meg in a node)
     # _snapshot0 .. _snapshotN
     my ( $i, $off, $snaplen ) = ( 0, 0, length($snap) );
