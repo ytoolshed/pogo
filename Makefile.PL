@@ -48,6 +48,7 @@ requires 'POSIX';
 requires 'Pod::Find';
 requires 'Pod::Usage';
 requires 'Scalar::Util';
+requires 'Set::Scalar';
 requires 'Socket';
 requires 'Storable';
 requires 'String::Glob::Permute';
