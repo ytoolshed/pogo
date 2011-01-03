@@ -3,7 +3,7 @@
 <table cellpadding="0" cellspacing="0" border="0" class="jobinfo">
   <tr>
     <td class="label">Pogo&nbsp;ID</td>
-    <td><span class="pogo-id"><a href="[% base_cgi_path %]/[% jobid %]">[% jobid %]</a></span><span id="jobhalt"></span></td>
+    <td><span class="pogo-id"><a href="[% base_cgi_path %][% jobid %]">[% jobid %]</a></span><span id="jobhalt"></span></td>
   <tr>
   <tr>
     <td class="label">User</td>
@@ -491,7 +491,7 @@ function render_state() {
     {
       tdHost.innerHTML = '<a target="' +
                           gen_target() +
-                          '" href="[% base_cgi_path %]/output?pogoid=[% jobid %]&host=' + host.host + '">' + host.host + '</a>';
+                          '" href="[% base_cgi_path %]output?pogoid=[% jobid %]&host=' + host.host + '">' + host.host + '</a>';
     }
     else
     {
@@ -657,7 +657,7 @@ function render_state() {
               var cArea = cMap.appendChild(area.cloneNode(false));
               cArea.shape = 'rect';
               cArea.coords = wormOffset + ',' + 0 + ',' + ( wormOffset + wormSize ) + ',' + wormMaxHeight;
-              cArea.href = '[% base_cgi_path %]/output?pogoid=[% jobid %]&host=' + escape(host.host) + '#run' + (j + 1);
+              cArea.href = '[% base_cgi_path %]output?pogoid=[% jobid %]&host=' + escape(host.host) + '#run' + (j + 1);
               cArea.target = gen_target();
             }
           }
