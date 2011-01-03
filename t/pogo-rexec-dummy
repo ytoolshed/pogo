@@ -45,7 +45,7 @@ sub execute
   my $file = sprintf("jobs/t_job_%s.yaml", $job);
   if ( ! -r $file )
   {
-    INFO "using default jobfile";
+    STDOUT->print("using '$file'");
     $file = "jobs/t_job.yaml";
   }
   my @entries;
