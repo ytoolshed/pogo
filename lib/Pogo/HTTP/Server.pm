@@ -30,6 +30,11 @@ use Template;
 
 my $instance;
 my $HOST_COUNT_CACHE = {};
+our %RESPONSE_MSGS = (
+  200 => 'OK',
+  404 => 'NOT FOUND',
+  500 => 'ERROR'
+);
 
 # ::Server - pogo's built-in http server
 # 1. dispatch api requests at /api/vX (currently always 3)
@@ -425,6 +430,38 @@ sub handle_ui_error
 }
 
 # }}}
+
+# render the requested template, adding any global config data to the template
+# data
+sub _render_ui_template
+{
+  my ( $self, $request, $template, $data, $resp_code, $content_type ) = @_;
+
+  $resp_code    ||= 200;
+  $content_type ||= 'text/html';
+
+  # add ui config items, stripping the "ui_" portion of the name
+  map { $data->{substr($_, 3)} ||= $self->{$_} } grep { /^ui_/ } keys %$self;
+  # this guy will be interpolated unless it's already been defined
+  $data->{pogo_api} ||= sprintf( 'http://%s:%s/api/v3', $instance->{httpd}->host, $instance->{httpd}->port );
+
+  $instance->{tt}->process(
+    $template,
+    $data,
+    sub {
+      my $output = shift;
+      $request->respond(
+        [
+          $resp_code, 
+          $RESPONSE_MSGS{$resp_code},
+          { 'Content-type' => $content_type },
+          $output
+        ]
+      )
+    }
+  ) or die $instance->{tt}->error, "\n";
+}
+
 # {{{ ui_status
 
 # individual job status, needs a jobid
@@ -442,20 +479,14 @@ sub ui_status
   my $data = {
     page_title  => 'job status: ' . $jobid,
     jobid       => $jobid,
-    jobinfo     => $resp->record,
-    show_logger => 1,
-    pogo_api =>
-      sprintf( "http://%s:%s/api/v3", $instance->{httpd}->host, $instance->{httpd}->port ),
+    jobinfo     => $resp->record
   };
 
-  $instance->{tt}->process(
+  $self->_render_ui_template(
+    $request,
     'status.tt',
-    $data,
-    sub {
-      my $output = shift;
-      $request->respond( [ 200, 'OK', { 'Content-type' => 'text/html' }, $output ] );
-    },
-  ) or die $instance->{tt}->error, "\n";
+    $data
+  );
 }
 
 # }}}
@@ -491,8 +522,8 @@ sub ui_index
 
   # build our data
   my $data = {
-    page_title => 'job index',
-    jobs       => _list_jobs( page => $req_page, limit => $jobs_per_page, %filters ),
+    page_title    => 'job index',
+    jobs          => _list_jobs( page => $req_page, limit => $jobs_per_page, %filters ),
     running_jobs  => _list_jobs( state => 'running' ),
     jobs_per_page => $jobs_per_page,
     num_jobs      => $num_jobs,
@@ -502,14 +533,11 @@ sub ui_index
 
   $data->{pager} = _paginate($data);
 
-  $instance->{tt}->process(
+  $self->_render_ui_template(
+    $request,
     'index.tt',
-    $data,
-    sub {
-      my $output = shift;
-      $request->respond( [ 200, 'OK', { 'Content-type' => 'text/html' }, $output ] );
-    },
-  ) or die $instance->{tt}->error, "\n";
+    $data
+  );
 }
 
 sub _list_jobs
@@ -686,14 +714,11 @@ sub ui_output
     output     => \@output
   };
 
-  $instance->{tt}->process(
+  $self->_render_ui_template(
+    $request,
     'output.tt',
-    $data,
-    sub {
-      my $output = shift;
-      $request->respond( [ 200, 'OK', { 'Content-type' => 'text/html' }, $output ] );
-    },
-  ) or die $instance->{tt}->error, "\n";
+    $data
+  );
 }
 
 # }}}
