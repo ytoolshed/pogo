@@ -204,7 +204,7 @@ sub jobhoststatus
     return $resp;
   }
 
-  $resp->set_records( $job->host($hostname)->state );
+  $resp->set_records( [ $job->host($hostname)->state ] );
   $resp->set_ok;
   return $resp;
 }
