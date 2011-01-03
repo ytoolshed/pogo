@@ -16,6 +16,7 @@ package Pogo::Engine::Response;
 
 use common::sense;
 
+use Carp qw(confess);
 use JSON qw(decode_json);
 use YAML::XS qw(Dump);
 use Log::Log4perl qw(:easy);
@@ -259,7 +260,7 @@ sub records
   if ( !defined $self->{_records} || ref $self->{_records} ne 'ARRAY' )
   {
     ERROR "response has no records";
-    DEBUG Dumper [caller];
+    confess;
     return;
   }
   return @{ $self->{_records} };
