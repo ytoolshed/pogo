@@ -457,10 +457,9 @@ sub halt
   {
     if ( !$host->is_running )
     {
-      $host->set_state( 'halted', $reason );
+      $self->set_host_state( $host, 'halted', 'job halted', $reason );
     }
   }
-  $self->snapshot(0);
   $self->unlock_all();
 }
 
