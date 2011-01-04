@@ -23,6 +23,7 @@ perl_version '5.008';
 
 requires 'AnyEvent';
 requires 'AnyEvent::HTTPD';
+requires 'Authen::PAM';
 requires 'Carp';
 requires 'Crypt::OpenSSL::RSA';
 requires 'Crypt::OpenSSL::X509';
