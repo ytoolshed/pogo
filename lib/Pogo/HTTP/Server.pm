@@ -254,7 +254,7 @@ sub handle_static
   if (exists $headers->{range} && $headers->{range} =~ m/bytes=(\d+)-(\d+)$/i)
   {
     ($start, $end) = ($1, $2);
-    $len = ($end - $start > 0) ? $end - $start : 0;
+    $len = ($end - $start > -1) ? ($end - $start) + 1 : 0;
   }
 
   if ( $len > 102400 )
