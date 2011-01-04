@@ -1,5 +1,5 @@
 ---
-target: foo9.example.com
+target: foo4.example.com
 exit:   1
 after:  5
 output: |
