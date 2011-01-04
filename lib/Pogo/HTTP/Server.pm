@@ -22,6 +22,8 @@ use common::sense;
 use AnyEvent::HTTPD;
 use CGI ();
 use Carp;
+use Fcntl qw(SEEK_SET);
+use HTTP::Date qw(str2time);
 use JSON::XS;
 use Log::Log4perl qw(:easy);
 use MIME::Types qw(by_suffix);
@@ -32,6 +34,8 @@ my $instance;
 my $HOST_COUNT_CACHE = {};
 our %RESPONSE_MSGS = (
   200 => 'OK',
+  206 => 'PARTIAL CONTENT',
+  304 => 'NOT MODIFIED',
   404 => 'NOT FOUND',
   500 => 'ERROR'
 );
@@ -232,16 +236,50 @@ sub handle_static
     return handle_ui_error( $httpd, $request, $request->url . " not found" );
   }
 
-  my $size = -s $filepath;
+  my $headers = $request->headers;
+  my $size    = -s $filepath;
 
-  if ( $size > 102400 )
+  # first check for an if-modified-since header
+  if (exists $headers->{'if-modified-since'} && (my $tmp = str2time($headers->{'if-modified-since'})))
+  {
+    $request->respond(
+      [ 304, $RESPONSE_MSGS{304}, {}, undef ]
+    ) if $tmp > (stat($filepath))[9];
+  }
+
+  # we want to limit the size of the response, whether the request is for the
+  # full file or a byte range within the file, so for files that exceed the
+  # max size, we can still request byte ranges within it
+  my ($start, $end, $len) = (0, undef, $size);
+  if (exists $headers->{range} && $headers->{range} =~ m/bytes=(\d+)-(\d+)$/i)
+  {
+    ($start, $end) = ($1, $2);
+    $len = ($end - $start > 0) ? $end - $start : 0;
+  }
+
+  if ( $len > 102400 )
   {
     return handle_ui_error( $httpd, $request, "too big" );
   }
 
   $response_headers->{'Content-length'} = $size;
-  $response_headers->{'Content-type'}   = by_suffix($filepath);
+  $response_headers->{'Content-type'}   = (by_suffix($filepath))[0];
 
+  if (defined $end)
+  {
+    open my $fh, '<', $filepath
+      or confess "couldn't open file";
+    seek $fh, $start, SEEK_SET if $start;
+    sysread $fh, my $buffer, $len;
+    $response_headers->{'Content-Range'}  = sprintf "bytes %d-%d/%d", $start, $end, $size;
+    $response_headers->{'Content-length'} = $len;
+    $request->respond(
+      [ 206, $RESPONSE_MSGS{206}, $response_headers, $buffer ]
+    );
+    close $fh
+      or confess "couldn't close file";
+  }
+  else
   {
     open my $fh, '<', $filepath
       or confess "couldn't open file";
