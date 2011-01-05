@@ -19,7 +19,9 @@ use Data::Dumper;
 use 5.008;
 use common::sense;
 
+use AnyEvent::Handle;
 use AnyEvent::HTTPD;
+use AnyEvent::Socket qw(tcp_connect);
 use CGI ();
 use Carp;
 use Fcntl qw(SEEK_SET);
@@ -29,6 +31,7 @@ use Log::Log4perl qw(:easy);
 use MIME::Types qw(by_suffix);
 use POSIX qw(strftime);
 use Template;
+use IO::Socket::INET;
 
 my $instance;
 my $HOST_COUNT_CACHE = {};
@@ -92,6 +95,15 @@ sub run
     INFO "'static_path' not defined, not serving static content";
   }
 
+  if ( defined $instance->{template_path} )
+  {
+    $instance->{tt} ||= Template->new( { INCLUDE_PATH => $instance->{template_path}, DEBUG => 1 } );
+  }
+  else
+  {
+    INFO "'template_path' not defined";
+  }
+
   if ( defined $instance->{serve_api} && $instance->{serve_api} )
   {
     $instance->{httpd}->reg_cb( '/api' => sub { handle_api(@_) }, );
@@ -101,10 +113,18 @@ sub run
     INFO "'serve_api' not defined, not serving api requests";
   }
 
-  if ( defined $instance->{template_path} )
+  if ( defined $instance->{serve_proxy} && $instance->{serve_proxy} )
+  {
+    $instance->{httpd}->reg_cb( '/proxy' => sub { handle_proxy(@_) } );
+  }
+  else
+  {
+    INFO "'serve_proxy' not defined, not serving proxy requests";
+  }
+
+  if ( defined $instance->{serve_ui} && $instance->{serve_ui} )
   {
     $instance->{httpd}->reg_cb( '' => sub { handle_ui(@_) }, );
-    $instance->{tt} ||= Template->new( { INCLUDE_PATH => $instance->{template_path}, DEBUG => 1 } );
   }
   else
   {
@@ -801,6 +821,105 @@ sub to_jobid
 }
 
 # }}}
+
+# proxy content from workers
+sub handle_proxy
+{
+  my ( $httpd, $request ) = @_;
+  INFO sprintf( 'Received PROXY request for %s from %s:%d',
+    $request->url, $request->client_host, $request->client_port );
+
+  # parse the request for the proxy infoz
+  my ( $proxy_host, $proxy_port, $proxy_path );
+  if ( $request->url =~ m/^\/proxy\/http:\/\/([^:]+):?(\d*)(.+)$/ )
+  {
+    $proxy_host = $1;
+    $proxy_port = $2 || 80;
+    $proxy_path = $3;
+  }
+  else
+  {
+    ERROR "invalid proxy format: " . $request->url;
+    return handle_ui_error( $httpd, $request, "invalid proxy request" );
+  }
+
+  # TODO: produce an error if the requested host isn't one of the connected workers
+
+  # use AnyEvent::Socket because I enjoy coding backwards
+  # I'd like someone to fix this up so we don't need to be buffering
+  tcp_connect(
+    $proxy_host,
+    $proxy_port,
+    sub {
+      my ( $fh, $ipaddr, $port ) = @_;
+
+      # never seen this actually happen
+      unless ( $fh )
+      {
+        ERROR "unable to connect to $proxy_host:$proxy_port";
+        return handle_ui_error( $httpd, $request, "unable to create socket" );
+      }
+
+      # vars I'll be using in the following closures
+      my $headers = $request->headers();
+      my $buffer = '';
+      my $handle;
+      $handle = AnyEvent::Handle->new(
+        fh        => $fh,
+        on_error  => sub {
+          undef $handle;
+          ERROR $!;
+          handle_ui_error( $httpd, $request, $! )
+        },
+        on_eof    => sub {
+          undef $handle;
+          # spit out whatever is in the buffer
+          $request->respond(
+            [ 200, $RESPONSE_MSGS{200},
+              $headers,
+              $buffer
+            ]
+          );
+        }
+      );
+
+      # send the request
+      $headers->{connection}  = 'close';
+      $headers->{host}        = "$proxy_host:$proxy_port";
+      $handle->push_write( "GET $proxy_path HTTP/1.1\n" );
+      foreach my $h ( keys %$headers )
+      {
+        $handle->push_write( sprintf( "%s: %s\n", $h, $headers->{$h} ) );
+      }
+      $handle->push_write( "\n" );
+      $headers = {};
+
+      # read the headers
+      $handle->push_read( regex => qr/\r?\n\r?\n/, sub {
+        my ( $handle, $data ) = @_;
+
+        # parse the headers for re-transmission
+        my @lines = split /\r?\n/, $data;
+        while ( defined( my $line = shift @lines ) )
+        {
+          if ( $line =~ m/^([^:]+):\s+(.+)\r?\n?$/ )
+          {
+            $headers->{$1} = $2;
+          }
+        }
+
+        # set up a handler to buffer the response body
+        $handle->on_read( sub {
+          $buffer .= $_[0]->rbuf;
+          $_[0]->rbuf = '';
+        } );
+      } );
+    }
+  );
+
+  # gotta do this to avoid falling back to the '' handler
+  $httpd->stop_request();
+}
 
 1;
 
