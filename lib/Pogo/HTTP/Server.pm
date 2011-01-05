@@ -31,7 +31,6 @@ use Log::Log4perl qw(:easy);
 use MIME::Types qw(by_suffix);
 use POSIX qw(strftime);
 use Template;
-use IO::Socket::INET;
 
 my $instance;
 my $HOST_COUNT_CACHE = {};
