@@ -281,6 +281,21 @@ sub handle_static
     return handle_ui_error( $httpd, $request, "too big" );
   }
 
+  # if we have a referer, and if that referer is one of our dispatchers or
+  # peers, add the following response header to allow for cross-origin resource
+  # sharing
+  if (exists $headers->{referer}
+      && ( exists $instance->{dispatchers} || exists $instance->{peers} )
+      && $headers->{referer} =~ m/^http:\/\/([^:]+):?(\d*)/)
+  {
+    my $refer_host  = $1;
+    my $refer_port  = $2;
+    if ( grep { /^${refer_host}$/ } @{ exists $instance->{dispatchers} ? $instance->{dispatchers} : $instance->{peers} } )
+    {
+      $response_headers->{'Access-Control-Allow-Origin'} = sprintf( 'http://%s:%d', $refer_host, $refer_port );
+    }
+  }
+
   $response_headers->{'Content-length'} = $size;
   $response_headers->{'Content-type'}   = (by_suffix($filepath))[0];
 
