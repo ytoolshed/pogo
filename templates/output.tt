@@ -3,82 +3,428 @@
 [% INCLUDE _page_header.tt %]
 
 <script type="text/javascript" src="http://yui.yahooapis.com/3.0.0/build/yui/yui-min.js"></script>
+<script type="text/javascript" src="/static/parseuri.js"></script>
 <script type="text/javascript">
 var pogoDataSource;
-var pogo_id = "[% pogo_id %]";
-var pogo_host = "[% pogo_host %]?";
-var hostname = "[% hostinfo.hostname %]";
-var counter = 11;
-var counter2 = 11;
-var timer;
-var timer2;
+var pogo_host;  // determined by parseUri
+var pogo_port;  // determined by parseUri
+var read_chunk_size     = 1000;   // size of output chunk to read per request
+var read_chunk_timeout  = 30000;  // number of ms to wait before aborting output chunk request
+var read_chunk_interval = 5000;   // number of ms to wait before loading more output
+var read_chunk_timer;
+// job info
+var pogo_id   = "[% pogo_id %]";
+var hostname  = "[% hostinfo.hostname %]";
+// ui stuff
+var jobretry_counter = 11;
+var jobretry_timer;
+var show_log = "[% show_logger %]";
 
 var Y = YUI().use( 'datasource', 'json', 'dump', 'node', function( Y ) {
-  pogoDataSource = new Y.DataSource.Get( { source: "[% pogo_host %]?" } );
-  [% IF hostinfo.state == 'running' %]countdown2();[% END %]
+  // toggle the logger
+  if ( show_log == "1" ) {
+    Y.one( '#log' ).setStyle( 'display', 'block' );
+  }
+  // parse our URI for current host/port
+  var uri = parseUri(document.URL);
+  pogo_host = uri.host;
+  pogo_port = uri.port || 80;
+  // initialize our API DataSource
+  pogoDataSource = new Y.DataSource.Get( { source: "[% pogo_api %]?" } );
+  // fetch our hostlog urls and get to work
+  pogorpc( ["hostlog_url", pogo_id, hostname ], "hostlog_url_handler" );
 } );
 
 function pogorpc( r, c ) {
   var q = 'r=' + Y.JSON.stringify( r );
   q = q + '&c=' + c;
-
   pogoDataSource.sendRequest( q );
 }
 
-// this is just here to ignore return value from an rpc
-function i()
-{
-  Y.one('#retry').set('innerHTML', "<i>(request received...)</i>");
-  clearTimeout( timer );
-  timer = setTimeout( countdown, 1000 );
+function logger( m ) {
+  var logNode = Y.one( '#log' );
+  logNode.appendChild( document.createElement( 'HR' ) );
+  logNode.appendChild( document.createTextNode( m ) );
 }
 
-function countdown()
-{
-  clearTimeout( timer );
-  Y.one('#retry').set('innerHTML', "<i>(reloading in " + --counter + "s)</i>");
-  if ( counter )
+// this handles the return from our "jobretry" request
+function jobretry_handler() {
+  Y.one('#retry').set('innerHTML', "<i>(request received...)</i>");
+  clearTimeout( jobretry_timer );
+  jobretry_timer = setTimeout( jobretry_countdown, 1000 );
+}
+
+var hostlog_list    = [];
+var hostlog_idx     = 0;
+var hostlog_timeout = null;
+function hostlog_url_handler( obj ) {
+  var header  = obj[0];
+  var urls    = obj[1][0];
+  // ignore the hostname
+  urls.shift();
+  logger( 'URLs: ' + Y.dump( urls ) );
+  for (var i=0; i < urls.length;i++)
   {
-    timer = setTimeout( countdown, 1000 );
+    hostlog_list.push({
+      url:    urls[i],
+      chunk:  0,        // current chunk offset
+      max:    0,        // last known maximum output size
+      state:  0,        // not loaded
+      buf:    '',       // chunk buffer
+      line:   0         // output line number
+    });
+  }
+  // load the first chunk of host output
+  load_next_hostlog();
+}
+
+function load_next_hostlog() {
+  clearTimeout(hostlog_timeout);
+  var h = hostlog_list[hostlog_idx];
+  if ( h && h.state < 2 )
+  {
+    // Safari will wait to retrieve the entire requested byte range from the
+    // server, which causes a delay when the response cannot include as many
+    // bytes as requested.. so the workaround is to parse the max available
+    // bytes from the Content-Range header and adjust our requests to fit
+    var url = 'http://' + pogo_host + ':' + pogo_port + '/proxy/' + h.url;
+    var min = h.chunk;
+    var max = ( h.max && h.max > 0 && h.max > min && h.max < h.chunk + read_chunk_size ) ? h.max : h.chunk + read_chunk_size;
+    max = h.chunk + read_chunk_size;
+    logger( 'Proxying ' + min + '-' + max + ' from ' + url );
+    load_output_chunk( url, read_chunk_timeout, min, max, process_output_chunk );
   }
   else
   {
-    window.location.reload();
-  }
-}
-
-function countdown2()
-{
-  if ( ! timer2 )
-  {
-    // if there's an anchor, focus is
-    if ( window.location.hash )
+    hostlog_idx++;
+    if ( hostlog_list[hostlog_idx] )
     {
-      window.location.hash = window.location.hash;
+      hostlog_timeout = setTimeout( load_next_hostlog, read_chunk_interval );
     }
   }
-  clearTimeout( timer2 );
-  Y.one('#reload').set('innerHTML', " - <i>(reloading in " + --counter2 + "s) <a href=\"javascript:stop_countdown2();\">stop</a></i>");
-  if ( counter2 )
+}
+
+function process_output_chunk( chunk, max )
+{
+  if ( chunk === undefined )
   {
-    timer2 = setTimeout( countdown2, 1000 );
+    // there was an error reading the chunk
+    return;
+  }
+  var h = hostlog_list[hostlog_idx];
+  if ( h && h.state < 2 )
+  {
+    // record the max available bytes for the next request
+    if ( ! isNaN( max ) && max > 0 )
+    {
+      h.max = max;
+    }
+    // record the new chunk offset
+    h.chunk += chunk.length;
+    logger( 'chunk: ' + chunk );
+    // process the chunk
+    if ( chunk )
+    {
+      // add the chunk to the host bufffer
+      h.buf += chunk;
+      // process the buffer for complete lines
+      var json_is_valid = 1;
+      var tmp = h.buf.split( "\n" );
+      while ( tmp.length && json_is_valid )
+      {
+        var record = tmp.shift();
+        try {
+          // line is valid JSON, process it normally
+          var line = Y.JSON.parse( record );
+          json_is_valid = 1;
+          process_output_line( h, line );
+        } catch( e ) {
+          // line is not valid JSON, move on
+          json_is_valid = 0;
+          h.buf = record;
+          // we should normally never have anything on tmp at this point, but
+          // just in case..
+          if ( tmp.length )
+          {
+            var buf = [ record ];
+            while ( tmp.length ) {
+              buf.push( tmp.shift() );
+            }
+            h.buf = buf.join( "\n" );
+          }
+        }
+      }
+      // we loaded data, just go ahead and read the next chunk
+      load_next_hostlog();
+    }
+    else
+    {
+      // come back in interval seconds
+      hostlog_timeout = setTimeout( load_next_hostlog, read_chunk_interval );
+    }
+  }
+}
+
+// procss a single line of hostlog output
+function process_output_line( h, line ) {
+  var header  = line.shift();
+
+  var d   = new Date( header.ts * 1000 );
+  var o   = Y.one( '#output' );
+  var tr  = document.createElement( 'TR' );
+  var td  = document.createElement( 'TD' );
+
+  // set up the date cell to be cloned
+  var dc = td.cloneNode( true );
+  dc.className = "timestamp";
+  dc.appendChild( document.createTextNode(
+      sprintf( "%02d:%02d:%02d.%03d",
+        d.getHours(),
+        d.getMinutes(),
+        d.getSeconds(),
+        d.getMilliseconds()
+      )
+  ) );
+
+  if ( header.type == 'STDOUT' )
+  {
+    // loading content for this host
+    h.state = 1;
+
+    // trim the trailing newline and split
+    var lines = line[0].replace( /\r?\n$/, "" ).split( /\r?\n/ );
+    for ( var j = 0; j < lines.length; j++ )
+    {
+      var row = o.appendChild( tr.cloneNode( true ) );
+
+      var dateCell = dc.cloneNode( true );
+      dateCell.className += ' STDOUT';
+      row.appendChild( dateCell );
+
+      var lineCell = gen_anchor_cell( ++h.line );
+      lineCell.className = 'timestamp STDOUT';
+      row.appendChild( lineCell );
+
+      var outputCell = td.cloneNode( true );
+      outputCell.className = 'STDOUT';
+      outputCell.appendChild( document.createTextNode( lines[j] ) );
+      row.appendChild( outputCell );
+    }
+  }
+  else if ( header.type == 'EXIT' )
+  {
+    // this host is complete!
+    h.state = 2;
+
+    // render it in green if it's 0, red for everything else
+    var exitval = line[0];
+    var eclass  = ( exitval == '0' ) ? ' EXIT0' : ' EXIT';
+
+    var row = o.appendChild( tr.cloneNode( true ) );
+
+    var dateCell = dc.cloneNode( true );
+    dateCell.className += eclass;
+    row.appendChild( dateCell );
+
+    var lineCell = gen_anchor_cell( ++h.line );
+    lineCell.className = 'timestamp ' + eclass;
+    row.appendChild( lineCell );
+
+    var exitCell = td.cloneNode( true );
+    exitCell.className = eclass;
+    exitCell.appendChild( document.createTextNode( 'Exited with status ' + exitval ) );
+    row.appendChild( exitCell );
   }
   else
   {
+    logger( 'UNKNOWN TYPE: ' + header.type );
+  }
+}
+
+// helper to build a cell with an anchor in it
+function gen_anchor_cell( line ) {
+  var cell = document.createElement( 'TD' );
+  var a1   = cell.appendChild( document.createElement( 'A' ) );
+  var a2   = cell.appendChild( document.createElement( 'A' ) );
+  a1.name  = 'line'  + line;
+  a2.href  = '#line' + line;
+  a2.appendChild( document.createTextNode( line ) );
+  return cell;
+}
+
+// create an XMLHttpRequest object
+function create_XMLHttpRequest() {
+  try {
+    return new XMLHttpRequest();
+  } catch(e) {}
+  try {
+    return new ActiveXObject('Msxml2.XMLHTTP');
+  } catch(e) {}
+  return null;
+}
+
+// load a chunk of output via the proxy
+function load_output_chunk( url, timeout, start, end, cb ) {
+  var x = create_XMLHttpRequest();
+  if ( x ) {
+    Y.one( '#loading' ).setStyle( 'display', 'block' );
+    // new
+    x.open( 'GET', url, true );
+    // start/end might be null or something
+    if ( typeof start == 'number' && typeof end == 'number')
+    {
+      x.setRequestHeader( 'Range', 'bytes=' + start + '-' + end );
+    }
+    // connection timeout
+    var t;
+    t = setTimeout( function() {
+      // abort the request
+      logger( 'ABORTING' );
+      // TODO: see if there's a way to set the status when aborting, right now
+      // (in Safari at least), the aborted request will have a status of 200
+      // but no output, so we end up processing an empty chunk
+      x.abort();
+      // clear the timeout
+      clearTimeout( t );
+      // retry right away
+      load_next_hostlog();
+    }, timeout );
+    // state change handler
+    x.onreadystatechange = function() {
+      if ( x.readyState != 4 ) {
+        return;
+      }
+      // done reading response
+      clearTimeout( t );
+      Y.one( '#loading' ).setStyle( 'display', 'none' );
+      logger( 'Status: ' + x.status + ' ' + x.statusText );
+      // if the response contains a "Content-Range" header, extract the total
+      // number of available bytes and pass it to the callback with the data
+      var range = x.getResponseHeader( 'Content-Range' );
+      var max   = 0;
+      if ( range && /^bytes\s+\d+\-\d+\/\d+$/.test( range ) )
+      {
+        max = parseInt( range.replace( /^.+\/(\d+)$/, "$1" ) ) - 1;
+      }
+      if ( x.status != 200 ) {
+        // non-200 response will be indicated thus-wise
+        cb( undefined, max );
+      }
+      // yay!
+      cb( x.responseText, max );
+    };
+    // do stuff
+    x.send( null );
+  } else {
+    logger( 'No XMLHttpRequest!' );
+  }
+}
+
+function jobretry_countdown() {
+  clearTimeout( jobretry_timer );
+  Y.one('#retry').set('innerHTML', "<i>(reloading in " + --jobretry_counter + "s)</i>");
+  if ( jobretry_counter ) {
+    jobretry_timer = setTimeout( jobretry_countdown, 1000 );
+  } else {
     window.location.reload();
   }
 }
 
-function stop_countdown2()
-{
-  clearTimeout( timer2 );
-  Y.one('#reload').set('innerHTML', "");
+function do_retry() {
+  Y.one('#retry').set('innerHTML', "<i>(requesting retry for " + hostname + "...)</i>");
+  pogorpc( [ "jobretry", pogo_id, hostname], "jobretry_handler" );
 }
 
-function do_retry()
+// function from http://forums.devshed.com/t39065/s84ded709f924610aa44fff827511aba3.html
+// author appears to be Robert Pollard
+function sprintf()
 {
-  Y.one('#retry').set('innerHTML', "<i>(requesting retry for " + hostname + "...)</i>");
-  pogorpc( ["jobretry",pogo_id,hostname], "i" );
+   if (!arguments || arguments.length < 1 || !RegExp)
+   {
+      return;
+   }
+   var str = arguments[0];
+   var re = /([^%]*)%('.|0|\x20)?(-)?(\d+)?(\.\d+)?(%|b|c|d|u|f|o|s|x|X)(.*)/;
+   var a = b = [], numSubstitutions = 0, numMatches = 0;
+   while (a = re.exec(str))
+   {
+      var leftpart = a[1], pPad = a[2], pJustify = a[3], pMinLength = a[4];
+      var pPrecision = a[5], pType = a[6], rightPart = a[7];
+
+      numMatches++;
+      if (pType == '%')
+      {
+         subst = '%';
+      }
+      else
+      {
+         numSubstitutions++;
+         if (numSubstitutions >= arguments.length)
+         {
+            alert('Error! Not enough function arguments (' + (arguments.length - 1)
+               + ', excluding the string)\n'
+               + 'for the number of substitution parameters in string ('
+               + numSubstitutions + ' so far).');
+         }
+         var param = arguments[numSubstitutions];
+         var pad = '';
+                if (pPad && pPad.substr(0,1) == "'") pad = leftpart.substr(1,1);
+           else if (pPad) pad = pPad;
+         var justifyRight = true;
+                if (pJustify && pJustify === "-") justifyRight = false;
+         var minLength = -1;
+                if (pMinLength) minLength = parseInt(pMinLength);
+         var precision = -1;
+                if (pPrecision && pType == 'f')
+                   precision = parseInt(pPrecision.substring(1));
+         var subst = param;
+         switch (pType)
+         {
+         case 'b':
+            subst = parseInt(param).toString(2);
+            break;
+         case 'c':
+            subst = String.fromCharCode(parseInt(param));
+            break;
+         case 'd':
+            subst = parseInt(param) ? parseInt(param) : 0;
+            break;
+         case 'u':
+            subst = Math.abs(param);
+            break;
+         case 'f':
+            subst = (precision > -1)
+             ? Math.round(parseFloat(param) * Math.pow(10, precision))
+              / Math.pow(10, precision)
+             : parseFloat(param);
+            break;
+         case 'o':
+            subst = parseInt(param).toString(8);
+            break;
+         case 's':
+            subst = param;
+            break;
+         case 'x':
+            subst = ('' + parseInt(param).toString(16)).toLowerCase();
+            break;
+         case 'X':
+            subst = ('' + parseInt(param).toString(16)).toUpperCase();
+            break;
+         }
+         var padLeft = minLength - subst.toString().length;
+         if (padLeft > 0)
+         {
+            var arrTmp = new Array(padLeft+1);
+            var padding = arrTmp.join(pad?pad:" ");
+         }
+         else
+         {
+            var padding = "";
+         }
+      }
+      str = leftpart + padding + subst + rightPart;
+   }
+   return str;
 }
 </script>
 
@@ -152,7 +498,7 @@ function do_retry()
       [% IF hostinfo.state == 'failed' %]
         - <span id="retry"><a href="javascript:do_retry();">retry</a></span>
       [% END %]
-      [% IF hostinfo.state == 'running' %]
+      [% IF hostinfo.state == 'running' or hostinfo.state == 'waiting' %]
         <span id="reload"></span>
       [% END %]
     </td>
@@ -165,14 +511,7 @@ function do_retry()
   </tr>
 </table>
 
-<table cellpadding="0" cellspacing="0" border="0" class="output">
-  [% FOREACH o IN output %]
-  <tr>
-    <td class="[% o.class %] [% o.type %]">[% o.time %]</td>
-    <td class="[% o.class %] [% o.type %]">[% IF o.run %]<a name="run[% o.run %]"></a>[% END %]<a name="[% o.number %]"></a><a href="#[% o.number %]">[% o.number %]</a></td>
-    <td class="[% o.type %]"><span class="output_[% o.type %]">[% o.line %]</span></td>
-  </tr>
-  [% END %]
+<table cellpadding="0" cellspacing="0" border="0" class="output" id="output">
 </table>
 
 <a name="last"></a>
@@ -181,5 +520,7 @@ function do_retry()
     <td><a href="#top">^ top of page</a></td>
   </tr>
 </table>
+
+<div id="log" style="position: absolute; top: 40px; left: 0px; width: 30%; margin-left: 68%; border: 1px solid black; font-size: 8pt; height: 250px; overflow: auto; background-color: #fff; display: none;"></div>
 
 [% INCLUDE _page_footer.tt %]

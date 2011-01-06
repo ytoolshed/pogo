@@ -707,68 +707,11 @@ sub ui_output
     host_state => sprintf( "%s: %s", $resp->records )
   };
 
-  $resp = Pogo::Engine->hostlog_url( $pogo_id, $hostname );
-  die "couldn't fetch host status: " . $resp->status_msg if ( !$resp->is_success );
-  my $urls = $resp->record;
-  shift @$urls;    # toss hostname;
-
-  # output
-  # TODO: this needs to move into js in the browser
-
-  my @output;
-  my $ua  = LWP::UserAgent->new();
-  my $n   = 0;
-  my $run = 0;                       # run #
-  my $ran = 0;                       # whether or not we've appended the run to our output
-  foreach my $url (@$urls)
-  {
-    DEBUG "working on $url";
-    my $resp = $ua->get($url);
-    unless ( $resp->is_success )
-    {
-      die "Unable to get " . $hostinfo->{'output'} . ": " . $resp->status_line . "\n";
-    }
-    foreach my $entry ( split( /\r?\n/, $resp->decoded_content ) )
-    {
-      my $json = JSON::XS::decode_json($entry);
-      my ( $info, $lines ) = @$json;
-
-      foreach my $line ( split( /\r?\n/, $lines ) )
-      {
-        if ( $info->{type} eq 'EXIT' )
-        {
-          if ( $line eq "0" )
-          {
-            $info->{type} = 'EXIT0';
-          }
-          $line = "Exited with status $line";
-        }
-        my $rec = {
-          number => ++$n,
-          time   => strftime( "%H:%M:%S", localtime int $info->{ts} ) . "."
-            . sprintf( "%03d", 1000 * ( $info->{ts} - int $info->{ts} ) ),
-          type  => $info->{type},
-          line  => CGI::escapeHTML($line),
-          class => ( $run % 2 == 0 ) ? 'timestamp' : 'stamptime'
-        };
-        unless ($ran)
-        {
-          $ran++;
-          $rec->{run} = $run + 1;
-        }
-        push( @output, $rec );
-      }
-    }
-    $run++;
-    $ran = 0;
-  }
-
   my $data = {
     page_title => sprintf( "Pogo UI: %s: %s", $pogo_id, $hostname ),
     pogo_id    => $pogo_id,
     jobinfo    => $jobinfo,
     hostinfo   => $hostinfo,
-    output     => \@output
   };
 
   $self->_render_ui_template(
