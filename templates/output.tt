@@ -87,10 +87,18 @@ function load_next_hostlog() {
     // Safari will wait to retrieve the entire requested byte range from the
     // server, which causes a delay when the response cannot include as many
     // bytes as requested.. so the workaround is to parse the max available
-    // bytes from the Content-Range header and adjust our requests to fit
-    var url = 'http://' + pogo_host + ':' + pogo_port + '/proxy/' + h.url;
+    // bytes from the Content-Range header and adjust our requests to fit..
+    // but if the initial available output size is less than our chunk size
+    // we still experience the wait.. the hack is to make the initial request
+    // 1 byte for Safari.. which should work, once Safari supports the
+    // Access-Control-Expose-Headers header
+//    var url = 'http://' + pogo_host + ':' + pogo_port + '/proxy/' + h.url;
+    var url = h.url;
     var min = h.chunk;
     var max = ( h.max && h.max > 0 && h.max > min && h.max < h.chunk + read_chunk_size ) ? h.max : h.chunk + read_chunk_size;
+    if ( ! min && navigator.userAgent.indexOf( 'Safari' ) > 0 ) {
+      max = 0;
+    }
     logger( 'Proxying ' + min + '-' + max + ' from ' + url );
     load_output_chunk( url, read_chunk_timeout, min, max, process_output_chunk );
   }
@@ -302,15 +310,18 @@ function load_output_chunk( url, timeout, start, end, cb ) {
       logger( 'Status: ' + x.status + ' ' + x.statusText );
       // if the response contains a "Content-Range" header, extract the total
       // number of available bytes and pass it to the callback with the data
+      logger( 'HEADERS: ' + x.getAllResponseHeaders() );
       var range = x.getResponseHeader( 'Content-Range' );
       var max   = 0;
       if ( range && /^bytes\s+\d+\-\d+\/\d+$/.test( range ) )
       {
         max = parseInt( range.replace( /^.+\/(\d+)$/, "$1" ) ) - 1;
       }
-      if ( x.status != 200 ) {
+      if ( ! /^2\d{2}$/.test( x.status ) ) {
+        logger( 'Non-200 response!' );
         // non-200 response will be indicated thus-wise
         cb( undefined, max );
+        return;
       }
       // yay!
       cb( x.responseText, max );

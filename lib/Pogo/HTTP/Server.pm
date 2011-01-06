@@ -82,6 +82,12 @@ sub run
   # call $httpd->stop_request, or events will be generated for all handlers that match
   # the request
 
+  # this handler will be the first to receive any incoming request. we do this
+  # in order to intercept OPTIONS requests and handle them properly
+  $instance->{httpd}->reg_cb(
+    'request' => sub { handle_options(@_); }
+  );
+
   if ( defined $instance->{static_path} )
   {
     $instance->{httpd}->reg_cb(
@@ -305,7 +311,7 @@ sub handle_static
       or confess "couldn't open file";
     seek $fh, $start, SEEK_SET if $start;
     sysread $fh, my $buffer, $len;
-    $response_headers->{'Content-Range'}  = sprintf "bytes %d-%d/%d", $start, $end, $size;
+    $response_headers->{'Content-Range'}  = $response_headers->{'X-Content-Range'} = sprintf "bytes %d-%d/%d", $start, $end, $size;
     $response_headers->{'Content-length'} = $len;
     $request->respond(
       [ 206, $RESPONSE_MSGS{206}, $response_headers, $buffer ]
@@ -875,6 +881,44 @@ sub handle_proxy
   );
 
   # gotta do this to avoid falling back to the '' handler
+  $httpd->stop_request();
+}
+
+sub handle_options
+{
+  my ( $httpd, $request ) = @_;
+
+  # only process OPTIONS requests
+  return unless $request->method eq 'OPTIONS';
+
+  INFO sprintf( 'Received OPTIONS request for %s from %s:%d',
+    $request->url, $request->client_host, $request->client_port );
+
+  my $response_headers = {
+    'Content-Length'                => 0,
+    'Content-Type'                  => 'text/plain',
+    'Access-Control-Allow-Headers'  => 'range',
+    'Access-Control-Expose-Header'  => 'Content-Range', # is it this one?
+    'Access-Control-Expose-Headers' => 'Content-Range'  # or this one? I don't want to install FF4 to find out!
+  };
+
+  # if we have an origin, and if that origin is one of our dispatchers or
+  # peers, add the following response header to allow for cross-origin resource
+  # sharing
+  my $headers = $request->headers;
+  if (exists $headers->{origin}
+      && $headers->{origin} =~ m/^http:\/\/([^:]+):?(\d*)/)
+  {
+    my $origin_host = $1;
+    my $origin_port = $2;
+    if ( grep { /^${origin_host}$/ } @{ exists $instance->{dispatchers} ? $instance->{dispatchers} : $instance->{peers} } )
+    {
+      $response_headers->{'Access-Control-Allow-Origin'} = sprintf( 'http://%s:%d', $origin_host, $origin_port );
+    }
+  }
+
+  $request->respond( [ 200, $RESPONSE_MSGS{200}, $response_headers, '' ] );
+
   $httpd->stop_request();
 }
 
