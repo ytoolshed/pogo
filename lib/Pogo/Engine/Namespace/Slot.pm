@@ -81,7 +81,8 @@ sub reserve
     }
 
     # now we try to create the base path or die
-    if ( !store->create( $self->{path} . '/' . $lockname, '' ) )
+    if ( !store->exists( $self->{path} . '/' . $lockname )
+      && !store->create( $self->{path} . '/' . $lockname, '' ) )
     {
       LOGDIE "unable to create environment slot '"
         . $self->{path} . '/'
