@@ -19,9 +19,13 @@ use Data::Dumper;
 use 5.008;
 use common::sense;
 
+use AnyEvent::Handle;
 use AnyEvent::HTTPD;
+use AnyEvent::Socket qw(tcp_connect);
 use CGI ();
 use Carp;
+use Fcntl qw(SEEK_SET);
+use HTTP::Date qw(str2time);
 use JSON::XS;
 use Log::Log4perl qw(:easy);
 use MIME::Types qw(by_suffix);
@@ -32,6 +36,8 @@ my $instance;
 my $HOST_COUNT_CACHE = {};
 our %RESPONSE_MSGS = (
   200 => 'OK',
+  206 => 'PARTIAL CONTENT',
+  304 => 'NOT MODIFIED',
   404 => 'NOT FOUND',
   500 => 'ERROR'
 );
@@ -76,6 +82,12 @@ sub run
   # call $httpd->stop_request, or events will be generated for all handlers that match
   # the request
 
+  # this handler will be the first to receive any incoming request. we do this
+  # in order to intercept OPTIONS requests and handle them properly
+  $instance->{httpd}->reg_cb(
+    'request' => sub { handle_options(@_); }
+  );
+
   if ( defined $instance->{static_path} )
   {
     $instance->{httpd}->reg_cb(
@@ -88,6 +100,15 @@ sub run
     INFO "'static_path' not defined, not serving static content";
   }
 
+  if ( defined $instance->{template_path} )
+  {
+    $instance->{tt} ||= Template->new( { INCLUDE_PATH => $instance->{template_path}, DEBUG => 1 } );
+  }
+  else
+  {
+    INFO "'template_path' not defined";
+  }
+
   if ( defined $instance->{serve_api} && $instance->{serve_api} )
   {
     $instance->{httpd}->reg_cb( '/api' => sub { handle_api(@_) }, );
@@ -97,10 +118,18 @@ sub run
     INFO "'serve_api' not defined, not serving api requests";
   }
 
-  if ( defined $instance->{template_path} )
+  if ( defined $instance->{serve_proxy} && $instance->{serve_proxy} )
+  {
+    $instance->{httpd}->reg_cb( '/proxy' => sub { handle_proxy(@_) } );
+  }
+  else
+  {
+    INFO "'serve_proxy' not defined, not serving proxy requests";
+  }
+
+  if ( defined $instance->{serve_ui} && $instance->{serve_ui} )
   {
     $instance->{httpd}->reg_cb( '' => sub { handle_ui(@_) }, );
-    $instance->{tt} ||= Template->new( { INCLUDE_PATH => $instance->{template_path}, DEBUG => 1 } );
   }
   else
   {
@@ -232,16 +261,65 @@ sub handle_static
     return handle_ui_error( $httpd, $request, $request->url . " not found" );
   }
 
-  my $size = -s $filepath;
+  my $headers = $request->headers;
+  my $size    = -s $filepath;
 
-  if ( $size > 102400 )
+  # first check for an if-modified-since header
+  if (exists $headers->{'if-modified-since'} && (my $tmp = str2time($headers->{'if-modified-since'})))
+  {
+    $request->respond(
+      [ 304, $RESPONSE_MSGS{304}, {}, undef ]
+    ) if $tmp > (stat($filepath))[9];
+  }
+
+  # we want to limit the size of the response, whether the request is for the
+  # full file or a byte range within the file, so for files that exceed the
+  # max size, we can still request byte ranges within it
+  my ($start, $end, $len) = (0, undef, $size);
+  if (exists $headers->{range} && $headers->{range} =~ m/bytes=(\d+)-(\d+)$/i)
+  {
+    ($start, $end) = ($1, $2);
+    $len = ($end - $start > -1) ? ($end - $start) + 1 : 0;
+  }
+
+  if ( $len > 102400 )
   {
     return handle_ui_error( $httpd, $request, "too big" );
   }
 
-  $response_headers->{'Content-length'} = $size;
-  $response_headers->{'Content-type'}   = by_suffix($filepath);
+  # if we have a referer, and if that referer is one of our dispatchers or
+  # peers, add the following response header to allow for cross-origin resource
+  # sharing
+  if (exists $headers->{referer}
+      && ( exists $instance->{dispatchers} || exists $instance->{peers} )
+      && $headers->{referer} =~ m/^http:\/\/([^:]+):?(\d*)/)
+  {
+    my $refer_host  = $1;
+    my $refer_port  = $2;
+    if ( grep { /^${refer_host}$/ } @{ exists $instance->{dispatchers} ? $instance->{dispatchers} : $instance->{peers} } )
+    {
+      $response_headers->{'Access-Control-Allow-Origin'} = sprintf( 'http://%s:%d', $refer_host, $refer_port );
+    }
+  }
 
+  $response_headers->{'Content-length'} = $size;
+  $response_headers->{'Content-type'}   = (by_suffix($filepath))[0];
+
+  if (defined $end)
+  {
+    open my $fh, '<', $filepath
+      or confess "couldn't open file";
+    seek $fh, $start, SEEK_SET if $start;
+    sysread $fh, my $buffer, $len;
+    $response_headers->{'Content-Range'}  = $response_headers->{'X-Content-Range'} = sprintf "bytes %d-%d/%d", $start, $end, $size;
+    $response_headers->{'Content-length'} = $len;
+    $request->respond(
+      [ 206, $RESPONSE_MSGS{206}, $response_headers, $buffer ]
+    );
+    close $fh
+      or confess "couldn't close file";
+  }
+  else
   {
     open my $fh, '<', $filepath
       or confess "couldn't open file";
@@ -650,68 +728,11 @@ sub ui_output
     host_state => sprintf( "%s: %s", $resp->records )
   };
 
-  $resp = Pogo::Engine->hostlog_url( $pogo_id, $hostname );
-  die "couldn't fetch host status: " . $resp->status_msg if ( !$resp->is_success );
-  my $urls = $resp->record;
-  shift @$urls;    # toss hostname;
-
-  # output
-  # TODO: this needs to move into js in the browser
-
-  my @output;
-  my $ua  = LWP::UserAgent->new();
-  my $n   = 0;
-  my $run = 0;                       # run #
-  my $ran = 0;                       # whether or not we've appended the run to our output
-  foreach my $url (@$urls)
-  {
-    DEBUG "working on $url";
-    my $resp = $ua->get($url);
-    unless ( $resp->is_success )
-    {
-      die "Unable to get " . $hostinfo->{'output'} . ": " . $resp->status_line . "\n";
-    }
-    foreach my $entry ( split( /\r?\n/, $resp->decoded_content ) )
-    {
-      my $json = JSON::XS::decode_json($entry);
-      my ( $info, $lines ) = @$json;
-
-      foreach my $line ( split( /\r?\n/, $lines ) )
-      {
-        if ( $info->{type} eq 'EXIT' )
-        {
-          if ( $line eq "0" )
-          {
-            $info->{type} = 'EXIT0';
-          }
-          $line = "Exited with status $line";
-        }
-        my $rec = {
-          number => ++$n,
-          time   => strftime( "%H:%M:%S", localtime int $info->{ts} ) . "."
-            . sprintf( "%03d", 1000 * ( $info->{ts} - int $info->{ts} ) ),
-          type  => $info->{type},
-          line  => CGI::escapeHTML($line),
-          class => ( $run % 2 == 0 ) ? 'timestamp' : 'stamptime'
-        };
-        unless ($ran)
-        {
-          $ran++;
-          $rec->{run} = $run + 1;
-        }
-        push( @output, $rec );
-      }
-    }
-    $run++;
-    $ran = 0;
-  }
-
   my $data = {
     page_title => sprintf( "Pogo UI: %s: %s", $pogo_id, $hostname ),
     pogo_id    => $pogo_id,
     jobinfo    => $jobinfo,
     hostinfo   => $hostinfo,
-    output     => \@output
   };
 
   $self->_render_ui_template(
@@ -763,6 +784,143 @@ sub to_jobid
 }
 
 # }}}
+
+# proxy content from workers
+sub handle_proxy
+{
+  my ( $httpd, $request ) = @_;
+  INFO sprintf( 'Received PROXY request for %s from %s:%d',
+    $request->url, $request->client_host, $request->client_port );
+
+  # parse the request for the proxy infoz
+  my ( $proxy_host, $proxy_port, $proxy_path );
+  if ( $request->url =~ m/^\/proxy\/http:\/\/([^:]+):?(\d*)(.+)$/ )
+  {
+    $proxy_host = $1;
+    $proxy_port = $2 || 80;
+    $proxy_path = $3;
+  }
+  else
+  {
+    ERROR "invalid proxy format: " . $request->url;
+    return handle_ui_error( $httpd, $request, "invalid proxy request" );
+  }
+
+  # TODO: produce an error if the requested host isn't one of the connected workers
+
+  # use AnyEvent::Socket because I enjoy coding backwards
+  # I'd like someone to fix this up so we don't need to be buffering
+  tcp_connect(
+    $proxy_host,
+    $proxy_port,
+    sub {
+      my ( $fh, $ipaddr, $port ) = @_;
+
+      # never seen this actually happen
+      unless ( $fh )
+      {
+        ERROR "unable to connect to $proxy_host:$proxy_port";
+        return handle_ui_error( $httpd, $request, "unable to create socket" );
+      }
+
+      # vars I'll be using in the following closures
+      my $headers = $request->headers();
+      my $buffer = '';
+      my $handle;
+      $handle = AnyEvent::Handle->new(
+        fh        => $fh,
+        on_error  => sub {
+          undef $handle;
+          ERROR $!;
+          handle_ui_error( $httpd, $request, $! )
+        },
+        on_eof    => sub {
+          undef $handle;
+          # spit out whatever is in the buffer
+          $request->respond(
+            [ 200, $RESPONSE_MSGS{200},
+              $headers,
+              $buffer
+            ]
+          );
+        }
+      );
+
+      # send the request
+      $headers->{connection}  = 'close';
+      $headers->{host}        = "$proxy_host:$proxy_port";
+      $handle->push_write( "GET $proxy_path HTTP/1.1\n" );
+      foreach my $h ( keys %$headers )
+      {
+        $handle->push_write( sprintf( "%s: %s\n", $h, $headers->{$h} ) );
+      }
+      $handle->push_write( "\n" );
+      $headers = {};
+
+      # read the headers
+      $handle->push_read( regex => qr/\r?\n\r?\n/, sub {
+        my ( $handle, $data ) = @_;
+
+        # parse the headers for re-transmission
+        my @lines = split /\r?\n/, $data;
+        while ( defined( my $line = shift @lines ) )
+        {
+          if ( $line =~ m/^([^:]+):\s+(.+)\r?\n?$/ )
+          {
+            $headers->{$1} = $2;
+          }
+        }
+
+        # set up a handler to buffer the response body
+        $handle->on_read( sub {
+          $buffer .= $_[0]->rbuf;
+          $_[0]->rbuf = '';
+        } );
+      } );
+    }
+  );
+
+  # gotta do this to avoid falling back to the '' handler
+  $httpd->stop_request();
+}
+
+sub handle_options
+{
+  my ( $httpd, $request ) = @_;
+
+  # only process OPTIONS requests
+  return unless $request->method eq 'OPTIONS';
+
+  INFO sprintf( 'Received OPTIONS request for %s from %s:%d',
+    $request->url, $request->client_host, $request->client_port );
+
+  my $response_headers = {
+    'Content-Length'                => 0,
+    'Content-Type'                  => 'text/plain',
+    'Access-Control-Allow-Headers'  => 'range',
+    'Access-Control-Expose-Header'  => 'Content-Range', # is it this one?
+    'Access-Control-Expose-Headers' => 'Content-Range'  # or this one? I don't want to install FF4 to find out!
+  };
+
+  # if we have an origin, and if that origin is one of our dispatchers or
+  # peers, add the following response header to allow for cross-origin resource
+  # sharing
+  my $headers = $request->headers;
+  if (exists $headers->{origin}
+      && $headers->{origin} =~ m/^http:\/\/([^:]+):?(\d*)/)
+  {
+    my $origin_host = $1;
+    my $origin_port = $2;
+    if ( grep { /^${origin_host}$/ } @{ exists $instance->{dispatchers} ? $instance->{dispatchers} : $instance->{peers} } )
+    {
+      $response_headers->{'Access-Control-Allow-Origin'} = sprintf( 'http://%s:%d', $origin_host, $origin_port );
+    }
+  }
+
+  $request->respond( [ 200, $RESPONSE_MSGS{200}, $response_headers, '' ] );
+
+  $httpd->stop_request();
+}
 
 1;
 
