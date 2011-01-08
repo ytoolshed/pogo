@@ -64,9 +64,10 @@ sub is_full
   return $self->nlocked( $job_ignore, $host_ignore ) >= $self->{maxdown};
 }
 
-# TODO: need to figure out how to make this more like the old code
-# 'resume' relies on this succeeding despite all paths still existing
-#
+# reserve writes paths into zookeeper for active tasks
+# can be called on a host that's already been # reserved,
+# such as in retries, so we shouldn't fail if $path
+# already exists
 sub reserve
 {
   my ( $self, $job, $hostname ) = @_;
