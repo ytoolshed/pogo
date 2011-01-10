@@ -13,6 +13,7 @@ var read_chunk_size     = 4096;   // size of output chunk to read per request
 var read_chunk_timeout  = 30000;  // number of ms to wait before aborting output chunk request
 var read_chunk_interval = 5000;   // number of ms to wait before loading more output
 var read_chunk_timer;
+var line_number = 0;
 // job info
 var pogo_id   = '[% pogo_id %]';
 var hostname  = '[% hostinfo.hostname %]';
@@ -72,7 +73,6 @@ function hostlog_url_handler( obj ) {
       max:    0,        // last known maximum output size
       state:  0,        // not loaded
       buf:    '',       // chunk buffer
-      line:   0         // output line number
     } );
   }
   // load the first chunk of host output
@@ -92,8 +92,10 @@ function load_next_hostlog() {
     // we still experience the wait.. the hack is to make the initial request
     // 1 byte for Safari.. which should work, once Safari supports the
     // Access-Control-Expose-Headers header
-//    var url = 'http://' + pogo_host + ':' + pogo_port + '/proxy/' + h.url;
-    var url = h.url;
+    var url = 'http://' + pogo_host + ':' + pogo_port + '/proxy/' + h.url;
+// Someday, when CORS is adequately supported by all browsers, we can uncomment
+// the following line and ditch the proxy
+//    var url = h.url;
     var min = h.chunk;
     var max = ( h.max && h.max > 0 && h.max > min && h.max < h.chunk + read_chunk_size ) ? h.max : h.chunk + read_chunk_size;
     if ( ! min && navigator.userAgent.indexOf( 'Safari' ) > 0 ) {
@@ -107,7 +109,8 @@ function load_next_hostlog() {
     hostlog_idx++;
     if ( hostlog_list[hostlog_idx] )
     {
-      hostlog_timeout = setTimeout( load_next_hostlog, read_chunk_interval );
+      // go ahead and load the next hostlog immediately
+      load_next_hostlog();
     }
   }
 }
@@ -211,7 +214,7 @@ function process_output_line( h, line ) {
       dateCell.className += ' STDOUT';
       row.appendChild( dateCell );
 
-      var lineCell = gen_anchor_cell( ++h.line );
+      var lineCell = gen_anchor_cell( ++line_number );
       lineCell.className = 'timestamp STDOUT';
       row.appendChild( lineCell );
 
@@ -236,7 +239,7 @@ function process_output_line( h, line ) {
     dateCell.className += eclass;
     row.appendChild( dateCell );
 
-    var lineCell = gen_anchor_cell( ++h.line );
+    var lineCell = gen_anchor_cell( ++line_number );
     lineCell.className = 'timestamp ' + eclass;
     row.appendChild( lineCell );
 

@@ -898,7 +898,7 @@ sub handle_options
     'Content-Length'                => 0,
     'Content-Type'                  => 'text/plain',
     'Access-Control-Allow-Headers'  => 'range',
-    'Access-Control-Expose-Header'  => 'Content-Range', # is it this one?
+    'Access-Control-Allow-Methods'  => 'GET',
     'Access-Control-Expose-Headers' => 'Content-Range'  # or this one? I don't want to install FF4 to find out!
   };
 
