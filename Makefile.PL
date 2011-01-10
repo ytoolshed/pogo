@@ -26,7 +26,7 @@ requires 'AnyEvent::HTTPD';
 requires 'Authen::PAM';
 requires 'Carp';
 requires 'Crypt::OpenSSL::RSA';
-requires 'Crypt::OpenSSL::X509';
+requires 'Crypt::OpenSSL::X509' => 1.6;
 requires 'Data::Dumper';
 requires 'Digest::MD5';
 requires 'Fcntl';
