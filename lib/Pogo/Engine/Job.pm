@@ -840,6 +840,7 @@ sub log
 }
 
 # determine job start time by the first log entry's timestamp
+# TODO: what's the retval when the first log entry isn't valid JSON?
 sub start_time
 {
   my ($self) = @_;

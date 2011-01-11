@@ -281,7 +281,7 @@ sub jobretry
     return $resp;
   }
 
-  if ( $job->job_timeout <= time )
+  if ( ( $job->start_time + $job->job_timeout ) <= time )
   {
     $resp->set_error("jobid $jobid has expired");
     return $resp;
