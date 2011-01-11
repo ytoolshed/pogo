@@ -17,6 +17,8 @@ var line_number = 0;
 // job info
 var pogo_id   = '[% pogo_id %]';
 var hostname  = '[% hostinfo.hostname %]';
+var start_time = parseFloat('[% jobinfo.start_time %]') * 1000;
+var job_timeout = parseInt('[% jobinfo.job_timeout %]') * 1000;
 // ui stuff
 var jobretry_counter = 11;
 var jobretry_timer;
@@ -35,6 +37,14 @@ var Y = YUI().use( 'datasource', 'json', 'dump', 'node', function( Y ) {
   pogoDataSource = new Y.DataSource.Get( { source: '[% pogo_api %]?' } );
   // fetch our hostlog urls and get to work
   pogorpc( [ 'hostlog_url', pogo_id, hostname ], 'hostlog_url_handler' );
+  // disable retry if our job timeout has expired
+  var d_exp = new Date(start_time + job_timeout);
+  var d_now = new Date();
+  if (d_exp < d_now)
+  {
+    Y.one( '#retry' ).set( 'innerHTML', '<i>(can\'t retry: job timeout expired)</i>' );
+  }
+  Y.one( '#retry' ).setStyle( 'display', 'inline' );
 } );
 
 function pogorpc( r, c ) {
@@ -50,10 +60,18 @@ function logger( m ) {
 }
 
 // this handles the return from our "jobretry" request
-function jobretry_handler() {
-  Y.one( '#retry' ).set( 'innerHTML', '<i>(request received...)</i>' );
+function jobretry_handler( obj ) {
   clearTimeout( jobretry_timer );
-  jobretry_timer = setTimeout( jobretry_countdown, 1000 );
+  var header  = obj[0];
+  if (header.status && header.status == 'ERROR')
+  {
+    Y.one( '#retry' ).set( 'innerHTML', '<i>(retry failed: ' + header.errmsg + ')</i>' );
+  }
+  else
+  {
+    Y.one( '#retry' ).set( 'innerHTML', '<i>(request received...)</i>' );
+    jobretry_timer = setTimeout( jobretry_countdown, 1000 );
+  }
 }
 
 var hostlog_list    = [];
@@ -420,7 +438,7 @@ function do_retry() {
     <td class="label">Host State</td>
     <td>[% hostinfo.host_state %]
       [% IF hostinfo.state == 'failed' %]
-        - <span id="retry"><a href="javascript:do_retry();">retry</a></span>
+        - <span id="retry" style="display: none;"><a href="javascript:do_retry();">retry</a></span>
       [% END %]
       [% IF hostinfo.state == 'running' or hostinfo.state == 'waiting' %]
         <span id="reload"></span>
