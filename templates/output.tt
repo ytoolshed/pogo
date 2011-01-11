@@ -62,8 +62,8 @@ function logger( m ) {
 // this handles the return from our "jobretry" request
 function jobretry_handler( obj ) {
   clearTimeout( jobretry_timer );
-  var header  = obj[0];
-  if (header.status && header.status == 'ERROR')
+  var header = obj[0];
+  if ( header.status && header.status == 'ERROR' )
   {
     Y.one( '#retry' ).set( 'innerHTML', '<i>(retry failed: ' + header.errmsg + ')</i>' );
   }
