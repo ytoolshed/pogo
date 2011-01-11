@@ -13,7 +13,8 @@ var read_chunk_size     = 4096;   // size of output chunk to read per request
 var read_chunk_timeout  = 30000;  // number of ms to wait before aborting output chunk request
 var read_chunk_interval = 5000;   // number of ms to wait before loading more output
 var read_chunk_timer;
-var line_number = 0;
+var line_number = 0; // output line number
+var new_run = true; // new output run flag
 // job info
 var pogo_id   = '[% pogo_id %]';
 var hostname  = '[% hostinfo.hostname %]';
@@ -128,6 +129,7 @@ function load_next_hostlog() {
     if ( hostlog_list[hostlog_idx] )
     {
       // go ahead and load the next hostlog immediately
+      new_run = true; // we're beginning a new run
       load_next_hostlog();
     }
   }
@@ -275,11 +277,17 @@ function process_output_line( h, line ) {
 // helper to build a cell with an anchor in it
 function gen_anchor_cell( line ) {
   var cell = document.createElement( 'TD' );
-  var a1   = cell.appendChild( document.createElement( 'A' ) );
-  var a2   = cell.appendChild( document.createElement( 'A' ) );
+  var a1  = cell.appendChild( document.createElement( 'A' ) );
+  var a2  = cell.appendChild( document.createElement( 'A' ) );
   a1.name  = 'line'  + line;
   a2.href  = '#line' + line;
   a2.appendChild( document.createTextNode( line ) );
+  if (new_run)
+  {
+    new_run = false;
+    var a3 = cell.appendChild( document.createElement( 'A' ) );
+    a3.name = 'run' + ( hostlog_idx + 1 );
+  }
   return cell;
 }
 
