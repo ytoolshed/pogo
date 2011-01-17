@@ -1,0 +1,4 @@
+[% INCLUDE _page_header.tt %]
+  <font size="small"><pre>[% dump %]</pre></font>
+[% INCLUDE _page_footer.tt %]
+

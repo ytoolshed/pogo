@@ -306,7 +306,8 @@ sub start_task
   else
   {
     # craft a redundant host state log message which just updates the output url
-    $self->log( 'hoststate', { host => $host->{name}, state => $state, output => $output_url }, $ext );
+    $self->log( 'hoststate', { host => $host->{name}, state => $state, output => $output_url },
+      $ext );
   }
 }
 
@@ -540,9 +541,7 @@ sub start
   my $concurrent = $self->concurrent;
   my $joblock    = $self->lock("Pogo::Engine::Job::start:before_hostinfo");
 
-  my @flat_targets = $ns->target_plugin->_expand_targets($target);
-
-  $self->set_state( 'gathering', 'job created; fetching host info', target => $self->meta('target') );
+  $self->set_state( 'gathering', 'job created; fetching host info', target => $target );
   INFO "starting job " . $self->id;
 
   my $all_host_meta = {};
@@ -554,6 +553,9 @@ sub start
 
     if ( !defined $concurrent )
     {
+
+      my @flat_targets = $ns->target_plugin->fetch_targets($target);
+
       my $fetch_errc = sub {
         local *__ANON__ = 'AE:cb:fetch_target_meta:errc';
         ERROR $self->id . ": unable to obtain meta info for target: $@";
@@ -572,7 +574,28 @@ sub start
     }
     else    # concurrent codepath
     {
-      DEBUG "we are concurrent!";
+      DEBUG "we are concurrent.";
+      my $cont = sub {
+        my $flat_targets = shift;
+        foreach my $hostname (@$flat_targets)
+        {
+          my $host = $self->host( $hostname, 'waiting' );
+
+          # note that i think we should probably store host meta here anyway
+          # since we don't want a concurrent and a constrained job to overlap
+          # and allow too many hosts down
+          # lack of hinfo just isn't an error in that case
+
+          my $hmeta = { _concurrent => $concurrent };
+          $host->set_hostinfo($hmeta);
+          $all_host_meta->{$hostname} = $hmeta;
+        }
+        $self->set_state( 'running', "constraints computed" );
+        $self->start_job_timeout();
+      };
+
+      $ns->target_plugin->fetch_targets( $target, $errc, $cont, $log_cont );
+
       foreach my $hostname (@flat_targets)
       {
         my $host = $self->host( $hostname, 'waiting' );
@@ -647,7 +670,8 @@ sub release_host
       my ( $allslots, $hostslots ) = @_;
       while ( my ( $hostname, $slots ) = each %$hostslots )
       {
-        map { DEBUG "releasing $_->{path} for $hostname"; $_->unreserve( $self, $hostname ) } @$slots;
+        map { DEBUG "releasing $_->{path} for $hostname"; $_->unreserve( $self, $hostname ) }
+          @$slots;
       }
 
       return $cont->();
@@ -848,7 +872,12 @@ sub read_log
     my $logentry = eval { decode_json($data); };
     if ($@)
     {
-      push @log, [ $offset, time(), 'readerror', { error => $@ }, "error reading log entry at offset $offset", ];
+      push @log,
+        [
+        $offset, time(), 'readerror',
+        { error => $@ },
+        "error reading log entry at offset $offset",
+        ];
       $offset++;
     }
     else
