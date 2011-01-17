@@ -184,6 +184,15 @@
         color: #00f;
         text-decoration: none;
       }
+      .code {
+        padding: 10px 15px;
+        margin: 5px 0 15px;
+        border-left: 5px solid #666666;
+        background: #bbbbbb;
+        font: 1em/1.5 "Monaco", "Courier New", monospace;
+        color: #222222;
+        overflow : auto;
+      }
     </style>
   </head>
 

@@ -136,8 +136,7 @@ sub run
     $instance->{httpd}->reg_cb(
       '' => sub {
         $_[1]->respond(
-          [ 404,
-            'NOT FOUND',
+          [ 404, 'NOT FOUND',
             { 'Content-type' => 'text/html' },
             '<html><head><title>404 not found</title></head><body><h2>404 not found</h2></body></html>'
           ]
@@ -147,11 +146,7 @@ sub run
     );
   }
 
-  INFO sprintf(
-    "Accepting HTTP requests on %s:%s",
-    $instance->{httpd}->host,
-    $instance->{httpd}->port
-  );
+  INFO sprintf( "Accepting HTTP requests on %s:%s", $instance->{httpd}->host, $instance->{httpd}->port );
 }
 
 # }}}
@@ -160,8 +155,8 @@ sub run
 sub handle_api
 {
   my ( $httpd, $request ) = @_;
-  INFO sprintf( 'Received HTTP request for %s from %s:%d',
-    $request->url, $request->client_host, $request->client_port );
+  INFO
+    sprintf( 'Received HTTP request for %s from %s:%d', $request->url, $request->client_host, $request->client_port );
 
   # Set these to some defaults in case an exception is raised.
   my $response         = Pogo::Engine::Response->new;
@@ -230,8 +225,8 @@ sub handle_api
 sub handle_static
 {
   my ( $httpd, $request ) = @_;
-  INFO sprintf( 'Received HTTP request for %s from %s:%d',
-    $request->url, $request->client_host, $request->client_port );
+  INFO
+    sprintf( 'Received HTTP request for %s from %s:%d', $request->url, $request->client_host, $request->client_port );
 
   my $response_headers = { 'Content-type' => 'application/octet-stream', };
 
@@ -293,11 +288,9 @@ sub handle_static
   {
     my $refer_host = $1;
     my $refer_port = $2;
-    if ( grep {/^${refer_host}$/}
-      @{ exists $instance->{dispatchers} ? $instance->{dispatchers} : $instance->{peers} } )
+    if ( grep {/^${refer_host}$/} @{ exists $instance->{dispatchers} ? $instance->{dispatchers} : $instance->{peers} } )
     {
-      $response_headers->{'Access-Control-Allow-Origin'} =
-        sprintf( 'http://%s:%d', $refer_host, $refer_port );
+      $response_headers->{'Access-Control-Allow-Origin'} = sprintf( 'http://%s:%d', $refer_host, $refer_port );
     }
   }
 
@@ -439,8 +432,8 @@ sub handle_ui
   my ( $httpd, $request ) = @_;
   my $response_headers = { 'Content-type: text/html', };
 
-  INFO sprintf( 'Received HTTP request for %s from %s:%d',
-    $request->url, $request->client_host, $request->client_port );
+  INFO
+    sprintf( 'Received HTTP request for %s from %s:%d', $request->url, $request->client_host, $request->client_port );
 
   # extract our command or jobid from url, falling back to index.
   my ( undef, $method, @args ) = split( '/', $request->url );
@@ -496,42 +489,11 @@ sub handle_ui_error
     },
     )
     or $request->respond(
-    [ 500, 'ERROR',
-      { 'Content-type' => 'text/plain' },
-      "an unknown error occurred: " . $instance->{tt}->error
-    ]
-    );
+    [ 500, 'ERROR', { 'Content-type' => 'text/plain' }, "an unknown error occurred: " . $instance->{tt}->error ] );
   $httpd->stop_request();
 }
 
 # }}}
-
-# render the requested template, adding any global config data to the template
-# data
-sub _render_ui_template
-{
-  my ( $self, $request, $template, $data, $resp_code, $content_type ) = @_;
-
-  $resp_code    ||= 200;
-  $content_type ||= 'text/html';
-
-  # add ui config items, stripping the "ui_" portion of the name
-  map { $data->{ substr( $_, 3 ) } ||= $self->{$_} } grep {/^ui_/} keys %$self;
-  # this guy will be interpolated unless it's already been defined
-  $data->{pogo_api}
-    ||= sprintf( 'http://%s:%s/api/v3', $instance->{httpd}->host, $instance->{httpd}->port );
-
-  $instance->{tt}->process(
-    $template,
-    $data,
-    sub {
-      my $output = shift;
-      $request->respond(
-        [ $resp_code, $RESPONSE_MSGS{$resp_code}, { 'Content-type' => $content_type }, $output ] );
-    }
-  ) or die $instance->{tt}->error, "\n";
-}
-
 # {{{ ui_status
 
 # individual job status, needs a jobid
@@ -627,12 +589,7 @@ sub _list_jobs
     if ($start_ts)
     {
       my @t = localtime($start_ts);
-      $start_time = sprintf(
-        "%04d-%02d-%02dT%02d:%02d:%02d",
-        $t[5] + 1900,
-        $t[4] + 1,
-        $t[3], $t[2], $t[1], $t[0]
-      );
+      $start_time = sprintf( "%04d-%02d-%02dT%02d:%02d:%02d", $t[5] + 1900, $t[4] + 1, $t[3], $t[2], $t[1], $t[0] );
     }
     $jobs[$i]->{start_ts}   = $start_ts;
     $jobs[$i]->{start_time} = $start_time;
@@ -723,6 +680,60 @@ sub ui_output
 }
 
 # }}}
+# {{{ ui_target
+
+sub ui_target
+{
+  my ( $self, $request, @args ) = @_;
+
+  my $data = { dump => 'eh', };
+
+  if ( !$request->parm('target') )
+  {
+    $data->{dump} = 'need a target';
+    return $self->_render_ui_template( $request, 'target.tt', $data );
+  }
+  else
+  {
+    my $resp = Pogo::Engine->hostinfo(
+      $request->parm('target'),
+      $request->parm('ns'),
+      sub {
+        my ($resp) = @_;
+        $self->_render_ui_template( $request, 'target.tt', $data->{dump} = Dumper $resp );
+      },
+    );
+  }
+}
+
+# }}}
+# {{{ template rendering
+
+# render the requested template, adding any global config data to the template
+# data
+sub _render_ui_template
+{
+  my ( $self, $request, $template, $data, $resp_code, $content_type ) = @_;
+
+  $resp_code    ||= 200;
+  $content_type ||= 'text/html';
+
+  # add ui config items, stripping the "ui_" portion of the name
+  map { $data->{ substr( $_, 3 ) } ||= $self->{$_} } grep {/^ui_/} keys %$self;
+  # this guy will be interpolated unless it's already been defined
+  $data->{pogo_api} ||= sprintf( 'http://%s:%s/api/v3', $instance->{httpd}->host, $instance->{httpd}->port );
+
+  $instance->{tt}->process(
+    $template,
+    $data,
+    sub {
+      my $output = shift;
+      $request->respond( [ $resp_code, $RESPONSE_MSGS{$resp_code}, { 'Content-type' => $content_type }, $output ] );
+    }
+  ) or die $instance->{tt}->error, "\n";
+}
+
+# }}}
 # {{{ misc
 
 # simple helper function to convert user-supplied string to a jobid.
@@ -764,13 +775,14 @@ sub to_jobid
 }
 
 # }}}
+# {{{ proxy
 
 # proxy content from workers
 sub handle_proxy
 {
   my ( $httpd, $request ) = @_;
-  INFO sprintf( 'Received PROXY request for %s from %s:%d',
-    $request->url, $request->client_host, $request->client_port );
+  INFO
+    sprintf( 'Received PROXY request for %s from %s:%d', $request->url, $request->client_host, $request->client_port );
 
   # parse the request for the proxy infoz
   my ( $proxy_host, $proxy_port, $proxy_path );
@@ -864,6 +876,9 @@ sub handle_proxy
   $httpd->stop_request();
 }
 
+# }}}
+# {{{ options
+
 sub handle_options
 {
   my ( $httpd, $request ) = @_;
@@ -871,16 +886,16 @@ sub handle_options
   # only process OPTIONS requests
   return unless $request->method eq 'OPTIONS';
 
-  INFO sprintf( 'Received OPTIONS request for %s from %s:%d',
-    $request->url, $request->client_host, $request->client_port );
+  INFO
+    sprintf( 'Received OPTIONS request for %s from %s:%d', $request->url, $request->client_host,
+    $request->client_port );
 
   my $response_headers = {
-    'Content-Length'               => 0,
-    'Content-Type'                 => 'text/plain',
-    'Access-Control-Allow-Headers' => 'range',
-    'Access-Control-Allow-Methods' => 'GET',
-    'Access-Control-Expose-Headers' =>
-      'Content-Range'    # or this one? I don't want to install FF4 to find out!
+    'Content-Length'                => 0,
+    'Content-Type'                  => 'text/plain',
+    'Access-Control-Allow-Headers'  => 'range',
+    'Access-Control-Allow-Methods'  => 'GET',
+    'Access-Control-Expose-Headers' => 'Content-Range'    # or this one? I don't want to install FF4 to find out!
   };
 
   # if we have an origin, and if that origin is one of our dispatchers or
@@ -895,8 +910,7 @@ sub handle_options
     if ( grep {/^${origin_host}$/}
       @{ exists $instance->{dispatchers} ? $instance->{dispatchers} : $instance->{peers} } )
     {
-      $response_headers->{'Access-Control-Allow-Origin'} =
-        sprintf( 'http://%s:%d', $origin_host, $origin_port );
+      $response_headers->{'Access-Control-Allow-Origin'} = sprintf( 'http://%s:%d', $origin_host, $origin_port );
     }
   }
 
@@ -904,6 +918,8 @@ sub handle_options
 
   $httpd->stop_request();
 }
+
+# }}}
 
 1;
 

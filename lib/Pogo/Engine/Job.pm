@@ -14,6 +14,7 @@ package Pogo::Engine::Job;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+use 5.008;
 use common::sense;
 
 use List::Util qw(min max);
@@ -305,8 +306,7 @@ sub start_task
   else
   {
     # craft a redundant host state log message which just updates the output url
-    $self->log( 'hoststate', { host => $host->{name}, state => $state, output => $output_url },
-      $ext );
+    $self->log( 'hoststate', { host => $host->{name}, state => $state, output => $output_url }, $ext );
   }
 }
 
@@ -542,20 +542,15 @@ sub start
 
   my @flat_targets = $ns->target_plugin->_expand_targets($target);
 
-  $self->set_state(
-    'gathering',
-    'job created; fetching host info',
-    target => $self->meta('target')
-  );
+  $self->set_state( 'gathering', 'job created; fetching host info', target => $self->meta('target') );
   INFO "starting job " . $self->id;
 
   my $all_host_meta = {};
   my @dead_hosts    = ();
 
   eval {
-
     # constrained codepath
-    # fetch all meta before we add to the job
+    # fetch all meta (apps+envs) before we add to the job
 
     if ( !defined $concurrent )
     {
@@ -573,7 +568,7 @@ sub start
         $self->fetch_runnable_hosts();
       };
 
-      $self->fetch_target_meta( \@flat_targets, $ns->name, $fetch_errc, $fetch_cont, );
+      $ns->fetch_target_meta( \@flat_targets, $ns->name, $fetch_errc, $fetch_cont, );
     }
     else    # concurrent codepath
     {
@@ -652,8 +647,7 @@ sub release_host
       my ( $allslots, $hostslots ) = @_;
       while ( my ( $hostname, $slots ) = each %$hostslots )
       {
-        map { DEBUG "releasing $_->{path} for $hostname"; $_->unreserve( $self, $hostname ) }
-          @$slots;
+        map { DEBUG "releasing $_->{path} for $hostname"; $_->unreserve( $self, $hostname ) } @$slots;
       }
 
       return $cont->();
@@ -793,28 +787,6 @@ sub continue
 }
 
 # }}}
-# {{{ fetch_target_meta
-
-sub fetch_target_meta
-{
-  my ( $self, $targets, $namespace, $errc, $cont ) = @_;
-
-  my $plugin_cont = sub {
-    local *__ANON__ = 'plugin_cont';
-
-    # after fetching, we should check if we're last and
-    # if so, call the original cont
-    DEBUG "got a batch";
-  };
-
-  my $plugin_err = sub {
-    local *__ANON__ = 'plugin_err';
-    ERROR "plugin error";
-  };
-
-}
-
-# }}}
 # {{{ locking
 
 sub lock
@@ -876,12 +848,7 @@ sub read_log
     my $logentry = eval { decode_json($data); };
     if ($@)
     {
-      push @log,
-        [
-        $offset, time(), 'readerror',
-        { error => $@ },
-        "error reading log entry at offset $offset",
-        ];
+      push @log, [ $offset, time(), 'readerror', { error => $@ }, "error reading log entry at offset $offset", ];
       $offset++;
     }
     else

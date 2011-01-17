@@ -14,6 +14,8 @@ package Pogo::Engine::Namespace;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+use Data::Dumper;
+
 use 5.008;
 use common::sense;
 
@@ -133,8 +135,7 @@ sub fetch_runnable_hosts
             }
             else
             {
-              map { DEBUG "reserving $_->{path} for $hostname"; $_->reserve( $job, $hostname ) }
-                @$slots;
+              map { DEBUG "reserving $_->{path} for $hostname"; $_->reserve( $job, $hostname ) } @$slots;
               push @runnable, $hostname;
             }
           }
@@ -160,6 +161,8 @@ sub fetch_all_slots
   my %hostslots   = ();
   my %to_resolve  = ();
   my @slotlookups = ();
+
+  DEBUG Dumper $hostinfo_map;
 
   my $concurrent = $job->concurrent;
   if ( defined $concurrent )
@@ -194,8 +197,10 @@ sub fetch_all_slots
 
   # this is where we handle the more complex, non-concurrent case
 
-  my $const = $self->get_all_constraints;
-  my $seq   = $self->get_all_sequences;
+  my $const = $self->get_all_curs;
+  my $seq   = $self->get_all_seqs;
+
+  DEBUG Dumper [ $const, $seq ];
 
   # resolve all max_down_hosts for each app-env
   while ( my ( $hostname, $hostinfo ) = each %$hostinfo_map )
@@ -217,9 +222,7 @@ sub fetch_all_slots
         if ( exists $seq->{$etype} && exists $seq->{$ename}->{$app} )
         {
           $slot->{pred} = [ map { $self->slot( $_, $etype, $ename ) } @{ $seq->{$etype}->{$app} } ];
-          DEBUG "Sequence predecessors for "
-            . $slot->name . ": "
-            . join( ", ", map { $_->name } @{ $slot->{pred} } );
+          DEBUG "Sequence predecessors for " . $slot->name . ": " . join( ", ", map { $_->name } @{ $slot->{pred} } );
         }
         push @{ $hostslots{$hostname} }, $slot;
 
@@ -239,8 +242,7 @@ sub fetch_all_slots
           $to_resolve{$appexp} = 1;
           $to_resolve{$envexp} = 1;
 
-          push @slotlookups,
-            [ $slot, $appexp, $envexp, $pct ];   # $pct in these to be written by resolv $cont below
+          push @slotlookups, [ $slot, $appexp, $envexp, $pct ];    # $pct in these to be written by resolv $cont below
         }
       }
     }
@@ -275,8 +277,7 @@ sub slot
 {
   my ( $self, $app, $envk, $envv ) = @_;
   my $slots = $self->{slots};
-  $slots->{ $app, $envk, $envv }
-    ||= Pogo::Engine::Namespace::Slot->new( $self, $app, $envk, $envv );
+  $slots->{ $app, $envk, $envv } ||= Pogo::Engine::Namespace::Slot->new( $self, $app, $envk, $envv );
   return $slots->{ $app, $envk, $envv };
 }
 
@@ -313,6 +314,44 @@ sub unlock_job
     }
     store->delete( $self->path( '/env/', $env ) );
   }
+}
+
+# }}}
+# {{{ resolve
+
+# this is where we need to do plugin-based lookups
+# we find/initialize the plugins and fire off
+# BATCHSIZE'd chunks of lookups
+sub resolve
+{
+  my ( $self, $lookups, $errc, $cont ) = @_;
+  DEBUG Dumper $lookups;
+}
+
+# }}}
+# {{{ fetch_target_meta
+
+sub fetch_target_meta
+{
+  my ( $self, $target, $namespace, $errc, $cont ) = @_;
+
+  my $flat_target = $self->target_plugin->_expand_targets($target);
+
+  my $plugin_cont = sub {
+    local *__ANON__ = 'plugin_cont';
+
+    # after fetching, we should check if we're last and
+    # if so, call the original cont
+    DEBUG "got a batch";
+  };
+
+  my $plugin_err = sub {
+    local *__ANON__ = 'plugin_err';
+    ERROR "plugin error";
+  };
+
+  $errc->($flat_target);
+
 }
 
 # }}}
@@ -541,31 +580,31 @@ sub get_conf
   return _get_conf_r( $self->{path} . "/conf" );
 }
 
-sub get_concurrence
+sub get_cur
 {
   my ( $self, $app, $key ) = @_;
   my $c = store->get( $self->{path} . "/conf/cur/$app/$key" );
   return $c;
 }
 
-sub get_concurrences
+sub get_curs
 {
   my ( $self, $app ) = @_;
   my $path = $self->{path} . "/conf/cur/$app";
-  my %c = map { $_ => $self->get_constraint( $app, $_ ) } store->get_children($path);
+  my %c = map { $_ => $self->get_cur( $app, $_ ) } store->get_children($path);
 
   DEBUG "constraints for $app: " . join( ",", keys %c );
   return \%c;
 }
 
-sub get_all_concurrences
+sub get_all_curs
 {
   my $self = shift;
   my $path = $self->{path} . "/conf/cur";
-  return { map { $_ => $self->get_constraints($_) } store->get_children($path) };
+  return { map { $_ => $self->get_curs($_) } store->get_children($path) };
 }
 
-sub get_all_sequences
+sub get_all_seqs
 {
   my $self = shift;
   my $path = $self->{path} . "/conf/seq/pred";
@@ -774,8 +813,7 @@ sub unlock_host
       # remove environment lock
       # delete /pogo/env/$app_$k_$v
       store->delete("/pogo/env/$child/$job_host")
-        or ERROR "unable to remove '/pogo/env/$child/$job_host' from '$child_path': "
-        . store->get_error;
+        or ERROR "unable to remove '/pogo/env/$child/$job_host' from '$child_path': " . store->get_error;
 
       # clean up empty env nodes
       if ( ( scalar store->get_children("/pogo/env/$child") ) == 0 )
