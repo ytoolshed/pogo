@@ -58,13 +58,13 @@ sub init
   if ( !store->exists( $self->path ) )
   {
     store->create( $self->path, '' )
-      or LOGDIE "unable to create namespace '$ns': " . store->get_error;
+      or LOGCONFESS "unable to create namespace '$ns': " . store->get_error_name;
     store->create( $self->path . '/env', '' )
-      or LOGDIE "unable to create namespace '$ns': " . store->get_error;
+      or LOGCONFESS "unable to create namespace '$ns': " . store->get_error_name;
     store->create( $self->path . '/lock', '' )
-      or LOGDIE "unable to create namespace '$ns': " . store->get_error;
+      or LOGCONFESS "unable to create namespace '$ns': " . store->get_error_name;
     store->create( $self->path . '/conf', '' )
-      or LOGDIE "unable to create namespace '$ns': " . store->get_error;
+      or LOGCONFESS "unable to create namespace '$ns': " . store->get_error_name;
   }
 
   return $self;
@@ -135,7 +135,8 @@ sub fetch_runnable_hosts
             }
             else
             {
-              map { DEBUG "reserving $_->{path} for $hostname"; $_->reserve( $job, $hostname ) } @$slots;
+              map { DEBUG "reserving $_->{path} for $hostname"; $_->reserve( $job, $hostname ) }
+                @$slots;
               push @runnable, $hostname;
             }
           }
@@ -222,7 +223,9 @@ sub fetch_all_slots
         if ( exists $seq->{$etype} && exists $seq->{$ename}->{$app} )
         {
           $slot->{pred} = [ map { $self->slot( $_, $etype, $ename ) } @{ $seq->{$etype}->{$app} } ];
-          DEBUG "Sequence predecessors for " . $slot->name . ": " . join( ", ", map { $_->name } @{ $slot->{pred} } );
+          DEBUG "Sequence predecessors for "
+            . $slot->name . ": "
+            . join( ", ", map { $_->name } @{ $slot->{pred} } );
         }
         push @{ $hostslots{$hostname} }, $slot;
 
@@ -242,7 +245,8 @@ sub fetch_all_slots
           $to_resolve{$appexp} = 1;
           $to_resolve{$envexp} = 1;
 
-          push @slotlookups, [ $slot, $appexp, $envexp, $pct ];    # $pct in these to be written by resolv $cont below
+          push @slotlookups,
+            [ $slot, $appexp, $envexp, $pct ];   # $pct in these to be written by resolv $cont below
         }
       }
     }
@@ -277,7 +281,8 @@ sub slot
 {
   my ( $self, $app, $envk, $envv ) = @_;
   my $slots = $self->{slots};
-  $slots->{ $app, $envk, $envv } ||= Pogo::Engine::Namespace::Slot->new( $self, $app, $envk, $envv );
+  $slots->{ $app, $envk, $envv }
+    ||= Pogo::Engine::Namespace::Slot->new( $self, $app, $envk, $envv );
   return $slots->{ $app, $envk, $envv };
 }
 
@@ -331,27 +336,17 @@ sub resolve
 # }}}
 # {{{ fetch_target_meta
 
+# accepts a single target
 sub fetch_target_meta
 {
-  my ( $self, $target, $namespace, $errc, $cont ) = @_;
+  my ( $self, $target, $errc, $cont ) = @_;
+  DEBUG Dumper \@_;
+  eval { $self->target_plugin->fetch_target_meta( $target, $errc, $cont ); };
 
-  my $flat_target = $self->target_plugin->_expand_targets($target);
-
-  my $plugin_cont = sub {
-    local *__ANON__ = 'plugin_cont';
-
-    # after fetching, we should check if we're last and
-    # if so, call the original cont
-    DEBUG "got a batch";
-  };
-
-  my $plugin_err = sub {
-    local *__ANON__ = 'plugin_err';
-    ERROR "plugin error";
-  };
-
-  $errc->($flat_target);
-
+  if ($@)
+  {
+    $errc->($@);
+  }
 }
 
 # }}}
@@ -697,40 +692,14 @@ sub get_seq_successors
 sub target_plugin
 {
   my $self = shift;
-  my $name = 'Pogo::Plugin::Target::Inline';
+  my $name = $self->get_conf->{plugins}->{targets} || 'Pogo::Plugin::Target::Inline';
 
   if ( !exists $self->{_plugin_cache}->{$name} )
   {
     eval "use $name;";
-    $self->{_plugin_cache}->{$name} = $name->new();
-  }
-
-  return $self->{_plugin_cache}->{$name};
-}
-
-sub app_plugin
-{
-  my $self = shift;
-  my $name = 'Pogo::Plugin::Target::Inline';
-
-  if ( !exists $self->{_plugin_cache}->{$name} )
-  {
-    eval "use $name;";
-    $self->{_plugin_cache}->{target} = $name->new();
-  }
-
-  return $self->{_plugin_cache}->{$name};
-}
-
-sub env_plugin
-{
-  my $self = shift;
-  my $name = 'Pogo::Plugin::Target::Inline';
-
-  if ( !exists $self->{_plugin_cache}->{$name} )
-  {
-    eval "use $name;";
-    $self->{_plugin_cache}->{target} = $name->new();
+    # this is a coderef because we want to make sure the data is fresh
+    # the plugin should do caching of it's own metadata, not the configuration
+    $self->{_plugin_cache}->{$name} = $name->new( conf => sub { $self->get_conf }, );
   }
 
   return $self->{_plugin_cache}->{$name};
@@ -813,7 +782,8 @@ sub unlock_host
       # remove environment lock
       # delete /pogo/env/$app_$k_$v
       store->delete("/pogo/env/$child/$job_host")
-        or ERROR "unable to remove '/pogo/env/$child/$job_host' from '$child_path': " . store->get_error;
+        or ERROR "unable to remove '/pogo/env/$child/$job_host' from '$child_path': "
+        . store->get_error;
 
       # clean up empty env nodes
       if ( ( scalar store->get_children("/pogo/env/$child") ) == 0 )

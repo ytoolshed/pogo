@@ -553,7 +553,7 @@ sub start
 
     if ( !defined $concurrent )
     {
-
+      DEBUG "we are constrained.";
       my @flat_targets = $ns->target_plugin->fetch_targets($target);
 
       my $fetch_errc = sub {
@@ -594,24 +594,10 @@ sub start
         $self->start_job_timeout();
       };
 
+      my $log_cont = sub { };
+
       $ns->target_plugin->fetch_targets( $target, $errc, $cont, $log_cont );
-
-      foreach my $hostname (@flat_targets)
-      {
-        my $host = $self->host( $hostname, 'waiting' );
-
-        # note that i think we should probably store host meta here anyway
-        # since we don't want a concurrent and a constrained job to overlap
-        # and allow too many hosts down
-        # lack of hinfo just isn't an error in that case
-
-        my $hmeta = { _concurrent => $concurrent };
-        $host->set_hostinfo($hmeta);
-        $all_host_meta->{$hostname} = $hmeta;
-      }
     }
-    $self->set_state( 'running', "constraints computed" );
-    $self->start_job_timeout();
   };
 
   if ($@)

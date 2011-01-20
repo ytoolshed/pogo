@@ -95,13 +95,15 @@ sub hostinfo
 
   my $resp = Pogo::Engine::Response->new()->add_header( action => 'hostinfo' );
 
+  LOGCONFESS "need a namespace" unless defined $namespace;
+
   my $ns = Pogo::Engine->namespace($namespace);
 
   my $error;
 
   # call this asyncronously as it may be ugly
   $ns->fetch_target_meta(
-    $target, $ns,
+    $target,
     sub {
       my $err = shift;
       $cb->( $resp->set_error($err) );

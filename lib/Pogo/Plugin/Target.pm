@@ -27,7 +27,7 @@ our $BATCH_SIZE = 200;
 sub new
 {
   my $class = shift;
-  my $self  = {};
+  my $self  = {@_};
 
   bless $self, $class;
   return $self;
@@ -41,7 +41,7 @@ sub set_batch_size
 
 sub _expand_targets
 {
-  my ($self, $targets) = @_;
+  my ( $self, $targets ) = @_;
   my @flat;
   foreach my $elem (@$targets)
   {
