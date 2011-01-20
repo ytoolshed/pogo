@@ -363,8 +363,6 @@ sub set_conf
   if ( !defined $conf_in->{plugins} )
   {
     $conf_in->{plugins}->{targets} = 'Pogo::Plugin::Target::Inline';
-    $conf_in->{plugins}->{apps}    = 'Pogo::Plugin::Target::Inline';
-    $conf_in->{plugins}->{envs}    = 'Pogo::Plugin::Target::Inline';
   }
 
   my $name = $self->name;
@@ -698,7 +696,10 @@ sub target_plugin
     eval "use $name;";
     # this is a coderef because we want to make sure the data is fresh
     # the plugin should do caching of it's own metadata, not the configuration
-    $self->{_plugin_cache}->{$name} = $name->new( conf => sub { $self->get_conf }, );
+    $self->{_plugin_cache}->{$name} = $name->new(
+      conf      => sub { $self->get_conf },
+      namespace => $self->name,
+    );
   }
 
   return $self->{_plugin_cache}->{$name};
