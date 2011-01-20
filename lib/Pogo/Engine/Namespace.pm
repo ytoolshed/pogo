@@ -340,7 +340,6 @@ sub resolve
 sub fetch_target_meta
 {
   my ( $self, $target, $errc, $cont ) = @_;
-  DEBUG Dumper \@_;
   eval { $self->target_plugin->fetch_target_meta( $target, $errc, $cont ); };
 
   if ($@)
