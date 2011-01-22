@@ -112,7 +112,7 @@ sub hostinfo
       my ( $results, $hosts ) = @_;
       $resp->add_header( hosts => join( ',', @$hosts ) );
       $resp->set_ok;
-      $resp->set_records($results);
+      $resp->set_records( [$results] );
       $cb->($resp);
     },
   );
