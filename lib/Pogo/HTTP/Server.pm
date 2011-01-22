@@ -710,11 +710,9 @@ sub ui_target
     $ns,
     sub {
       my ($resp) = @_;
-
       my ($data) = $resp->records;
       $data->{target} = $target;
       $data->{ns}     = $ns;
-
       $self->_render_ui_template($request, 'target.tt', $data);
     }
   );
