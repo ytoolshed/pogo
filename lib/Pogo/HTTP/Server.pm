@@ -702,25 +702,22 @@ sub ui_target
 {
   my ( $self, $request, @args ) = @_;
 
-  my $data = { dump => 'eh', };
+  die "No target specified\n" unless (my $target = $request->parm('target'));
+  die "No ns specified\n"     unless (my $ns = $request->parm('ns'));
 
-  if ( !$request->parm('target') )
-  {
-    $data->{dump} = 'need a target';
-    return $self->_render_ui_template( $request, 'target.tt', $data );
-  }
-  else
-  {
-    my $resp = Pogo::Engine->hostinfo(
-      $request->parm('target'),
-      $request->parm('ns'),
-      sub {
-        my ($resp) = @_;
-        $data->{dump} = Dumper $resp->unblessed;
-        $self->_render_ui_template( $request, 'target.tt', $data );
-      },
-    );
-  }
+  my $resp = Pogo::Engine->hostinfo(
+    $target,
+    $ns,
+    sub {
+      my ($resp) = @_;
+
+      my ($data) = $resp->records;
+      $data->{target} = $target;
+      $data->{ns}     = $ns;
+
+      $self->_render_ui_template($request, 'target.tt', $data);
+    }
+  );
 }
 
 # }}}
