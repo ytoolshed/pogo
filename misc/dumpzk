@@ -3,9 +3,16 @@
 use warnings;
 use strict;
 
+use Getopt::Long qw(:config bundling no_ignore_case pass_through);
 use Net::ZooKeeper qw(:node_flags :acls :errors);
 
-my $zkh = Net::ZooKeeper->new($ARGV[0] || 'localhost:18121');
+GetOptions(
+  my $opts = {},
+  'address|A=s',
+);
+
+my $path  = shift @ARGV || '/';
+my $zkh   = Net::ZooKeeper->new($opts->{address} || 'localhost:18121');
 
 sub dumptree
 {
@@ -27,4 +34,4 @@ sub dumptree
   }
 }
 
-dumptree($ARGV[1] || "/");
+dumptree($path);

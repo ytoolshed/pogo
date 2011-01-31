@@ -17,7 +17,7 @@
 use 5.008;
 use common::sense;
 
-use Test::More tests => 19;
+use Test::More tests => 23;
 use Test::Exception;
 
 use Data::Dumper;
@@ -110,6 +110,23 @@ test_pogo
   my @records = $resp->records;
   ok( $records[0] eq 'halted', "job $jobid halted" )
     or diag explain \@records;
+
+  # test jobretry
+  dies_ok { $resp = client->jobretry( $jobid, ['foo11.example.com'] ) }
+  "job retry for host not in job"
+    or diag explain $@;
+
+  ok( $@ =~ m/expired/, "job retry for host not in job" )
+    or diag explain $resp;
+
+  dies_ok { $resp = client->jobretry( $jobid, ['foo9.example.com'] ) } "job retry for host in job"
+    or diag explain $@;
+
+  ok( $@ =~ /expired/, "job expired message" )
+    or diag explain $resp;
+
+  # TODO: test successful retry, retry while job still running.
+
 };
 
 done_testing();

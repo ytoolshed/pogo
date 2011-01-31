@@ -281,6 +281,12 @@ sub jobretry
     return $resp;
   }
 
+  if ( $job->job_timeout <= time )
+  {
+    $resp->set_error("jobid $jobid has expired");
+    return $resp;
+  }
+
   my $out = [ map { $job->retry_task($_) } @hostnames ];
   $instance->add_task( 'resumejob', $job->{id} );
 

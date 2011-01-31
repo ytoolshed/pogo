@@ -45,10 +45,11 @@ sub execute
   my $file = sprintf("jobs/t_job_%s.yaml", $job);
   if ( ! -r $file )
   {
-    STDOUT->print("using '$file'");
     $file = "jobs/t_job.yaml";
   }
   my @entries;
+
+  STDOUT->print("using '$file'");
 
   eval { @entries = LoadFile($file); };
   if ($@)
