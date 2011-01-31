@@ -58,8 +58,8 @@ sub accept
       if ($success)
       {
         INFO sprintf( "SSL/TLS handshake completed with worker at %s:%d", $host, $port );
-        $self->{tasks} = 0;
-        Pogo::Dispatcher->idle_worker($self);
+        $self->{active_tasks} = 0;
+        Pogo::Dispatcher->enlist_worker($self);
       }
       else
       {
@@ -87,7 +87,7 @@ sub accept
           my ( $cmd, @args ) = @$req;
           if ( $cmd eq 'idle' )
           {
-            $self->{tasks}-- if $self->{tasks} > 0;
+            $self->{active_tasks}-- if $self->{active_tasks} > 0;
             Pogo::Dispatcher->idle_worker($self);
           }
           elsif ( $cmd eq 'start' )
@@ -102,6 +102,7 @@ sub accept
             my ( $jobid, $host, $exitcode, $msg ) = @args;
             my $job = Pogo::Engine->job($jobid);
             LOGDIE "Nonexistent job $jobid sent from worker " . $self->id unless $job;
+            $self->{active_tasks}-- if $self->{active_tasks} > 0;
             $job->finish_task( $host, $exitcode, $msg );
           }
           elsif ( $cmd eq 'ping' )
@@ -115,11 +116,14 @@ sub accept
   return $self;
 }
 
-sub start_task    #{{{
+# {{{ queue_task
+# sends a task to the worker for execution
+sub queue_task
 {
   my ( $self, $job, $host ) = @_;
 
   # Sanity check
+  $self->{active_tasks}++;
   Pogo::Dispatcher->busy_worker($self);
 
   DEBUG sprintf( "%s: %s assigned to worker %s:%d", $job->id, $host, $self->{host}, $self->{port} );
@@ -139,12 +143,14 @@ sub start_task    #{{{
       }
     ]
   );
-}    #}}}
+}
 
-sub tasks
+# }}}
+
+sub active_tasks
 {
   my $self = shift;
-  return $self->{tasks};
+  return $self->{active_tasks};
 }
 
 sub id

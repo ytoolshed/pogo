@@ -120,7 +120,6 @@ sub port { return shift->{port}; }
 
 sub run_command
 {
-
   # Currently the only thing that ever comes down this pipe is a request to
   # launch a job.  The dispatcher will send these anytime it receives an EXIT
   # or an IPC idle.  Whenever the code enters here, the worker is always marked
@@ -130,9 +129,11 @@ sub run_command
   my $task_id = join( '/', $args->{job_id}, $args->{host} );
   DEBUG "[$task_id] Received command '$cmd'";
   $self->{tasks}->{$task_id}->{args} = $args;
-  DEBUG "Current task count: " . scalar keys %{ $self->{tasks} };
+  DEBUG sprintf '%d active tasks', scalar keys %{ $self->{tasks} };
+
   if ( scalar keys %{ $self->{tasks} } < Pogo::Worker->num_workers )
   {
+    DEBUG "idling...";
     $self->send_response( ['idle'] );
   }
 
@@ -206,11 +207,13 @@ sub execute
   Pogo::Worker->send_response( [ 'start', $job_id, $host, $output_url ] );
 
   my $output_file = IO::File->new( $output_filename, O_WRONLY | O_CREAT | O_APPEND, 0664 )
-    or LOGDIE "Couldn't create file '$output_filename': $!";
+    or return $self->reset( $task_id, '500', "Couldn't create file '$output_filename': $!" );
+
   $output_file->autoflush(1);
   DEBUG sprintf( "Writing to output file %s", $output_filename );
 
   # Register callbacks to handle events from spawned process.
+
   my $write_stdout = sub {
     my $buf = delete $task->{process_handle}->{rbuf};
     $self->write_output_entry( $output_file, { task => $task_id, type => 'STDOUT' }, $buf );
@@ -230,8 +233,8 @@ sub execute
       $buf_count = 0;
     }
   };
-  my $process_exit = sub {
 
+  my $process_exit = sub {
     # Catch exit code from waitpid
     my $p = waitpid( $pid, 0 );
     my $exit_status = WEXITSTATUS($?);
@@ -244,6 +247,7 @@ sub execute
     delete $task->{process_handle};
     $self->reset( $task_id, $exit_status );
   };
+
   $task->{process_handle} = AnyEvent::Handle->new(
     fh     => $reader,
     on_eof => sub {
