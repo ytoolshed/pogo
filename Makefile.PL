@@ -22,7 +22,7 @@ all_from 'lib/Pogo/Common.pm';
 perl_version '5.008';
 
 requires 'AnyEvent';
-requires 'AnyEvent::HTTPD';
+requires 'AnyEvent::HTTPD' => 0.90;
 requires 'Authen::PAM';
 requires 'Carp';
 requires 'Crypt::OpenSSL::RSA';
