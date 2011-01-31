@@ -49,6 +49,7 @@ sub run
       ca_file   => $self->{dispatcher_cert},
       verify    => 1,
       verify_cb => sub {
+        local *__ANON__ = 'dispatcher_handle:tls_ctx:verify_cb';
         my $preverify_ok = $_[4];
         my $cert         = $_[6];
         DEBUG sprintf( "certificate: %s", AnyEvent::TLS::certname($cert) );
@@ -57,6 +58,7 @@ sub run
     },
     keepalive  => 1,
     on_connect => sub {
+      local *__ANON__ = 'dispatcher_handle:on_connect';
       INFO sprintf( "Connected to dispatcher at %s:%d", $self->{host}, $self->{port} );
       Pogo::Worker->add_connection($self);
       while ( my $msg = Pogo::Worker->dequeue_msg )
@@ -67,6 +69,7 @@ sub run
       }
     },
     on_starttls => sub {
+      local *__ANON__ = 'dispatcher_handle:on_starttls';
       my $success = $_[1];
       my $msg     = $_[2];
       if ($success)
@@ -83,12 +86,14 @@ sub run
       }
     },
     on_connect_error => sub {
+      local *__ANON__ = 'dispatcher_handle:on_connect_error';
       my $msg = $_[1];
       $self->{dispatcher_handle}->destroy;
       ERROR sprintf( "Failed to connect to %s:%d: %s", $self->{host}, $self->{port}, $msg );
       $self->reconnect;
     },
     on_error => sub {
+      local *__ANON__ = 'dispatcher_handle:on_error';
       my $msg = $_[2];
       $self->{dispatcher_handle}->destroy;
       Pogo::Worker->delete_connection($self);
@@ -99,6 +104,7 @@ sub run
     on_read => sub {
       $self->{dispatcher_handle}->push_read(
         json => sub {
+          local *__ANON__ = 'dispatcher_handle:on_read:json';
           my $obj = $_[1];
           if ( ref $obj ne 'ARRAY' )
           {
@@ -215,6 +221,7 @@ sub execute
   # Register callbacks to handle events from spawned process.
 
   my $write_stdout = sub {
+    local *__ANON__ = 'task:on_read';
     my $buf = delete $task->{process_handle}->{rbuf};
     $self->write_output_entry( $output_file, { task => $task_id, type => 'STDOUT' }, $buf );
     $buf_count += length($buf);
@@ -235,6 +242,7 @@ sub execute
   };
 
   my $process_exit = sub {
+    local *__ANON__ = 'task:process_exit';
     # Catch exit code from waitpid
     my $p = waitpid( $pid, 0 );
     my $exit_status = WEXITSTATUS($?);
@@ -251,10 +259,12 @@ sub execute
   $task->{process_handle} = AnyEvent::Handle->new(
     fh     => $reader,
     on_eof => sub {
+      local *__ANON__ = 'task:on_eof';
       DEBUG "[$task_id] Received EOF";
       $process_exit->();
     },
     on_error => sub {
+      local *__ANON__ = 'task:on_error';
       DEBUG "[$task_id] Received error: $!";
       $process_exit->();
     },

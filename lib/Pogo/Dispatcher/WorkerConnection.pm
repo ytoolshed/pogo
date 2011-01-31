@@ -44,6 +44,7 @@ sub accept
       ca_file   => Pogo::Dispatcher->worker_cert,
       verify    => 1,
       verify_cb => sub {
+        local *__ANON__ = 'handle:verify';
         my $preverify_ok = $_[4];
         my $cert         = $_[6];
         DEBUG sprintf( "certificate: %s", AnyEvent::TLS::certname($cert) );
@@ -52,6 +53,7 @@ sub accept
     },
     keepalive   => 1,
     on_starttls => sub {
+      local *__ANON__ = 'handle:starttls';
       my $success = $_[1];
       my $msg     = $_[2];
       INFO sprintf( "Received connection from worker at %s:%d", $host, $port );
