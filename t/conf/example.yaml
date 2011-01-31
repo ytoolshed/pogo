@@ -1,7 +1,7 @@
 # example constraints
 ---
 plugins:
-  targets: Pogo::Plugin::Target::Inline
+  targets: Pogo::Plugin::Inline
 
 apps:
   frontend:

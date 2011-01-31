@@ -1,4 +1,4 @@
-package Pogo::Plugin::Target::Inline;
+package Pogo::Plugin::Inline;
 
 # Copyright (c) 2010, Yahoo! Inc. All rights reserved.
 #
@@ -21,7 +21,24 @@ use Data::Dumper;
 use Log::Log4perl qw(:easy);
 use String::Glob::Permute qw(string_glob_permute);
 
-use base qw(Pogo::Plugin::Target);
+sub new
+{
+  my ( $class, %opts ) = @_;
+  return bless \%opts, $class;
+}
+
+sub expand_targets
+{
+  my ($self, $targets) = @_;
+  my @flat;
+  foreach my $target (@$targets)
+  {
+    push @flat, string_glob_permute($target);
+  }
+
+  my %uniq = map { $_ => 1 } @flat;
+  return [ keys %uniq ];
+}
 
 sub fetch_target_meta
 {
@@ -71,29 +88,6 @@ sub fetch_target_meta
   }
 
   $cont->( $self->{_target_cache}->{$target} );
-}
-
-sub get_apps
-{
-  my ( $self, $target ) = @_;
-}
-
-sub get_envs
-{
-  my ( $self, $target ) = @_;
-}
-
-sub expand_target
-{
-  my ( $self, $target ) = @_;
-
-  my @flat;
-  push @flat, string_glob_permute($target);
-
-  # we also need to uniq this, methinks
-  my %uniq = map { $_ => 1 } @flat;
-
-  return keys %uniq;
 }
 
 1;

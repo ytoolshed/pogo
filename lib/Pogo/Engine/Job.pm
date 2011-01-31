@@ -339,7 +339,7 @@ sub retry_task
 sub finish_task
 {
   my ( $self, $hostname, $exitstatus, $msg ) = @_;
-  DEBUG "host $hostname exited $exitstatus; attempting to continue job";
+  DEBUG "host $hostname exited $exitstatus";
   my $host = $self->host($hostname);
 
   # TODO: set end time meta value on host
@@ -461,6 +461,7 @@ sub halt
       $self->set_host_state( $host, 'halted', 'job halted', $reason );
     }
   }
+  Pogo::Dispatcher->purge_queue( $self->id );
   $self->unlock_all();
 }
 
@@ -535,7 +536,6 @@ sub start
 {
   my ( $self, $errc, $cont ) = @_;
 
-  # do hostinfo lookup for the targets
   my $target     = decode_json( $self->meta('target') );
   my $ns         = $self->namespace;
   my $concurrent = $self->concurrent;
@@ -547,6 +547,8 @@ sub start
   my $all_host_meta = {};
   my @dead_hosts    = ();
 
+  my $flat_targets = $ns->expand_targets($target);
+
   eval {
     # constrained codepath
     # fetch all meta (apps+envs) before we add to the job
@@ -554,7 +556,6 @@ sub start
     if ( !defined $concurrent )
     {
       DEBUG "we are constrained.";
-      my @flat_targets = $ns->target_plugin->fetch_targets($target);
 
       my $fetch_errc = sub {
         local *__ANON__ = 'AE:cb:fetch_target_meta:errc';
@@ -570,33 +571,26 @@ sub start
         $self->fetch_runnable_hosts();
       };
 
-      $ns->fetch_target_meta( \@flat_targets, $ns->name, $fetch_errc, $fetch_cont, );
+      $ns->fetch_target_meta( $flat_targets, $ns->name, $fetch_errc, $fetch_cont, );
     }
     else    # concurrent codepath
     {
       DEBUG "we are concurrent.";
-      my $cont = sub {
-        my $flat_targets = shift;
-        foreach my $hostname (@$flat_targets)
-        {
-          my $host = $self->host( $hostname, 'waiting' );
+      foreach my $hostname (@$flat_targets)
+      {
+        my $host = $self->host( $hostname, 'waiting' );
 
-          # note that i think we should probably store host meta here anyway
-          # since we don't want a concurrent and a constrained job to overlap
-          # and allow too many hosts down
-          # lack of hinfo just isn't an error in that case
+        # note that i think we should probably store host meta here anyway
+        # since we don't want a concurrent and a constrained job to overlap
+        # and allow too many hosts down
+        # lack of hinfo just isn't an error in that case
 
-          my $hmeta = { _concurrent => $concurrent };
-          $host->set_hostinfo($hmeta);
-          $all_host_meta->{$hostname} = $hmeta;
-        }
-        $self->set_state( 'running', "constraints computed" );
-        $self->start_job_timeout();
-      };
-
-      my $log_cont = sub { };
-
-      $ns->target_plugin->fetch_targets( $target, $errc, $cont, $log_cont );
+        my $hmeta = { _concurrent => $concurrent };
+        $host->set_hostinfo($hmeta);
+        $all_host_meta->{$hostname} = $hmeta;
+      }
+      $self->set_state( 'running', "constraints computed" );
+      $self->start_job_timeout();
     }
   };
 
