@@ -1,3 +1,5 @@
+[%# vim:ft=html
+%]
 [% INCLUDE _page_header.tt %]
 
 [% IF running_jobs.0 %]

@@ -1,3 +1,5 @@
+[%# vim:ft=html
+%]
 <html>
   <head>
     <title>[% page_title %]</title>
@@ -183,6 +185,70 @@
       TABLE.output TD.timestamp A {
         color: #00f;
         text-decoration: none;
+      }
+
+      TABLE.targetinfo {
+        width: auto;
+        border: 1px solid #000;
+        margin-top: 5px;
+        margin-bottom: 2px;
+      }
+      TABLE.targetinfo TH, TABLE.targetinfo TD {
+        padding: 1px 3px;
+        border: 1px solid #000;
+        vertical-align: middle;
+        font-size: 1em;
+      }
+      TABLE.targetinfo TD.label {
+        background-color: #444;
+        color: #fff;
+        font-weight: bold;
+        font-size: 1.1em;
+        text-align: right;
+        padding: 3px 10px;
+      }
+      TABLE.targetinfo UL.apps {
+        padding: 0px;
+        margin: 3px 15px;
+      }
+
+      TABLE.envlist {
+        width: auto;
+        border: 1px solid #000;
+        margin-top: 5px;
+        margin-bottom: 2px;
+      }
+      TABLE.envlist TH, TABLE.envlist TD {
+        background-color: #eee;
+        padding: 1px 3px;
+        border: 1px solid #000;
+        vertical-align: middle;
+        font-size: 1em;
+      }
+      TABLE.envlist TD.label {
+        background-color: #ddd;
+        color: #000;
+        font-weight: bold;
+        font-size: 1.1em;
+        text-align: right;
+        padding: 3px;
+      }
+      TABLE.envlist UL.envs {
+        padding: 0px;
+        margin: 3px 15px;
+      }
+      TABLE.envlist UL.envs SPAN.key {
+        font-weight: bold;
+      }
+
+      .code {
+        padding: 10px 15px;
+        margin: 5px 0 15px;
+        border-left: 5px solid #666666;
+        background: #bbbbbb;
+        font: 1em/1.5 "Monaco", "Courier New", monospace;
+        color: #222222;
+        overflow : auto;
       }
     </style>
   </head>

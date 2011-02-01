@@ -23,16 +23,64 @@ use String::Glob::Permute qw(string_glob_permute);
 
 use base qw(Pogo::Plugin::Target);
 
+sub fetch_target_meta
+{
+  my ( $self, $target, $errc, $cont, $logcont ) = @_;
+  my $hinfo = {};
+
+  if ( !defined $self->{_target_cache}->{$target} )
+  {
+    # populate the cache anew - we might as well do it for all hosts
+    my $conf = $self->{conf}->();
+
+    foreach my $app ( sort keys %{ $conf->{apps} } )
+    {
+      foreach my $expression ( sort keys %{ $conf->{apps}->{$app} } )
+      {
+        foreach my $host ( string_glob_permute( $conf->{apps}->{$app}->{$expression} ) )
+        {
+          $hinfo->{$host}->{apps}->{$app} = 1;
+        }
+      }
+    }
+
+    foreach my $envtype ( sort keys %{ $conf->{envs} } )
+    {
+      foreach my $envname ( sort keys %{ $conf->{envs}->{$envtype} } )
+      {
+        foreach my $expression ( sort keys %{ $conf->{envs}->{$envtype}->{$envname} } )
+        {
+          foreach
+            my $host ( string_glob_permute( $conf->{envs}->{$envtype}->{$envname}->{$expression} ) )
+          {
+            $hinfo->{$host}->{envs}->{$envtype}->{$envname} = 1;
+          }
+        }
+      }
+    }
+
+    foreach my $target ( keys %$hinfo )
+    {
+      $self->{_target_cache}->{$target}->{apps} = [ keys %{ $hinfo->{$target}->{apps} } ];
+      foreach my $envtype ( keys %{ $hinfo->{$target}->{envs} } )
+      {
+        $self->{_target_cache}->{$target}->{envs}->{$envtype} =
+          $hinfo->{$target}->{envs}->{$envtype};
+      }
+    }
+  }
+
+  $cont->( $self->{_target_cache}->{$target} );
+}
+
 sub get_apps
 {
-  my ( $self, $expressions ) = @_;
-  DEBUG Dumper $expressions;
+  my ( $self, $target ) = @_;
 }
 
 sub get_envs
 {
-  my ( $self, $expressions ) = @_;
-  DEBUG Dumper $expressions;
+  my ( $self, $target ) = @_;
 }
 
 sub expand_target
