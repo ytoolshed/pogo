@@ -334,22 +334,6 @@ sub resolve
 }
 
 # }}}
-# {{{ fetch_target_meta
-
-# accepts a single target
-sub fetch_target_meta
-{
-  my ( $self, $target, $errc, $cont ) = @_;
-  DEBUG Dumper \@_;
-  eval { $self->target_plugin->fetch_target_meta( $target, $errc, $cont ); };
-
-  if ($@)
-  {
-    $errc->($@);
-  }
-}
-
-# }}}
 # {{{ config setters
 
 sub set_conf
@@ -361,12 +345,10 @@ sub set_conf
   my $conf    = {};
 
   # use default plugins if none are defined
-  if ( !defined $conf_in->{plugins} )
-  {
-    $conf_in->{plugins}->{targets} = 'Pogo::Plugin::Target::Inline';
-    $conf_in->{plugins}->{apps}    = 'Pogo::Plugin::Target::Inline';
-    $conf_in->{plugins}->{envs}    = 'Pogo::Plugin::Target::Inline';
-  }
+  #if ( !defined $conf_in->{plugins} )
+  #{
+  #  $conf_in->{plugins}->{targets} = 'Pogo::Plugin::Inline';
+  #}
 
   my $name = $self->name;
 
@@ -692,17 +674,43 @@ sub get_seq_successors
 sub target_plugin
 {
   my $self = shift;
-  my $name = $self->get_conf->{plugins}->{targets} || 'Pogo::Plugin::Target::Inline';
+  my $name = $self->get_conf->{plugins}->{targets} || 'Pogo::Plugin::Inline';
 
   if ( !exists $self->{_plugin_cache}->{$name} )
   {
     eval "use $name;";
     # this is a coderef because we want to make sure the data is fresh
     # the plugin should do caching of it's own metadata, not the configuration
-    $self->{_plugin_cache}->{$name} = $name->new( conf => sub { $self->get_conf }, );
+    $self->{_plugin_cache}->{$name} = $name->new(
+      conf      => sub { $self->get_conf },
+      namespace => $self->name,
+    );
   }
 
   return $self->{_plugin_cache}->{$name};
+}
+
+# }}}
+# {{{ expand_targets
+
+sub expand_targets
+{
+  my ( $self, $target ) = @_;
+  return $self->target_plugin->expand_targets($target);
+}
+
+# }}}
+# {{{ fetch_target_meta
+
+sub fetch_target_meta
+{
+  my ( $self, $target, $errc, $cont ) = @_;
+  eval { $self->target_plugin->fetch_target_meta( $target, $errc, $cont ); };
+
+  if ($@)
+  {
+    $errc->($@);
+  }
 }
 
 # }}}
