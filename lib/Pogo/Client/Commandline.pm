@@ -17,6 +17,8 @@ package Pogo::Client::Commandline;
 use 5.008;
 use common::sense;
 
+use Data::Dumper;
+
 use Getopt::Long qw(:config bundling no_ignore_case pass_through);
 use Crypt::OpenSSL::RSA;
 use Crypt::OpenSSL::X509;
@@ -35,10 +37,10 @@ use Pogo::Common;
 use Pogo::Client;
 use Pogo::Client::AuthCheck qw(get_password check_password);
 
-use constant POGO_GLOBAL_CONF     => $Pogo::Common::CONFIGDIR . '/client.conf';
-use constant POGO_USER_CONF       => $ENV{HOME} . '/.pogoconf';
-use constant POGO_WORKER_CERT     => $Pogo::Common::WORKER_CERT;
-use constant POGO_PASSPHRASE_FILE => 'bar';
+use constant POGO_GLOBAL_CONF  => $Pogo::Common::CONFIGDIR . '/client.conf';
+use constant POGO_USER_CONF    => $ENV{HOME} . '/.pogoconf';
+use constant POGO_WORKER_CERT  => $Pogo::Common::WORKER_CERT;
+use constant POGO_SECRETS_FILE => $ENV{HOME} . '/.pogo_secrets';
 
 my %LOG_SUBST = (
   'jobstate'  => 'job',
@@ -82,7 +84,7 @@ sub cmd_run
     client      => $Pogo::Client::VERSION,
     user        => $self->{userid},
     requesthost => hostname || '',
-    passfile    => POGO_PASSPHRASE_FILE,
+    secrets     => POGO_SECRETS_FILE,
   };
   GetOptions(
     my $cmdline_opts = {}, 'cookbook|C=s',
@@ -91,7 +93,7 @@ sub cmd_run
     'recipe|R=s',                'retry|r=i',
     'timeout|t=i',               'prehooks!',
     'posthooks!',                'hooks!',
-    'passfile|P=s',              'unconstrained',
+    'secrets|S=s',               'unconstrained',
     'concurrent|cc=s',           'file|f=s',
   );
 
@@ -183,15 +185,15 @@ sub cmd_run
 
   $opts->{target} = \@targets;
 
-  # package passphrases
-  my $passphrase;
-  if ( defined $opts->{passfile} && $opts->{passfile} ne '' )
+  # secrets
+  my $secrets;
+  if ( defined $opts->{secrets} && $opts->{secrets} ne '' )
   {
-    $passphrase = load_passphrases( $opts->{passfile} );
+    $secrets = load_secrets( $opts->{secrets} );
 
-    if ( !$passphrase )
+    if ( !$secrets )
     {
-      ERROR "Can't load passphrases from $opts->{passfile}: $!";
+      ERROR "Can't load secrets from $opts->{secrets}: $!";
     }
   }
 
@@ -262,8 +264,7 @@ $key,                  $value
   $opts->{run_as}   = $self->{userid};
   $opts->{password} = $cryptpw;
 
-  $opts->{secrets} =
-    { map { $_ => encode_base64( $rsa_pub->encrypt( $passphrase->{$_} ) ) } keys %$passphrase };
+  $opts->{secrets} = encode_base64( $rsa_pub->encrypt($secrets) );
 
   my $resp = $self->_client->run(%$opts);
 
@@ -776,19 +777,17 @@ sub _client
   return $self->{pogoclient};
 }
 
-sub load_passphrases
+sub load_secrets
 {
   my $file = shift;
   if ( -r $file )
   {
     my $data = load_yaml($file)
       or ERROR "Couldn't load data from '$file': $!" and return;
-    foreach my $pkg ( sort keys %$data )
+    if ( defined $data )
     {
-      DEBUG "Got passphrase for '$pkg'";
+      return $data;
     }
-
-    return $data;
   }
   else
   {
@@ -859,6 +858,138 @@ sub to_jobid
   }
 
   return $new_jobid;
+}
+
+sub load_cookbook
+{
+  my ( $self, $cookbook ) = @_;
+  DEBUG "Loading cookbook '$cookbook'";
+
+  if ( !$cookbook )
+  {
+    ERROR "No cookbook from which to load recipe";
+    return;
+  }
+
+  # load cookbook
+  my $data = load_yaml( $cookbook, $self->{opts}->{configfile} );
+
+  if ( ref($data) ne 'ARRAY' )
+  {
+    ERROR "$cookbook is not a properly formatted YAML array; see documentation\n";
+    return;
+  }
+
+  return $data;
+}
+
+sub load_recipe
+{
+  my ( $self, $recipe_name, $cookbook ) = @_;
+
+  DEBUG "Loading recipe '$recipe_name'";
+
+  my @results;
+  foreach my $record (@$cookbook)
+  {
+    next if ( !defined $record );    # skip blank records
+    if ( $record->{name} eq $recipe_name )
+    {
+      push @results, $record;
+    }
+  }
+
+  if ( @results > 1 )
+  {
+    WARN "Multiple recipes found for '$recipe_name', using first";
+  }
+
+  my $recipe = $results[0];
+
+  if ( !defined $recipe )
+  {
+    ERROR "Recipe '$recipe_name' not found in cookbook";
+    return;
+  }
+
+  if ( $recipe->{based_on} )
+  {
+    my $based_on = $self->load_recipe( $recipe->{based_on}, $cookbook );
+    if ( !defined $based_on )
+    {
+      ERROR
+        "'$recipe_name' is based on '$recipe->{based_on}', which does not exist in the cookbook";
+      return;
+    }
+    $recipe = merge_hash( $based_on, $recipe );
+  }
+
+  return $recipe;
+}
+
+sub load_yaml
+{
+  my $uri = uri_to_absuri(@_);
+
+  my $r;
+  eval { $r = $Pogo::Common::USERAGENT->get($uri); };
+  if ($@)
+  {
+    LOGDIE "Couldn't fetch uri '$uri': $@\n";
+  }
+
+  my $yaml;
+  if ( $r->is_success )
+  {
+    $yaml = $r->content;
+  }
+  else
+  {
+    LOGDIE "Couldn't fetch uri '$uri': " . $r->status_line . "\n";
+  }
+
+  my @data;
+  eval { @data = YAML::XS::Load($yaml); };
+  if ($@)
+  {
+    LOGDIE "couldn't parse '$uri': $@\n";
+  }
+
+  DEBUG sprintf "Loaded %s records from '$uri'", scalar @data;
+
+  if ( scalar @data == 1 )
+  {
+    return $data[0];
+  }
+
+  return \@data;
+}
+
+sub uri_to_absuri
+{
+  DEBUG Dumper \@_;
+  my $rel_uri = shift;
+  my $base_uri = shift || $rel_uri;
+
+  $base_uri = URI->new($base_uri);
+
+  if ( !$base_uri->scheme )
+  {
+    $base_uri = URI::file->new_abs($base_uri);
+  }
+  my $abs_uri = URI->new_abs( $rel_uri, $base_uri );
+
+  if ( !$abs_uri->scheme )
+  {
+    $abs_uri = URI::file->new_abs($abs_uri);
+  }
+
+  if ( $abs_uri ne $rel_uri )
+  {
+    DEBUG "converted '$rel_uri' to '$abs_uri'";
+  }
+
+  return $abs_uri->as_string;
 }
 
 #}}} helper crap

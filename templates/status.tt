@@ -78,6 +78,10 @@ var stateOrder = { failed:1, unreachable:2, deadlocked:3, ready:4, running:4, wa
 var hostCount = 0; // count of hosts in job
 var maxAutoUpdateHosts = 500; // maximum number of hosts before auto-updating is disabled
 var autoUpdate = true; // whether or not we're automatically updating
+var start_time = parseFloat('[% jobinfo.start_time %]') * 1000; // job start time
+var job_timeout = parseInt('[% jobinfo.job_timeout %]') * 1000; // job timeout
+var can_retry = false; // whether or not hosts can be retried
+var retry_ids = {}; // which hosts have pending retry requests
 var sortFuncs = {
   timeline: function( a, b ) {
     if ( state[ a ].start && state[ b ].start ) {
@@ -158,7 +162,11 @@ var Y = YUI().use( 'datasource', 'json', 'dump', 'node', function( Y ) {
   {
     Y.one( '#log' ).setStyle( 'display', 'block' );
   }
-
+  // disable retry if our job timeout has expired
+  var d_exp = new Date(start_time + job_timeout);
+  var d_now = new Date();
+  can_retry = (d_exp > d_now);
+  // fetch job status and render
   pogoDataSource = new Y.DataSource.Get( { source: "[% pogo_api %]?" } );
   status_update();
 } );
@@ -556,7 +564,7 @@ function render_state() {
     {
       tdTime.innerHTML = '<span class="timeline-message">' + host.msg + '</span>';
     }
-    else if (host.state == 'failed')
+    else if (host.state == 'failed' && can_retry)
     {
       var className = 'timeline-error';
       var isFatal   = true;
@@ -833,12 +841,25 @@ function do_halt()
 // this is just here to ignore return value from an rpc
 function i() {}
 
-function do_retry(host,id)
+function do_retry( host, id )
 {
-  Y.one('#retry_' + id).set('innerHTML', "<i>(requesting retry for " + host + "...)</i>");
-  pogorpc( ["jobretry",pogo_id,host], "i" );
+  Y.one( '#retry_' + id ).set( 'innerHTML', "<i>(requesting retry for " + host + "...)</i>" );
+  retry_ids[ id ] = 1;
+  pogorpc( [ 'jobretry', pogo_id, host ], 'jobretry_handler' );
   clearTimeout( timer );
   timer = setTimeout( function() { status_update(); }, 1000 );
+}
+
+function jobretry_handler( obj ) {
+  var header = obj[0];
+  if ( header.status && header.status == 'ERROR' )
+  {
+    for ( var id in retry_ids )
+    {
+      delete retry_ids[ id ];
+      Y.one( '#retry_' + id ).set( 'innerHTML', '<i>(retry failed: ' + header.errmsg + ')</i>' );
+    }
+  }
 }
 </script>
 

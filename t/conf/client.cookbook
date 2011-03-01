@@ -1,5 +1,18 @@
 # $Id$
 ---
-- 
+-
   name: test-1
   timeout: 7000
+-
+  name: test-2
+  timeout: 7000
+  namespace: example
+  target:
+    - foo[1-10].east.example.com
+    - foo[1-10].west.example.com
+    - bar[1-10].east.example.com
+    - bar[1-10].west.example.com
+  command: ls -la
+-
+  name: test-3
+  based_on: test-2

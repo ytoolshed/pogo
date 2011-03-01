@@ -14,6 +14,7 @@ package Pogo::Engine;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+use 5.008;
 use common::sense;
 
 use AnyEvent;
@@ -90,25 +91,28 @@ sub globalstatus
 
 sub hostinfo
 {
-  my ( $class, $target, $ns, $cb ) = @_;
+  my ( $class, $target, $namespace, $cb ) = @_;
 
   my $resp = Pogo::Engine::Response->new()->add_header( action => 'hostinfo' );
 
+  LOGCONFESS "need a namespace" unless defined $namespace;
+
+  my $ns = Pogo::Engine->namespace($namespace);
+
   my $error;
-  my $w = AnyEvent->condvar;
 
   # call this asyncronously as it may be ugly
-  Pogo::Roles->instance->fetch_all(
-    $target, $ns,
+  $ns->fetch_target_meta(
+    $target,
     sub {
-      $resp->set_error(shift);
-      $w->send;
+      my $err = shift;
+      $cb->( $resp->set_error($err) );
     },
     sub {
       my ( $results, $hosts ) = @_;
       $resp->add_header( hosts => join( ',', @$hosts ) );
       $resp->set_ok;
-      $resp->set_records($results);
+      $resp->set_records( [$results] );
       $cb->($resp);
     },
   );
@@ -281,7 +285,7 @@ sub jobretry
     return $resp;
   }
 
-  if ( $job->job_timeout <= time )
+  if ( ( $job->start_time + $job->job_timeout ) <= time )
   {
     $resp->set_error("jobid $jobid has expired");
     return $resp;
