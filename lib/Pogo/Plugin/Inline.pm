@@ -36,8 +36,9 @@ sub expand_targets
     push @flat, string_glob_permute($target);
   }
 
-  my %uniq = map { $_ => 1 } @flat;
-  return [ keys %uniq ];
+  my %uniq = ();
+  @flat = grep { ! $uniq{ $_ }++ } @flat;
+  return \@flat;
 }
 
 sub fetch_target_meta
@@ -96,29 +97,26 @@ sub fetch_target_meta
 
 =head1 NAME
 
-  CLASSNAME - SHORT DESCRIPTION
+Pogo::Plugin::Inline
 
 =head1 SYNOPSIS
 
-CODE GOES HERE
+    my @hosts = 
+       Pogo::Plugin::Inline->expand_targets( ["host[0-9].corp.com"] );
 
 =head1 DESCRIPTION
 
-LONG_DESCRIPTION
+Expands hostname patterns to an array of hostnames.
 
 =head1 METHODS
 
-B<methodexample>
+B<expand_targets( [$pattern, ..] )>
 
 =over 2
 
-methoddescription
+Expands 
 
 =back
-
-=head1 SEE ALSO
-
-L<Pogo::Dispatcher>
 
 =head1 COPYRIGHT
 
