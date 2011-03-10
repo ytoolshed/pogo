@@ -28,9 +28,7 @@ use lib "$Bin/../lib";
 use lib "$Bin/lib";
 
 use PogoTester;
-
-$SIG{ALRM} = sub { confess; };
-alarm(60);
+use PogoTesterAlarm;
 
 use Pogo::Engine;
 

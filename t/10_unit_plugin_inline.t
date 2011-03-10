@@ -31,8 +31,7 @@ use YAML::XS qw(Load LoadFile);
 use lib "$Bin/../lib";
 use lib "$Bin/lib";
 
-$SIG{ALRM} = sub { confess; };
-alarm(60);
+use PogoTesterAlarm;
 
 chdir($Bin);
 
