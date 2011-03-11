@@ -44,6 +44,7 @@ use Pogo::Engine;
 use Pogo::Engine::Store;
 use Pogo::Dispatcher::AuthStore;
 use Pogo::Client;
+use PogoTesterProc;
 
 our @EXPORT =
   qw(test_pogo derp dispatcher_rpc worker_rpc authstore_rpc encrypt_secret decrypt_secret client);
@@ -54,9 +55,10 @@ my $bind_address = '127.0.0.1';
 my $dispatcher_conf;
 my $worker_conf;
 my $client_conf;
-my $zookeeper_pid;
-my $dispatcher_pid;
-my $worker_pid;
+
+my $zookeeper_proc;
+my $dispatcher_proc;
+my $worker_proc;
 
 my $pogo_client;
 
@@ -85,129 +87,82 @@ sub test_pogo(&)
 
 sub start_dispatcher
 {
-  return if $dispatcher_pid;
-  $dispatcher_pid = fork();
+  if( defined $dispatcher_proc and 
+  $dispatcher_proc->poll() ) {
+    return 0;
+  }
 
-  if ( $dispatcher_pid == 0 )
-  {
-    open STDOUT, "|tee $Bin/.tmp/dispatcher.log";
-    open STDERR, '>&STDOUT';
-    close STDIN;
-    exec(
-      "/usr/bin/env",                "perl", "-I$Bin/../lib", "-I$Bin/lib",
-      "$Bin/../bin/pogo-dispatcher", '-f',   "$Bin/conf/dispatcher.conf"
-    ) or LOGDIE $!;
-  }
-  else
-  {
-    INFO "spawned dispatcher (pid $dispatcher_pid)";
-    open my $pidfile, '>', "$Bin/.tmp/dispatcher.pid";
-    print $pidfile $dispatcher_pid;
-    close $pidfile;
-  }
-  sleep 1;
+  my $cmd = "/usr/bin/env perl -I$Bin/../lib -I$Bin/lib " .
+  "$Bin/../bin/pogo-dispatcher -f $Bin/conf/dispatcher.conf";
+
+  my $starter = PogoTesterProc::proc_starter( 
+    "dispatcher", $cmd);
+
+  $dispatcher_proc = $starter->();
+  DEBUG "dispatcher pid=", $dispatcher_proc->pid();
+
+  sleep 5;
 }
 
 sub stop_dispatcher
 {
-  if ( -r "$Bin/.tmp/dispatcher.pid" )
-  {
-    open my $pidfile, '<', "$Bin/.tmp/dispatcher.pid";
-    $dispatcher_pid ||= <$pidfile>;
-    close $pidfile;
-    unlink "$Bin/.tmp/dispatcher.pid";
-  }
+  return if ! $dispatcher_proc->poll();
 
-  return unless $dispatcher_pid;
-  INFO "killing $dispatcher_pid";
-  kill( TERM => $dispatcher_pid );
-  undef $dispatcher_pid;
+  $dispatcher_proc->kill();
+  undef $dispatcher_proc;
 }
 
 sub start_zookeeper
 {
-  return if $zookeeper_pid;
-  my $zookeeper_cmd =
-    `$Bin/../build/zookeeper/bin/zkServer.sh print-cmd $Bin/conf/zookeeper.conf 2>/dev/null`;
-  DEBUG "using '$zookeeper_cmd'";
-
-  $zookeeper_pid = fork();
-
-  if ( $zookeeper_pid == 0 )
-  {
-    open STDOUT, "|tee $Bin/.tmp/zookeeper.log";
-    open STDERR, '>&STDOUT';
-    close STDIN;
-    exec($zookeeper_cmd) or LOGDIE "$zookeeper_cmd failed: $!";
+  if( defined $zookeeper_proc and 
+      $zookeeper_proc->poll() ) {
+      return 0;
   }
-  else
-  {
-    INFO "spawned zookeeper (pid $zookeeper_pid)";
-    open my $pidfile, '>', "$Bin/.tmp/zookeeper.pid";
-    print $pidfile $zookeeper_pid;
-    close $pidfile;
-  }
+
+  my $cmdcmd = "$Bin/../build/zookeeper/bin/zkServer.sh print-cmd " .
+               "$Bin/conf/zookeeper.conf 2>/dev/null";
+  my $cmd = `$cmdcmd`;
+
+  my $starter = PogoTesterProc::proc_starter( 
+    "zookeeper", $cmd);
+
+  $zookeeper_proc = $starter->();
+  DEBUG "zookeeper pid=", $zookeeper_proc->pid();
+  sleep 10; #TODO FIX
 }
 
 sub stop_zookeeper
 {
-  if ( -r "$Bin/.tmp/zookeeper.pid" )
-  {
-    open my $pidfile, '<', "$Bin/.tmp/zookeeper.pid";
-    $zookeeper_pid ||= <$pidfile>;
-    close $pidfile;
-    unlink "$Bin/.tmp/zookeeper.pid";
-  }
+  return if ! $zookeeper_proc->poll();
 
-  return unless $zookeeper_pid;
-  INFO "killing $zookeeper_pid";
-  kill( TERM => $zookeeper_pid );
-  undef $zookeeper_pid;
-  sleep 3;
+  $zookeeper_proc->kill();
+  undef $zookeeper_proc;
 }
 
 sub start_worker
 {
-  return if $worker_pid;
-  $worker_pid = fork();
-
-  mkdir "$Bin/.tmp/pogo_output"
-    unless -d "$Bin/.tmp/pogo_output";
-
-  if ( $worker_pid == 0 )
-  {
-    open STDOUT, "|tee $Bin/.tmp/worker.log";
-    open STDERR, '>&STDOUT';
-    close STDIN;
-    exec(
-      "/usr/bin/env",            "perl", "-I$Bin/../lib", "-I$Bin/lib",
-      "$Bin/../bin/pogo-worker", '-f',   "$Bin/conf/worker.conf"
-    ) or LOGDIE $!;
+  if( defined $worker_proc and 
+  $worker_proc->poll() ) {
+    return 0;
   }
-  else
-  {
-    INFO "spawned worker (pid $worker_pid)";
-    open my $pidfile, '>', "$Bin/.tmp/worker.pid";
-    print $pidfile $worker_pid;
-    close $pidfile;
-  }
-  sleep 0.5;
+
+  my $cmd = "/usr/bin/env perl -I$Bin/../lib -I$Bin/lib " .
+            "$Bin/../bin/pogo-worker -f $Bin/conf/worker.conf";
+
+  my $starter = PogoTesterProc::proc_starter( 
+    "worker", $cmd);
+
+    $worker_proc = $starter->();
+    DEBUG "worker pid=", $worker_proc->pid();
+    sleep 1; #TODO FIX
 }
 
 sub stop_worker
 {
-  if ( -r "$Bin/.tmp/worker.pid" )
-  {
-    open my $pidfile, '<', "$Bin/.tmp/worker.pid";
-    $worker_pid ||= <$pidfile>;
-    close $pidfile;
-    unlink "$Bin/.tmp/worker.pid";
-  }
+  return if ! $worker_proc->poll();
 
-  return unless $worker_pid;
-  INFO "killing $worker_pid";
-  kill( TERM => $worker_pid );
-  undef $worker_pid;
+  $worker_proc->kill();
+  undef $worker_proc;
 }
 
 sub init_store
