@@ -48,6 +48,7 @@ requires 'Net::ZooKeeper';
 requires 'POSIX';
 requires 'Pod::Find';
 requires 'Pod::Usage';
+requires 'Proc::Simple';
 requires 'Scalar::Util';
 requires 'Set::Scalar';
 requires 'Socket';
