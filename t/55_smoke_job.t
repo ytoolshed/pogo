@@ -31,9 +31,7 @@ use lib "$Bin/../lib";
 use lib "$Bin/lib";
 
 use PogoTester;
-
-$SIG{ALRM} = sub { confess; };
-alarm(60);
+use PogoTesterAlarm;
 
 test_pogo
 {
@@ -71,9 +69,9 @@ test_pogo
       or diag explain $dispatcher;
     ok( exists $dispatcher->{workers_busy}, "exists workers_busy" )
       or diag explain $dispatcher;
-    ok( $dispatcher->{workers_idle} == 1, "one workers_idle" )
+    is( scalar @{$dispatcher->{workers_idle}}, 1, "one workers_idle" )
       or diag explain $dispatcher;
-    ok( $dispatcher->{workers_busy} == 0, "zero workers_busy" )
+    is( scalar @{$dispatcher->{workers_busy}}, 0, "zero workers_busy" )
       or diag explain $dispatcher;
   }
 

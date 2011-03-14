@@ -28,9 +28,7 @@ use lib "$Bin/../lib";
 use lib "$Bin/lib";
 
 use PogoTester;
-
-$SIG{ALRM} = sub { confess; };
-alarm(60);
+use PogoTesterAlarm;
 
 use Pogo::Engine;
 
@@ -294,11 +292,12 @@ Apache 2.0
 
 =head1 AUTHORS
 
-  Andrew Sloane <asloane@yahoo-inc.com>
-  Michael Fischer <mfischer@yahoo-inc.com>
-  Nicholas Harteau <nrh@yahoo-inc.com>
-  Nick Purvis <nep@yahoo-inc.com>
-  Robert Phan <rphan@yahoo-inc.com>
+  Andrew Sloane <andy@a1k0n.net>
+  Michael Fischer <michael+pogo@dynamine.net>
+  Mike Schilli <m@perlmeister.com>
+  Nicholas Harteau <nrh@hep.cat>
+  Nick Purvis <nep@noisetu.be>
+  Robert Phan robert.phan@gmail.com
 
 =cut
 
