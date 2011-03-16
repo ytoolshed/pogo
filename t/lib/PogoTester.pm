@@ -45,6 +45,7 @@ use Pogo::Engine::Store;
 use Pogo::Dispatcher::AuthStore;
 use Pogo::Client;
 use PogoTesterProc;
+use IO::Socket;
 
 our @EXPORT =
   qw(test_pogo derp dispatcher_rpc worker_rpc authstore_rpc encrypt_secret decrypt_secret client);
@@ -128,7 +129,17 @@ sub start_zookeeper
 
   $zookeeper_proc = $starter->();
   DEBUG "zookeeper pid=", $zookeeper_proc->pid();
-  sleep 10; #TODO FIX
+
+  for (1..10) {
+    if( test_zookeeper() ) {
+      DEBUG "Zookeeper is ok.";
+      return 1;
+    }
+    sleep 1;
+    DEBUG "Zookeeper not up yet.";
+  }
+
+  LOGDIE "Couldn't start zookeeper";
 }
 
 sub stop_zookeeper
@@ -137,6 +148,42 @@ sub stop_zookeeper
 
   $zookeeper_proc->kill();
   undef $zookeeper_proc;
+}
+
+sub test_zookeeper {
+  my $port;
+  my $conf = "$Bin/conf/zookeeper.conf";
+
+  open F, "<$conf" or die "$conf: $!";
+  while( <F> ) {
+    if( /clientPort\s*=\s*(\d+)/ ) {
+      $port = $1;
+      last;
+    }
+  }
+  close( F );
+
+  if( !defined $port ) {
+     LOGDIE "Can't find zk port in $conf";
+  }
+
+  DEBUG "Contacting zookeeper on port $port";
+
+  my $s = IO::Socket::INET->new( 
+    PeerHost => 'localhost',
+    PeerPort => $port,
+  );
+
+  $s->write( "ruok\n" );
+  $s->read( my $buf, 1024 );
+
+  DEBUG "Zookeeper said: $buf";
+
+  if( $buf eq "imok" ) {
+    return 1;
+  }
+
+  return 0;
 }
 
 sub start_worker
