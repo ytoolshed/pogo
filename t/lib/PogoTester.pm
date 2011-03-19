@@ -74,9 +74,6 @@ sub test_pogo(&)
     system("rm -rf $Bin/.tmp");
     mkdir "$Bin/.tmp"
       unless -d "$Bin/.tmp";
-    mkdir "$Bin/.tmp/pogo_output"
-      unless -d "$Bin/.tmp/pogo_output";
-
     start_zookeeper();
     start_dispatcher();
     sleep 2;
@@ -173,6 +170,9 @@ sub start_worker
 {
   return if $worker_pid;
   $worker_pid = fork();
+
+  mkdir "$Bin/.tmp/pogo_output"
+    unless -d "$Bin/.tmp/pogo_output";
 
   if ( $worker_pid == 0 )
   {

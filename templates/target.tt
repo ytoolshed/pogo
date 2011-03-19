@@ -1,0 +1,47 @@
+[%# vim:ft=html
+%]
+[% INCLUDE _page_header.tt %]
+
+<table cellpadding="0" cellspacing="0" border="0" class="targetinfo">
+  <tr>
+    <td class="label">Target</td>
+    <td>[% target %]</td>
+  </tr>
+
+  <tr>
+    <td class="label">Apps</td>
+    <td>
+      <ul class="apps">
+      [% FOREACH app IN apps.sort %]
+        <li class="app">[% app %]</li>
+      [% END %]
+      </ul>
+    </td>
+  </tr>
+
+  <tr>
+    <td class="label">Envs</td>
+    <td>
+      <table cellpadding="0" cellspacing="0" border="0" class="envlist">
+        [% FOREACH group IN envs.keys.sort %]
+        <tr>
+          <td class="label">[% group %]</td>
+          <td>
+            <ul class="envs">
+              [% FOREACH env IN envs.$group.keys.sort %]
+                <li class="env">
+                  <span class="key">[% env %]</span>:
+                  <span class="value">[% envs.$group.$env %]</span>
+                </li>
+              [% END %]
+            </ul>
+          </td>
+        </tr>
+        [% END %]
+      </table>
+    </td>
+  </tr>
+</table>
+
+[% INCLUDE _page_footer.tt %]
+

@@ -14,6 +14,8 @@ package Pogo::Engine::Namespace;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+use Data::Dumper;
+
 use 5.008;
 use common::sense;
 
@@ -56,13 +58,13 @@ sub init
   if ( !store->exists( $self->path ) )
   {
     store->create( $self->path, '' )
-      or LOGDIE "unable to create namespace '$ns': " . store->get_error;
+      or LOGCONFESS "unable to create namespace '$ns': " . store->get_error_name;
     store->create( $self->path . '/env', '' )
-      or LOGDIE "unable to create namespace '$ns': " . store->get_error;
+      or LOGCONFESS "unable to create namespace '$ns': " . store->get_error_name;
     store->create( $self->path . '/lock', '' )
-      or LOGDIE "unable to create namespace '$ns': " . store->get_error;
+      or LOGCONFESS "unable to create namespace '$ns': " . store->get_error_name;
     store->create( $self->path . '/conf', '' )
-      or LOGDIE "unable to create namespace '$ns': " . store->get_error;
+      or LOGCONFESS "unable to create namespace '$ns': " . store->get_error_name;
   }
 
   return $self;
@@ -161,6 +163,8 @@ sub fetch_all_slots
   my %to_resolve  = ();
   my @slotlookups = ();
 
+  DEBUG Dumper $hostinfo_map;
+
   my $concurrent = $job->concurrent;
   if ( defined $concurrent )
   {
@@ -194,8 +198,10 @@ sub fetch_all_slots
 
   # this is where we handle the more complex, non-concurrent case
 
-  my $const = $self->get_all_constraints;
-  my $seq   = $self->get_all_sequences;
+  my $const = $self->get_all_curs;
+  my $seq   = $self->get_all_seqs;
+
+  DEBUG Dumper [ $const, $seq ];
 
   # resolve all max_down_hosts for each app-env
   while ( my ( $hostname, $hostinfo ) = each %$hostinfo_map )
@@ -316,6 +322,18 @@ sub unlock_job
 }
 
 # }}}
+# {{{ resolve
+
+# this is where we need to do plugin-based lookups
+# we find/initialize the plugins and fire off
+# BATCHSIZE'd chunks of lookups
+sub resolve
+{
+  my ( $self, $lookups, $errc, $cont ) = @_;
+  DEBUG Dumper $lookups;
+}
+
+# }}}
 # {{{ config setters
 
 sub set_conf
@@ -327,12 +345,10 @@ sub set_conf
   my $conf    = {};
 
   # use default plugins if none are defined
-  if ( !defined $conf_in->{plugins} )
-  {
-    $conf_in->{plugins}->{targets} = 'Pogo::Plugin::Target::Inline';
-    $conf_in->{plugins}->{apps}    = 'Pogo::Plugin::Target::Inline';
-    $conf_in->{plugins}->{envs}    = 'Pogo::Plugin::Target::Inline';
-  }
+  #if ( !defined $conf_in->{plugins} )
+  #{
+  #  $conf_in->{plugins}->{targets} = 'Pogo::Plugin::Inline';
+  #}
 
   my $name = $self->name;
 
@@ -541,31 +557,31 @@ sub get_conf
   return _get_conf_r( $self->{path} . "/conf" );
 }
 
-sub get_concurrence
+sub get_cur
 {
   my ( $self, $app, $key ) = @_;
   my $c = store->get( $self->{path} . "/conf/cur/$app/$key" );
   return $c;
 }
 
-sub get_concurrences
+sub get_curs
 {
   my ( $self, $app ) = @_;
   my $path = $self->{path} . "/conf/cur/$app";
-  my %c = map { $_ => $self->get_constraint( $app, $_ ) } store->get_children($path);
+  my %c = map { $_ => $self->get_cur( $app, $_ ) } store->get_children($path);
 
   DEBUG "constraints for $app: " . join( ",", keys %c );
   return \%c;
 }
 
-sub get_all_concurrences
+sub get_all_curs
 {
   my $self = shift;
   my $path = $self->{path} . "/conf/cur";
-  return { map { $_ => $self->get_constraints($_) } store->get_children($path) };
+  return { map { $_ => $self->get_curs($_) } store->get_children($path) };
 }
 
-sub get_all_sequences
+sub get_all_seqs
 {
   my $self = shift;
   my $path = $self->{path} . "/conf/seq/pred";
@@ -658,43 +674,43 @@ sub get_seq_successors
 sub target_plugin
 {
   my $self = shift;
-  my $name = 'Pogo::Plugin::Target::Inline';
+  my $name = $self->get_conf->{plugins}->{targets} || 'Pogo::Plugin::Inline';
 
   if ( !exists $self->{_plugin_cache}->{$name} )
   {
     eval "use $name;";
-    $self->{_plugin_cache}->{$name} = $name->new();
+    # this is a coderef because we want to make sure the data is fresh
+    # the plugin should do caching of it's own metadata, not the configuration
+    $self->{_plugin_cache}->{$name} = $name->new(
+      conf      => sub { $self->get_conf },
+      namespace => $self->name,
+    );
   }
 
   return $self->{_plugin_cache}->{$name};
 }
 
-sub app_plugin
+# }}}
+# {{{ expand_targets
+
+sub expand_targets
 {
-  my $self = shift;
-  my $name = 'Pogo::Plugin::Target::Inline';
-
-  if ( !exists $self->{_plugin_cache}->{$name} )
-  {
-    eval "use $name;";
-    $self->{_plugin_cache}->{target} = $name->new();
-  }
-
-  return $self->{_plugin_cache}->{$name};
+  my ( $self, $target ) = @_;
+  return $self->target_plugin->expand_targets($target);
 }
 
-sub env_plugin
+# }}}
+# {{{ fetch_target_meta
+
+sub fetch_target_meta
 {
-  my $self = shift;
-  my $name = 'Pogo::Plugin::Target::Inline';
+  my ( $self, $target, $errc, $cont ) = @_;
+  eval { $self->target_plugin->fetch_target_meta( $target, $errc, $cont ); };
 
-  if ( !exists $self->{_plugin_cache}->{$name} )
+  if ($@)
   {
-    eval "use $name;";
-    $self->{_plugin_cache}->{target} = $name->new();
+    $errc->($@);
   }
-
-  return $self->{_plugin_cache}->{$name};
 }
 
 # }}}

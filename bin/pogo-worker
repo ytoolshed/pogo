@@ -138,6 +138,7 @@ sub main
 
   # Log something and clean up if we are terminated by SIGTERM or SIGINT.
   $SIG{INT} = $SIG{TERM} = sub {
+    local *__ANON__ = 'sighandler';
     my $name = shift;
     FATAL "Process terminated by SIG$name";
     unlink $opts->{pid_file} if -e $opts->{pid_file};

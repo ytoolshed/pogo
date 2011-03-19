@@ -14,7 +14,7 @@ tasks to worker processes.  Workers ssh to the target nodes and run the
 commands specified by the user, reporting progress and status back to
 the dispatcher.
 
-For more information see the Pogo wiki: http://github.com/nrh/pogo/wiki
+For more information see the Pogo wiki: http://github.com/ytoolshed/pogo/wiki
 
 ## LICENSE
 Distributed under the terms of the Apache 2.0 license.
