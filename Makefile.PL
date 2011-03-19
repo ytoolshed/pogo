@@ -44,6 +44,7 @@ requires 'List::Util';
 requires 'Log::Log4perl';
 requires 'MIME::Base64';
 requires 'MIME::Types';
+requires 'Net::SSLeay';
 requires 'Net::ZooKeeper';
 requires 'POSIX';
 requires 'Pod::Find';

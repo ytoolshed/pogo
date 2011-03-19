@@ -1,6 +1,6 @@
 package PogoTester;
 
-# Copyright (c) 2010, Yahoo! Inc. All rights reserved.
+# Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -94,15 +94,22 @@ sub start_dispatcher
     return 0;
   }
 
-  my $cmd = "/usr/bin/env perl -I$Bin/../lib -I$Bin/lib "
-    . "$Bin/../bin/pogo-dispatcher -f $Bin/conf/dispatcher.conf";
+  my @args = (
+    '/usr/bin/env',                'perl', "-I$Bin/../lib", "-I$Bin/lib",
+    "$Bin/../bin/pogo-dispatcher", "-f",   "$Bin/conf/dispatcher.conf"
+  );
 
-  my $starter = PogoTesterProc::proc_starter( "dispatcher", $cmd );
+  my $starter = PogoTesterProc->new( "dispatcher", @args );
 
-  $dispatcher_proc = $starter->();
-  DEBUG "dispatcher pid=", $dispatcher_proc->pid();
+  $dispatcher_proc = $starter->start();
 
   sleep 5;
+
+  LOGDIE sprintf( "Couldn't start dispatcher!  Check %s and %s",
+    $starter->stderr_log_path, $starter->stdout_log_path )
+    unless $dispatcher_proc->poll();
+
+  DEBUG "dispatcher pid=", $dispatcher_proc->pid();
 }
 
 sub stop_dispatcher
@@ -125,9 +132,9 @@ sub start_zookeeper
     "$Bin/../build/zookeeper/bin/zkServer.sh print-cmd " . "$Bin/conf/zookeeper.conf 2>/dev/null";
   my $cmd = `$cmdcmd`;
 
-  my $starter = PogoTesterProc::proc_starter( "zookeeper", $cmd );
+  my $starter = PogoTesterProc->new( 'zookeeper', $cmd );
 
-  $zookeeper_proc = $starter->();
+  $zookeeper_proc = $starter->start();
   DEBUG "zookeeper pid=", $zookeeper_proc->pid();
 
   for ( 1 .. 10 )
@@ -201,19 +208,27 @@ sub start_worker
     return 0;
   }
 
-  my $cmd = "/usr/bin/env perl -I$Bin/../lib -I$Bin/lib "
-    . "$Bin/../bin/pogo-worker -f $Bin/conf/worker.conf";
+  my @args = (
+    '/usr/bin/env',            'perl', "-I$Bin/../lib", "-I$Bin/lib",
+    "$Bin/../bin/pogo-worker", '-f',   "$Bin/conf/worker.conf"
+  );
 
-  my $starter = PogoTesterProc::proc_starter( "worker", $cmd );
+  my $starter = PogoTesterProc->new( 'worker', @args );
 
-  $worker_proc = $starter->();
-  DEBUG "worker pid=", $worker_proc->pid();
+  $worker_proc = $starter->start();
+
   sleep 1;    #TODO FIX
+
+  LOGDIE sprintf( "Couldn't start worker!  Check %s and %s",
+    $starter->stderr_log_path, $starter->stdout_log_path )
+    unless $worker_proc->poll();
+
+  DEBUG "worker pid=", $worker_proc->pid();
 }
 
 sub stop_worker
 {
-  return if !$worker_proc->poll();
+  return if !defined $worker_proc or !$worker_proc->poll();
 
   $worker_proc->kill();
   undef $worker_proc;
@@ -402,8 +417,10 @@ Apache 2.0
   Mike Schilli <m@perlmeister.com>
   Nicholas Harteau <nrh@hep.cat>
   Nick Purvis <nep@noisetu.be>
-  Robert Phan robert.phan@gmail.com
+  Robert Phan <robert.phan@gmail.com>
 
 =cut
+
+__END__
 
 # vim:syn=perl:sw=2:ts=2:sts=2:et:fdm=marker
