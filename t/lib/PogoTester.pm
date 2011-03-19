@@ -88,16 +88,16 @@ sub test_pogo(&)
 
 sub start_dispatcher
 {
-  if( defined $dispatcher_proc and 
-  $dispatcher_proc->poll() ) {
+  if ( defined $dispatcher_proc
+    and $dispatcher_proc->poll() )
+  {
     return 0;
   }
 
-  my $cmd = "/usr/bin/env perl -I$Bin/../lib -I$Bin/lib " .
-  "$Bin/../bin/pogo-dispatcher -f $Bin/conf/dispatcher.conf";
+  my $cmd = "/usr/bin/env perl -I$Bin/../lib -I$Bin/lib "
+    . "$Bin/../bin/pogo-dispatcher -f $Bin/conf/dispatcher.conf";
 
-  my $starter = PogoTesterProc::proc_starter( 
-    "dispatcher", $cmd);
+  my $starter = PogoTesterProc::proc_starter( "dispatcher", $cmd );
 
   $dispatcher_proc = $starter->();
   DEBUG "dispatcher pid=", $dispatcher_proc->pid();
@@ -107,7 +107,7 @@ sub start_dispatcher
 
 sub stop_dispatcher
 {
-  return if ! $dispatcher_proc->poll();
+  return if !$dispatcher_proc->poll();
 
   $dispatcher_proc->kill();
   undef $dispatcher_proc;
@@ -115,23 +115,25 @@ sub stop_dispatcher
 
 sub start_zookeeper
 {
-  if( defined $zookeeper_proc and 
-      $zookeeper_proc->poll() ) {
-      return 0;
+  if ( defined $zookeeper_proc
+    and $zookeeper_proc->poll() )
+  {
+    return 0;
   }
 
-  my $cmdcmd = "$Bin/../build/zookeeper/bin/zkServer.sh print-cmd " .
-               "$Bin/conf/zookeeper.conf 2>/dev/null";
+  my $cmdcmd =
+    "$Bin/../build/zookeeper/bin/zkServer.sh print-cmd " . "$Bin/conf/zookeeper.conf 2>/dev/null";
   my $cmd = `$cmdcmd`;
 
-  my $starter = PogoTesterProc::proc_starter( 
-    "zookeeper", $cmd);
+  my $starter = PogoTesterProc::proc_starter( "zookeeper", $cmd );
 
   $zookeeper_proc = $starter->();
   DEBUG "zookeeper pid=", $zookeeper_proc->pid();
 
-  for (1..10) {
-    if( test_zookeeper() ) {
+  for ( 1 .. 10 )
+  {
+    if ( test_zookeeper() )
+    {
       DEBUG "Zookeeper is ok.";
       return 1;
     }
@@ -144,42 +146,47 @@ sub start_zookeeper
 
 sub stop_zookeeper
 {
-  return if ! $zookeeper_proc->poll();
+  return if !$zookeeper_proc->poll();
 
   $zookeeper_proc->kill();
   undef $zookeeper_proc;
 }
 
-sub test_zookeeper {
+sub test_zookeeper
+{
   my $port;
   my $conf = "$Bin/conf/zookeeper.conf";
 
   open F, "<$conf" or die "$conf: $!";
-  while( <F> ) {
-    if( /clientPort\s*=\s*(\d+)/ ) {
+  while (<F>)
+  {
+    if (/clientPort\s*=\s*(\d+)/)
+    {
       $port = $1;
       last;
     }
   }
-  close( F );
+  close(F);
 
-  if( !defined $port ) {
-     LOGDIE "Can't find zk port in $conf";
+  if ( !defined $port )
+  {
+    LOGDIE "Can't find zk port in $conf";
   }
 
   DEBUG "Contacting zookeeper on port $port";
 
-  my $s = IO::Socket::INET->new( 
+  my $s = IO::Socket::INET->new(
     PeerHost => 'localhost',
     PeerPort => $port,
-  );
+  ) or return 0;
 
-  $s->write( "ruok\n" );
+  $s->write("ruok\n");
   $s->read( my $buf, 1024 );
 
   DEBUG "Zookeeper said: $buf";
 
-  if( $buf eq "imok" ) {
+  if ( $buf eq "imok" )
+  {
     return 1;
   }
 
@@ -188,25 +195,25 @@ sub test_zookeeper {
 
 sub start_worker
 {
-  if( defined $worker_proc and 
-  $worker_proc->poll() ) {
+  if ( defined $worker_proc
+    and $worker_proc->poll() )
+  {
     return 0;
   }
 
-  my $cmd = "/usr/bin/env perl -I$Bin/../lib -I$Bin/lib " .
-            "$Bin/../bin/pogo-worker -f $Bin/conf/worker.conf";
+  my $cmd = "/usr/bin/env perl -I$Bin/../lib -I$Bin/lib "
+    . "$Bin/../bin/pogo-worker -f $Bin/conf/worker.conf";
 
-  my $starter = PogoTesterProc::proc_starter( 
-    "worker", $cmd);
+  my $starter = PogoTesterProc::proc_starter( "worker", $cmd );
 
-    $worker_proc = $starter->();
-    DEBUG "worker pid=", $worker_proc->pid();
-    sleep 1; #TODO FIX
+  $worker_proc = $starter->();
+  DEBUG "worker pid=", $worker_proc->pid();
+  sleep 1;    #TODO FIX
 }
 
 sub stop_worker
 {
-  return if ! $worker_proc->poll();
+  return if !$worker_proc->poll();
 
   $worker_proc->kill();
   undef $worker_proc;

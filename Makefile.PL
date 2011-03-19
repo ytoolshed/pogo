@@ -48,7 +48,6 @@ requires 'Net::ZooKeeper';
 requires 'POSIX';
 requires 'Pod::Find';
 requires 'Pod::Usage';
-requires 'Proc::Simple';
 requires 'Scalar::Util';
 requires 'Set::Scalar';
 requires 'Socket';
@@ -65,6 +64,7 @@ requires 'constant';
 
 test_requires 'FindBin';
 test_requires 'Net::SSLeay';
+test_requires 'Proc::Simple';
 test_requires 'Test::Exception';
 test_requires 'Test::More';
 
