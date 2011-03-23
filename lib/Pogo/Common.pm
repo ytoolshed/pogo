@@ -18,7 +18,6 @@ use 5.008;
 use Exporter 'import';
 use LWP::UserAgent qw();
 use Log::Log4perl qw(:easy);
-use YAML::XS qw();
 use URI;
 use URI::file;
 
@@ -32,8 +31,8 @@ our $USERAGENT = LWP::UserAgent->new(
 our $CONFIGDIR   = '/usr/local/etc/pogo/';
 our $WORKER_CERT = "$CONFIGDIR/worker.cert";
 
-our %EXPORT_TAGS = ( vars => [ $VERSION, $POGO_BASE ] );
-our @EXPORT_OK = qw($VERSION $POGO_BASE fetch_yaml uri_to_absuri merge_hash);
+our %EXPORT_TAGS = ( vars => [$VERSION] );
+our @EXPORT_OK = qw($VERSION uri_to_absuri merge_hash);
 
 sub merge_hash
 {
@@ -49,44 +48,6 @@ sub merge_hash
   }
 
   return $onto;
-}
-
-sub fetch_yaml
-{
-  my $uri = uri_to_absuri(@_);
-
-  my $r;
-  eval { $r = $USERAGENT->get($uri); };
-  if ($@)
-  {
-    LOGDIE "Couldn't fetch uri '$uri': $@\n";
-  }
-
-  my $yaml;
-  if ( $r->is_success )
-  {
-    $yaml = $r->content;
-  }
-  else
-  {
-    LOGDIE "Couldn't fetch uri '$uri': " . $r->status_line . "\n";
-  }
-
-  my @data;
-  eval { @data = YAML::XS::Load($yaml); };
-  if ($@)
-  {
-    LOGDIE "couldn't parse '$uri': $@\n";
-  }
-
-  DEBUG sprintf "Loaded %s records from '$uri'", scalar @data;
-
-  if ( scalar @data == 1 )
-  {
-    return $data[0];
-  }
-
-  return \@data;
 }
 
 sub uri_to_absuri
@@ -121,29 +82,22 @@ sub uri_to_absuri
 
 =head1 NAME
 
-  CLASSNAME - SHORT DESCRIPTION
+  Pogo::Common
 
 =head1 SYNOPSIS
 
-CODE GOES HERE
+  use Pogo::Common qw(uri_to_absuri merge_hash);
+
+    # http://foobar.com/blah
+  my $absuri = uri_to_absuri("/blah", "http://foobar.com");
+
+    # overwrite $hashref_onto with values from $hashref_from
+  merge_hash($hashref_onto, $hashref_from);
 
 =head1 DESCRIPTION
 
-LONG_DESCRIPTION
-
-=head1 METHODS
-
-B<methodexample>
-
-=over 2
-
-methoddescription
-
-=back
-
-=head1 SEE ALSO
-
-L<Pogo::Dispatcher>
+This module exports commonly used functions and constants for internal
+use within Pogo.
 
 =head1 COPYRIGHT
 
