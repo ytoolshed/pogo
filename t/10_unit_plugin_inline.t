@@ -1,5 +1,5 @@
 #!/usr/bin/env perl -w
-# Copyright (c) 2010, Yahoo! Inc. All rights reserved.
+# Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -31,19 +31,22 @@ use YAML::XS qw(Load LoadFile);
 use lib "$Bin/../lib";
 use lib "$Bin/lib";
 
-$SIG{ALRM} = sub { confess; };
-alarm(60);
+use PogoTesterAlarm;
 
 chdir($Bin);
 
 ok( Log::Log4perl::init("$Bin/conf/log4perl.conf"), "log4perl" );
 
-use Pogo::Plugin::Target::Inline;
+use Pogo::Plugin::Inline;
 
 sub hsort
 {
-  my $ahost = join( '.', reverse split /[\.\-]/, $a );
-  my $bhost = join( '.', reverse split /[\.\-]/, $b );
+
+  ( my $a_nums = $a ) =~ s/(\d+)/ sprintf("%04d", $1) /ge;
+  ( my $b_nums = $b ) =~ s/(\d+)/ sprintf("%04d", $1) /ge;
+
+  my $ahost = join( '.', reverse split /[\.\-]/, $a_nums );
+  my $bhost = join( '.', reverse split /[\.\-]/, $b_nums );
 
   return $ahost cmp $bhost
     || $a cmp $b;
@@ -53,7 +56,7 @@ my %input = (
   'foo[1-2]'     => [ sort hsort ( 'foo1', 'foo2' ) ],
   'foo[3,4]'     => [ sort hsort ( 'foo3', 'foo4' ) ],
   'foo[8,10,33]' => [ sort hsort ( 'foo8', 'foo10', 'foo33' ) ],
-  'bar[1-10]' => [ sort hsort map {"bar$_"} ( 1 .. 10 ) ],
+  'bar[1-9]' => [ sort hsort map {"bar$_"} ( 1 .. 9 ) ],
   'host[01-10]' => [ sort hsort map { sprintf "host%02d", $_ } ( 1 .. 10 ) ],
   'host[01-10].foo{bar,baz}' => eval {
     my @res = map { sprintf "host%02d.foobar", $_ } ( 1 .. 10 );
@@ -65,71 +68,30 @@ my %input = (
 
 while ( my ( $expr, $res ) = each %input )
 {
-  my @flat      = Pogo::Plugin::Target::Inline->_expand_targets( [$expr] );
-  my $size_flat = scalar @flat;
+  my $flat      = Pogo::Plugin::Inline->expand_targets( [$expr] );
+  my $size_flat = scalar @$flat;
   my $size_expr = scalar @$res;
-  ok( $size_flat == $size_expr, "$expr size" )
-    or print STDERR Dumper { flat => \@flat, res => $res };
-  is_deeply( \@flat, $res, "$expr expand" )
-    or print STDERR Dumper { flat => \@flat, res => $res };
+  is( $size_flat, $size_expr, "$expr size" )
+    or print STDERR Dumper { flat => $flat, res => $res };
+  is_deeply( $flat, $res, "$expr expand" )
+    or print STDERR Dumper { flat => $flat, res => $res };
 }
 
-my $all_expr = [ keys %input ];
+my $all_expr = [ sort hsort keys %input ];
 my @all_res;
-foreach my $res ( values %input ) { push @all_res, @$res; }
-@all_res = sort hsort @all_res;
+foreach my $res ( @input{ @$all_expr } ) { push @all_res, @$res; }
 
-my @all_flat      = Pogo::Plugin::Target::Inline->_expand_targets($all_expr);
+my $all_flat      = Pogo::Plugin::Inline->expand_targets($all_expr);
 my $all_res_size  = scalar @all_res;
-my $all_flat_size = scalar @all_flat;
+my $all_flat_size = scalar @$all_flat;
 
-ok( $all_res_size == $all_flat_size, "all size" )
-  or print STDERR Dumper { flat => \@all_flat, res => \@all_res };
-is_deeply( \@all_flat, \@all_res, "all expr" )
-  or print STDERR Dumper { flat => \@all_flat, res => \@all_res };
+is( $all_res_size, $all_flat_size, "all size" )
+  or print STDERR Dumper { flat => $all_flat, res => \@all_res };
+is_deeply( $all_flat, \@all_res, "all expr" )
+  or print STDERR Dumper { flat => $all_flat, res => \@all_res };
 
 1;
 
 =pod
-
-=head1 NAME
-
-  CLASSNAME - SHORT DESCRIPTION
-
-=head1 SYNOPSIS
-
-CODE GOES HERE
-
-=head1 DESCRIPTION
-
-LONG_DESCRIPTION
-
-=head1 METHODS
-
-B<methodexample>
-
-=over 2
-
-methoddescription
-
-=back
-
-=head1 SEE ALSO
-
-L<Pogo::Dispatcher>
-
-=head1 COPYRIGHT
-
-Apache 2.0
-
-=head1 AUTHORS
-
-  Andrew Sloane <asloane@yahoo-inc.com>
-  Michael Fischer <mfischer@yahoo-inc.com>
-  Nicholas Harteau <nrh@yahoo-inc.com>
-  Nick Purvis <nep@yahoo-inc.com>
-  Robert Phan <rphan@yahoo-inc.com>
-
-=cut
 
 # vim:syn=perl:sw=2:ts=2:sts=2:et:fdm=marker

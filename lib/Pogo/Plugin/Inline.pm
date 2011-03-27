@@ -1,6 +1,6 @@
 package Pogo::Plugin::Inline;
 
-# Copyright (c) 2010, Yahoo! Inc. All rights reserved.
+# Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -36,8 +36,9 @@ sub expand_targets
     push @flat, string_glob_permute($target);
   }
 
-  my %uniq = map { $_ => 1 } @flat;
-  return [ keys %uniq ];
+  my %uniq = ();
+  @flat = grep { ! $uniq{ $_ }++ } @flat;
+  return \@flat;
 }
 
 sub fetch_target_meta
@@ -96,29 +97,26 @@ sub fetch_target_meta
 
 =head1 NAME
 
-  CLASSNAME - SHORT DESCRIPTION
+Pogo::Plugin::Inline
 
 =head1 SYNOPSIS
 
-CODE GOES HERE
+    my @hosts = 
+       Pogo::Plugin::Inline->expand_targets( ["host[0-9].corp.com"] );
 
 =head1 DESCRIPTION
 
-LONG_DESCRIPTION
+Expands hostname patterns to an array of hostnames.
 
 =head1 METHODS
 
-B<methodexample>
+B<expand_targets( [$pattern, ..] )>
 
 =over 2
 
-methoddescription
+Expands 
 
 =back
-
-=head1 SEE ALSO
-
-L<Pogo::Dispatcher>
 
 =head1 COPYRIGHT
 
@@ -126,11 +124,12 @@ Apache 2.0
 
 =head1 AUTHORS
 
-  Andrew Sloane <asloane@yahoo-inc.com>
-  Michael Fischer <mfischer@yahoo-inc.com>
-  Nicholas Harteau <nrh@yahoo-inc.com>
-  Nick Purvis <nep@yahoo-inc.com>
-  Robert Phan <rphan@yahoo-inc.com>
+  Andrew Sloane <andy@a1k0n.net>
+  Michael Fischer <michael+pogo@dynamine.net>
+  Mike Schilli <m@perlmeister.com>
+  Nicholas Harteau <nrh@hep.cat>
+  Nick Purvis <nep@noisetu.be>
+  Robert Phan <robert.phan@gmail.com>
 
 =cut
 

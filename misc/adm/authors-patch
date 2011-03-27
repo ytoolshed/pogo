@@ -1,0 +1,56 @@
+#!/usr/local/bin/perl -w
+###########################################
+# authors-patch
+# Mike Schilli, 2011 (m@perlmeister.com)
+###########################################
+use strict;
+use Sysadm::Install qw(:all);
+use Log::Log4perl qw(:easy);
+use File::Find;
+
+Log::Log4perl->easy_init($DEBUG);
+
+my $authors = <<'EOT';
+  Andrew Sloane <andy@a1k0n.net>
+  Michael Fischer <michael+pogo@dynamine.net>
+  Mike Schilli <m@perlmeister.com>
+  Nicholas Harteau <nrh@hep.cat>
+  Nick Purvis <nep@noisetu.be>
+  Robert Phan <robert.phan@gmail.com>
+EOT
+
+find( sub {
+    my $file = $_;
+
+    return if ! -T $file;
+    file_patch( $file, $authors );
+
+}, ".");
+
+###########################################
+sub file_patch {
+###########################################
+    my( $file, $authors ) = @_;
+
+    my $data = slurp( $file );
+
+    if( !$data ) {
+        LOGWARN "Failed to read $file ($!)";
+        return;
+    }
+
+    $data =~ s/^(=head1 AUTHORS)(.*?)^(?=\S)/repl($1, $2)/emsg;
+
+    blurt $data, $file;
+}
+
+###########################################
+sub repl {
+###########################################
+
+  return <<EOT;
+$1
+
+$authors
+EOT
+}
