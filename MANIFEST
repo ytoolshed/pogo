@@ -53,8 +53,7 @@ lib/Pogo/Engine/Response.pm
 lib/Pogo/Engine/Store.pm
 lib/Pogo/Engine/Store/ZooKeeper.pm
 lib/Pogo/HTTP/Server.pm
-lib/Pogo/Plugin/Target.pm
-lib/Pogo/Plugin/Target/Inline.pm
+lib/Pogo/Plugin/Inline.pm
 lib/Pogo/UI.pm
 lib/Pogo/Worker.pm
 lib/Pogo/Worker/Connection.pm
@@ -84,7 +83,6 @@ t/52_smoke_authstore.t
 t/53_smoke_dispatcher.t
 t/54_smoke_worker.t
 t/55_smoke_job.t
-t/apache/conf/httpd.conf
 t/conf/authstore.cert
 t/conf/authstore.key
 t/conf/client.conf
