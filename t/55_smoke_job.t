@@ -69,9 +69,9 @@ test_pogo
       or diag explain $dispatcher;
     ok( exists $dispatcher->{workers_busy}, "exists workers_busy" )
       or diag explain $dispatcher;
-    is( scalar @{ $dispatcher->{workers_idle} }, 1, "one workers_idle" )
+    is( scalar @{$dispatcher->{workers_idle}}, 1, "one workers_idle" )
       or diag explain $dispatcher;
-    is( scalar @{ $dispatcher->{workers_busy} }, 0, "zero workers_busy" )
+    is( scalar @{$dispatcher->{workers_busy}}, 0, "zero workers_busy" )
       or diag explain $dispatcher;
   }
 
@@ -84,7 +84,7 @@ test_pogo
     target      => [ 'foo[1-10].example.com', ],
     namespace   => 'example',
     timeout     => 5,
-    job_timeout => 4,
+    job_timeout => 5,
     concurrent  => 1,
   };
 
@@ -97,7 +97,7 @@ test_pogo
 
   ok( $jobid eq 'p0000000000', "got jobid" );
 
-  sleep 10;    # job should timeout
+  sleep 6;    # job should timeout
 
   lives_ok { $resp = client->jobstatus($jobid) } "jobstatus $jobid"
     or diag explain $@;
