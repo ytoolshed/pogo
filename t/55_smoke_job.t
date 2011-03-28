@@ -17,7 +17,7 @@
 use 5.008;
 use common::sense;
 
-use Test::More tests => 23;
+use Test::More tests => 21;
 use Test::Exception;
 
 use Data::Dumper;
@@ -97,16 +97,22 @@ test_pogo
 
   ok( $jobid eq 'p0000000000', "got jobid" );
 
-  sleep 6;    # job should timeout
+  sleep $job1->{job_timeout};    # job should timeout
 
-  lives_ok { $resp = client->jobstatus($jobid) } "jobstatus $jobid"
-    or diag explain $@;
+  my @records;
+  for (my $i = 0; $i <= $job1->{job_timeout}; $i++)
+  {
+    $resp = client->jobstatus($jobid)
+      or diag explain $@;
+    $resp->is_success
+      or diag explain $resp;
+    @records = $resp->records;
 
-  ok( $resp->is_success, "sent jobstatus $jobid" )
-    or diag explain $resp;
+    last if $records[0] eq 'halted';
+    sleep 1;
+  }
 
-  my @records = $resp->records;
-  ok( $records[0] eq 'halted', "job $jobid halted" )
+  is( $records[0], 'halted', "job $jobid halted" )
     or diag explain \@records;
 
   # test jobretry
