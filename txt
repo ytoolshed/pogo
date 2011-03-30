@@ -1,0 +1,45 @@
+
+Andy:
+    callback takes continuation and error continuation
+
+    Engine: 
+    - fetch from zookeeper
+    - 
+
+xxx:
+
+    /pogo
+      /ns/<blah>
+          env (current executing environment)
+            <slots> = <app,envkey, envalue>
+                 (hosts occupying slot)
+                 host
+                 ...
+
+         /conf/ 
+            app/
+              <env_k>: N or % (constraint)
+
+    /pogo
+      /job
+          /p0000..../
+             hosts/
+               (hosts of this job)
+               host: state (i.e. indicates of done)
+               lock/
+               ....
+
+
+envkey: "colo"
+envval: "sp1", "ac4" ...
+
+* goes through job/ list of hosts not complete already
+* goes to namespace /conf/
+* zookeeper get children in slot
+
+* grabs the env role, does its own intersection.
+
+* culpa: metadata associated role names
+  - mail.set = farm13, colo, mud
+
+* Namespace core algorithm
