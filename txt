@@ -28,7 +28,9 @@ xxx:
                host: state (i.e. indicates of done)
                lock/
                ....
-
+               log/
+               meta/
+                 submitter: user_id
 
 envkey: "colo"
 envval: "sp1", "ac4" ...
@@ -43,3 +45,42 @@ envval: "sp1", "ac4" ...
   - mail.set = farm13, colo, mud
 
 * Namespace core algorithm
+
+Plugin API
+
+* new
+
+(rolesdb, culpa, 
+
+* batched rolesdb calls:
+
+    - xset.role => 
+       host1
+       host2  => app roles, env roles, cm3, crap
+              => tagged in namespace
+       hostN
+
+namespace: first part of dotted name. 
+
+culpa: 60k
+    - mail.base = app role
+    - mail.env
+          role1:
+             k1: v1
+             k2: v2
+          role2:
+             k1: v1
+             k2: v2
+    - or ignore
+
+* e.g. env role: mail.farm.set.sp1-prod-500
+    colo: sp1
+    farm: 500
+
+* Appgroups
+  - in namespace configuration 
+  - mapping roles shortcuts to roles
+  - lives yaml (uploaded to zookeeper?)
+
+* OS: Zookeeper stores config?
+
