@@ -84,3 +84,11 @@ culpa: 60k
 
 * OS: Zookeeper stores config?
 
+* Job.pm: job_start: 
+  -y: fetches roles 
+  -
+
+* fetch_roles: also does culpa
+
+  pogo/server/lib/Pogo/Server/Job.pm line 430
+  pogo/server/lib/Pogo/Server.pm:447
