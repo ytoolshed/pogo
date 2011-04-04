@@ -36,15 +36,17 @@ my $opts = {
   expect_wrapper => "pogo-pw",
   worker_key     => undef,
   scp_options    => [
-    qw(-q -o RSAAuthentication=no -o PubkeyAuthentication=no -o StrictHostKeyChecking=no -o LogLevel=error -o GlobalKnownHostsFile=/dev/null -o UserKnownHostsFile=/dev/null)
+    qw(-q -o RSAAuthentication=no -o PubkeyAuthentication=yes -o StrictHostKeyChecking=no -o LogLevel=error -o GlobalKnownHostsFile=/dev/null -o UserKnownHostsFile=/dev/null)
   ],
   ssh_options => [
-    qw(-o RSAAuthentication=no -o PubkeyAuthentication=no -o StrictHostKeyChecking=no -o LogLevel=error -o GlobalKnownHostsFile=/dev/null -o UserKnownHostsFile=/dev/null -t)
+    qw(-o RSAAuthentication=no -o PubkeyAuthentication=yes -o StrictHostKeyChecking=no -o LogLevel=error -o GlobalKnownHostsFile=/dev/null -o UserKnownHostsFile=/dev/null -t)
   ],
   command_prefix => [],
 };
 
 my $remote_env = { PATH => '/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin', };
+
+my $pkfile = new File::Temp();
 
 sub remote_env
 {
@@ -69,10 +71,15 @@ sub execute
   # Send timeout
   $writer->print( $args->{timeout}, "\n" );
 
+  $args->{password} = "\n" if (!$args->{password});
   # Send password
-  $writer->printf( "%s\n",
+  $writer->printf( "%s",
     pack( q{u}, $opts->{private_key}->decrypt( decode_base64( $args->{password} ) ) ) );
 
+  $args->{passphrase} = "\n" if (!$args->{passphrase});
+  # Send passphrase
+  $writer->printf( "%s",
+    pack( q{u}, $opts->{private_key}->decrypt( decode_base64( $args->{passphrase} ) ) ) );
   $writer->close;
 
   # Copy remote command's output to ours.
@@ -132,12 +139,62 @@ sub main
   $args = decode_json( STDIN->getline() );
 
   # Check for required arguments
-  for (qw(job_id command user run_as password host timeout))
+  for (qw(job_id command user run_as host timeout))
   {
     unless ( defined $args->{$_} )
     {
       LOGDIE "Missing required argument $_\n";
     }
+  }
+
+  #Check to make sure atleast one form of authentication is provided
+  if (!$args->{client_private_key} && !$args->{password}) {
+    LOGDIE "Missing authentication parameters\n";
+  }
+
+  #If it is using private key authenticaion, set up ssh-agent
+  my ($ssh_agent_pid, $ssh_sock);
+  if ($args->{client_private_key}) {
+    my $pk_data;
+    #decrypt the private key and store in tmp
+    my $n =0;
+    while  (exists ${ $args->{client_private_key} }[$n]){
+      my $data;
+      $data = ${ $args->{client_private_key} }[$n++];
+      my $dkdata = $opts->{private_key}->decrypt( decode_base64($data));
+      $pk_data .= $dkdata;
+
+    }
+
+    #copy the private key to a file
+    chmod( 0600, $pkfile );
+    $pkfile->print($pk_data);
+    $pkfile->close;
+
+    #prepare the command to start ssh-agent
+    my $agent_command = 'eval `ssh-agent` ; echo SSH_AUTH_SOCK=$SSH_AUTH_SOCK ; echo SSH_AGENT_PID=$SSH_AGENT_PID ; ';
+
+    #start the agent
+    my ( $writer, $reader ) = ( IO::Handle->new, IO::Handle->new );
+    my $pid;
+    eval { $pid = open3( $writer, $reader, undef, $agent_command); };
+    if ($@)
+    {
+      die "Error: $@";
+    }
+
+
+    #fetch the socket and pid
+    while (<$reader>) {
+      $ssh_agent_pid=$1 if(m/SSH_AGENT_PID=(\d+)$/);  
+      $ssh_sock = $1 if(m/SSH_AUTH_SOCK=(.+)$/);
+    }
+
+    #set the socket for this program and all its children
+    $ENV{SSH_AUTH_SOCK} = $ssh_sock;
+
+      push @{ $opts->{scp_options} }, ("-i", "$pkfile");
+      push @{ $opts->{ssh_options} }, ("-i", "$pkfile");
   }
 
   # insert POGO_JOB_ID into the remote environment
@@ -188,6 +245,8 @@ sub main
       "rm", $tmpfile
     );
   }
+
+  kill 9, $ssh_agent_pid if ($ssh_agent_pid);
 
   return $exit_status;
 }

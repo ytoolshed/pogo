@@ -72,13 +72,13 @@ sub init
 sub store
 {
   LOGDIE "Authstore not initialized yet" unless defined $instance;
-  my ( $self, $job, $pw, $secrets, $expire ) = @_;
+  my ( $self, $job, $pw, $secrets, $expire, $passphrase, $client_private_key ) = @_;
 
   # stash locally
-  _store_local( $job, $pw, $secrets, $expire );
+  _store_local( $job, $pw, $secrets, $expire, $passphrase, $client_private_key );
 
   # store on hosts in the peerlist
-  $_->push_write( json => [ 'storesecrets', $job, $pw, $secrets, $expire ] )
+  $_->push_write( json => [ 'storesecrets', $job, $pw, $secrets, $expire, $passphrase, $client_private_key ] )
     for values %{ $instance->{clients} };
 }
 
@@ -86,10 +86,10 @@ sub _store_local
 {
   LOGDIE "Authstore not initialized yet" unless defined $instance;
 
-  my ( $job, $pw, $secrets, $expire ) = @_;
+  my ( $job, $pw, $secrets, $expire, $passphrase, $client_private_key ) = @_;
 
   INFO "stored secrets for job $job";
-  $instance->{secrets}->{$job} = [ $pw, $secrets, $expire ];
+  $instance->{secrets}->{$job} = [ $pw, $secrets, $expire, $passphrase, $client_private_key ];
 
   # start expiration timer
   my $timer;
@@ -176,9 +176,9 @@ sub start_server
 
               if ( $cmd eq 'store' )
               {
-                my ( $jobid, $pw, $secrets, $expire ) = @args;
+                my ( $jobid, $pw, $secrets, $expire, $passphrase, $client_private_key ) = @args;
                 DEBUG "got secretss for job $jobid from authstore peer $host:$port";
-                _store_local( $jobid, $pw, $secrets, $expire );
+                _store_local( $jobid, $pw, $secrets, $expire, $passphrase, $client_private_key );
               }
               elsif ( $cmd eq 'expire' )
               {

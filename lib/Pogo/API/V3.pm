@@ -94,7 +94,7 @@ sub _rpc_run
 
   my $resp = Pogo::Engine::Response->new()->add_header( action => 'run' );
 
-  foreach my $arg (qw(user run_as command target password namespace))
+  foreach my $arg (qw(user run_as command target namespace))
   {
     if ( !exists $args{$arg} )
     {
@@ -103,6 +103,15 @@ sub _rpc_run
       return $resp;
     }
   }
+
+  unless (exists $args{'password'} || exists $args{'client_private_key'})
+  {
+    $resp->set_error("Either password or passphrase and client_private_key combination " .
+                     "needs to be provided with 'run' request");
+    DEBUG "failed run, password or passphrase and private key not provided";
+    return $resp;
+  }
+
   my $run_as  = $args{run_as};
   my $command = $args{command};
   my $target  = $args{target};
@@ -113,9 +122,9 @@ sub _rpc_run
 
   my $opts = {};
   foreach my $arg (
-    qw(invoked_as namespace target user run_as password timeout job_timeout
-    command retry prehook posthook secrets email im_handle client
-    requesthost concurrent exe_name exe_data)
+    qw(invoked_as namespace target user run_as password passphrase client_private_key 
+    timeout job_timeout command retry prehook posthook secrets email 
+    im_handle client requesthost concurrent exe_name exe_data)
     )
   {
     $opts->{$arg} = $args{$arg} if exists $args{$arg};
