@@ -140,6 +140,13 @@ sub main
     }
   }
 
+  my @target;
+  if ( $args->{host} =~ /:/ ) 
+  {
+    @target = split(":", $args->{host});
+    $args->{host} = $target[0];
+  }
+
   # insert POGO_JOB_ID into the remote environment
   $remote_env->{POGO_JOB_ID} = $args->{job_id};
 
@@ -149,7 +156,7 @@ sub main
     # Initial step: copy the attachment to our destination host.
     my $attachment = decode_base64($1);
     $tmpfile = new File::Temp();
-    chmod( 0700, $tmpfile );
+    chmod( 0755, $tmpfile );
     $tmpfile->print($attachment);
     $tmpfile->close;
     execute( $args, "scp", @{ $opts->{scp_options} },
@@ -161,6 +168,13 @@ sub main
     $args->{command}->[0] = $tmpfile->filename;
 
     # that way we can pass args to our script
+  }
+
+  if ( $args->{command_root_transform} )
+  {
+    $args->{command_root_transform} =~ s/\${rootname}/$target[1]/;
+    $args->{command_root_transform} =~ s/\${command}/$args->{command}->[0]/;
+    $args->{command}->[0] = $args->{command_root_transform};
   }
 
   # Prepend "sudo -u <user>" if we are running as someone else

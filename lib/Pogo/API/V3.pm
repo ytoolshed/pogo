@@ -113,9 +113,9 @@ sub _rpc_run
 
   my $opts = {};
   foreach my $arg (
-    qw(invoked_as namespace target user run_as password timeout job_timeout
-    command retry prehook posthook secrets email im_handle client
-    requesthost concurrent exe_name exe_data)
+    qw(invoked_as namespace target user run_as password timeout job_timeout 
+    command_root_transform command retry prehook posthook secrets email 
+    im_handle client requesthost concurrent exe_name exe_data)
     )
   {
     $opts->{$arg} = $args{$arg} if exists $args{$arg};

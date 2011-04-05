@@ -185,6 +185,24 @@ sub cmd_run
 
   $opts->{target} = \@targets;
 
+  unless ($opts->{command_root_transform})
+  {
+    foreach $host ($opts->{target})
+    {
+      die "rootname found but command_root_transform property is not set \n"
+        unless $host ~= /:./;
+    }
+  }
+
+  if ($opts->{command_root_transform})
+  {
+    die "\${command} substring not found in $opts->{command_root_transform} \n"
+      unless $opts->{command_root_transform} ~= /\${command}/;
+
+    die "\${rootname} substring not found in $opts->{command_root_transform} \n"
+      unless $opts->{command_root_transform} ~= /\${rootname}/;
+  }
+ 
   # secrets
   my $secrets;
   if ( defined $opts->{secrets} && $opts->{secrets} ne '' )
