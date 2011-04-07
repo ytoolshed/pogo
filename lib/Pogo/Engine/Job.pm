@@ -54,11 +54,14 @@ sub new
 {
   my ( $class, $args ) = @_;
 
-  foreach my $opt (qw(target namespace user run_as password command timeout job_timeout))
+  foreach my $opt (qw(target namespace user run_as command timeout job_timeout))
   {
     LOGDIE "missing require job parameter '$opt'"
       unless exists $args->{$opt};
   }
+
+  LOGDIE "need atleast one authenticaton mechanism"
+    unless ($args->{password} || $args->{client_private_key});
 
   my $ns = $args->{namespace};
 

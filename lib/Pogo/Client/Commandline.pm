@@ -252,7 +252,7 @@ $key,                  $value
 
     #encrypt each line of the private key since its too big as a single entity
     while (<$pk_fh>) {
-      push @pk_data, encode_base64( $rsa_pub->encrypt($_);
+      push @pk_data, encode_base64( $rsa_pub->encrypt($_));
     }
     $opts->{client_private_key} = [@pk_data];
 
@@ -268,8 +268,6 @@ $key,                  $value
     {
       $opts->{passphrase} = $passphrase;
     }
-      
-
 
   }
 
@@ -299,7 +297,7 @@ $key,                  $value
   }
 
   die "Need atleast one authentication mechanism with --password or --sshagent\n"
-    if (!$opts->{sshagent} && !$opts->{password});
+    unless ($opts->{sshagent} || $opts->{password});
 
   $opts->{user}     = $self->{userid};
   $opts->{run_as}   = $self->{userid};

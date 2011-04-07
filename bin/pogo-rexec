@@ -46,7 +46,6 @@ my $opts = {
 
 my $remote_env = { PATH => '/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin', };
 
-my $pkfile = new File::Temp();
 
 sub remote_env
 {
@@ -71,15 +70,25 @@ sub execute
   # Send timeout
   $writer->print( $args->{timeout}, "\n" );
 
-  $args->{password} = "\n" if (!$args->{password});
-  # Send password
-  $writer->printf( "%s",
-    pack( q{u}, $opts->{private_key}->decrypt( decode_base64( $args->{password} ) ) ) );
+  if (!$args->{password}) {
+    # Send blank password
+    $writer->printf( "%s",
+      pack( q{u}, "\n" ) );
+  } else {
+    # Send password
+    $writer->printf( "%s",
+      pack( q{u}, $opts->{private_key}->decrypt( decode_base64( $args->{password} ) ) ) );
+  }
 
-  $args->{passphrase} = "\n" if (!$args->{passphrase});
-  # Send passphrase
-  $writer->printf( "%s",
-    pack( q{u}, $opts->{private_key}->decrypt( decode_base64( $args->{passphrase} ) ) ) );
+  if (!$args->{passphrase}) {
+    # Send blank passphrase
+    $writer->printf( "%s",
+      pack( q{u}, "\n" ) );
+  } else {
+    # Send passphrase
+    $writer->printf( "%s",
+      pack( q{u}, $opts->{private_key}->decrypt( decode_base64( $args->{passphrase} ) ) ) );
+  }
   $writer->close;
 
   # Copy remote command's output to ours.
@@ -155,22 +164,6 @@ sub main
   #If it is using private key authenticaion, set up ssh-agent
   my ($ssh_agent_pid, $ssh_sock);
   if ($args->{client_private_key}) {
-    my $pk_data;
-    #decrypt the private key and store in tmp
-    my $n =0;
-    while  (exists ${ $args->{client_private_key} }[$n]){
-      my $data;
-      $data = ${ $args->{client_private_key} }[$n++];
-      my $dkdata = $opts->{private_key}->decrypt( decode_base64($data));
-      $pk_data .= $dkdata;
-
-    }
-
-    #copy the private key to a file
-    chmod( 0600, $pkfile );
-    $pkfile->print($pk_data);
-    $pkfile->close;
-
     #prepare the command to start ssh-agent
     my $agent_command = 'eval `ssh-agent` ; echo SSH_AUTH_SOCK=$SSH_AUTH_SOCK ; echo SSH_AGENT_PID=$SSH_AGENT_PID ; ';
 
@@ -183,18 +176,36 @@ sub main
       die "Error: $@";
     }
 
-
     #fetch the socket and pid
-    while (<$reader>) {
-      $ssh_agent_pid=$1 if(m/SSH_AGENT_PID=(\d+)$/);  
-      $ssh_sock = $1 if(m/SSH_AUTH_SOCK=(.+)$/);
+    while (my $line = $reader->getline) {
+      $ssh_agent_pid=$1 if($line =~ m/SSH_AGENT_PID=(\d+)$/);  
+      $ssh_sock = $1 if($line =~ m/SSH_AUTH_SOCK=(.+)$/);
     }
 
     #set the socket for this program and all its children
     $ENV{SSH_AUTH_SOCK} = $ssh_sock;
+    $ENV{SSH_AGENT_PID} = $ssh_agent_pid;
 
-      push @{ $opts->{scp_options} }, ("-i", "$pkfile");
-      push @{ $opts->{ssh_options} }, ("-i", "$pkfile");
+    #add the key to the agent using ssh-add
+    #decrypt the private key and store in tmp
+    my $pk_data;
+    my $n =0;
+    while  (exists ${ $args->{client_private_key} }[$n]){
+      my $data = ${ $args->{client_private_key} }[$n++];
+      my $dkdata = $opts->{private_key}->decrypt( decode_base64($data));
+      $pk_data .= $dkdata;
+
+    }
+
+    #copy the private key to a file
+    my $pkfile = new File::Temp();
+    chmod( 0600, $pkfile );
+    $pkfile->print($pk_data);
+    $pkfile->close;
+
+    #run ssh-add with the private key
+    execute ($args, "ssh-add", "$pkfile");
+
   }
 
   # insert POGO_JOB_ID into the remote environment
@@ -245,8 +256,23 @@ sub main
       "rm", $tmpfile
     );
   }
+  
+  #Kill the ssh-agent if one was created
+  if ($ssh_agent_pid) {
+     my $agent_command = 'ssh-agent -k';
 
-  kill 9, $ssh_agent_pid if ($ssh_agent_pid);
+    #start the agent
+    my ( $writer, $reader ) = ( IO::Handle->new, IO::Handle->new );
+    my $pid;
+    eval { $pid = open3( $writer, $reader, undef, $agent_command); };
+    if ($@)
+    {
+      die "Error: $@";
+    }
+
+  }
+
+ 
 
   return $exit_status;
 }
