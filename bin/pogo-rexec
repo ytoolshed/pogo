@@ -140,6 +140,7 @@ sub main
     }
   }
 
+  # split if hostname:rootname combination is present
   my @target;
   if ( $args->{host} =~ /:/ ) 
   {
@@ -170,7 +171,9 @@ sub main
     # that way we can pass args to our script
   }
 
-  if ( $args->{command_root_transform} )
+  # substitute the command_root_transform with
+  # the rootname and the name of the temp stub
+  if ( $args->{command_root_transform} && defined $target[1] )
   {
     $args->{command_root_transform} =~ s/\${rootname}/$target[1]/;
     $args->{command_root_transform} =~ s/\${command}/$args->{command}->[0]/;
