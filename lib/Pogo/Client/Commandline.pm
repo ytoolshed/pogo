@@ -187,10 +187,10 @@ sub cmd_run
 
   unless ($opts->{command_root_transform})
   {
-    foreach $host ($opts->{target})
+    foreach ($opts->{target})
     {
       die "rootname found but command_root_transform property is not set \n"
-        unless $host =~ /:./;
+        unless $_ =~ /:./;
     }
   }
 
