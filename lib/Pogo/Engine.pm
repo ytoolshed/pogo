@@ -16,6 +16,7 @@ package Pogo::Engine;
 
 use common::sense;
 
+use Data::Dumper;
 use AnyEvent;
 use AnyEvent::Handle;
 use AnyEvent::Socket qw(tcp_connect);
@@ -290,6 +291,7 @@ sub jobretry
   }
 
   my $out = [ map { $job->retry_task($_) } @$hostnames ];
+  DEBUG Dumper [ $out, $hostnames ];
   $instance->add_task( 'resumejob', $job->{id} );
 
   $resp->set_records($out);

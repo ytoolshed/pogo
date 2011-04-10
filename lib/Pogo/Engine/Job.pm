@@ -16,6 +16,7 @@ package Pogo::Engine::Job;
 
 use common::sense;
 
+use Data::Dumper;
 use List::Util qw(min max);
 use AnyEvent;
 use Data::Dumper;    # note we actually use this
@@ -312,6 +313,7 @@ sub start_task
 
 sub retry_task
 {
+  DEBUG Dumper [@_];
   my ( $self, $hostname ) = @_;
   die "no host $hostname in job" if ( !$self->has_host($hostname) );
   my $host = $self->host($hostname);
