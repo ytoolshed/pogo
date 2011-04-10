@@ -273,7 +273,7 @@ sub jobresume
 
 sub jobretry
 {
-  my ( $class, $jobid, @hostnames ) = @_;
+  my ( $class, $jobid, $hostnames ) = @_;
   my $job = $instance->job($jobid);
   my $resp = Pogo::Engine::Response->new()->add_header( action => 'jobretry' );
 
@@ -289,7 +289,7 @@ sub jobretry
     return $resp;
   }
 
-  my $out = [ map { $job->retry_task($_) } @hostnames ];
+  my $out = [ map { $job->retry_task($_) } @$hostnames ];
   $instance->add_task( 'resumejob', $job->{id} );
 
   $resp->set_records($out);
@@ -300,7 +300,7 @@ sub jobretry
 
 sub jobskip
 {
-  my ( $class, $jobid, @hostnames ) = @_;
+  my ( $class, $jobid, $hostnames ) = @_;
   my $job = $instance->job($jobid);
   my $resp = Pogo::Engine::Response->new()->add_header( action => 'jobskip' );
 
@@ -310,7 +310,7 @@ sub jobskip
     return $resp;
   }
 
-  my $out = [ map { $job->skip_host($_) } @hostnames ];
+  my $out = [ map { $job->skip_host($_) } @$hostnames ];
   $instance->add_task( 'continuejob', $job->{id} );
 
   $resp->set_records($out);
