@@ -14,7 +14,6 @@ package Pogo::Engine;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-use 5.008;
 use common::sense;
 
 use AnyEvent;
@@ -91,7 +90,7 @@ sub globalstatus
 
 sub hostinfo
 {
-  my ( $class, $target, $namespace, $cb ) = @_;
+  my ( $class, $target, $namespace ) = @_;
 
   my $resp = Pogo::Engine::Response->new()->add_header( action => 'hostinfo' );
 
@@ -106,14 +105,13 @@ sub hostinfo
     $target,
     sub {
       my $err = shift;
-      $cb->( $resp->set_error($err) );
+      return $resp->set_error($err);
     },
     sub {
       my ( $results, $hosts ) = @_;
       $resp->add_header( hosts => join( ',', @$hosts ) );
-      $resp->set_ok;
       $resp->set_records( [$results] );
-      $cb->($resp);
+      return $resp->set_ok;
     },
   );
 }

@@ -705,12 +705,7 @@ sub expand_targets
 sub fetch_target_meta
 {
   my ( $self, $target, $errc, $cont ) = @_;
-  eval { $self->target_plugin->fetch_target_meta( $target, $errc, $cont ); };
-
-  if ($@)
-  {
-    $errc->($@);
-  }
+  return $self->target_plugin->fetch_target_meta( $target, $errc, $cont );
 }
 
 # }}}

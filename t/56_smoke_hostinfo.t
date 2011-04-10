@@ -55,15 +55,24 @@ test_pogo
   sleep 1;
 
   undef $t;
-  my $host   = 'foo11.west.example.com';
-  my $ns     = 'example';
-  my $record = [];
-  lives_ok { $t = client->hostinfo( $host, $ns ); } "hostinfo $ns/$host"
-    or diag explain $t;
-  ok( $t->is_success, "hostinfo $ns/$host success" )
-    or diag explain $t;
-  is( $t->records, $record, 'stats' )
-    or diag explain $t;
+
+  my $ns    = 'example';
+  my $hosts = {
+    'foo11.west.example.com' => {
+      'apps' => ['frontend'],
+      'envs' => { 'coast' => { 'west' => 1 } }
+    },
+  };
+
+  foreach my $host ( sort keys %$hosts )
+  {
+    lives_ok { $t = client->hostinfo( $host, $ns ); } "hostinfo $ns/$host"
+      or diag explain $t;
+    ok( $t->is_success, "hostinfo $ns/$host success" )
+      or diag explain $t;
+    is_deeply( $t->record, $hosts->{$host}, "$ns/$host record" )
+      or diag explain $t;
+  }
 };
 
 done_testing();

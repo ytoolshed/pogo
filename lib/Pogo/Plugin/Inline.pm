@@ -14,7 +14,6 @@ package Pogo::Plugin::Inline;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-use 5.008;
 use common::sense;
 
 use Data::Dumper;
@@ -27,9 +26,10 @@ sub new
   return bless \%opts, $class;
 }
 
+# {{{ expand_targets
 sub expand_targets
 {
-  my ($self, $targets) = @_;
+  my ( $self, $targets ) = @_;
   my @flat;
   foreach my $target (@$targets)
   {
@@ -37,9 +37,12 @@ sub expand_targets
   }
 
   my %uniq = ();
-  @flat = grep { ! $uniq{ $_ }++ } @flat;
+  @flat = grep { !$uniq{$_}++ } @flat;
   return \@flat;
 }
+
+# }}}
+# {{{ fetch_target_meta
 
 sub fetch_target_meta
 {
@@ -88,8 +91,11 @@ sub fetch_target_meta
     }
   }
 
+  DEBUG "got here too.";
   $cont->( $self->{_target_cache}->{$target} );
 }
+
+# }}}
 
 1;
 
@@ -101,7 +107,7 @@ Pogo::Plugin::Inline
 
 =head1 SYNOPSIS
 
-    my @hosts = 
+    my @hosts =
        Pogo::Plugin::Inline->expand_targets( ["host[0-9].corp.com"] );
 
 =head1 DESCRIPTION
@@ -114,7 +120,7 @@ B<expand_targets( [$pattern, ..] )>
 
 =over 2
 
-Expands 
+Expands
 
 =back
 
