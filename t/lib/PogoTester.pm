@@ -110,11 +110,12 @@ sub start_dispatcher
     unless $dispatcher_proc->poll();
 
   DEBUG "dispatcher pid=", $dispatcher_proc->pid();
+  return $dispatcher_proc->pid();
 }
 
 sub stop_dispatcher
 {
-  return if !$dispatcher_proc->poll();
+  return if !$dispatcher_proc or !$dispatcher_proc->poll();
 
   $dispatcher_proc->kill();
   undef $dispatcher_proc;
@@ -142,18 +143,19 @@ sub start_zookeeper
     if ( test_zookeeper() )
     {
       DEBUG "Zookeeper is ok.";
-      return 1;
+      return $zookeeper_proc->pid();
     }
     sleep 1;
     DEBUG "Zookeeper not up yet.";
   }
 
   LOGDIE "Couldn't start zookeeper";
+  return;
 }
 
 sub stop_zookeeper
 {
-  return if !$zookeeper_proc->poll();
+  return if !defined $zookeeper_proc or !$zookeeper_proc->poll();
 
   $zookeeper_proc->kill();
   undef $zookeeper_proc;
@@ -224,6 +226,7 @@ sub start_worker
     unless $worker_proc->poll();
 
   DEBUG "worker pid=", $worker_proc->pid();
+  return $worker_proc->pid();
 }
 
 sub stop_worker
