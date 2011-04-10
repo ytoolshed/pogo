@@ -1,6 +1,6 @@
 package Pogo::Engine::Namespace::Slot;
 
-# Copyright (c) 2010 Yahoo! Inc, all rights reserved.
+# Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -64,6 +64,10 @@ sub is_full
   return $self->nlocked( $job_ignore, $host_ignore ) >= $self->{maxdown};
 }
 
+# reserve writes paths into zookeeper for active tasks
+# can be called on a host that's already been # reserved,
+# such as in retries, so we shouldn't fail if $path
+# already exists
 sub reserve
 {
   my ( $self, $job, $hostname ) = @_;
@@ -71,15 +75,15 @@ sub reserve
 
   if ( !store->create( $self->{path} . '/' . $lockname, '' ) )
   {
-
     # ASSume if this fails it's because $path DNE
     if ( !store->create( $self->{path}, '' ) )
     {
-      LOGDIE "unable to create environment slot '$self->{path}': " . store->get_error_name;
+      INFO "unable to create environment slot '$self->{path}': " . store->get_error_name;
     }
 
     # now we try to create the base path or die
-    if ( !store->create( $self->{path} . '/' . $lockname, '' ) )
+    if ( !store->exists( $self->{path} . '/' . $lockname )
+      && !store->create( $self->{path} . '/' . $lockname, '' ) )
     {
       LOGDIE "unable to create environment slot '"
         . $self->{path} . '/'
@@ -141,11 +145,12 @@ Apache 2.0
 
 =head1 AUTHORS
 
-  Andrew Sloane <asloane@yahoo-inc.com>
-  Michael Fischer <mfischer@yahoo-inc.com>
-  Nicholas Harteau <nrh@yahoo-inc.com>
-  Nick Purvis <nep@yahoo-inc.com>
-  Robert Phan <rphan@yahoo-inc.com>
+  Andrew Sloane <andy@a1k0n.net>
+  Michael Fischer <michael+pogo@dynamine.net>
+  Mike Schilli <m@perlmeister.com>
+  Nicholas Harteau <nrh@hep.cat>
+  Nick Purvis <nep@noisetu.be>
+  Robert Phan <robert.phan@gmail.com>
 
 =cut
 

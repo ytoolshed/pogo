@@ -1,6 +1,6 @@
 package Pogo::Worker::Connection;
 
-# Copyright (c) 2010, Yahoo! Inc. All rights reserved.
+# Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -49,6 +49,7 @@ sub run
       ca_file   => $self->{dispatcher_cert},
       verify    => 1,
       verify_cb => sub {
+        local *__ANON__ = 'dispatcher_handle:tls_ctx:verify_cb';
         my $preverify_ok = $_[4];
         my $cert         = $_[6];
         DEBUG sprintf( "certificate: %s", AnyEvent::TLS::certname($cert) );
@@ -57,6 +58,7 @@ sub run
     },
     keepalive  => 1,
     on_connect => sub {
+      local *__ANON__ = 'dispatcher_handle:on_connect';
       INFO sprintf( "Connected to dispatcher at %s:%d", $self->{host}, $self->{port} );
       Pogo::Worker->add_connection($self);
       while ( my $msg = Pogo::Worker->dequeue_msg )
@@ -67,6 +69,7 @@ sub run
       }
     },
     on_starttls => sub {
+      local *__ANON__ = 'dispatcher_handle:on_starttls';
       my $success = $_[1];
       my $msg     = $_[2];
       if ($success)
@@ -83,12 +86,14 @@ sub run
       }
     },
     on_connect_error => sub {
+      local *__ANON__ = 'dispatcher_handle:on_connect_error';
       my $msg = $_[1];
       $self->{dispatcher_handle}->destroy;
       ERROR sprintf( "Failed to connect to %s:%d: %s", $self->{host}, $self->{port}, $msg );
       $self->reconnect;
     },
     on_error => sub {
+      local *__ANON__ = 'dispatcher_handle:on_error';
       my $msg = $_[2];
       $self->{dispatcher_handle}->destroy;
       Pogo::Worker->delete_connection($self);
@@ -99,6 +104,7 @@ sub run
     on_read => sub {
       $self->{dispatcher_handle}->push_read(
         json => sub {
+          local *__ANON__ = 'dispatcher_handle:on_read:json';
           my $obj = $_[1];
           if ( ref $obj ne 'ARRAY' )
           {
@@ -120,7 +126,6 @@ sub port { return shift->{port}; }
 
 sub run_command
 {
-
   # Currently the only thing that ever comes down this pipe is a request to
   # launch a job.  The dispatcher will send these anytime it receives an EXIT
   # or an IPC idle.  Whenever the code enters here, the worker is always marked
@@ -130,9 +135,11 @@ sub run_command
   my $task_id = join( '/', $args->{job_id}, $args->{host} );
   DEBUG "[$task_id] Received command '$cmd'";
   $self->{tasks}->{$task_id}->{args} = $args;
-  DEBUG "Current task count: " . scalar keys %{ $self->{tasks} };
+  DEBUG sprintf '%d active tasks', scalar keys %{ $self->{tasks} };
+
   if ( scalar keys %{ $self->{tasks} } < Pogo::Worker->num_workers )
   {
+    DEBUG "idling...";
     $self->send_response( ['idle'] );
   }
 
@@ -193,7 +200,7 @@ sub execute
   do
   {
     $output_filename = sprintf( "%s/%s/%s.%d.txt", Pogo::Worker->output_dir, $job_id, $host, $n );
-    $output_url      = sprintf( "%s/%s/%s.%d.txt", Pogo::Worker->output_uri, $job_id, $host, $n );
+    $output_url      = sprintf( "%s%s/%s.%d.txt",  Pogo::Worker->output_uri, $job_id, $host, $n );
     $n++;
   } while ( -f $output_filename );
 
@@ -206,12 +213,15 @@ sub execute
   Pogo::Worker->send_response( [ 'start', $job_id, $host, $output_url ] );
 
   my $output_file = IO::File->new( $output_filename, O_WRONLY | O_CREAT | O_APPEND, 0664 )
-    or LOGDIE "Couldn't create file '$output_filename': $!";
+    or return $self->reset( $task_id, '500', "Couldn't create file '$output_filename': $!" );
+
   $output_file->autoflush(1);
   DEBUG sprintf( "Writing to output file %s", $output_filename );
 
   # Register callbacks to handle events from spawned process.
+
   my $write_stdout = sub {
+    local *__ANON__ = 'task:on_read';
     my $buf = delete $task->{process_handle}->{rbuf};
     $self->write_output_entry( $output_file, { task => $task_id, type => 'STDOUT' }, $buf );
     $buf_count += length($buf);
@@ -230,8 +240,9 @@ sub execute
       $buf_count = 0;
     }
   };
-  my $process_exit = sub {
 
+  my $process_exit = sub {
+    local *__ANON__ = 'task:process_exit';
     # Catch exit code from waitpid
     my $p = waitpid( $pid, 0 );
     my $exit_status = WEXITSTATUS($?);
@@ -244,13 +255,16 @@ sub execute
     delete $task->{process_handle};
     $self->reset( $task_id, $exit_status );
   };
+
   $task->{process_handle} = AnyEvent::Handle->new(
     fh     => $reader,
     on_eof => sub {
+      local *__ANON__ = 'task:on_eof';
       DEBUG "[$task_id] Received EOF";
       $process_exit->();
     },
     on_error => sub {
+      local *__ANON__ = 'task:on_error';
       DEBUG "[$task_id] Received error: $!";
       $process_exit->();
     },
@@ -332,11 +346,12 @@ limitations under the License.
 
 =head1 AUTHORS
 
-  Andrew Sloane <asloane@yahoo-inc.com>
-  Michael Fischer <mfischer@yahoo-inc.com>
-  Nicholas Harteau <nrh@yahoo-inc.com>
-  Nick Purvis <nep@yahoo-inc.com>
-  Robert Phan <rphan@yahoo-inc.com>
+  Andrew Sloane <andy@a1k0n.net>
+  Michael Fischer <michael+pogo@dynamine.net>
+  Mike Schilli <m@perlmeister.com>
+  Nicholas Harteau <nrh@hep.cat>
+  Nick Purvis <nep@noisetu.be>
+  Robert Phan <robert.phan@gmail.com>
 
 =cut
 

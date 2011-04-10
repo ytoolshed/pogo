@@ -1,6 +1,6 @@
 package Pogo::Engine;
 
-# Copyright (c) 2010, Yahoo! Inc. All rights reserved.
+# Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,6 +14,7 @@ package Pogo::Engine;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+use 5.008;
 use common::sense;
 
 use AnyEvent;
@@ -79,7 +80,7 @@ sub job
 
 sub globalstatus
 {
-  my ( $ns, @args ) = @_;
+  my ( $class, $ns, @args ) = @_;
   my $resp = Pogo::Engine::Response->new()->add_header( action => 'globalstatus' );
 
   $resp->set_records( $instance->namespace($ns)->global_get_locks(@args) );
@@ -90,38 +91,36 @@ sub globalstatus
 
 sub hostinfo
 {
-  my $range = shift;
-  my $ns    = shift;
+  my ( $class, $target, $namespace, $cb ) = @_;
 
   my $resp = Pogo::Engine::Response->new()->add_header( action => 'hostinfo' );
 
+  LOGCONFESS "need a namespace" unless defined $namespace;
+
+  my $ns = Pogo::Engine->namespace($namespace);
+
   my $error;
-  my $w = AnyEvent->condvar;
 
   # call this asyncronously as it may be ugly
-  Pogo::Roles->instance->fetch_all(
-    $range, $ns,
+  $ns->fetch_target_meta(
+    $target,
     sub {
-      $resp->set_error(shift);
-      $w->send;
+      my $err = shift;
+      $cb->( $resp->set_error($err) );
     },
     sub {
       my ( $results, $hosts ) = @_;
       $resp->add_header( hosts => join( ',', @$hosts ) );
       $resp->set_ok;
-      $resp->set_records($results);
-      $w->send;    # TODO: this will fail in AnyEvent::HTTPD
+      $resp->set_records( [$results] );
+      $cb->($resp);
     },
   );
-
-  $w->recv;
-
-  return $resp;
 }
 
 sub hostlog_url
 {
-  my ( $jobid, @hostnames ) = @_;
+  my ( $class, $jobid, @hostnames ) = @_;
   my $job = $instance->job($jobid);
   my $resp = Pogo::Engine::Response->new()->add_header( action => 'hostlog_url' );
 
@@ -135,7 +134,7 @@ sub hostlog_url
 
   foreach my $host (@hostnames)
   {
-    my $urls = $job->host($host)->outputurl;
+    my $urls = $job->host($host)->outputurls;
     $resp->add_record( [ $host, @$urls ] );
   }
 
@@ -146,7 +145,7 @@ sub hostlog_url
 
 sub jobalter
 {
-  my ( $jobid, %alter ) = @_;
+  my ( $class, $jobid, %alter ) = @_;
   my $job = $instance->job($jobid);
   my $resp = Pogo::Engine::Response->new()->add_header( action => 'jobalter' );
 
@@ -171,9 +170,9 @@ sub jobalter
 
 sub jobhalt
 {
-  my $jobid = shift;
-  my $job   = $instance->job($jobid);
-  my $resp  = Pogo::Engine::Response->new()->add_header( action => 'jobhalt' );
+  my ( $class, $jobid ) = @_;
+  my $job = $instance->job($jobid);
+  my $resp = Pogo::Engine::Response->new()->add_header( action => 'jobhalt' );
 
   if ( !defined $job )
   {
@@ -193,7 +192,7 @@ sub jobhalt
 
 sub jobhoststatus
 {
-  my ( $jobid, $hostname ) = @_;
+  my ( $class, $jobid, $hostname ) = @_;
   my $job = $instance->job($jobid);
   my $resp = Pogo::Engine::Response->new()->add_header( action => 'jobhoststatus' );
 
@@ -203,13 +202,13 @@ sub jobhoststatus
     return $resp;
   }
 
-  if ( !job->has_host($hostname) )
+  if ( !$job->has_host($hostname) )
   {
     $resp->set_error("host $hostname not part of job $jobid");
     return $resp;
   }
 
-  $resp->set_records( $job->host($hostname)->state );
+  $resp->set_records( [ $job->host($hostname)->state ] );
   $resp->set_ok;
   return $resp;
 }
@@ -244,7 +243,7 @@ sub joblog
     return $resp;
   }
 
-  $resp->set_records( $job->read_log( $offset, $limit ) );
+  $resp->set_records( [ $job->read_log( $offset, $limit ) ] );
   $resp->set_ok;
 
   return $resp;
@@ -252,9 +251,9 @@ sub joblog
 
 sub jobresume
 {
-  my $jobid = shift;
-  my $job   = $instance->job($jobid);
-  my $resp  = Pogo::Engine::Response->new()->add_header( action => 'jobresume' );
+  my ( $class, $jobid ) = @_;
+  my $job = $instance->job($jobid);
+  my $resp = Pogo::Engine::Response->new()->add_header( action => 'jobresume' );
 
   if ( !defined $job )
   {
@@ -276,7 +275,7 @@ sub jobresume
 
 sub jobretry
 {
-  my ( $jobid, @hostnames ) = @_;
+  my ( $class, $jobid, @hostnames ) = @_;
   my $job = $instance->job($jobid);
   my $resp = Pogo::Engine::Response->new()->add_header( action => 'jobretry' );
 
@@ -286,7 +285,13 @@ sub jobretry
     return $resp;
   }
 
-  my $out = [ map { $job->retry_host($_) } @hostnames ];
+  if ( ( $job->start_time + $job->job_timeout ) <= time )
+  {
+    $resp->set_error("jobid $jobid has expired");
+    return $resp;
+  }
+
+  my $out = [ map { $job->retry_task($_) } @hostnames ];
   $instance->add_task( 'resumejob', $job->{id} );
 
   $resp->set_records($out);
@@ -297,7 +302,7 @@ sub jobretry
 
 sub jobskip
 {
-  my ( $jobid, @hostnames ) = @_;
+  my ( $class, $jobid, @hostnames ) = @_;
   my $job = $instance->job($jobid);
   my $resp = Pogo::Engine::Response->new()->add_header( action => 'jobskip' );
 
@@ -606,11 +611,12 @@ Apache 2.0
 
 =head1 AUTHORS
 
-  Andrew Sloane <asloane@yahoo-inc.com>
-  Michael Fischer <mfischer@yahoo-inc.com>
-  Nicholas Harteau <nrh@yahoo-inc.com>
-  Nick Purvis <nep@yahoo-inc.com>
-  Robert Phan <rphan@yahoo-inc.com>
+  Andrew Sloane <andy@a1k0n.net>
+  Michael Fischer <michael+pogo@dynamine.net>
+  Mike Schilli <m@perlmeister.com>
+  Nicholas Harteau <nrh@hep.cat>
+  Nick Purvis <nep@noisetu.be>
+  Robert Phan <robert.phan@gmail.com>
 
 =cut
 

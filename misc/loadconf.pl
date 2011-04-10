@@ -1,6 +1,6 @@
 #!/usr/bin/env perl -w
 
-# Copyright (c) 2010, Yahoo! Inc. All rights reserved.
+# Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,33 +23,34 @@ use lib "$Bin/../lib";
 use Pogo::Engine;
 use Log::Log4perl qw(:easy);
 use YAML::XS qw(LoadFile);
-
+use LWP::UserAgent;
 
 # it's sorta lame to set up log4perl here, but inside the Engine stuff it's
 # used extensively
 
-Log::Log4perl::init(\q{
+Log::Log4perl::init(
+  \q{
 log4perl.rootLogger                      = DEBUG, screen
 log4perl.appender.screen                 = Log::Log4perl::Appender::Screen
 log4perl.appender.screen.stderr          = 0
 log4perl.appender.screen.syswrite        = 0
 log4perl.appender.screen.layout          = Log::Log4perl::Layout::PatternLayout
 log4perl.appender.screen.layout.ConversionPattern = [%P] %p %F{2}:%L %m%n
-});
+}
+);
 
-if(@ARGV < 3) {
+if ( @ARGV < 3 )
+{
   LOGDIE "usage: $0 <config> <namespace> <constraint.yaml>\n";
 }
 
-my $configf = shift @ARGV;
-my $namespace = shift @ARGV;
+my $configf      = shift @ARGV;
+my $namespace    = shift @ARGV;
 my $constraintsf = shift @ARGV;
 
-
-my $config = LoadFile($configf) || LOGDIE "cannot load $configf";
+my $config      = LoadFile($configf)      || LOGDIE "cannot load $configf";
 my $constraints = LoadFile($constraintsf) || LOGDIE "cannot load $constraintsf";
 my $ns = Pogo::Engine->init($config)->namespace($namespace)->init->set_conf($constraints);
-
 
 1;
 
@@ -87,11 +88,12 @@ Apache 2.0
 
 =head1 AUTHORS
 
-  Andrew Sloane <asloane@yahoo-inc.com>
-  Michael Fischer <mfischer@yahoo-inc.com>
-  Nicholas Harteau <nrh@yahoo-inc.com>
-  Nick Purvis <nep@yahoo-inc.com>
-  Robert Phan <rphan@yahoo-inc.com>
+  Andrew Sloane <andy@a1k0n.net>
+  Michael Fischer <michael+pogo@dynamine.net>
+  Mike Schilli <m@perlmeister.com>
+  Nicholas Harteau <nrh@hep.cat>
+  Nick Purvis <nep@noisetu.be>
+  Robert Phan <robert.phan@gmail.com>
 
 =cut
 

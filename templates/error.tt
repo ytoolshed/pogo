@@ -1,1 +1,4 @@
-ERROR: [% error %]
+[% INCLUDE _page_header.tt %]
+  <center><h1>Pogo encountered an error :(</h1></center>
+  <div class="code">[% error %]</div>
+[% INCLUDE _page_footer.tt %]

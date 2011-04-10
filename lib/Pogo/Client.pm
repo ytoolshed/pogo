@@ -1,6 +1,6 @@
 package Pogo::Client;
 
-# Copyright (c) 2010, Yahoo! Inc. All rights reserved.
+# Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -48,7 +48,7 @@ sub AUTOLOAD
 {
   my ( $self, @stuff ) = @_;
 
-  $AUTOLOAD =~ /(\w+)$/ or LOGDIE "cannot parse '$AUTOLOAD'";
+  $AUTOLOAD =~ /(\w+)$/ or die "cannot parse '$AUTOLOAD'\n";
   my $method = $1;
 
   my $rpc = encode_json( [ $method, @stuff ] );
@@ -57,14 +57,14 @@ sub AUTOLOAD
   DEBUG $self->{api} . " request: $rpc";
 
   my $r = $self->ua->request($post);
-  LOGDIE "fatal error in request '$method': " . $r->status_line
+  die "fatal error in request '$method': " . $r->status_line . "\n"
     if $r->is_error;
 
   DEBUG "response: " . $r->decoded_content;
 
   my $resp = Pogo::Engine::Response->new( $r->decoded_content );
 
-  LOGDIE "error from pogo server in request '$method': " . $resp->status_msg . "\n"
+  die "error from pogo server in request '$method': " . $resp->status_msg . "\n"
     unless $resp->is_success;
 
   return $resp;
@@ -106,11 +106,12 @@ Apache 2.0
 
 =head1 AUTHORS
 
-  Andrew Sloane <asloane@yahoo-inc.com>
-  Michael Fischer <mfischer@yahoo-inc.com>
-  Nicholas Harteau <nrh@yahoo-inc.com>
-  Nick Purvis <nep@yahoo-inc.com>
-  Robert Phan <rphan@yahoo-inc.com>
+  Andrew Sloane <andy@a1k0n.net>
+  Michael Fischer <michael+pogo@dynamine.net>
+  Mike Schilli <m@perlmeister.com>
+  Nicholas Harteau <nrh@hep.cat>
+  Nick Purvis <nep@noisetu.be>
+  Robert Phan <robert.phan@gmail.com>
 
 =cut
 

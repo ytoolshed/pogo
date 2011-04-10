@@ -1,6 +1,6 @@
 package Pogo::Client::Commandline;
 
-# Copyright (c) 2010, Yahoo! Inc. All rights reserved.
+# Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,9 +14,10 @@ package Pogo::Client::Commandline;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-use Data::Dumper;
-
+use 5.008;
 use common::sense;
+
+use Data::Dumper;
 
 use Getopt::Long qw(:config bundling no_ignore_case pass_through);
 use Crypt::OpenSSL::RSA;
@@ -36,10 +37,10 @@ use Pogo::Common;
 use Pogo::Client;
 use Pogo::Client::AuthCheck qw(get_password check_password);
 
-use constant POGO_GLOBAL_CONF     => $Pogo::Common::CONFIGDIR . '/client.conf';
-use constant POGO_USER_CONF       => $ENV{HOME} . '/.pogoconf';
-use constant POGO_WORKER_CERT     => $Pogo::Common::WORKER_CERT;
-use constant POGO_PASSPHRASE_FILE => 'bar';
+use constant POGO_GLOBAL_CONF  => $Pogo::Common::CONFIGDIR . '/client.conf';
+use constant POGO_USER_CONF    => $ENV{HOME} . '/.pogoconf';
+use constant POGO_WORKER_CERT  => $Pogo::Common::WORKER_CERT;
+use constant POGO_SECRETS_FILE => $ENV{HOME} . '/.pogo_secrets';
 
 my %LOG_SUBST = (
   'jobstate'  => 'job',
@@ -63,12 +64,10 @@ sub run_from_commandline
 
   $self->{api} = delete $self->{opts}->{api};
 
-  DEBUG Dumper $self;
-
   my $method = 'cmd_' . $cmd;
   if ( !$self->can($method) )
   {
-    LOGDIE "no such command: $cmd\n";
+    die "no such command: $cmd\n";
   }
 
   return $self->$method;
@@ -85,7 +84,7 @@ sub cmd_run
     client      => $Pogo::Client::VERSION,
     user        => $self->{userid},
     requesthost => hostname || '',
-    passfile    => POGO_PASSPHRASE_FILE,
+    secrets     => POGO_SECRETS_FILE,
   };
   GetOptions(
     my $cmdline_opts = {}, 'cookbook|C=s',
@@ -94,7 +93,7 @@ sub cmd_run
     'recipe|R=s',                'retry|r=i',
     'timeout|t=i',               'prehooks!',
     'posthooks!',                'hooks!',
-    'passfile|P=s',              'unconstrained',
+    'secrets|S=s',               'unconstrained',
     'concurrent|cc=s',           'file|f=s',
   );
 
@@ -136,15 +135,15 @@ sub cmd_run
   # run an anonymous executable?
   if ( defined $opts->{file} )
   {
-    LOGDIE "file \"" . $opts->{file} . "\" does not exist\n" unless -e $opts->{file};
-    LOGDIE "unable to read \"" . $opts->{file} . "\"\n"      unless -r $opts->{file};
+    die "file \"" . $opts->{file} . "\" does not exist\n" unless -e $opts->{file};
+    die "unable to read \"" . $opts->{file} . "\"\n"      unless -r $opts->{file};
 
     $opts->{exe_name} = ( split( /\//, $opts->{file} ) )[-1];
     $opts->{exe_data} = encode_base64( read_file( $opts->{file} ) );
     $opts->{command}  = "Attached file: " . $opts->{exe_name};
   }
 
-  LOGDIE "run needs a command\n"
+  die "run needs a command\n"
     unless defined $opts->{command};
 
   my @targets;
@@ -161,7 +160,7 @@ sub cmd_run
       if ( -r $hostfile )
       {
         open( my $fh, '<', $hostfile )
-          or LOGDIE "Couldn't open file: $!";
+          or die "Couldn't open file: $!";
 
         while ( my $host = <$fh> )
         {
@@ -174,34 +173,34 @@ sub cmd_run
       }
       else
       {
-        LOGDIE "couldn't read '$hostfile'";
+        die "couldn't read '$hostfile'";
       }
     }
   }
 
   if ( @targets == 0 )
   {
-    LOGDIE "run needs hosts!";
+    die "run needs hosts!\n";
   }
 
   $opts->{target} = \@targets;
 
-  # package passphrases
-  my $passphrase;
-  if ( defined $opts->{passfile} && $opts->{passfile} ne '' )
+  # secrets
+  my $secrets;
+  if ( defined $opts->{secrets} && $opts->{secrets} ne '' )
   {
-    $passphrase = load_passphrases( $opts->{passfile} );
+    $secrets = load_secrets( $opts->{secrets} );
 
-    if ( !$passphrase )
+    if ( !$secrets )
     {
-      ERROR "Can't load passphrases from $opts->{passfile}: $!";
+      ERROR "Can't load secrets from $opts->{secrets}: $!";
     }
   }
 
   # --unconstrained means we're 100% in parallel
   if ( delete $opts->{unconstrained} )
   {
-    LOGDIE "--unconstrained and --concurrent are mutually exclusive"
+    die "--unconstrained and --concurrent are mutually exclusive\n"
       if exists $opts->{concurrent};
     $opts->{concurrent} = 0;
   }
@@ -209,7 +208,7 @@ sub cmd_run
   # check the value of concurrent
   if ( exists $opts->{concurrent} )
   {
-    LOGDIE "--concurrent value must be an integer or a percentage"
+    die "--concurrent value must be an integer or a percentage\n"
       unless $opts->{concurrent} =~ m/^\d+%?$/;
   }
 
@@ -248,7 +247,7 @@ $key,                  $value
   {
     if ( !check_password( $self->{userid}, $password ) )
     {
-      LOGDIE
+      die
         "Local password check failed, bailing\nset 'check_password: 0' in your .pogoconf to disable\n";
     }
   }
@@ -265,14 +264,13 @@ $key,                  $value
   $opts->{run_as}   = $self->{userid};
   $opts->{password} = $cryptpw;
 
-  $opts->{secrets} =
-    { map { $_ => encode_base64( $rsa_pub->encrypt( $passphrase->{$_} ) ) } keys %$passphrase };
+  $opts->{secrets} = encode_base64( $rsa_pub->encrypt($secrets) );
 
   my $resp = $self->_client->run(%$opts);
 
   if ( !$resp->is_success )
   {
-    LOGDIE "Failed to start job: " . $resp->status_msg;
+    die "Failed to start job: " . $resp->status_msg;
   }
 
   my $jobid = $resp->record;
@@ -338,7 +336,7 @@ sub cmd_jobs
   my $resp = $self->_client()->listjobs(%$opts);
   if ( !$resp->is_success )
   {
-    LOGDIE "Unable to list jobs: " . $resp->status_msg;
+    die "Unable to list jobs: " . $resp->status_msg;
   }
 
   my @matches;
@@ -396,13 +394,13 @@ sub cmd_status
     $jobid = $self->to_jobid($jobid);
     if ( !defined $jobid )
     {
-      LOGDIE "No jobs found";
+      die "No jobs found";
     }
     DEBUG "Using jobid '$jobid'";
   }
   else
   {
-    LOGDIE "no jobid specified";
+    die "no jobid specified";
   }
 
   # expand the range if needed
@@ -416,7 +414,7 @@ sub cmd_status
   my $resp = $self->_client()->jobinfo( $jobid, %$opts );
   if ( !$resp->is_success )
   {
-    LOGDIE "Unable to fetch jobinfo: " . $resp->status_msg;
+    die "Unable to fetch jobinfo: " . $resp->status_msg;
   }
 
   # output job info
@@ -444,14 +442,14 @@ sub cmd_status
   $resp = $self->_client()->jobstatus($jobid);
   if ( !$resp->is_success )
   {
-    LOGDIE "Unable to fetch jobstatus: " . $resp->status_msg;
+    die "Unable to fetch jobstatus: " . $resp->status_msg;
   }
 
   # output status
-  my $records = $resp->records;
-  my $status  = shift @$records;
+  my @records = $resp->records;
+  my $status  = shift @records;
   printf "$pat", "job status", $status;
-  while ( my $rec = shift @$records )
+  while ( my $rec = shift @records )
   {
     my ( $host, $status, $exit ) = @$rec;
     if ( !defined $target || $target->contains($host) )
@@ -492,7 +490,7 @@ sub cmd_log
   }
   unless ($jobid)
   {
-    LOGDIE "no jobid specified\n";
+    die "no jobid specified\n";
   }
 
   my $hosts;
@@ -517,7 +515,7 @@ sub cmd_log
       return -1;
     }
 
-    my (@records) = $resp->records;
+    my @records = $resp->records;
 
     foreach my $record ( sort { $a->[0] <=> $b->[0] } @records )
     {
@@ -639,14 +637,11 @@ sub process_options
   my $self = shift;
 
   my $command;
-  my $opts = {
-    worker_cert => POGO_WORKER_CERT,
-    configfile  => POGO_GLOBAL_CONF,
-  };
+  my $opts = { worker_cert => POGO_WORKER_CERT, };
   my $cmdline_opts = {};
 
   # first, process global options and see if we have an alt config file
-  GetOptions( $cmdline_opts, 'help|?', 'api=s', 'configfile=s', 'debug', 'namespace|ns=s',
+  GetOptions( $cmdline_opts, 'help|?', 'api=s', 'configfile|c=s', 'debug', 'namespace|ns=s',
     'worker_cert=s' );
 
   Log::Log4perl::get_logger->level($DEBUG)
@@ -665,6 +660,7 @@ sub process_options
 
   # load global config
   $opts->{configfile} ||= $cmdline_opts->{configfile};
+  $opts->{configfile} ||= POGO_GLOBAL_CONF;
 
   my $globalconf = {};
 
@@ -781,19 +777,17 @@ sub _client
   return $self->{pogoclient};
 }
 
-sub load_passphrases
+sub load_secrets
 {
   my $file = shift;
   if ( -r $file )
   {
     my $data = load_yaml($file)
       or ERROR "Couldn't load data from '$file': $!" and return;
-    foreach my $pkg ( sort keys %$data )
+    if ( defined $data )
     {
-      DEBUG "Got passphrase for '$pkg'";
+      return $data;
     }
-
-    return $data;
   }
   else
   {
@@ -818,7 +812,7 @@ sub expand_expression
     eval { $resp = $self->_client()->expand( \@foo ); };
     if ( $@ || !$resp->is_success )
     {
-      LOGDIE "unable to expand '$exp': " . $@ || $resp->status_msg;
+      die "unable to expand '$exp': " . $@ || $resp->status_msg;
     }
     push( @hosts, @{ $resp->records } );
   }
@@ -866,6 +860,138 @@ sub to_jobid
   return $new_jobid;
 }
 
+sub load_cookbook
+{
+  my ( $self, $cookbook ) = @_;
+  DEBUG "Loading cookbook '$cookbook'";
+
+  if ( !$cookbook )
+  {
+    ERROR "No cookbook from which to load recipe";
+    return;
+  }
+
+  # load cookbook
+  my $data = load_yaml( $cookbook, $self->{opts}->{configfile} );
+
+  if ( ref($data) ne 'ARRAY' )
+  {
+    ERROR "$cookbook is not a properly formatted YAML array; see documentation\n";
+    return;
+  }
+
+  return $data;
+}
+
+sub load_recipe
+{
+  my ( $self, $recipe_name, $cookbook ) = @_;
+
+  DEBUG "Loading recipe '$recipe_name'";
+
+  my @results;
+  foreach my $record (@$cookbook)
+  {
+    next if ( !defined $record );    # skip blank records
+    if ( $record->{name} eq $recipe_name )
+    {
+      push @results, $record;
+    }
+  }
+
+  if ( @results > 1 )
+  {
+    WARN "Multiple recipes found for '$recipe_name', using first";
+  }
+
+  my $recipe = $results[0];
+
+  if ( !defined $recipe )
+  {
+    ERROR "Recipe '$recipe_name' not found in cookbook";
+    return;
+  }
+
+  if ( $recipe->{based_on} )
+  {
+    my $based_on = $self->load_recipe( $recipe->{based_on}, $cookbook );
+    if ( !defined $based_on )
+    {
+      ERROR
+        "'$recipe_name' is based on '$recipe->{based_on}', which does not exist in the cookbook";
+      return;
+    }
+    $recipe = merge_hash( $based_on, $recipe );
+  }
+
+  return $recipe;
+}
+
+sub load_yaml
+{
+  my $uri = uri_to_absuri(@_);
+
+  my $r;
+  eval { $r = $Pogo::Common::USERAGENT->get($uri); };
+  if ($@)
+  {
+    LOGDIE "Couldn't fetch uri '$uri': $@\n";
+  }
+
+  my $yaml;
+  if ( $r->is_success )
+  {
+    $yaml = $r->content;
+  }
+  else
+  {
+    LOGDIE "Couldn't fetch uri '$uri': " . $r->status_line . "\n";
+  }
+
+  my @data;
+  eval { @data = YAML::XS::Load($yaml); };
+  if ($@)
+  {
+    LOGDIE "couldn't parse '$uri': $@\n";
+  }
+
+  DEBUG sprintf "Loaded %s records from '$uri'", scalar @data;
+
+  if ( scalar @data == 1 )
+  {
+    return $data[0];
+  }
+
+  return \@data;
+}
+
+sub uri_to_absuri
+{
+  DEBUG Dumper \@_;
+  my $rel_uri = shift;
+  my $base_uri = shift || $rel_uri;
+
+  $base_uri = URI->new($base_uri);
+
+  if ( !$base_uri->scheme )
+  {
+    $base_uri = URI::file->new_abs($base_uri);
+  }
+  my $abs_uri = URI->new_abs( $rel_uri, $base_uri );
+
+  if ( !$abs_uri->scheme )
+  {
+    $abs_uri = URI::file->new_abs($abs_uri);
+  }
+
+  if ( $abs_uri ne $rel_uri )
+  {
+    DEBUG "converted '$rel_uri' to '$abs_uri'";
+  }
+
+  return $abs_uri->as_string;
+}
+
 #}}} helper crap
 
 1;
@@ -904,11 +1030,12 @@ Apache 2.0
 
 =head1 AUTHORS
 
-  Andrew Sloane <asloane@yahoo-inc.com>
-  Michael Fischer <mfischer@yahoo-inc.com>
-  Nicholas Harteau <nrh@yahoo-inc.com>
-  Nick Purvis <nep@yahoo-inc.com>
-  Robert Phan <rphan@yahoo-inc.com>
+  Andrew Sloane <andy@a1k0n.net>
+  Michael Fischer <michael+pogo@dynamine.net>
+  Mike Schilli <m@perlmeister.com>
+  Nicholas Harteau <nrh@hep.cat>
+  Nick Purvis <nep@noisetu.be>
+  Robert Phan <robert.phan@gmail.com>
 
 =cut
 

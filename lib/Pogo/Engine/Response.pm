@@ -1,6 +1,6 @@
 package Pogo::Engine::Response;
 
-# Copyright (c) 2010, Yahoo! Inc. All rights reserved.
+# Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@ package Pogo::Engine::Response;
 
 use common::sense;
 
+use Carp qw(confess);
 use JSON qw(decode_json);
 use YAML::XS qw(Dump);
 use Log::Log4perl qw(:easy);
@@ -36,7 +37,10 @@ sub new
 {
   my ( $class, $content ) = @_;
 
-  my $self = { _format => 'json', };
+  my $self = {
+    _format  => 'json',
+    _records => [],
+  };
   bless $self, $class;
 
   if ($content)
@@ -256,6 +260,7 @@ sub records
   if ( !defined $self->{_records} || ref $self->{_records} ne 'ARRAY' )
   {
     ERROR "response has no records";
+    confess;
     return;
   }
   return @{ $self->{_records} };
@@ -297,7 +302,7 @@ sub to_string
   my $string;
   if ( $self->format eq 'json' )
   {
-    eval { $string = JSON->new->utf8->allow_nonref->encode( $data ); };
+    eval { $string = JSON->new->utf8->allow_nonref->encode($data); };
     if ($@)
     {
       ERROR "Error formatting output: $@";
@@ -307,7 +312,7 @@ sub to_string
   }
   elsif ( $self->format eq 'json-pretty' )
   {
-    eval { $string = JSON->new->utf8->pretty->encode( $data ); };
+    eval { $string = JSON->new->utf8->pretty->encode($data); };
     if ($@)
     {
       ERROR "Error formatting output: $@";
@@ -392,11 +397,12 @@ Apache 2.0
 
 =head1 AUTHORS
 
-  Andrew Sloane <asloane@yahoo-inc.com>
-  Michael Fischer <mfischer@yahoo-inc.com>
-  Nicholas Harteau <nrh@yahoo-inc.com>
-  Nick Purvis <nep@yahoo-inc.com>
-  Robert Phan <rphan@yahoo-inc.com>
+  Andrew Sloane <andy@a1k0n.net>
+  Michael Fischer <michael+pogo@dynamine.net>
+  Mike Schilli <m@perlmeister.com>
+  Nicholas Harteau <nrh@hep.cat>
+  Nick Purvis <nep@noisetu.be>
+  Robert Phan <robert.phan@gmail.com>
 
 =cut
 

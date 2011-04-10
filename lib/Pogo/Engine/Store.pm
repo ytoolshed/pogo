@@ -1,6 +1,6 @@
 package Pogo::Engine::Store;
 
-# Copyright (c) 2010, Yahoo! Inc. All rights reserved.
+# Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package Pogo::Engine::Store;
 use strict;
 use warnings;
 
+use Time::HiRes qw(sleep);
 use Exporter 'import';
 use Log::Log4perl qw(:easy);
 
@@ -44,13 +45,13 @@ sub instance
     }
 
     # retry a few times here in case zookeeper isn't ready yet.
-    for ( my $try = 2; $try > 0; $try-- )
+    for ( my $try = 10; $try > 0; $try-- )
     {
       eval { $store = Pogo::Engine::Store::ZooKeeper->new($store_opts); };
       if ($@)
       {
         ERROR "Couldn't init zookeeper; retrying in $try..";
-        sleep $try;
+        sleep 0.2;
         next;
       }
       return $store;
@@ -113,11 +114,12 @@ Apache 2.0
 
 =head1 AUTHORS
 
-  Andrew Sloane <asloane@yahoo-inc.com>
-  Michael Fischer <mfischer@yahoo-inc.com>
-  Nicholas Harteau <nrh@yahoo-inc.com>
-  Nick Purvis <nep@yahoo-inc.com>
-  Robert Phan <rphan@yahoo-inc.com>
+  Andrew Sloane <andy@a1k0n.net>
+  Michael Fischer <michael+pogo@dynamine.net>
+  Mike Schilli <m@perlmeister.com>
+  Nicholas Harteau <nrh@hep.cat>
+  Nick Purvis <nep@noisetu.be>
+  Robert Phan <robert.phan@gmail.com>
 
 =cut
 

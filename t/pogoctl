@@ -1,6 +1,5 @@
-package Pogo::Plugin::Target::Inline;
-
-# Copyright (c) 2010, Yahoo! Inc. All rights reserved.
+#!/usr/bin/env perl
+# Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,36 +16,57 @@ package Pogo::Plugin::Target::Inline;
 use 5.008;
 use common::sense;
 
-use Data::Dumper;
-use Log::Log4perl qw(:easy);
-use String::Glob::Permute qw(string_glob_permute);
+use FindBin qw($Bin);
 
-use base qw(Pogo::Plugin::Target);
+use lib "$Bin/../lib";
+use lib "$Bin/../t/lib";
 
-sub get_apps
+use PogoTester;
+
+sub start
 {
-  my ( $self, $expressions ) = @_;
-  DEBUG Dumper $expressions;
+  $ENV{POGO_PERSIST} = 1;
+  PogoTester::start_zookeeper();
+  PogoTester::start_dispatcher();
+  PogoTester::start_worker();
 }
 
-sub get_envs
+sub stop
 {
-  my ( $self, $expressions ) = @_;
-  DEBUG Dumper $expressions;
+  delete $ENV{POGO_PERSIST};
+  PogoTester::stop_worker();
+  PogoTester::stop_dispatcher();
+  PogoTester::stop_zookeeper();
 }
 
-sub expand_target
+sub restart
 {
-  my ( $self, $target ) = @_;
-
-  my @flat;
-  push @flat, string_glob_permute($target);
-
-  # we also need to uniq this, methinks
-  my %uniq = map { $_ => 1 } @flat;
-
-  return keys %uniq;
+  stop();
+  start();
 }
+
+sub main
+{
+  if ($ARGV[0] eq 'start')
+  {
+    start();
+    return 0;
+  }
+  elsif ($ARGV[0] eq 'stop')
+  {
+    stop();
+    return 0;
+  }
+  elsif ($ARGV[0] eq 'restart')
+  {
+    restart();
+    return 0;
+  }
+
+  print "what?";
+}
+
+exit &main;
 
 1;
 
@@ -84,11 +104,12 @@ Apache 2.0
 
 =head1 AUTHORS
 
-  Andrew Sloane <asloane@yahoo-inc.com>
-  Michael Fischer <mfischer@yahoo-inc.com>
-  Nicholas Harteau <nrh@yahoo-inc.com>
-  Nick Purvis <nep@yahoo-inc.com>
-  Robert Phan <rphan@yahoo-inc.com>
+  Andrew Sloane <andy@a1k0n.net>
+  Michael Fischer <michael+pogo@dynamine.net>
+  Mike Schilli <m@perlmeister.com>
+  Nicholas Harteau <nrh@hep.cat>
+  Nick Purvis <nep@noisetu.be>
+  Robert Phan <robert.phan@gmail.com>
 
 =cut
 

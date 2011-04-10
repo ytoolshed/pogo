@@ -1,6 +1,6 @@
 #!/usr/bin/env perl -w
 
-# Copyright (c) 2010, Yahoo! Inc. All rights reserved.
+# Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 use 5.008;
 use common::sense;
 
-use Test::More tests => 11;
+use Test::More tests => 21;
 use Test::Exception;
 
 use Data::Dumper;
@@ -31,67 +31,106 @@ use lib "$Bin/../lib";
 use lib "$Bin/lib";
 
 use PogoTester;
-use Pogo::Engine;
-use Pogo::Engine::Job;
-use Pogo::Engine::Store qw(store);
-use Pogo::Dispatcher::AuthStore;
-
-$SIG{ALRM} = sub { confess; };
-alarm(60);
+use PogoTesterAlarm;
 
 test_pogo
 {
   my $t;
-  $t = dispatcher_rpc( ["ping"] );
-  is( $t->[1]->[0], 0xDEADBEEF, 'ping' )
+  lives_ok { $t = client->ping(); } 'ping send'
     or diag explain $t;
-
-  # fire up authstore
-  lives_ok { Pogo::Dispatcher::AuthStore->init( peers => 'localhost' ); };
+  ok( $t->is_success, 'ping success ' . $t->status_msg )
+    or diag explain $t;
+  is( $t->record, 0xDEADBEEF, 'ping recv' )
+    or diag explain $t;
 
   # loadconf
+  undef $t;
   my $conf_to_load;
-  lives_ok { $conf_to_load = LoadFile("$Bin/conf/example.yaml") };
-  $t = dispatcher_rpc( [ 'loadconf', 'example', $conf_to_load ] );
-  is( $t->[0]->{status}, 'OK', 'loadconf rpc OK' )
+  lives_ok { $conf_to_load = LoadFile("$Bin/conf/example.yaml") } 'load yaml'
+    or diag explain $t;
+  lives_ok { $t = client->loadconf( 'example', $conf_to_load ) } 'loadconf send'
+    or diag explain $t;
+  ok( $t->is_success, "loadconf send " . $t->status_msg )
     or diag explain $t;
 
-  $t = dispatcher_rpc( ["stats"] );
-  is( $t->[1]->[0]->{hostname}, hostname(), 'stats' )
+  sleep 1;
+
+  undef $t;
+  lives_ok { $t = client->stats(); } 'stats send'
+    or diag explain $t;
+  ok( $t->is_success, 'stats success' )
+    or diag explain $t;
+  is( $t->unblessed->[1]->[0]->{hostname}, hostname(), 'stats' )
     or diag explain $t;
 
-  foreach my $dispatcher ( @{ $t->[1] } )
+  foreach my $dispatcher ( $t->records )
   {
     ok( exists $dispatcher->{workers_idle}, "exists workers_idle" )
       or diag explain $dispatcher;
     ok( exists $dispatcher->{workers_busy}, "exists workers_busy" )
       or diag explain $dispatcher;
-    ok( $dispatcher->{workers_idle} == 1, "one workers_idle" )
+    is( scalar @{$dispatcher->{workers_idle}}, 1, "one workers_idle" )
       or diag explain $dispatcher;
-    ok( $dispatcher->{workers_busy} == 0, "zero workers_busy" )
+    is( scalar @{$dispatcher->{workers_busy}}, 0, "zero workers_busy" )
       or diag explain $dispatcher;
   }
 
-  # start a job
-  my %job1 = (
+  my $job1 = {
     user        => 'test',
     run_as      => 'test',
+    password    => encrypt_secret('foo'),
+    secrets     => encrypt_secret('bar'),
     command     => 'echo job1',
     target      => [ 'foo[1-10].example.com', ],
     namespace   => 'example',
-    password    => 'foo',
-    timeout     => 2,
-    job_timeout => 2,
+    timeout     => 5,
+    job_timeout => 5,
     concurrent  => 1,
-  );
+  };
 
-  ok( my $job = Pogo::Engine::Job->new( \%job1 ), "job->new" );
+  my $resp;
+  lives_ok { $resp = client->run(%$job1); } 'run job1'
+    or diag explain $@;
+  ok( $resp->is_success, "sent run job1" );
 
-  #$job->start( sub { ok( 1, "started" ); confess; }, sub { ok( 0, "started" ); confess; } );
-  #$job->start( sub { ok( 0, "started" ); }, sub { ok( 1, "started" ); } );
+  my $jobid = $resp->record;
 
-  sleep 5;
-  is( $job->state, 'halted', 'job timeout' );
+  ok( $jobid eq 'p0000000000', "got jobid" );
+
+  sleep $job1->{job_timeout};    # job should timeout
+
+  my @records;
+  for (my $i = 0; $i <= $job1->{job_timeout}; $i++)
+  {
+    $resp = client->jobstatus($jobid)
+      or diag explain $@;
+    $resp->is_success
+      or diag explain $resp;
+    @records = $resp->records;
+
+    last if $records[0] eq 'halted';
+    sleep 1;
+  }
+
+  is( $records[0], 'halted', "job $jobid halted" )
+    or diag explain \@records;
+
+  # test jobretry
+  dies_ok { $resp = client->jobretry( $jobid, ['foo11.example.com'] ) }
+  "job retry for host not in job"
+    or diag explain $@;
+
+  ok( $@ =~ m/expired/, "job retry for host not in job" )
+    or diag explain $resp;
+
+  dies_ok { $resp = client->jobretry( $jobid, ['foo9.example.com'] ) } "job retry for host in job"
+    or diag explain $@;
+
+  ok( $@ =~ /expired/, "job expired message" )
+    or diag explain $resp;
+
+  # TODO: test successful retry, retry while job still running.
+
 };
 
 done_testing();

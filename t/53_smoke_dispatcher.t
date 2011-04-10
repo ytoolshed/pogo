@@ -1,6 +1,6 @@
 #!/usr/bin/env perl -w
 
-# Copyright (c) 2010, Yahoo! Inc. All rights reserved.
+# Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ use 5.008;
 use common::sense;
 
 use Test::Exception;
-use Test::More tests => 5;
+use Test::More tests => 10;
 
 use Carp qw(confess);
 use FindBin qw($Bin);
@@ -28,35 +28,44 @@ use YAML::XS qw(LoadFile);
 
 use lib "$Bin/lib";
 use PogoTester;
-
-$SIG{ALRM} = sub { confess; };
-alarm(60);
+use PogoTesterAlarm;
 
 test_pogo
 {
   my $t;
 
   # ping
-  $t = dispatcher_rpc( ["ping"] );
-  ok( $t->[1]->[0] == 0xDEADBEEF, 'ping' )
-    or print Dumper $t;
+  lives_ok { $t = client->ping(); } 'ping send'
+    or diag explain $t;
+  ok( $t->is_success, 'ping success ' . $t->status_msg )
+    or diag explain $t;
+  ok( $t->record == 0xDEADBEEF, 'ping recv' )
+    or diag explain $t;
 
   # stats
-  $t = dispatcher_rpc( ["stats"] );
-  ok( $t->[1]->[0]->{hostname} eq hostname(), 'stats' )
-    or print Dumper $t;
+  undef $t;
+  lives_ok { $t = client->stats(); } 'stats send'
+    or diag explain $t;
+  ok( $t->is_success, 'stats success ' . $t->status_msg )
+    or diag explain $t;
+  ok( $t->unblessed->[1]->[0]->{hostname} eq hostname(), 'stats' )
+    or diag explain $t;
 
   # badcmd
-  $t = dispatcher_rpc( ["weird"] );
-  ok( $t->[0]->{status} eq 'ERROR', 'weird' )
-    or print Dumper $t;
-  ok( $t->[0]->{errmsg} eq qq/unknown rpc command 'weird'/, 'weird 2' );
+  undef $t;
+  dies_ok { $t = client->weird(); } 'weird send'
+    or diag explain $t;
+  ok( $@ eq qq{error from pogo server in request 'weird': unknown rpc command 'weird'\n},
+    "weird 2" )
+    or diag explain $@;
 
   # loadconf
+  undef $t;
   my $conf_to_load = LoadFile("$Bin/conf/example.yaml");
-  $t = dispatcher_rpc( [ "loadconf", 'example', $conf_to_load ] )
-    or print Dumper $t;
-  ok( $t->[0]->{status} eq 'OK', "loadconf rpc ok" ) or print Dumper $t;
+  lives_ok { $t = client->loadconf( 'example', $conf_to_load ) } 'loadconf send'
+    or diag explain $t;
+  ok( $t->is_success, "loadconf success " . $t->status_msg )
+    or diag explain $t;
 };
 
 done_testing;

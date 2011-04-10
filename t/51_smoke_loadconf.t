@@ -1,6 +1,6 @@
 #!/usr/bin/env perl -w
 
-# Copyright (c) 2010, Yahoo! Inc. All rights reserved.
+# Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,9 +28,7 @@ use lib "$Bin/../lib";
 use lib "$Bin/lib";
 
 use PogoTester;
-
-$SIG{ALRM} = sub { confess; };
-alarm(60);
+use PogoTesterAlarm;
 
 use Pogo::Engine;
 
@@ -232,8 +230,8 @@ ___INVALID4___
 
     # now test rpc
     undef $gotconf;
-    ok( $r = dispatcher_rpc( [ 'loadconf', $namespace, $const_conf ] ), "$cname rpc loadconf" );
-    ok( $r->[0]->{status} eq 'OK', "$cname rpc loadconf OK: " . $r->[0]->{errmsg} );
+    ok( $r = client->loadconf( $namespace, $const_conf ), "$cname rpc loadconf" );
+    ok( $r->is_success, "$cname rpc loadconf OK: " . $r->status_msg );
     ok( $gotconf = Pogo::Engine->namespace($namespace)->get_conf, "$cname rpc get_conf" );
   }
 
@@ -294,11 +292,12 @@ Apache 2.0
 
 =head1 AUTHORS
 
-  Andrew Sloane <asloane@yahoo-inc.com>
-  Michael Fischer <mfischer@yahoo-inc.com>
-  Nicholas Harteau <nrh@yahoo-inc.com>
-  Nick Purvis <nep@yahoo-inc.com>
-  Robert Phan <rphan@yahoo-inc.com>
+  Andrew Sloane <andy@a1k0n.net>
+  Michael Fischer <michael+pogo@dynamine.net>
+  Mike Schilli <m@perlmeister.com>
+  Nicholas Harteau <nrh@hep.cat>
+  Nick Purvis <nep@noisetu.be>
+  Robert Phan <robert.phan@gmail.com>
 
 =cut
 

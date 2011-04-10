@@ -1,0 +1,14 @@
+---
+target: foo4.example.com
+exit:   1
+after:  5
+output: |
+  this host should fail
+
+---
+target: foo[1-11].example.com
+exit:   0
+after:  10
+output: |
+  this host should succeed
+

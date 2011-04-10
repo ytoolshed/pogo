@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-# Copyright (c) 2010, Yahoo! Inc. All rights reserved.
+# Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,8 +21,7 @@ use Log::Log4perl qw(:easy);
 use Pogo::Client::Commandline;
 
 Log::Log4perl::init(
-  { 'log4perl.rootLogger'                               => 'INFO, Client',
-  #  'log4perl.category.Pogo.Client'                     => 'INFO, Client',
+  { 'log4perl.category.Pogo'                            => 'INFO, Client',
     'log4perl.appender.Client'                          => 'Log::Log4perl::Appender::Screen',
     'log4perl.appender.Client.stderr'                   => 1,
     'log4perl.appender.Client.layout'                   => 'Log::Log4perl::Layout::PatternLayout',
@@ -34,7 +33,8 @@ my $ret;
 eval { $ret = Pogo::Client::Commandline->run_from_commandline(); };
 if ($@)
 {
-  LOGDIE "ERROR: $@";
+  chomp( my $err = $@ );
+  LOGDIE "ERROR: $err\n";
 }
 
 exit $ret;
@@ -75,11 +75,12 @@ Apache 2.0
 
 =head1 AUTHORS
 
-  Andrew Sloane <asloane@yahoo-inc.com>
-  Michael Fischer <mfischer@yahoo-inc.com>
-  Nicholas Harteau <nrh@yahoo-inc.com>
-  Nick Purvis <nep@yahoo-inc.com>
-  Robert Phan <rphan@yahoo-inc.com>
+  Andrew Sloane <andy@a1k0n.net>
+  Michael Fischer <michael+pogo@dynamine.net>
+  Mike Schilli <m@perlmeister.com>
+  Nicholas Harteau <nrh@hep.cat>
+  Nick Purvis <nep@noisetu.be>
+  Robert Phan <robert.phan@gmail.com>
 
 =cut
 

@@ -1,6 +1,6 @@
 package Pogo::Dispatcher;
 
-# Copyright (c) 2010, Yahoo! Inc. All rights reserved.
+# Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,6 +18,8 @@ package Pogo::Dispatcher;
 # . handles connections from workers
 # . handles jsonrpc connections from the http api
 # . fetch/store passwords
+
+use Data::Dumper;
 
 use 5.008;
 use common::sense;
@@ -38,7 +40,7 @@ use Pogo::Dispatcher::WorkerConnection;
 
 # this is maximum the number of queued up tasks to send to a worker, not the
 # total concurrent limit (which is controlled in the worker itself)
-use constant MAX_WORKER_TASKS => 50;
+use constant MAX_WORKER_TASKS => 20;
 
 my $instance;
 
@@ -91,30 +93,51 @@ sub run    #{{
 
   # periodically poll task queue for jobs
   my $poll_timer = AnyEvent->timer(
-    interval => 1,
+    interval => 10,
     cb       => sub { poll(); },
   );
 
   # periodically record stats
   my $stats_timer = AnyEvent->timer(
     interval => 5,
-    cb       => sub { _write_stats(); },
+    cb       => sub { write_stats(); },
   );
 
   # Start event loop.
   AnyEvent->condvar->recv;
-}    #}}}
+}
+
+# }}}
+
+sub purge_queue
+{
+  my ( $class, $jobid ) = @_;
+  my @tasks = store->get_children('/pogo/taskq');
+  foreach my $task (@tasks)
+  {
+    my ( $reqtype, $task_jobid, $host ) = split( /;/, $task );
+    if ( $jobid eq $task_jobid && $reqtype eq 'runhost' )
+    {
+      store->delete("/pogo/taskq/$task");
+      DEBUG "purged $task";
+    }
+  }
+}
 
 sub poll
 {
-  foreach my $task ( store->get_children('/pogo/taskq') )
+  my @tasks = store->get_children('/pogo/taskq');
+  foreach my $task (@tasks)
   {
     my @workers = values %{ $instance->{workers}->{idle} };
-    if ( !scalar @workers )
+    if ( scalar @workers <= 0 )
     {
-      DEBUG "task waiting but no idle workers connected...";
-
-      #return;      # technically we don't need workers to do startjob.
+      DEBUG sprintf "%d task%s waiting but no idle workers connected...",
+        scalar @tasks,
+        scalar @tasks > 1 ? 's' : '';
+      # we'll bail out here and retry the next poll interval
+      #last;
+      next;
     }
 
     # will we win the race to grab the task?
@@ -128,16 +151,20 @@ sub poll
     if ( $reqtype eq 'runhost' )
     {
       next if ( !scalar @workers );    # skip if we have no workers.
-      next unless Pogo::Dispatcher::AuthStore->get($jobid);
 
       # skip for now if we have no passwords (yet?)
+      if ( !Pogo::Dispatcher::AuthStore->get($jobid) )
+      {
+        DEBUG "skipping task for $jobid, no secrets found";
+        next;
+      }
 
       if ( store->delete("/pogo/taskq/$task") )
       {
         my $job = Pogo::Engine->job($jobid);
         my $w   = $workers[ int rand( scalar @workers ) ];    # this is where we would include
                                                               # smarter logic on worker selection
-        $w->start_task( $job, $host );
+        $w->queue_task( $job, $host );
       }
     }
     elsif ( $reqtype eq 'startjob' )
@@ -174,13 +201,13 @@ sub poll
   return;    # should not be reached;
 }
 
-sub _write_stats
+sub write_stats
 {
   my $path  = '/pogo/stats/' . $instance->{stats}->{hostname} . '/current';
   my $store = Pogo::Engine->store;
 
-  #  $instance->{stats}->{workers_busy} = scalar keys %{ $instance->{workers}->{busy} };
-  #  $instance->{stats}->{workers_idle} = scalar keys %{ $instance->{workers}->{idle} };
+  $instance->{stats}->{workers_busy} = [ sort keys %{ $instance->{workers}->{busy} } ];
+  $instance->{stats}->{workers_idle} = [ sort keys %{ $instance->{workers}->{idle} } ];
 
   my @tasks = Pogo::Engine->listtaskq();
 
@@ -209,13 +236,40 @@ sub idle_worker
 {
   LOGDIE "dispatcher not yet initialized" unless defined $instance;
   my ( $class, $worker ) = @_;
-  if ( $worker->tasks < MAX_WORKER_TASKS )
+  if ( delete $instance->{workers}->{busy}->{ $worker->id } )
   {
-    delete $instance->{workers}->{busy}->{ $worker->id };
     $instance->{workers}->{idle}->{ $worker->id } = $worker;
-    $instance->{stats}->{workers_idle}++;
-    DEBUG sprintf( "Marked worker %s idle", $worker->id );
-    _write_stats();
+    DEBUG sprintf "marked worker %s idle (%d)", $worker->id, $worker->active_tasks;
+    write_stats();
+  }
+}
+
+sub busy_worker
+{
+  LOGDIE "dispatcher not yet initialized" unless defined $instance;
+  my ( $class, $worker ) = @_;
+  if ( $worker->active_tasks >= MAX_WORKER_TASKS )
+  {
+    delete $instance->{workers}->{idle}->{ $worker->id };
+    $instance->{workers}->{busy}->{ $worker->id } = $worker;
+    DEBUG sprintf "marked worker %s busy (%d)", $worker->id, $worker->active_tasks;
+    write_stats();
+  }
+}
+
+sub enlist_worker
+{
+  LOGDIE "dispatcher not yet initialized" unless defined $instance;
+  my ( $class, $worker ) = @_;
+  if ( !defined $instance->{workers}->{idle}->{ $worker->id } )
+  {
+    $instance->{workers}->{idle}->{ $worker->id } = $worker;
+    DEBUG sprintf( "enlisted worker %s", $worker->id );
+    write_stats();
+  }
+  else
+  {
+    ERROR "trying to enlist already-enlisted worker? " . $worker->id;
   }
 }
 
@@ -223,28 +277,10 @@ sub retire_worker
 {
   LOGDIE "dispatcher not yet initialized" unless defined $instance;
   my ( $class, $worker ) = @_;
-  $instance->{stats}->{workers_idle}
-    -= delete $instance->{workers}->{idle}->{ $worker->id } ? 1 : 0;
-  $instance->{stats}->{workers_busy}
-    -= delete $instance->{workers}->{busy}->{ $worker->id } ? 1 : 0;
-  DEBUG sprintf( "Retired worker %s", $worker->id );
-  _write_stats();
-}
-
-sub busy_worker
-{
-  LOGDIE "dispatcher not yet initialized" unless defined $instance;
-  my ( $class, $worker ) = @_;
-  $worker->{tasks}++;
-  if ( $worker->{tasks} >= MAX_WORKER_TASKS )
-  {
-    delete $instance->{workers}->{idle}->{ $worker->id() };
-    $instance->{workers}->{busy}->{ $worker->id() } = $worker;
-    $instance->{stats}->{workers_idle}--;
-    $instance->{stats}->{workers_busy}++;
-    DEBUG "marked worker busy: " . $worker->id;
-    _write_stats();
-  }
+  delete $instance->{workers}->{idle}->{ $worker->id };
+  delete $instance->{workers}->{busy}->{ $worker->id };
+  DEBUG sprintf( "retired worker %s", $worker->id );
+  write_stats();
 }
 
 # }}}
@@ -318,11 +354,12 @@ Apache 2.0
 
 =head1 AUTHORS
 
-  Andrew Sloane <asloane@yahoo-inc.com>
-  Michael Fischer <mfischer@yahoo-inc.com>
-  Nicholas Harteau <nrh@yahoo-inc.com>
-  Nick Purvis <nep@yahoo-inc.com>
-  Robert Phan <rphan@yahoo-inc.com>
+  Andrew Sloane <andy@a1k0n.net>
+  Michael Fischer <michael+pogo@dynamine.net>
+  Mike Schilli <m@perlmeister.com>
+  Nicholas Harteau <nrh@hep.cat>
+  Nick Purvis <nep@noisetu.be>
+  Robert Phan <robert.phan@gmail.com>
 
 =cut
 

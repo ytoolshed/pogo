@@ -1,3 +1,5 @@
+[%# vim:ft=html
+%]
 [% INCLUDE _page_header.tt %]
 
 [% IF running_jobs.0 %]
@@ -15,7 +17,7 @@
   </tr>
   [% FOREACH job IN running_jobs %]
   <tr class="job">
-    <td><span class="pogo-id"><a href="[% base_cgi_path %]/[% job.jobid %]">[% job.jobid %]</a></span></td>
+    <td><span class="pogo-id"><a href="[% base_cgi_path %][% job.jobid %]">[% job.jobid %]</a></span></td>
     <td><a href="[% base_cgi_path %]?user=[% job.user %]">[% job.user %]</a></td>
     <td>[% job.state %]</td>
     <td nowrap>[% job.start_time %]</td>
@@ -41,7 +43,7 @@
   </tr>
   [% FOREACH job IN jobs %]
   <tr class="job">
-    <td><span class="pogo-id"><a href="[% base_cgi_path %]/[% job.jobid %]">[% job.jobid %]</a></span></td>
+    <td><span class="pogo-id"><a href="[% base_cgi_path %][% job.jobid %]">[% job.jobid %]</a></span></td>
     <td><a href="[% base_cgi_path %]?user=[% job.user %]">[% job.user %]</a></td>
     <td>[% job.state %]</td>
     <td nowrap>[% job.start_time %]</td>

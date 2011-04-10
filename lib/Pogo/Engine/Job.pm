@@ -1,6 +1,6 @@
 package Pogo::Engine::Job;
 
-# Copyright (c) 2010, Yahoo! Inc. All rights reserved.
+# Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,6 +14,7 @@ package Pogo::Engine::Job;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+use 5.008;
 use common::sense;
 
 use List::Util qw(min max);
@@ -26,7 +27,6 @@ use MIME::Base64 qw(encode_base64);
 use Time::HiRes qw(time);
 
 use Pogo::Common;
-use Pogo::Engine;
 use Pogo::Engine::Store qw(store);
 use Pogo::Engine::Job::Host;
 use Pogo::Dispatcher::AuthStore;
@@ -94,14 +94,12 @@ sub new
   my $pw      = delete $args->{password};
   my $secrets = delete $args->{secrets};
 
+  my $expire = $args->{job_timeout} + time() + 60;
+  Pogo::Dispatcher::AuthStore->instance->store( $self->{id}, $pw, $secrets, $expire );
+
   # store all non-secure items in zk
   while ( my ( $k, $v ) = each %$args ) { $self->set_meta( $k, $v ); }
-
   $self->set_meta( 'target', encode_json($target) );
-
-  my $expire = $args->{job_timeout} + time();
-
-  Pogo::Dispatcher::AuthStore->instance->store( $self->{id}, $pw, $secrets, $expire );
 
   Pogo::Engine->add_task( 'startjob', $self->{id} );
 
@@ -214,7 +212,6 @@ sub info
 sub host
 {
   my ( $self, $hostname, $defstate ) = @_;
-  DEBUG "adding host $hostname";
   if ( !exists $self->{_hosts}->{$hostname} )
   {
     $self->{_hosts}->{$hostname} = Pogo::Engine::Job::Host->new( $self, $hostname, $defstate );
@@ -303,26 +300,49 @@ sub start_task
   my ( $state, $ext ) = $host->state;
   if ( $state eq 'ready' )
   {
-
     # normally, this is what happens
     $self->set_host_state( $host, 'running', 'started', output => $output_url );
   }
   else
   {
-
     # craft a redundant host state log message which just updates the output url
     $self->log( 'hoststate', { host => $host->{name}, state => $state, output => $output_url },
       $ext );
   }
 }
 
+sub retry_task
+{
+  my ( $self, $hostname ) = @_;
+  die "no host $hostname in job" if ( !$self->has_host($hostname) );
+  my $host = $self->host($hostname);
+  if ( $host->state eq 'failed' or $host->state eq 'finished' )
+  {
+    my $hinfo = $host->info;
+    if ( !defined $hinfo )
+    {
+      LOGDIE "Hostinfo missing for $hostname; cannot retry\n";
+    }
+    if ( defined $hinfo->{error} )
+    {
+      LOGDIE "Not retrying $hostname: " . $hinfo->{error} . "\n";
+    }
+    $self->set_host_state( $host, 'waiting', 'retry requested' );
+    return 1;
+  }
+  else
+  {
+    return 0;
+  }
+}
+
 sub finish_task
 {
   my ( $self, $hostname, $exitstatus, $msg ) = @_;
-  DEBUG "host $hostname exited $exitstatus; attempting to continue job";
+  DEBUG "host $hostname exited $exitstatus";
   my $host = $self->host($hostname);
 
-  # FIXME: set end time meta value on host
+  # TODO: set end time meta value on host
 
   # TODO: if all workers are idle and the job isn't finished, mark it stuck
   # also check for deadlocks somehow
@@ -335,8 +355,7 @@ sub finish_task
   }
   else
   {
-
-    # FIXME: we need to find extended status messages here once we get the pogo-worker stuff going
+    # TODO: we need to find extended status messages here once we get the pogo-worker stuff going
     $self->set_host_state(
       $host, 'failed',
       length($msg) || "exited with status $exitstatus",
@@ -351,6 +370,38 @@ sub finish_task
     }
     $self->continue_deferred();
   }
+}
+
+sub resume
+{
+  my ( $self, $reason, $cb ) = @_;
+  return $cb->() if ( $self->is_running );
+
+  my @failed          = $self->failed_hosts;
+  my @failed_names    = map { $_->name } @failed;
+  my %failed_hostinfo = map { $_->name, $_->info } @failed;
+  my $ns              = $self->namespace;
+
+  my $errc = sub { ERROR $@ };
+
+  # re-lock all slots for any failed hosts in the job
+  $ns->fetch_all_slots(
+    $self,
+    \%failed_hostinfo,
+    $errc,
+    sub {
+      my ( $allslots, $hostslots ) = @_;
+
+      # reserve a slot for all our failed hosts
+      foreach my $hostname (@failed_names)
+      {
+        map { $_->reserve( $self, $hostname ) } @{ $hostslots->{$hostname} };
+      }
+
+      $self->set_state( 'running', $reason );
+      $cb->();
+    }
+  );
 }
 
 # }}}
@@ -403,6 +454,14 @@ sub halt
   $reason ||= 'halted by user';    # TODO: which user?
   DEBUG "halting " . $self->id;
   $self->set_state( 'halted', $reason );
+  foreach my $host ( $self->unfinished_hosts )
+  {
+    if ( !$host->is_running )
+    {
+      $self->set_host_state( $host, 'halted', 'job halted', $reason );
+    }
+  }
+  Pogo::Dispatcher->purge_queue( $self->id );
   $self->unlock_all();
 }
 
@@ -477,31 +536,27 @@ sub start
 {
   my ( $self, $errc, $cont ) = @_;
 
-  # do hostinfo lookup for the targets
   my $target     = decode_json( $self->meta('target') );
   my $ns         = $self->namespace;
   my $concurrent = $self->concurrent;
   my $joblock    = $self->lock("Pogo::Engine::Job::start:before_hostinfo");
 
-  my @flat_targets = $ns->target_plugin->_expand_targets($target);
-
-  $self->set_state(
-    'gathering',
-    'job created; fetching host info',
-    target => $self->meta('target')
-  );
+  $self->set_state( 'gathering', 'job created; fetching host info', target => $target );
   INFO "starting job " . $self->id;
 
   my $all_host_meta = {};
   my @dead_hosts    = ();
 
-  eval {
+  my $flat_targets = $ns->expand_targets($target);
 
+  eval {
     # constrained codepath
-    # fetch all meta before we add to the job
+    # fetch all meta (apps+envs) before we add to the job
 
     if ( !defined $concurrent )
     {
+      DEBUG "we are constrained.";
+
       my $fetch_errc = sub {
         local *__ANON__ = 'AE:cb:fetch_target_meta:errc';
         ERROR $self->id . ": unable to obtain meta info for target: $@";
@@ -516,12 +571,12 @@ sub start
         $self->fetch_runnable_hosts();
       };
 
-      $self->fetch_target_meta( \@flat_targets, $ns->name, $fetch_errc, $fetch_cont, );
+      $ns->fetch_target_meta( $flat_targets, $ns->name, $fetch_errc, $fetch_cont, );
     }
     else    # concurrent codepath
     {
-      DEBUG "we are concurrent!";
-      foreach my $hostname (@flat_targets)
+      DEBUG "we are concurrent.";
+      foreach my $hostname (@$flat_targets)
       {
         my $host = $self->host( $hostname, 'waiting' );
 
@@ -534,8 +589,9 @@ sub start
         $host->set_hostinfo($hmeta);
         $all_host_meta->{$hostname} = $hmeta;
       }
+      $self->set_state( 'running', "constraints computed" );
+      $self->start_job_timeout();
     }
-    $self->start_job_timeout();
   };
 
   if ($@)
@@ -735,28 +791,6 @@ sub continue
 }
 
 # }}}
-# {{{ fetch_target_meta
-
-sub fetch_target_meta
-{
-  my ( $self, $targets, $namespace, $errc, $cont ) = @_;
-
-  my $plugin_cont = sub {
-    local *__ANON__ = 'plugin_cont';
-
-    # after fetching, we should check if we're last and
-    # if so, call the original cont
-    DEBUG "got a batch";
-  };
-
-  my $plugin_err = sub {
-    local *__ANON__ = 'plugin_err';
-    ERROR "plugin error";
-  };
-
-}
-
-# }}}
 # {{{ locking
 
 sub lock
@@ -782,6 +816,7 @@ sub log
 }
 
 # determine job start time by the first log entry's timestamp
+# TODO: what's the retval when the first log entry isn't valid JSON?
 sub start_time
 {
   my ($self) = @_;
@@ -952,7 +987,6 @@ sub snapshot
 
   if ( $offset == 0 )
   {
-
     # store the snapshot in 1-meg chunks (ZK can't store >1 meg in a node)
     # _snapshot0 .. _snapshotN
     my ( $i, $off, $snaplen ) = ( 0, 0, length($snap) );
@@ -1070,11 +1104,12 @@ Apache 2.0
 
 =head1 AUTHORS
 
-  Andrew Sloane <asloane@yahoo-inc.com>
-  Michael Fischer <mfischer@yahoo-inc.com>
-  Nicholas Harteau <nrh@yahoo-inc.com>
-  Nick Purvis <nep@yahoo-inc.com>
-  Robert Phan <rphan@yahoo-inc.com>
+  Andrew Sloane <andy@a1k0n.net>
+  Michael Fischer <michael+pogo@dynamine.net>
+  Mike Schilli <m@perlmeister.com>
+  Nicholas Harteau <nrh@hep.cat>
+  Nick Purvis <nep@noisetu.be>
+  Robert Phan <robert.phan@gmail.com>
 
 =cut
 

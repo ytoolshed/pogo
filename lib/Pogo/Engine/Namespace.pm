@@ -1,6 +1,6 @@
 package Pogo::Engine::Namespace;
 
-# Copyright (c) 2010, Yahoo! Inc. All rights reserved.
+# Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,11 +14,15 @@ package Pogo::Engine::Namespace;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+use Data::Dumper;
+
+use 5.008;
 use common::sense;
 
 use Storable qw(dclone);
 use List::Util qw(min max);
 use Log::Log4perl qw(:easy);
+use Set::Scalar;
 
 use Pogo::Engine::Namespace::Slot;
 use Pogo::Engine::Store qw(store);
@@ -54,13 +58,13 @@ sub init
   if ( !store->exists( $self->path ) )
   {
     store->create( $self->path, '' )
-      or LOGDIE "unable to create namespace '$ns': " . store->get_error;
+      or LOGCONFESS "unable to create namespace '$ns': " . store->get_error_name;
     store->create( $self->path . '/env', '' )
-      or LOGDIE "unable to create namespace '$ns': " . store->get_error;
+      or LOGCONFESS "unable to create namespace '$ns': " . store->get_error_name;
     store->create( $self->path . '/lock', '' )
-      or LOGDIE "unable to create namespace '$ns': " . store->get_error;
+      or LOGCONFESS "unable to create namespace '$ns': " . store->get_error_name;
     store->create( $self->path . '/conf', '' )
-      or LOGDIE "unable to create namespace '$ns': " . store->get_error;
+      or LOGCONFESS "unable to create namespace '$ns': " . store->get_error_name;
   }
 
   return $self;
@@ -155,8 +159,11 @@ sub fetch_all_slots
   my ( $self, $job, $hostinfo_map, $errc, $cont ) = @_;
   my $slots = $self->{slots};
 
-  my %hostslots;
-  my @slotlookups;
+  my %hostslots   = ();
+  my %to_resolve  = ();
+  my @slotlookups = ();
+
+  DEBUG Dumper $hostinfo_map;
 
   my $concurrent = $job->concurrent;
   if ( defined $concurrent )
@@ -190,6 +197,84 @@ sub fetch_all_slots
   }
 
   # this is where we handle the more complex, non-concurrent case
+
+  my $const = $self->get_all_curs;
+  my $seq   = $self->get_all_seqs;
+
+  DEBUG Dumper [ $const, $seq ];
+
+  # resolve all max_down_hosts for each app-env
+  while ( my ( $hostname, $hostinfo ) = each %$hostinfo_map )
+  {
+    $hostslots{$hostname} = [];
+    foreach my $app ( @{ $hostinfo->{apps} } )
+    {
+      foreach my $env ( @{ $hostinfo->{envs} } )
+      {
+        my ( $etype, $ename ) = ( $env->{key}, $env->{value} );
+
+        # skip if there are no constraints for this environment
+        next if ( !exists $const->{app}->{$etype} );
+
+        my $slot = $self->slot( $app, $etype, $ename );
+
+        # if we have predecessors in the sequence for this app/environment, get
+        # those slots too
+        if ( exists $seq->{$etype} && exists $seq->{$ename}->{$app} )
+        {
+          $slot->{pred} = [ map { $self->slot( $_, $etype, $ename ) } @{ $seq->{$etype}->{$app} } ];
+          DEBUG "Sequence predecessors for "
+            . $slot->name . ": "
+            . join( ", ", map { $_->name } @{ $slot->{pred} } );
+        }
+        push @{ $hostslots{$hostname} }, $slot;
+
+        my $concur = $const->{$app}->{$etype};
+        if ( $concur !~ m{^(\d+)%$} )
+        {
+          # not a percentage, a literal
+          $slot->{maxdown} = $concur;
+        }
+        else
+        {
+          # we need to resolve the percentage, and we do so asyncronously.
+          my $pct    = $1;
+          my $appexp = $self->app_members($app);
+          my $envexp = $self->env_members($env);
+
+          $to_resolve{$appexp} = 1;
+          $to_resolve{$envexp} = 1;
+
+          push @slotlookups,
+            [ $slot, $appexp, $envexp, $pct ];   # $pct in these to be written by resolv $cont below
+        }
+      }
+    }
+  }
+
+  # note that we pass through this whether or not we need to do any expansions
+  # the foreach loop is skipped and we hit $cont directly.
+  $self->resolve(
+    [ keys %to_resolve ],
+    $errc,
+    sub {
+      my ($resolved) = @_;
+      foreach my $lookup (@slotlookups)
+      {
+        my ( $slot, $appexp, $envexp, $pct ) = @$lookup;
+        my $apptargets = Set::Scalar->new( @{ $resolved->{$appexp} } );
+        my $envtargets = Set::Scalar->new( @{ $resolved->{$envexp} } );
+
+        # TODO: do we need to speed this up with Bit::Vector?
+        my $nhosts = scalar @{ $apptargets->intersection($envtargets) };
+
+        $slot->{maxdown} = max( 1, int( $pct * $nhosts / 100 ) );
+        DEBUG "slot: @$lookup -> $slot->{maxdown} max down";
+      }
+
+      return $cont->( $slots, \%hostslots );
+    }
+  );
 }
 
 sub slot
@@ -237,6 +322,18 @@ sub unlock_job
 }
 
 # }}}
+# {{{ resolve
+
+# this is where we need to do plugin-based lookups
+# we find/initialize the plugins and fire off
+# BATCHSIZE'd chunks of lookups
+sub resolve
+{
+  my ( $self, $lookups, $errc, $cont ) = @_;
+  DEBUG Dumper $lookups;
+}
+
+# }}}
 # {{{ config setters
 
 sub set_conf
@@ -248,12 +345,10 @@ sub set_conf
   my $conf    = {};
 
   # use default plugins if none are defined
-  if ( !defined $conf_in->{plugins} )
-  {
-    $conf_in->{plugins}->{targets} = 'Pogo::Plugin::Target::Inline';
-    $conf_in->{plugins}->{apps}    = 'Pogo::Plugin::Target::Inline';
-    $conf_in->{plugins}->{envs}    = 'Pogo::Plugin::Target::Inline';
-  }
+  #if ( !defined $conf_in->{plugins} )
+  #{
+  #  $conf_in->{plugins}->{targets} = 'Pogo::Plugin::Inline';
+  #}
 
   my $name = $self->name;
 
@@ -406,7 +501,7 @@ sub _set_conf_r
     {
       store->create( $p, '' )
         or WARN "couldn't create '$p': " . store->get_error_name;
-      store->set( $p, $json->encode( $v ) )
+      store->set( $p, $json->encode($v) )
         or WARN "couldn't set '$p': " . store->get_error_name;
     }
     elsif ( $r eq 'HASH' )
@@ -446,7 +541,7 @@ sub _get_conf_r
     my $v = store->get($p);
     if ($v)
     {
-      $c->{$node} = JSON->new->utf8->allow_nonref->decode( $v );
+      $c->{$node} = JSON->new->utf8->allow_nonref->decode($v);
     }
     else
     {
@@ -462,31 +557,31 @@ sub get_conf
   return _get_conf_r( $self->{path} . "/conf" );
 }
 
-sub get_concurrence
+sub get_cur
 {
   my ( $self, $app, $key ) = @_;
   my $c = store->get( $self->{path} . "/conf/cur/$app/$key" );
   return $c;
 }
 
-sub get_concurrences
+sub get_curs
 {
   my ( $self, $app ) = @_;
   my $path = $self->{path} . "/conf/cur/$app";
-  my %c = map { $_ => $self->get_constraint( $app, $_ ) } store->get_children($path);
+  my %c = map { $_ => $self->get_cur( $app, $_ ) } store->get_children($path);
 
   DEBUG "constraints for $app: " . join( ",", keys %c );
   return \%c;
 }
 
-sub get_all_concurrences
+sub get_all_curs
 {
   my $self = shift;
   my $path = $self->{path} . "/conf/cur";
-  return { map { $_ => $self->get_constraints($_) } store->get_children($path) };
+  return { map { $_ => $self->get_curs($_) } store->get_children($path) };
 }
 
-sub get_all_sequences
+sub get_all_seqs
 {
   my $self = shift;
   my $path = $self->{path} . "/conf/seq/pred";
@@ -579,43 +674,43 @@ sub get_seq_successors
 sub target_plugin
 {
   my $self = shift;
-  my $name = 'Pogo::Plugin::Target::Inline';
+  my $name = $self->get_conf->{plugins}->{targets} || 'Pogo::Plugin::Inline';
 
   if ( !exists $self->{_plugin_cache}->{$name} )
   {
     eval "use $name;";
-    $self->{_plugin_cache}->{$name} = $name->new();
+    # this is a coderef because we want to make sure the data is fresh
+    # the plugin should do caching of it's own metadata, not the configuration
+    $self->{_plugin_cache}->{$name} = $name->new(
+      conf      => sub { $self->get_conf },
+      namespace => $self->name,
+    );
   }
 
   return $self->{_plugin_cache}->{$name};
 }
 
-sub app_plugin
+# }}}
+# {{{ expand_targets
+
+sub expand_targets
 {
-  my $self = shift;
-  my $name = 'Pogo::Plugin::Target::Inline';
-
-  if ( !exists $self->{_plugin_cache}->{$name} )
-  {
-    eval "use $name;";
-    $self->{_plugin_cache}->{target} = $name->new();
-  }
-
-  return $self->{_plugin_cache}->{$name};
+  my ( $self, $target ) = @_;
+  return $self->target_plugin->expand_targets($target);
 }
 
-sub env_plugin
+# }}}
+# {{{ fetch_target_meta
+
+sub fetch_target_meta
 {
-  my $self = shift;
-  my $name = 'Pogo::Plugin::Target::Inline';
+  my ( $self, $target, $errc, $cont ) = @_;
+  eval { $self->target_plugin->fetch_target_meta( $target, $errc, $cont ); };
 
-  if ( !exists $self->{_plugin_cache}->{$name} )
+  if ($@)
   {
-    eval "use $name;";
-    $self->{_plugin_cache}->{target} = $name->new();
+    $errc->($@);
   }
-
-  return $self->{_plugin_cache}->{$name};
 }
 
 # }}}
@@ -749,11 +844,12 @@ Apache 2.0
 
 =head1 AUTHORS
 
-  Andrew Sloane <asloane@yahoo-inc.com>
-  Michael Fischer <mfischer@yahoo-inc.com>
-  Nicholas Harteau <nrh@yahoo-inc.com>
-  Nick Purvis <nep@yahoo-inc.com>
-  Robert Phan <rphan@yahoo-inc.com>
+  Andrew Sloane <andy@a1k0n.net>
+  Michael Fischer <michael+pogo@dynamine.net>
+  Mike Schilli <m@perlmeister.com>
+  Nicholas Harteau <nrh@hep.cat>
+  Nick Purvis <nep@noisetu.be>
+  Robert Phan <robert.phan@gmail.com>
 
 =cut
 

@@ -1,9 +1,11 @@
+[%# vim:ft=html
+%]
 [% INCLUDE _page_header.tt %]
 
 <table cellpadding="0" cellspacing="0" border="0" class="jobinfo">
   <tr>
     <td class="label">Pogo&nbsp;ID</td>
-    <td><span class="pogo-id"><a href="[% base_cgi_path %]/[% jobid %]">[% jobid %]</a></span><span id="jobhalt"></span></td>
+    <td><span class="pogo-id"><a href="[% base_cgi_path %][% jobid %]">[% jobid %]</a></span><span id="jobhalt"></span></td>
   <tr>
   <tr>
     <td class="label">User</td>
@@ -61,6 +63,7 @@
 </div>
 
 <script type="text/javascript" src="http://yui.yahooapis.com/3.0.0/build/yui/yui-min.js"></script>
+<script type="text/javascript" src="/static/sprintf.js"></script>
 <script type="text/javascript">
 var pogoDataSource;
 var pogo_id   = "[% jobid %]";
@@ -75,6 +78,10 @@ var stateOrder = { failed:1, unreachable:2, deadlocked:3, ready:4, running:4, wa
 var hostCount = 0; // count of hosts in job
 var maxAutoUpdateHosts = 500; // maximum number of hosts before auto-updating is disabled
 var autoUpdate = true; // whether or not we're automatically updating
+var start_time = parseFloat('[% jobinfo.start_time %]') * 1000; // job start time
+var job_timeout = parseInt('[% jobinfo.job_timeout %]') * 1000; // job timeout
+var can_retry = false; // whether or not hosts can be retried
+var retry_ids = {}; // which hosts have pending retry requests
 var sortFuncs = {
   timeline: function( a, b ) {
     if ( state[ a ].start && state[ b ].start ) {
@@ -155,7 +162,11 @@ var Y = YUI().use( 'datasource', 'json', 'dump', 'node', function( Y ) {
   {
     Y.one( '#log' ).setStyle( 'display', 'block' );
   }
-
+  // disable retry if our job timeout has expired
+  var d_exp = new Date(start_time + job_timeout);
+  var d_now = new Date();
+  can_retry = (d_exp > d_now);
+  // fetch job status and render
   pogoDataSource = new Y.DataSource.Get( { source: "[% pogo_api %]?" } );
   status_update();
 } );
@@ -491,7 +502,7 @@ function render_state() {
     {
       tdHost.innerHTML = '<a target="' +
                           gen_target() +
-                          '" href="[% base_cgi_path %]/output?pogoid=[% pogo_id %];host=' + host.host + '">' + host.host + '</a>';
+                          '" href="[% base_cgi_path %]output?pogoid=[% jobid %]&host=' + host.host + '">' + host.host + '</a>';
     }
     else
     {
@@ -553,7 +564,7 @@ function render_state() {
     {
       tdTime.innerHTML = '<span class="timeline-message">' + host.msg + '</span>';
     }
-    else if (host.state == 'failed')
+    else if (host.state == 'failed' && can_retry)
     {
       var className = 'timeline-error';
       var isFatal   = true;
@@ -604,7 +615,7 @@ function render_state() {
 
           // add our image
           var cImg = cDiv.appendChild(img.cloneNode(false));
-          cImg.src = '[% base_html_path %]/img/blank.gif';
+          cImg.src = '[% base_html_path %]/static/blank.gif';
           cImg.width = wormMaxWidth;
           cImg.height = wormMaxHeight;
           cImg.border = 0;
@@ -657,7 +668,7 @@ function render_state() {
               var cArea = cMap.appendChild(area.cloneNode(false));
               cArea.shape = 'rect';
               cArea.coords = wormOffset + ',' + 0 + ',' + ( wormOffset + wormSize ) + ',' + wormMaxHeight;
-              cArea.href = '[% base_cgi_path %]/output?pogoid=[% pogo_id %];host=' + escape(host.host) + '#run' + (j + 1);
+              cArea.href = '[% base_cgi_path %]output?pogoid=[% jobid %]&host=' + escape(host.host) + '#run' + (j + 1);
               cArea.target = gen_target();
             }
           }
@@ -819,98 +830,6 @@ function get_farm_colo( host )
   return colo;
 }
 
-// function from http://forums.devshed.com/t39065/s84ded709f924610aa44fff827511aba3.html
-// author appears to be Robert Pollard
-function sprintf()
-{
-   if (!arguments || arguments.length < 1 || !RegExp)
-   {
-      return;
-   }
-   var str = arguments[0];
-   var re = /([^%]*)%('.|0|\x20)?(-)?(\d+)?(\.\d+)?(%|b|c|d|u|f|o|s|x|X)(.*)/;
-   var a = b = [], numSubstitutions = 0, numMatches = 0;
-   while (a = re.exec(str))
-   {
-      var leftpart = a[1], pPad = a[2], pJustify = a[3], pMinLength = a[4];
-      var pPrecision = a[5], pType = a[6], rightPart = a[7];
-
-      numMatches++;
-      if (pType == '%')
-      {
-         subst = '%';
-      }
-      else
-      {
-         numSubstitutions++;
-         if (numSubstitutions >= arguments.length)
-         {
-            alert('Error! Not enough function arguments (' + (arguments.length - 1)
-               + ', excluding the string)\n'
-               + 'for the number of substitution parameters in string ('
-               + numSubstitutions + ' so far).');
-         }
-         var param = arguments[numSubstitutions];
-         var pad = '';
-                if (pPad && pPad.substr(0,1) == "'") pad = leftpart.substr(1,1);
-           else if (pPad) pad = pPad;
-         var justifyRight = true;
-                if (pJustify && pJustify === "-") justifyRight = false;
-         var minLength = -1;
-                if (pMinLength) minLength = parseInt(pMinLength);
-         var precision = -1;
-                if (pPrecision && pType == 'f')
-                   precision = parseInt(pPrecision.substring(1));
-         var subst = param;
-         switch (pType)
-         {
-         case 'b':
-            subst = parseInt(param).toString(2);
-            break;
-         case 'c':
-            subst = String.fromCharCode(parseInt(param));
-            break;
-         case 'd':
-            subst = parseInt(param) ? parseInt(param) : 0;
-            break;
-         case 'u':
-            subst = Math.abs(param);
-            break;
-         case 'f':
-            subst = (precision > -1)
-             ? Math.round(parseFloat(param) * Math.pow(10, precision))
-              / Math.pow(10, precision)
-             : parseFloat(param);
-            break;
-         case 'o':
-            subst = parseInt(param).toString(8);
-            break;
-         case 's':
-            subst = param;
-            break;
-         case 'x':
-            subst = ('' + parseInt(param).toString(16)).toLowerCase();
-            break;
-         case 'X':
-            subst = ('' + parseInt(param).toString(16)).toUpperCase();
-            break;
-         }
-         var padLeft = minLength - subst.toString().length;
-         if (padLeft > 0)
-         {
-            var arrTmp = new Array(padLeft+1);
-            var padding = arrTmp.join(pad?pad:" ");
-         }
-         else
-         {
-            var padding = "";
-         }
-      }
-      str = leftpart + padding + subst + rightPart;
-   }
-   return str;
-}
-
 function do_halt()
 {
   Y.one('#jobhalt').set('innerHTML',' - <i>(requesting halt...)</i>');
@@ -922,12 +841,25 @@ function do_halt()
 // this is just here to ignore return value from an rpc
 function i() {}
 
-function do_retry(host,id)
+function do_retry( host, id )
 {
-  Y.one('#retry_' + id).set('innerHTML', "<i>(requesting retry for " + host + "...)</i>");
-  pogorpc( ["jobretry",pogo_id,host], "i" );
+  Y.one( '#retry_' + id ).set( 'innerHTML', "<i>(requesting retry for " + host + "...)</i>" );
+  retry_ids[ id ] = 1;
+  pogorpc( [ 'jobretry', pogo_id, host ], 'jobretry_handler' );
   clearTimeout( timer );
   timer = setTimeout( function() { status_update(); }, 1000 );
+}
+
+function jobretry_handler( obj ) {
+  var header = obj[0];
+  if ( header.status && header.status == 'ERROR' )
+  {
+    for ( var id in retry_ids )
+    {
+      delete retry_ids[ id ];
+      Y.one( '#retry_' + id ).set( 'innerHTML', '<i>(retry failed: ' + header.errmsg + ')</i>' );
+    }
+  }
 }
 </script>
 

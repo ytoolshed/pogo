@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-# Copyright (c) 2010, Yahoo! Inc. All rights reserved.
+# Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ use YAML::XS qw(LoadFile);
 use Log::Log4perl qw(:easy);
 
 use Pogo::Worker;
+use Pogo::HTTP::Server;
 
 our $VERSION = '4.0';
 
@@ -42,7 +43,7 @@ sub main
     worker_cert     => "$POGO_ROOT/etc/ssl/pogo_worker.crt",
     worker_key      => "$POGO_ROOT/etc/ssl/pogo_worker.key",
     dispatcher_cert => "$POGO_ROOT/etc/ssl/pogo_dispatcher.crt",
-    output_uri      => 'http://' . hostname() . '/pogo_output/',
+    output_uri      => 'http://' . hostname() . '/static/',
   };
 
   my $log_conf;
@@ -137,6 +138,7 @@ sub main
 
   # Log something and clean up if we are terminated by SIGTERM or SIGINT.
   $SIG{INT} = $SIG{TERM} = sub {
+    local *__ANON__ = 'sighandler';
     my $name = shift;
     FATAL "Process terminated by SIG$name";
     unlink $opts->{pid_file} if -e $opts->{pid_file};
@@ -149,6 +151,7 @@ sub main
   close $fd or LOGDIE "problem with $opts->{pidfile}: $!\n";
 
   # Enter worker main loop.
+  Pogo::HTTP::Server->run(%$opts);
   Pogo::Worker->run(%$opts);
 
   # This should never be reached.
@@ -198,11 +201,12 @@ limitations under the License.
 
 =head1 AUTHORS
 
-  Andrew Sloane <asloane@yahoo-inc.com>
-  Michael Fischer <mfischer@yahoo-inc.com>
-  Nicholas Harteau <nrh@yahoo-inc.com>
-  Nick Purvis <nep@yahoo-inc.com>
-  Robert Phan <rphan@yahoo-inc.com>
+  Andrew Sloane <andy@a1k0n.net>
+  Michael Fischer <michael+pogo@dynamine.net>
+  Mike Schilli <m@perlmeister.com>
+  Nicholas Harteau <nrh@hep.cat>
+  Nick Purvis <nep@noisetu.be>
+  Robert Phan <robert.phan@gmail.com>
 
 =cut
 

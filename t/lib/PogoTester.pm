@@ -1,6 +1,6 @@
 package PogoTester;
 
-# Copyright (c) 2010, Yahoo! Inc. All rights reserved.
+# Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,189 +14,230 @@ package PogoTester;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+use 5.008;
 use common::sense;
 
 use Time::HiRes qw(sleep);
 use Log::Log4perl qw(:easy);
 
-use AnyEvent;
 use AnyEvent::Handle;
 use AnyEvent::Socket qw(tcp_connect);
 use AnyEvent::TLS;
-use JSON::XS ();
-use YAML::XS qw(LoadFile);
-use Net::SSLeay;
-use Data::Dumper;
+use AnyEvent;
 use Carp qw(croak confess);
+use Crypt::OpenSSL::RSA;
+use Crypt::OpenSSL::X509;
+use Data::Dumper;
+use MIME::Base64 qw(encode_base64);
 use Exporter 'import';
 use FindBin qw($Bin);
-use Template;
+use JSON::XS ();
 use LWP;
+use Net::SSLeay;
+use Template;
+use YAML::XS qw(LoadFile);
 
 use lib "$Bin/../lib";
 use lib "$Bin/../../lib";
 
 use Pogo::Engine;
 use Pogo::Engine::Store;
+use Pogo::Dispatcher::AuthStore;
+use Pogo::Client;
+use PogoTesterProc;
+use IO::Socket;
 
-our @EXPORT = qw(test_pogo derp dispatcher_rpc worker_rpc authstore_rpc);
+our @EXPORT =
+  qw(test_pogo derp dispatcher_rpc worker_rpc authstore_rpc encrypt_secret decrypt_secret client);
 
 Log::Log4perl::init("$Bin/conf/log4perl.conf");
 
 my $bind_address = '127.0.0.1';
 my $dispatcher_conf;
 my $worker_conf;
-my $zookeeper_pid;
-my $dispatcher_pid;
-my $worker_pid;
+my $client_conf;
+
+my $zookeeper_proc;
+my $dispatcher_proc;
+my $worker_proc;
+
+my $pogo_client;
 
 sub test_pogo(&)
 {
   my $cb = shift;
 
   chdir($Bin);
-  system("rm -rf $Bin/.tmp");
-  mkdir "$Bin/.tmp"
-    unless -d "$Bin/.tmp";
-  mkdir "$Bin/.tmp/pogo_output"
-    unless -d "$Bin/.tmp/pogo_output";
-
   $dispatcher_conf = LoadFile("$Bin/conf/dispatcher.conf");
   $worker_conf     = LoadFile("$Bin/conf/worker.conf");
+  $client_conf     = LoadFile("$Bin/conf/client.conf");
 
-  start_zookeeper();
+  if ( !defined $ENV{POGO_PERSIST} )
+  {
+    system("rm -rf $Bin/.tmp");
+    mkdir "$Bin/.tmp"
+      unless -d "$Bin/.tmp";
+    start_zookeeper();
+    start_dispatcher();
+    sleep 2;
+    start_worker();
+  }
   init_store();
-  start_dispatcher();
-  start_worker();
   $cb->();
 }
 
 sub start_dispatcher
 {
-  return if $dispatcher_pid;
-  $dispatcher_pid = fork();
+  if ( defined $dispatcher_proc
+    and $dispatcher_proc->poll() )
+  {
+    return 0;
+  }
 
-  if ( $dispatcher_pid == 0 )
-  {
-    open STDOUT, "|tee $Bin/.tmp/dispatcher.log";
-    open STDERR, '>&STDOUT';
-    close STDIN;
-    exec(
-      "/usr/bin/env",                "perl", "-I$Bin/../lib", "-I$Bin/lib",
-      "$Bin/../bin/pogo-dispatcher", '-f',   "$Bin/conf/dispatcher.conf"
-    ) or LOGDIE $!;
-  }
-  else
-  {
-    INFO "spawned dispatcher (pid $dispatcher_pid)";
-    open my $pidfile, '>', "$Bin/.tmp/dispatcher.pid";
-    print $pidfile $dispatcher_pid;
-    close $pidfile;
-  }
-  sleep 1;
+  my @args = (
+    '/usr/bin/env',                'perl', "-I$Bin/../lib", "-I$Bin/lib",
+    "$Bin/../bin/pogo-dispatcher", "-f",   "$Bin/conf/dispatcher.conf"
+  );
+
+  my $starter = PogoTesterProc->new( "dispatcher", @args );
+
+  $dispatcher_proc = $starter->start();
+
+  sleep 5;
+
+  LOGDIE sprintf( "Couldn't start dispatcher!  Check %s and %s",
+    $starter->stderr_log_path, $starter->stdout_log_path )
+    unless $dispatcher_proc->poll();
+
+  DEBUG "dispatcher pid=", $dispatcher_proc->pid();
 }
 
 sub stop_dispatcher
 {
-  if ( -r "$Bin/.tmp/dispatcher.pid" )
-  {
-    open my $pidfile, '<', "$Bin/.tmp/dispatcher.pid";
-    $dispatcher_pid ||= <$pidfile>;
-    close $pidfile;
-    unlink "$Bin/.tmp/dispatcher.pid";
-  }
+  return if !$dispatcher_proc->poll();
 
-  return unless $dispatcher_pid;
-  INFO "killing $dispatcher_pid";
-  kill( TERM => $dispatcher_pid );
-  undef $dispatcher_pid;
+  $dispatcher_proc->kill();
+  undef $dispatcher_proc;
 }
 
 sub start_zookeeper
 {
-  return if $zookeeper_pid;
-  my $zookeeper_cmd =
-    `$Bin/../build/zookeeper/bin/zkServer.sh print-cmd $Bin/conf/zookeeper.conf 2>/dev/null`;
-  DEBUG "using '$zookeeper_cmd'";
-
-  $zookeeper_pid = fork();
-
-  if ( $zookeeper_pid == 0 )
+  if ( defined $zookeeper_proc
+    and $zookeeper_proc->poll() )
   {
-    open STDOUT, "|tee $Bin/.tmp/zookeeper.log";
-    open STDERR, '>&STDOUT';
-    close STDIN;
-    exec($zookeeper_cmd) or LOGDIE "$zookeeper_cmd failed: $!";
+    return 0;
   }
-  else
+
+  my $cmdcmd =
+    "$Bin/../build/zookeeper/bin/zkServer.sh print-cmd " . "$Bin/conf/zookeeper.conf 2>/dev/null";
+  my $cmd = `$cmdcmd`;
+
+  my $starter = PogoTesterProc->new( 'zookeeper', $cmd );
+
+  $zookeeper_proc = $starter->start();
+  DEBUG "zookeeper pid=", $zookeeper_proc->pid();
+
+  for ( 1 .. 10 )
   {
-    INFO "spawned zookeeper (pid $zookeeper_pid)";
-    open my $pidfile, '>', "$Bin/.tmp/zookeeper.pid";
-    print $pidfile $zookeeper_pid;
-    close $pidfile;
+    if ( test_zookeeper() )
+    {
+      DEBUG "Zookeeper is ok.";
+      return 1;
+    }
+    sleep 1;
+    DEBUG "Zookeeper not up yet.";
   }
+
+  LOGDIE "Couldn't start zookeeper";
 }
 
 sub stop_zookeeper
 {
-  if ( -r "$Bin/.tmp/zookeeper.pid" )
+  return if !$zookeeper_proc->poll();
+
+  $zookeeper_proc->kill();
+  undef $zookeeper_proc;
+}
+
+sub test_zookeeper
+{
+  my $port;
+  my $conf = "$Bin/conf/zookeeper.conf";
+
+  open F, "<$conf" or die "$conf: $!";
+  while (<F>)
   {
-    open my $pidfile, '<', "$Bin/.tmp/zookeeper.pid";
-    $zookeeper_pid ||= <$pidfile>;
-    close $pidfile;
-    unlink "$Bin/.tmp/zookeeper.pid";
+    if (/clientPort\s*=\s*(\d+)/)
+    {
+      $port = $1;
+      last;
+    }
+  }
+  close(F);
+
+  if ( !defined $port )
+  {
+    LOGDIE "Can't find zk port in $conf";
   }
 
-  return unless $zookeeper_pid;
-  INFO "killing $zookeeper_pid";
-  kill( TERM => $zookeeper_pid );
-  undef $zookeeper_pid;
+  DEBUG "Contacting zookeeper on port $port";
+
+  my $s = IO::Socket::INET->new(
+    PeerHost => 'localhost',
+    PeerPort => $port,
+  ) or return 0;
+
+  $s->write("ruok\n");
+  $s->read( my $buf, 1024 );
+
+  DEBUG "Zookeeper said: $buf";
+
+  if ( $buf eq "imok" )
+  {
+    return 1;
+  }
+
+  return 0;
 }
 
 sub start_worker
 {
-  return if $worker_pid;
-  $worker_pid = fork();
+  if ( defined $worker_proc
+    and $worker_proc->poll() )
+  {
+    return 0;
+  }
 
-  if ( $worker_pid == 0 )
-  {
-    open STDOUT, "|tee $Bin/.tmp/worker.log";
-    open STDERR, '>&STDOUT';
-    close STDIN;
-    exec(
-      "/usr/bin/env",            "perl", "-I$Bin/../lib", "-I$Bin/lib",
-      "$Bin/../bin/pogo-worker", '-f',   "$Bin/conf/worker.conf"
-    ) or LOGDIE $!;
-  }
-  else
-  {
-    INFO "spawned worker (pid $worker_pid)";
-    open my $pidfile, '>', "$Bin/.tmp/worker.pid";
-    print $pidfile $worker_pid;
-    close $pidfile;
-  }
-  sleep 0.5;
+  my @args = (
+    '/usr/bin/env',            'perl', "-I$Bin/../lib", "-I$Bin/lib",
+    "$Bin/../bin/pogo-worker", '-f',   "$Bin/conf/worker.conf"
+  );
+
+  my $starter = PogoTesterProc->new( 'worker', @args );
+
+  $worker_proc = $starter->start();
+
+  sleep 1;    #TODO FIX
+
+  LOGDIE sprintf( "Couldn't start worker!  Check %s and %s",
+    $starter->stderr_log_path, $starter->stdout_log_path )
+    unless $worker_proc->poll();
+
+  DEBUG "worker pid=", $worker_proc->pid();
 }
 
 sub stop_worker
 {
-  if ( -r "$Bin/.tmp/worker.pid" )
-  {
-    open my $pidfile, '<', "$Bin/.tmp/worker.pid";
-    $worker_pid ||= <$pidfile>;
-    close $pidfile;
-    unlink "$Bin/.tmp/worker.pid";
-  }
+  return if !defined $worker_proc or !$worker_proc->poll();
 
-  return unless $worker_pid;
-  INFO "killing $worker_pid";
-  kill( TERM => $worker_pid );
-  undef $worker_pid;
+  $worker_proc->kill();
+  undef $worker_proc;
 }
 
 sub init_store
 {
   Pogo::Engine::Store->init($dispatcher_conf);
+  Pogo::Dispatcher::AuthStore->init( { peers => ['localhost'] } );
 }
 
 # send raw json-rpc back and forth to our authstore port
@@ -248,11 +289,14 @@ sub authstore_rpc
   return $cv->recv;
 }
 
+# currently unused, we use the client instead
 sub dispatcher_rpc
 {
   my $rpc = shift;
-  my $url = sprintf( 'http://%s:%d/v3', $bind_address, $dispatcher_conf->{http_port} );
+  my $url = sprintf( 'http://%s:%d/api/v3', $bind_address, $dispatcher_conf->{http_port} );
   my $res = LWP::UserAgent->new->post( $url, { 'r' => JSON::XS::encode_json($rpc) } );
+  LOGDIE "request failed: " . $res->status_line
+    unless $res->is_success;
   return JSON::XS::decode_json( $res->decoded_content );
 }
 
@@ -294,17 +338,30 @@ sub worker_rpc
   return $cv->recv;
 }
 
-# pretty-print a test failure
-sub derp
+sub encrypt_secret
 {
-  my ( $test, $obj ) = @_;
-  my $dump = Data::Dumper::Dumper($obj);
-  my $str  = <<"__DERP__";
-Test name: $test
-Result: $dump
-__DERP__
+  my $secret = shift;
+  Crypt::OpenSSL::RSA->import_random_seed();
+  my $x509    = Crypt::OpenSSL::X509->new_from_file( $client_conf->{worker_cert} );
+  my $rsa_pub = Crypt::OpenSSL::RSA->new_public_key( $x509->pubkey() );
+  return encode_base64( $rsa_pub->encrypt($secret) );
+}
 
-  return $str;
+sub decrypt_secret
+{
+  my $secret = shift;
+  my $private_key =
+    Crypt::OpenSSL::RSA->new_private_key( scalar read_file $worker_conf->{worker_key} );
+  return $private_key->decrypt( decode_base64($secret) );
+}
+
+sub client
+{
+  if ( !defined $pogo_client )
+  {
+    $pogo_client = Pogo::Client->new( $client_conf->{api} );
+  }
+  return $pogo_client;
 }
 
 END
@@ -355,12 +412,15 @@ Apache 2.0
 
 =head1 AUTHORS
 
-  Andrew Sloane <asloane@yahoo-inc.com>
-  Michael Fischer <mfischer@yahoo-inc.com>
-  Nicholas Harteau <nrh@yahoo-inc.com>
-  Nick Purvis <nep@yahoo-inc.com>
-  Robert Phan <rphan@yahoo-inc.com>
+  Andrew Sloane <andy@a1k0n.net>
+  Michael Fischer <michael+pogo@dynamine.net>
+  Mike Schilli <m@perlmeister.com>
+  Nicholas Harteau <nrh@hep.cat>
+  Nick Purvis <nep@noisetu.be>
+  Robert Phan <robert.phan@gmail.com>
 
 =cut
+
+__END__
 
 # vim:syn=perl:sw=2:ts=2:sts=2:et:fdm=marker

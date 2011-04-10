@@ -1,9 +1,12 @@
+[%# vim:ft=html
+%]
 <html>
   <head>
     <title>[% page_title %]</title>
 
     <!-- CSS -->
     <link rel="stylesheet" type="text/css" href="http://yui.yahooapis.com/combo?3.2.0/build/cssfonts/fonts-min.css&3.2.0/build/cssreset/reset-min.css&3.2.0/build/cssgrids/grids-min.css&3.2.0/build/cssbase/base-min.css">
+    <link rel="shortcut icon" href="/static/favicon.png" />
 
     <style type="text/css">
       BODY {
@@ -12,6 +15,7 @@
 
       TABLE {
         border-collapse: collapse;
+        margin-bottom: 2px;
       }
 
       TH, TD {
@@ -84,7 +88,7 @@
         text-align: left;
       }
       DIV#footer {
-        border-top: 1px solid #000;
+        // border-top: 1px solid #000;
       }
 
       SPAN.pogo-id {
@@ -101,7 +105,7 @@
         width: 100%;
         border: 1px solid #000;
         margin-top: 5px;
-        margin-bottom: 1px;
+        margin-bottom: 2px;
       }
       TABLE.joblist TH, TABLE.joblist TD {
         padding: 2px;
@@ -130,7 +134,7 @@
         width: 100%;
         border: 1px solid #000;
         margin-top: 5px;
-        margin-bottom: 1px;
+        margin-bottom: 2px;
       }
       TABLE.jobinfo TH, TABLE.jobinfo TD {
         padding: 1px 3px;
@@ -144,6 +148,108 @@
         text-align: right;
       }
 
+      TABLE.output {
+        width: 100%;
+        border: 1px solid black;
+      }
+      TABLE.output TH, TABLE.output TD {
+        padding: 0px 2px;
+        border: 0px;
+      }
+      TABLE.output TD.STDOUT {
+        font-family: Courier, Courier New, fixed-width;
+        width: 100%;
+        background-color: #eee;
+      }
+      TABLE.output TD.EXIT {
+        background-color: #e88;
+        padding: 2px;
+        font-size: 1.1em;
+        font-weight: bold;
+      }
+      TABLE.output TD.EXIT0 {
+        background-color: #8e8;
+        padding: 2px;
+        font-size: 1.1em;
+        font-weight: bold;
+      }
+      TABLE.output TD.timestamp {
+        padding: 0px 2px;
+        font-weight: normal;
+        font-family: Helvetica, Arial, sans-serif;
+        font-size: 0.8em;
+        width: auto;
+        background-color: #999;
+        vertical-align: top;
+      }
+      TABLE.output TD.timestamp A {
+        color: #00f;
+        text-decoration: none;
+      }
+
+      TABLE.targetinfo {
+        width: auto;
+        border: 1px solid #000;
+        margin-top: 5px;
+        margin-bottom: 2px;
+      }
+      TABLE.targetinfo TH, TABLE.targetinfo TD {
+        padding: 1px 3px;
+        border: 1px solid #000;
+        vertical-align: middle;
+        font-size: 1em;
+      }
+      TABLE.targetinfo TD.label {
+        background-color: #444;
+        color: #fff;
+        font-weight: bold;
+        font-size: 1.1em;
+        text-align: right;
+        padding: 3px 10px;
+      }
+      TABLE.targetinfo UL.apps {
+        padding: 0px;
+        margin: 3px 15px;
+      }
+
+      TABLE.envlist {
+        width: auto;
+        border: 1px solid #000;
+        margin-top: 5px;
+        margin-bottom: 2px;
+      }
+      TABLE.envlist TH, TABLE.envlist TD {
+        background-color: #eee;
+        padding: 1px 3px;
+        border: 1px solid #000;
+        vertical-align: middle;
+        font-size: 1em;
+      }
+      TABLE.envlist TD.label {
+        background-color: #ddd;
+        color: #000;
+        font-weight: bold;
+        font-size: 1.1em;
+        text-align: right;
+        padding: 3px;
+      }
+      TABLE.envlist UL.envs {
+        padding: 0px;
+        margin: 3px 15px;
+      }
+      TABLE.envlist UL.envs SPAN.key {
+        font-weight: bold;
+      }
+
+      .code {
+        padding: 10px 15px;
+        margin: 5px 0 15px;
+        border-left: 5px solid #666666;
+        background: #bbbbbb;
+        font: 1em/1.5 "Monaco", "Courier New", monospace;
+        color: #222222;
+        overflow : auto;
+      }
     </style>
   </head>
 
