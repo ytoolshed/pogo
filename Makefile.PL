@@ -1,6 +1,6 @@
 #!/usr/bin/env perl -w
 
-# Copyright (c) 2010, Yahoo! Inc. All rights reserved.
+# Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ all_from 'lib/Pogo/Common.pm';
 perl_version '5.008';
 
 requires 'AnyEvent';
-requires 'AnyEvent::HTTPD';
+requires 'AnyEvent::HTTPD' => 0.90;
 requires 'Authen::PAM';
 requires 'Carp';
 requires 'Crypt::OpenSSL::RSA';
@@ -44,11 +44,11 @@ requires 'List::Util';
 requires 'Log::Log4perl';
 requires 'MIME::Base64';
 requires 'MIME::Types';
+requires 'Net::SSLeay';
 requires 'Net::ZooKeeper';
 requires 'POSIX';
 requires 'Pod::Find';
 requires 'Pod::Usage';
-requires 'Proc::Simple';
 requires 'Scalar::Util';
 requires 'Set::Scalar';
 requires 'Socket';
@@ -65,6 +65,7 @@ requires 'constant';
 
 test_requires 'FindBin';
 test_requires 'Net::SSLeay';
+test_requires 'Proc::Simple';
 test_requires 'Test::Exception';
 test_requires 'Test::More';
 

@@ -1,6 +1,6 @@
 package Pogo::Engine::Namespace;
 
-# Copyright (c) 2010, Yahoo! Inc. All rights reserved.
+# Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -705,12 +705,7 @@ sub expand_targets
 sub fetch_target_meta
 {
   my ( $self, $target, $errc, $cont ) = @_;
-  eval { $self->target_plugin->fetch_target_meta( $target, $errc, $cont ); };
-
-  if ($@)
-  {
-    $errc->($@);
-  }
+  return $self->target_plugin->fetch_target_meta( $target, $errc, $cont );
 }
 
 # }}}
@@ -849,7 +844,7 @@ Apache 2.0
   Mike Schilli <m@perlmeister.com>
   Nicholas Harteau <nrh@hep.cat>
   Nick Purvis <nep@noisetu.be>
-  Robert Phan robert.phan@gmail.com
+  Robert Phan <robert.phan@gmail.com>
 
 =cut
 

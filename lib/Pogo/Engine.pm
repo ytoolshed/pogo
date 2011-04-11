@@ -1,6 +1,6 @@
 package Pogo::Engine;
 
-# Copyright (c) 2010, Yahoo! Inc. All rights reserved.
+# Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,9 +14,9 @@ package Pogo::Engine;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-use 5.008;
 use common::sense;
 
+use Data::Dumper;
 use AnyEvent;
 use AnyEvent::Handle;
 use AnyEvent::Socket qw(tcp_connect);
@@ -91,7 +91,7 @@ sub globalstatus
 
 sub hostinfo
 {
-  my ( $class, $target, $namespace, $cb ) = @_;
+  my ( $class, $target, $namespace ) = @_;
 
   my $resp = Pogo::Engine::Response->new()->add_header( action => 'hostinfo' );
 
@@ -106,14 +106,13 @@ sub hostinfo
     $target,
     sub {
       my $err = shift;
-      $cb->( $resp->set_error($err) );
+      return $resp->set_error($err);
     },
     sub {
       my ( $results, $hosts ) = @_;
       $resp->add_header( hosts => join( ',', @$hosts ) );
-      $resp->set_ok;
       $resp->set_records( [$results] );
-      $cb->($resp);
+      return $resp->set_ok;
     },
   );
 }
@@ -275,7 +274,7 @@ sub jobresume
 
 sub jobretry
 {
-  my ( $class, $jobid, @hostnames ) = @_;
+  my ( $class, $jobid, $hostnames ) = @_;
   my $job = $instance->job($jobid);
   my $resp = Pogo::Engine::Response->new()->add_header( action => 'jobretry' );
 
@@ -291,7 +290,8 @@ sub jobretry
     return $resp;
   }
 
-  my $out = [ map { $job->retry_task($_) } @hostnames ];
+  my $out = [ map { $job->retry_task($_) } @$hostnames ];
+  DEBUG Dumper [ $out, $hostnames ];
   $instance->add_task( 'resumejob', $job->{id} );
 
   $resp->set_records($out);
@@ -302,7 +302,7 @@ sub jobretry
 
 sub jobskip
 {
-  my ( $class, $jobid, @hostnames ) = @_;
+  my ( $class, $jobid, $hostnames ) = @_;
   my $job = $instance->job($jobid);
   my $resp = Pogo::Engine::Response->new()->add_header( action => 'jobskip' );
 
@@ -312,7 +312,7 @@ sub jobskip
     return $resp;
   }
 
-  my $out = [ map { $job->skip_host($_) } @hostnames ];
+  my $out = [ map { $job->skip_host($_) } @$hostnames ];
   $instance->add_task( 'continuejob', $job->{id} );
 
   $resp->set_records($out);
@@ -616,7 +616,7 @@ Apache 2.0
   Mike Schilli <m@perlmeister.com>
   Nicholas Harteau <nrh@hep.cat>
   Nick Purvis <nep@noisetu.be>
-  Robert Phan robert.phan@gmail.com
+  Robert Phan <robert.phan@gmail.com>
 
 =cut
 

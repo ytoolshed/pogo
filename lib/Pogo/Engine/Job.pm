@@ -1,6 +1,6 @@
 package Pogo::Engine::Job;
 
-# Copyright (c) 2010, Yahoo! Inc. All rights reserved.
+# Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,9 +14,9 @@ package Pogo::Engine::Job;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-use 5.008;
 use common::sense;
 
+use Data::Dumper;
 use List::Util qw(min max);
 use AnyEvent;
 use Data::Dumper;    # note we actually use this
@@ -313,6 +313,7 @@ sub start_task
 
 sub retry_task
 {
+  DEBUG Dumper [@_];
   my ( $self, $hostname ) = @_;
   die "no host $hostname in job" if ( !$self->has_host($hostname) );
   my $host = $self->host($hostname);
@@ -1109,7 +1110,7 @@ Apache 2.0
   Mike Schilli <m@perlmeister.com>
   Nicholas Harteau <nrh@hep.cat>
   Nick Purvis <nep@noisetu.be>
-  Robert Phan robert.phan@gmail.com
+  Robert Phan <robert.phan@gmail.com>
 
 =cut
 

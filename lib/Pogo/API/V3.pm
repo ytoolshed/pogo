@@ -1,6 +1,6 @@
 package Pogo::API::V3;
 
-# Copyright (c) 2010, Yahoo! Inc. All rights reserved.
+# Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -52,21 +52,27 @@ my %METHODS = (
   add_task      => 'add_task',
 );
 
-sub AUTOLOAD {
+sub AUTOLOAD
+{
   use vars '$AUTOLOAD';
-  my ($methodname) = ($AUTOLOAD =~ m/(\w+)$/);
-  if (my $method = $METHODS{$methodname}) {
-    shift @_; # throw out classname
-    Pogo::Engine->$method(@_);
-  } else {
-    my $response =  Pogo::Engine::Response->new;
+  DEBUG "in autoload for $AUTOLOAD";
+  my ($methodname) = ( $AUTOLOAD =~ m/(\w+)$/ );
+  if ( my $method = $METHODS{$methodname} )
+  {
+    shift @_;    # throw out classname
+    return Pogo::Engine->$method(@_);
+  }
+  else
+  {
+    my $response = Pogo::Engine::Response->new;
     $response->set_error("unknown rpc command '$methodname'");
     return $response;
   }
 }
 
 # Explicitly declare DESTROY method so it's not autoloaded
-sub DESTROY { 
+sub DESTROY
+{
 }
 
 # all rpc methods return an Engine::Response object
@@ -86,7 +92,7 @@ sub jobstatus   { shift; return Pogo::Engine->jobstatus(@_); }
 sub jobsnapshot { shift; return Pogo::Engine->jobsnapshot(@_); }
 sub joblog      { shift; return Pogo::Engine->joblog(@_); }
 
-sub run { _rpc_run(@_) };
+sub run { _rpc_run(@_) }
 
 sub _rpc_run
 {
@@ -197,7 +203,7 @@ Apache 2.0
   Mike Schilli <m@perlmeister.com>
   Nicholas Harteau <nrh@hep.cat>
   Nick Purvis <nep@noisetu.be>
-  Robert Phan robert.phan@gmail.com
+  Robert Phan <robert.phan@gmail.com>
 
 =cut
 

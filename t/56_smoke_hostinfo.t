@@ -14,61 +14,67 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-use 5.008;
 use common::sense;
 
+use Test::More tests => 9;
 use Test::Exception;
-use Test::More tests => 10;
 
+use Data::Dumper;
 use Carp qw(confess);
 use FindBin qw($Bin);
-use Log::Log4perl qw(:easy);
 use Sys::Hostname qw(hostname);
+use Time::HiRes qw(sleep);
 use YAML::XS qw(LoadFile);
 
+use lib "$Bin/../lib";
 use lib "$Bin/lib";
+
 use PogoTester;
 use PogoTesterAlarm;
 
 test_pogo
 {
   my $t;
-
-  # ping
   lives_ok { $t = client->ping(); } 'ping send'
     or diag explain $t;
   ok( $t->is_success, 'ping success ' . $t->status_msg )
     or diag explain $t;
-  ok( $t->record == 0xDEADBEEF, 'ping recv' )
+  is( $t->record, 0xDEADBEEF, 'ping recv' )
     or diag explain $t;
-
-  # stats
-  undef $t;
-  lives_ok { $t = client->stats(); } 'stats send'
-    or diag explain $t;
-  ok( $t->is_success, 'stats success ' . $t->status_msg )
-    or diag explain $t;
-  ok( $t->unblessed->[1]->[0]->{hostname} eq hostname(), 'stats' )
-    or diag explain $t;
-
-  # badcmd
-  undef $t;
-  dies_ok { $t = client->weird(); } 'weird send'
-    or diag explain $t;
-  ok( $@ eq qq{error from pogo server in request 'weird': unknown rpc command 'weird'\n},
-    "weird 2" )
-    or diag explain $@;
 
   # loadconf
   undef $t;
-  my $conf_to_load = LoadFile("$Bin/conf/example.yaml");
+  my $conf_to_load;
+  lives_ok { $conf_to_load = LoadFile("$Bin/conf/example.yaml") } 'load yaml'
+    or diag explain $t;
   lives_ok { $t = client->loadconf( 'example', $conf_to_load ) } 'loadconf send'
     or diag explain $t;
-  ok( $t->is_success, "loadconf success " . $t->status_msg )
+  ok( $t->is_success, "loadconf send " . $t->status_msg )
     or diag explain $t;
+
+  sleep 1;
+
+  undef $t;
+
+  my $ns    = 'example';
+  my $hosts = {
+    'foo11.west.example.com' => {
+      'apps' => ['frontend'],
+      'envs' => { 'coast' => { 'west' => 1 } }
+    },
+  };
+
+  foreach my $host ( sort keys %$hosts )
+  {
+    lives_ok { $t = client->hostinfo( $host, $ns ); } "hostinfo $ns/$host"
+      or diag explain $t;
+    ok( $t->is_success, "hostinfo $ns/$host success" )
+      or diag explain $t;
+    is_deeply( $t->record, $hosts->{$host}, "$ns/$host record" )
+      or diag explain $t;
+  }
 };
 
-done_testing;
+done_testing();
 
 1;
-

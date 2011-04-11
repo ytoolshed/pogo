@@ -1,6 +1,6 @@
 #!/usr/bin/env perl -w
 
-# Copyright (c) 2010, Yahoo! Inc. All rights reserved.
+# Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 use 5.008;
 use common::sense;
 
-use Test::More tests => 23;
+use Test::More tests => 21;
 use Test::Exception;
 
 use Data::Dumper;
@@ -97,30 +97,36 @@ test_pogo
 
   ok( $jobid eq 'p0000000000', "got jobid" );
 
-  sleep 6;    # job should timeout
+  sleep $job1->{job_timeout};    # job should timeout
 
-  lives_ok { $resp = client->jobstatus($jobid) } "jobstatus $jobid"
-    or diag explain $@;
+  my @records;
+  for (my $i = 0; $i <= $job1->{job_timeout} * 2; $i++)
+  {
+    $resp = client->jobstatus($jobid)
+      or diag explain $@;
+    $resp->is_success
+      or diag explain $resp;
+    @records = $resp->records;
 
-  ok( $resp->is_success, "sent jobstatus $jobid" )
-    or diag explain $resp;
+    last if $records[0] eq 'halted';
+    sleep 1;
+  }
 
-  my @records = $resp->records;
-  ok( $records[0] eq 'halted', "job $jobid halted" )
+  is( $records[0], 'halted', "job $jobid halted" )
     or diag explain \@records;
 
   # test jobretry
   dies_ok { $resp = client->jobretry( $jobid, ['foo11.example.com'] ) }
-  "job retry for host not in job"
+  "job retry for foo11.example.com"
     or diag explain $@;
 
-  ok( $@ =~ m/expired/, "job retry for host not in job" )
+  ok( $@ =~ m/expired/, "expiry message for foo11.example.com" )
     or diag explain $resp;
 
-  dies_ok { $resp = client->jobretry( $jobid, ['foo9.example.com'] ) } "job retry for host in job"
+  dies_ok { $resp = client->jobretry( $jobid, ['foo9.example.com'] ) } "job retry for foo9.example.com"
     or diag explain $@;
 
-  ok( $@ =~ /expired/, "job expired message" )
+  ok( $@ =~ m/expired/, "expiry message for foo9.example.com" )
     or diag explain $resp;
 
   # TODO: test successful retry, retry while job still running.

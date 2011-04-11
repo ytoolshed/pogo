@@ -1,6 +1,6 @@
 package Pogo::HTTP::Server;
 
-# Copyright (c) 2010, Yahoo! Inc. All rights reserved.
+# Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,9 +14,6 @@ package Pogo::HTTP::Server;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-use Data::Dumper;
-
-use 5.008;
 use common::sense;
 
 use AnyEvent::Handle;
@@ -198,7 +195,8 @@ sub handle_api
         my $req = JSON::XS::decode_json( $request->parm('r') );
         my ( $action, @args ) = @$req;
 
-        # TODO: pass callback
+        # TODO: pass callback (maybe?)
+        DEBUG "doing $class $action";
         $response = $class->$action(@args);
 
         $response->add_header( action => $action );
@@ -217,7 +215,7 @@ sub handle_api
     my $error = Pogo::Engine::Response->new;
     $error->set_format($response_format);
     $error->set_error($errmsg);
-    $request->respond( [ 500, 'OK', $response_headers, $error->content ] );
+    $request->respond( [ 500, 'ERROR', $response_headers, $error->content ] );
   }
   $httpd->stop_request();
 }
@@ -702,18 +700,17 @@ sub ui_target
 {
   my ( $self, $request, @args ) = @_;
 
-  die "No target specified\n" unless (my $target = $request->parm('target'));
-  die "No ns specified\n"     unless (my $ns = $request->parm('ns'));
+  die "No target specified\n" unless ( my $target = $request->parm('target') );
+  die "No ns specified\n"     unless ( my $ns     = $request->parm('ns') );
 
   my $resp = Pogo::Engine->hostinfo(
-    $target,
-    $ns,
+    $target, $ns,
     sub {
       my ($resp) = @_;
       my ($data) = $resp->records;
       $data->{target} = $target;
       $data->{ns}     = $ns;
-      $self->_render_ui_template($request, 'target.tt', $data);
+      $self->_render_ui_template( $request, 'target.tt', $data );
     }
   );
 }
@@ -977,7 +974,7 @@ Apache 2.0
   Mike Schilli <m@perlmeister.com>
   Nicholas Harteau <nrh@hep.cat>
   Nick Purvis <nep@noisetu.be>
-  Robert Phan robert.phan@gmail.com
+  Robert Phan <robert.phan@gmail.com>
 
 =cut
 
