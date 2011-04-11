@@ -27,6 +27,9 @@ use Log::Log4perl qw(:easy);
 use MIME::Base64 qw(decode_base64);
 use POSIX qw(WEXITSTATUS);
 
+#Register all signals if they exist, then clean up the private key file
+$SIG{HUP} = $SIG{INT} = $SIG{TERM} = $SIG{__DIE__} = \&cleanup;
+
 BEGIN
 {
   File::Temp->safe_level(File::Temp::HIGH);
@@ -42,10 +45,42 @@ my $opts = {
     qw(-o RSAAuthentication=no -o PubkeyAuthentication=yes -o StrictHostKeyChecking=no -o LogLevel=error -o GlobalKnownHostsFile=/dev/null -o UserKnownHostsFile=/dev/null -t)
   ],
   command_prefix => [],
+  tempdir        => "/tmp", #Giving the directory to install the private keys
 };
 
 my $remote_env = { PATH => '/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin', };
 
+my $pkfile = undef;
+my $ssh_agent_pid = undef;
+my $ssh_sock = undef;
+
+sub cleanup {
+  my $msg = shift;
+  if ( $msg =~ m/^[A-Z]+$/ ) { $msg = 'got SIG' . $msg; } 
+  if ( $pkfile ) {
+    unlink $pkfile;
+  }
+  &kill_agent;
+  die "ERROR: pogo-rexec died: $msg\n\n";
+}
+
+sub kill_agent{
+  #Kill the ssh-agent if one was created
+  if ($ENV{SSH_AGENT_PID}) {
+     my @agent_command = ("eval `ssh-agent -k`");
+
+    #start the agent
+    my ( $writer, $reader ) = ( IO::Handle->new, IO::Handle->new );
+    my $pid;
+    eval { $pid = open3( $writer, $reader, undef, @agent_command); };
+    if ($@)
+    {
+      die "Error: $@";
+    }
+
+  }
+
+}
 
 sub remote_env
 {
@@ -98,6 +133,7 @@ sub execute
   }
 
   # Reap child and return its exit status to our caller.
+
   my $p = waitpid( $pid, 0 );
   return WEXITSTATUS($?);
 }
@@ -162,7 +198,6 @@ sub main
   }
 
   #If it is using private key authenticaion, set up ssh-agent
-  my ($ssh_agent_pid, $ssh_sock);
   if ($args->{client_private_key}) {
     #prepare the command to start ssh-agent
     my $agent_command = 'eval `ssh-agent` ; echo SSH_AUTH_SOCK=$SSH_AUTH_SOCK ; echo SSH_AGENT_PID=$SSH_AGENT_PID ; ';
@@ -198,13 +233,19 @@ sub main
     }
 
     #copy the private key to a file
-    my $pkfile = new File::Temp();
+    $pkfile = File::Temp->new(DIR => $opts->{tempdir},
+                        UNLINK => 1);
     chmod( 0600, $pkfile );
     $pkfile->print($pk_data);
     $pkfile->close;
 
     #run ssh-add with the private key
     execute ($args, "ssh-add", "$pkfile");
+
+    #Unlink the pk file
+    if ( $pkfile ) {
+      unlink $pkfile;
+    }
 
   }
 
@@ -257,21 +298,8 @@ sub main
     );
   }
   
-  #Kill the ssh-agent if one was created
-  if ($ssh_agent_pid) {
-     my $agent_command = 'ssh-agent -k';
 
-    #start the agent
-    my ( $writer, $reader ) = ( IO::Handle->new, IO::Handle->new );
-    my $pid;
-    eval { $pid = open3( $writer, $reader, undef, $agent_command); };
-    if ($@)
-    {
-      die "Error: $@";
-    }
-
-  }
-
+  &kill_agent;
  
 
   return $exit_status;
