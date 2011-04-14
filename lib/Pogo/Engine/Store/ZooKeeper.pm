@@ -80,7 +80,7 @@ sub new
   $self->{handle}->{data_read_len} = 1048576;
 
   # this is sorta ugly, but whatever
-  foreach my $path (qw{/pogo /pogo/ns /pogo/job /pogo/host /pogo/lock /pogo/stats /pogo/taskq})
+  foreach my $path (qw{/pogo /pogo/ns /pogo/job /pogo/host /pogo/lock /pogo/stats /pogo/taskq /pogo/root})
   {
     if ( !$self->exists($path) )
     {

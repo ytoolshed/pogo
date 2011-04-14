@@ -70,6 +70,7 @@ sub run    #{{
   # start these puppies up
   Pogo::Engine->init($instance);
   Pogo::Dispatcher::AuthStore->init($instance);
+  load_root_transform();
 
   # handle workers
   tcp_server(
@@ -108,6 +109,77 @@ sub run    #{{
 }
 
 # }}}
+
+# Loads root transforms from plugins into Zookeeper
+sub load_root_transform
+{
+  eval { load_root_plugin(); };
+  LOGDIE $@ if $@;
+  my $path = "/pogo/root/";
+  while ( my ($k, $v) = each(% {$instance->{root}} ) )
+  {
+    store->create($path . $k, $v)
+  }
+}
+
+# Looka into Pogo/Plugin/Root for root transform plugins
+# The plugins should have the following interface
+# sub root_type : returns root type string
+# sub transform : return transform string
+# sub priority  : return priority integer
+# Creates a hash of root_type:transform from the plugins
+# along with an entry default:root_type
+# which is the root_type with highest priority
+sub load_root_plugin
+{
+  DEBUG "loading plugin";
+  my $plugin_base_class = "Pogo::Plugin::Root";
+  (my $plugin_base_dir = $plugin_base_class) =~ s#::#/#g;
+  my $rex = qr/(.*)\.pm$/;
+  my $dir;
+
+  for my $incdir (@INC) 
+  {
+    if(-d "$incdir/$plugin_base_dir") 
+    {
+      $dir = "$incdir/$plugin_base_dir";
+      if(! <$dir/*>) 
+      {
+        ERROR "Skipping empty plugin dir $dir";
+        next;
+      }
+      DEBUG "Found plugin dir: $dir";
+      last;
+    }
+  }
+
+  if(! $dir) 
+  {
+      INFO "No plugins found";
+      return;
+  }
+
+  $instance->{root} = {};
+  my @default_root;
+  opendir DIR, $dir or LOGDIE "Cannot open dir $dir \n";
+  for my $entry (readdir DIR) 
+  {
+    next if $entry !~ $rex;
+    my $plugin_class = "${plugin_base_class}::$1";
+    eval "require $plugin_class";
+
+    $instance->{root}->{ &root_type() } = &transform();
+    if ( $default_root[0] < &priority() )
+    {
+      $default_root[0] = &priority();
+      $default_root[1] = &root_type();
+    }
+    DEBUG "Loaded plugin " . $plugin_class;
+  }
+  $instance->{root}->{default} = $default_root[1]; 
+  
+  closedir DIR;
+}
 
 sub purge_queue
 {

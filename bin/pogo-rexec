@@ -144,8 +144,19 @@ sub main
   my @target;
   if ( $args->{host} =~ /:/ ) 
   {
+    LOGDIE "Rootname present but missing command_root_transform property"
+      unless ( $args->{command_root_transform} ); 
     @target = split(":", $args->{host});
     $args->{host} = $target[0];
+  }
+
+  if ($args->{command_root_transform})
+  {
+    LOGDIE "\${command} substring not found in $args->{command_root_transform} \n"
+      unless $args->{command_root_transform} =~ /\${command}/;
+
+    LOGDIE "\${rootname} substring not found in $args->{command_root_transform} \n"
+      unless $args->{command_root_transform} =~ /\${rootname}/;
   }
 
   # insert POGO_JOB_ID into the remote environment
@@ -157,7 +168,7 @@ sub main
     # Initial step: copy the attachment to our destination host.
     my $attachment = decode_base64($1);
     $tmpfile = new File::Temp();
-    chmod( 0755, $tmpfile );
+    chmod( 0700, $tmpfile );
     $tmpfile->print($attachment);
     $tmpfile->close;
     execute( $args, "scp", @{ $opts->{scp_options} },
@@ -171,12 +182,12 @@ sub main
     # that way we can pass args to our script
   }
 
-  # substitute the command_root_transform with
-  # the rootname and the name of the temp stub
+  # substitute the command_root_transform with the rootname 
+  # and the name of the pogo worker stub
   if ( $args->{command_root_transform} && defined $target[1] )
   {
-    $args->{command_root_transform} =~ s/\${rootname}/$target[1]/;
-    $args->{command_root_transform} =~ s/\${command}/$args->{command}->[0]/;
+    $args->{command_root_transform} =~ s/\${rootname}/$target[1]/g;
+    $args->{command_root_transform} =~ s/\${command}/$args->{command}->[0]/g;
     $args->{command}->[0] = $args->{command_root_transform};
   }
 

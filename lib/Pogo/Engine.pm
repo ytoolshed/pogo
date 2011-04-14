@@ -503,9 +503,9 @@ sub run
 
   my $opts = {};
   foreach my $arg (
-    qw(invoked_as namespace range user run_as password command_root_transform 
-    timeout job_timeout command retry prehook posthook secrets email 
-    im_handle client requesthost concurrent exe_name exe_data)
+    qw(invoked_as namespace range user run_as password root_type timeout 
+    job_timeout command retry prehook posthook secrets email im_handle 
+    client requesthost concurrent exe_name exe_data)
     )
   {
     $opts->{$arg} = $args{$arg} if exists $args{$arg};
