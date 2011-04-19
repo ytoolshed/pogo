@@ -249,12 +249,13 @@ sub main
     } 
     elsif($pipepid ==0)  # Child
     {
-      #ssh-add first adds without passphrase and then tries next time with passphrase
-      #since fifo is read once only, if the given private key does not have a passphrase,
+      # ssh-add first adds without passphrase and then tries next time with passphrase
+      # since fifo is read once only, if the given private key does not have a passphrase,
       # this writing has to be only once, if it has a correct passphrase, it has to be 
       # done twice. So based on passphrase, we write it once or twice. If the passphrase is 
       # incorrect, this process will exit with writing twice and the parent will keep 
       # reading multiple times. EVentually the system timeout will take over and exit.
+
       my $write_count = $args->{passphrase} ? 2 :1;
       for (my $i=0; $i<$write_count; $i++) {
         unless (-p $pkfile)
@@ -267,8 +268,8 @@ sub main
         open(FIFO, "> $pkfile") or LOGDIE "can't write $pkfile: $!";
         print FIFO $pk_data;
         close(FIFO);
+        sleep 1;# to avoid dup signals and let ssh-add catch up
 
-        sleep 2; # to avoid dup signals
       }
       exit(0);
     } 
