@@ -1,4 +1,6 @@
 package Pogo::Engine::Namespace;
+use strict;
+use warnings;
 
 # Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
 #
@@ -24,8 +26,6 @@ use List::Util qw(min max);
 use Log::Log4perl qw(:easy);
 use Set::Scalar;
 
-use Pogo::Engine::Namespace::Slot;
-use Pogo::Engine::Store qw(store);
 use Pogo::Common qw(merge_hash);
 use JSON qw(encode_json decode_json);
 
@@ -38,13 +38,52 @@ use JSON qw(encode_json decode_json);
 
 sub new
 {
-  my ( $class, $nsname ) = @_;
+  my ( $class, @options ) = @_;
+
+  my %options = ();
+
+  # legacy mode: new($nsname)
+  if ( @options == 1 )
+  {
+    $options{nsname} = shift @options;
+  }
+  else
+  {
+    %options = @options;
+  }
+
   my $self = {
-    ns            => $nsname,
-    path          => "/pogo/ns/$nsname",
+    ns            => $options{nsname},
+    path          => "/pogo/ns/$options{ nsname }",
     slots         => {},
+    store         => undef,
+    get_slot      => undef,
     _plugin_cache => {},
+    %options,
   };
+
+  if ( !defined $options{store} )
+  {
+    require Pogo::Engine::Store;
+    $self->{store} = Pogo::Engine::Store::store();
+  }
+
+  if ( !defined $options{get_slot} )
+  {
+    require Pogo::Engine::Namespace::Slot;
+    $self->{get_slot} = sub {
+      my ( $self, $app, $envk, $envv ) = @_;
+      my $slots = $self->{slots};
+      $slots->{ $app, $envk, $envv }
+        ||= Pogo::Engine::Namespace::Slot->new( $self, $app, $envk, $envv );
+      return $slots->{ $app, $envk, $envv };
+    };
+  }
+
+  if ( !exists $options{nsname} )
+  {
+    die "Internal error: param 'nsname' missing";
+  }
 
   bless $self, $class;
   return $self->init;
@@ -55,16 +94,16 @@ sub init
   my $self = shift;
 
   my $ns = $self->{ns};
-  if ( !store->exists( $self->path ) )
+  if ( !$self->{store}->exists( $self->path ) )
   {
-    store->create( $self->path, '' )
-      or LOGCONFESS "unable to create namespace '$ns': " . store->get_error_name;
-    store->create( $self->path . '/env', '' )
-      or LOGCONFESS "unable to create namespace '$ns': " . store->get_error_name;
-    store->create( $self->path . '/lock', '' )
-      or LOGCONFESS "unable to create namespace '$ns': " . store->get_error_name;
-    store->create( $self->path . '/conf', '' )
-      or LOGCONFESS "unable to create namespace '$ns': " . store->get_error_name;
+    $self->{store}->create( $self->path, '' )
+      or LOGCONFESS "unable to create namespace '$ns': " . $self->{store}->get_error_name;
+    $self->{store}->create( $self->path . '/env', '' )
+      or LOGCONFESS "unable to create namespace '$ns': " . $self->{store}->get_error_name;
+    $self->{store}->create( $self->path . '/lock', '' )
+      or LOGCONFESS "unable to create namespace '$ns': " . $self->{store}->get_error_name;
+    $self->{store}->create( $self->path . '/conf', '' )
+      or LOGCONFESS "unable to create namespace '$ns': " . $self->{store}->get_error_name;
   }
 
   return $self;
@@ -101,7 +140,7 @@ sub fetch_runnable_hosts
       my ( $allslots, $hostslots ) = @_;
       local *__ANON__ = 'fetch_runnable_hosts:fetch_all_slots:cont';
 
-      my $global_lock = store->lock( 'fetch_runnable_hosts:' . $job->id );
+      my $global_lock = $self->{store}->lock( 'fetch_runnable_hosts:' . $job->id );
       eval {
         foreach my $hostname ( sort { $a cmp $b } keys %$hostslots )
         {
@@ -145,7 +184,7 @@ sub fetch_runnable_hosts
 
       if ($@)
       {
-        store->unlock($global_lock);
+        $self->{store}->unlock($global_lock);
         return $errc->($@);
       }
 
@@ -280,10 +319,8 @@ sub fetch_all_slots
 sub slot
 {
   my ( $self, $app, $envk, $envv ) = @_;
-  my $slots = $self->{slots};
-  $slots->{ $app, $envk, $envv }
-    ||= Pogo::Engine::Namespace::Slot->new( $self, $app, $envk, $envv );
-  return $slots->{ $app, $envk, $envv };
+
+  return $self->{get_slot}->( $self, $app, $envk, $envv );
 }
 
 sub _has_constraints
@@ -293,11 +330,11 @@ sub _has_constraints
   # TODO: potential optimization, cache these to avoid probing storage
   if ( !defined $k )
   {
-    return store->exists( $self->path( '/conf/constraints/', $app ) );
+    return $self->{store}->exists( $self->path( '/conf/constraints/', $app ) );
   }
   else
   {
-    return store->exists( $self->path("/conf/constraints/$app/$k") );
+    return $self->{store}->exists( $self->path("/conf/constraints/$app/$k") );
   }
 
   return;
@@ -307,17 +344,17 @@ sub unlock_job
 {
   my ( $self, $job ) = @_;
 
-  foreach my $env ( store->get_children( $self->path('/env/') ) )
+  foreach my $env ( $self->{store}->get_children( $self->path('/env/') ) )
   {
-    foreach my $jobhost ( store->get_children( $self->path( '/env/', $env ) ) )
+    foreach my $jobhost ( $self->{store}->get_children( $self->path( '/env/', $env ) ) )
     {
       my ( $host_jobid, $hostname ) = split /_/, $jobhost;
       if ( $job->id eq $host_jobid )
       {
-        store->delete( $self->path("/env/$env/$jobhost") );
+        $self->{store}->delete( $self->path("/env/$env/$jobhost") );
       }
     }
-    store->delete( $self->path( '/env/', $env ) );
+    $self->{store}->delete( $self->path( '/env/', $env ) );
   }
 }
 
@@ -457,7 +494,7 @@ sub set_conf
 
   undef $conf_in;
 
-  eval { _write_conf( $self->{path}, $conf ) };
+  eval { $self->_write_conf( $self->{path}, $conf ) };
   if ($@)
   {
     LOGDIE "couldn't load config: $@";
@@ -476,19 +513,19 @@ sub parse_deployment
 
 sub _write_conf
 {
-  my ( $path, $conf ) = @_;
+  my ( $self, $path, $conf ) = @_;
   DEBUG "writing $path";
 
-  store->delete_r("$path/conf")
-    or WARN "Couldn't delete_r '$path/conf': " . store->get_error_name;
-  store->create( "$path/conf", '' )
-    or WARN "Couldn't create '$path/conf': " . store->get_error_name;
-  _set_conf_r( "$path/conf", $conf );
+  $self->{store}->delete_r("$path/conf")
+    or WARN "Couldn't delete_r '$path/conf': " . $self->{store}->get_error_name;
+  $self->{store}->create( "$path/conf", '' )
+    or WARN "Couldn't create '$path/conf': " . $self->{store}->get_error_name;
+  $self->_set_conf_r( "$path/conf", $conf );
 }
 
 sub _set_conf_r
 {
-  my ( $path, $node ) = @_;
+  my ( $self, $path, $node ) = @_;
   my $json = JSON->new->utf8->allow_nonref;
   foreach my $k ( keys %$node )
   {
@@ -499,28 +536,28 @@ sub _set_conf_r
     # that's all, folks
     if ( !$r )
     {
-      store->create( $p, '' )
-        or WARN "couldn't create '$p': " . store->get_error_name;
-      store->set( $p, $json->encode($v) )
-        or WARN "couldn't set '$p': " . store->get_error_name;
+      $self->{store}->create( $p, '' )
+        or WARN "couldn't create '$p': " . $self->{store}->get_error_name;
+      $self->{store}->set( $p, $json->encode($v) )
+        or WARN "couldn't set '$p': " . $self->{store}->get_error_name;
     }
     elsif ( $r eq 'HASH' )
     {
-      store->create( $p, '' )
-        or WARN "couldn't create '$p': " . store->get_error_name;
-      _set_conf_r( $p, $v );
+      $self->{store}->create( $p, '' )
+        or WARN "couldn't create '$p': " . $self->{store}->get_error_name;
+      $self->_set_conf_r( $p, $v );
     }
     elsif ( $r eq 'ARRAY' )
     {
-      store->create( $p, '' )
-        or WARN "couldn't create '$p': " . store->get_error_name;
+      $self->{store}->create( $p, '' )
+        or WARN "couldn't create '$p': " . $self->{store}->get_error_name;
       for ( my $node = 0; $node < scalar @$v; $node++ )
       {
-        store->create( "$p/$node", '' )
-          or WARN "couldn't create '$p/$node': " . store->get_error_name;
+        $self->{store}->create( "$p/$node", '' )
+          or WARN "couldn't create '$p/$node': " . $self->{store}->get_error_name;
 
-        store->set( "$p/$node", $json->encode( $v->[$node] ) )
-          or WARN "couldn't set '$p/$node': " . store->get_error_name;
+        $self->{store}->set( "$p/$node", $json->encode( $v->[$node] ) )
+          or WARN "couldn't set '$p/$node': " . $self->{store}->get_error_name;
 
       }
     }
@@ -533,19 +570,19 @@ sub _set_conf_r
 # recursively traverse conf/ dir and build hash
 sub _get_conf_r
 {
-  my $path = shift;
-  my $c    = {};
-  foreach my $node ( store->get_children($path) )
+  my ( $self, $path ) = @_;
+  my $c = {};
+  foreach my $node ( $self->{store}->get_children($path) )
   {
     my $p = "$path/$node";
-    my $v = store->get($p);
+    my $v = $self->{store}->get($p);
     if ($v)
     {
       $c->{$node} = JSON->new->utf8->allow_nonref->decode($v);
     }
     else
     {
-      $c->{$node} = _get_conf_r($p);
+      $c->{$node} = $self->_get_conf_r($p);
     }
   }
   return $c;
@@ -554,13 +591,13 @@ sub _get_conf_r
 sub get_conf
 {
   my $self = shift;
-  return _get_conf_r( $self->{path} . "/conf" );
+  return $self->_get_conf_r( $self->{path} . "/conf" );
 }
 
 sub get_cur
 {
   my ( $self, $app, $key ) = @_;
-  my $c = store->get( $self->{path} . "/conf/cur/$app/$key" );
+  my $c = $self->{store}->get( $self->{path} . "/conf/cur/$app/$key" );
   return $c;
 }
 
@@ -568,7 +605,7 @@ sub get_curs
 {
   my ( $self, $app ) = @_;
   my $path = $self->{path} . "/conf/cur/$app";
-  my %c = map { $_ => $self->get_cur( $app, $_ ) } store->get_children($path);
+  my %c = map { $_ => $self->get_cur( $app, $_ ) } $self->{store}->get_children($path);
 
   DEBUG "constraints for $app: " . join( ",", keys %c );
   return \%c;
@@ -578,7 +615,7 @@ sub get_all_curs
 {
   my $self = shift;
   my $path = $self->{path} . "/conf/cur";
-  return { map { $_ => $self->get_curs($_) } store->get_children($path) };
+  return { map { $_ => $self->get_curs($_) } $self->{store}->get_children($path) };
 }
 
 sub get_all_seqs
@@ -586,10 +623,11 @@ sub get_all_seqs
   my $self = shift;
   my $path = $self->{path} . "/conf/seq/pred";
   my %seq;
-  foreach my $env ( store->get_children($path) )
+  foreach my $env ( $self->{store}->get_children($path) )
   {
     my $p = "$path/$env";
-    my %apps = map { $_ => [ store->get_children("$p/$_") ] } store->get_children($p);
+    my %apps =
+      map { $_ => [ $self->{store}->get_children("$p/$_") ] } $self->{store}->get_children($p);
     $seq{$env} = \%apps;
   }
   return \%seq;
@@ -600,7 +638,7 @@ sub get_conf_apps
   my ($self) = @_;
   my $path = $self->{path} . "/conf/apps";
 
-  return _get_conf_r($path);
+  return $self->_get_conf_r($path);
 }
 
 #}}}
@@ -610,7 +648,8 @@ sub filter_apps
 {
   my ( $self, $apps ) = @_;
 
-  my %constraints = map { $_ => 1 } store->get_children( $self->path('/conf/constraints') );
+  my %constraints =
+    map { $_ => 1 } $self->{store}->get_children( $self->path('/conf/constraints') );
 
   # FIXME: if you have sequences for which there are no constraints, we might
   # improperly ignore them here.  Can't think of a straightforward fix and
@@ -635,10 +674,10 @@ sub is_sequence_blocked
 
     foreach my $app ( @{ $host->info->{apps} } )
     {
-      my @preds = store->get_children( $self->path("/conf/sequences/pred/$k/$app") );
+      my @preds = $self->{store}->get_children( $self->path("/conf/sequences/pred/$k/$app") );
       foreach my $pred (@preds)
       {
-        my $n = store->get_children( $job->{path} . "/seq/$pred" . "_$k" . "_$v" );
+        my $n = $self->{store}->get_children( $job->{path} . "/seq/$pred" . "_$k" . "_$v" );
         if ($n)
         {
           $nblockers += $n;
@@ -660,7 +699,7 @@ sub get_seq_successors
   while (@successors)
   {
     $app = pop @successors;
-    my @s = store->get_children( $self->path("/conf/sequences/succ/$envk/$app") );
+    my @s = $self->{store}->get_children( $self->path("/conf/sequences/succ/$envk/$app") );
     push @results,    @s;
     push @successors, @s;
   }
@@ -720,7 +759,7 @@ sub translate_appgroups
 
   foreach my $app (@$apps)
   {
-    my @groups = store->get_children( $self->path("/conf/appgroups/byrole/$app") );
+    my @groups = $self->{store}->get_children( $self->path("/conf/appgroups/byrole/$app") );
     if (@groups)
     {
       map { $g{$_} = 1 } @groups;
@@ -738,7 +777,7 @@ sub appgroup_members
 {
   my ( $self, $appgroup ) = @_;
 
-  my @members = store->get_children( $self->path("/conf/appgroups/bygroup/$appgroup") );
+  my @members = $self->{store}->get_children( $self->path("/conf/appgroups/bygroup/$appgroup") );
 
   return @members if @members;
   return $appgroup;
@@ -756,10 +795,10 @@ sub unlock_host
 
   # iterate over /pogo/host/$host/<children>
   my $path = "/pogo/job/$host/host/$host";
-  return unless store->exists($path);
+  return unless $self->{store}->exists($path);
 
   my $n = 0;
-  foreach my $child ( store->get_children($path) )
+  foreach my $child ( $self->{store}->get_children($path) )
   {
     next if substr( $child, 0, 1 ) eq '_';
 
@@ -772,10 +811,10 @@ sub unlock_host
 
       # remove sequence lock
       my $node = substr( $child, 4 );
-      store->delete("/pogo/job/$job/seq/$node/$host");
-      if ( ( scalar store->get_children("/pogo/job/$job/seq/$node") ) == 0 )
+      $self->{store}->delete("/pogo/job/$job/seq/$node/$host");
+      if ( ( scalar $self->{store}->get_children("/pogo/job/$job/seq/$node") ) == 0 )
       {
-        store->delete("/pogo/job/$job/seq/$node");
+        $self->{store}->delete("/pogo/job/$job/seq/$node");
       }
     }
     else
@@ -784,19 +823,19 @@ sub unlock_host
 
       # remove environment lock
       # delete /pogo/env/$app_$k_$v
-      store->delete("/pogo/env/$child/$job_host")
+      $self->{store}->delete("/pogo/env/$child/$job_host")
         or ERROR "unable to remove '/pogo/env/$child/$job_host' from '$child_path': "
-        . store->get_error;
+        . $self->{store}->get_error;
 
       # clean up empty env nodes
-      if ( ( scalar store->get_children("/pogo/env/$child") ) == 0 )
+      if ( ( scalar $self->{store}->get_children("/pogo/env/$child") ) == 0 )
       {
-        store->delete("/pogo/env/$child");
+        $self->{store}->delete("/pogo/env/$child");
       }
     }
 
-    store->delete($child_path)
-      or LOGDIE "unable to remove $child_path: " . store->get_error;
+    $self->{store}->delete($child_path)
+      or LOGDIE "unable to remove $child_path: " . $self->{store}->get_error;
     $n++;
   }
 
