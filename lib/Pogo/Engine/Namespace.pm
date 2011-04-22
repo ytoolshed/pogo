@@ -747,42 +747,6 @@ sub fetch_target_meta
   return $self->target_plugin->fetch_target_meta( $target, $errc, $cont );
 }
 
-# }}}
-# {{{ deprecated appgroup stuff
-# i'm not sure we need this if we move to the new config format
-
-sub translate_appgroups
-{
-  my ( $self, $apps ) = @_;
-
-  my %g;
-
-  foreach my $app (@$apps)
-  {
-    my @groups = $self->{store}->get_children( $self->path("/conf/appgroups/byrole/$app") );
-    if (@groups)
-    {
-      map { $g{$_} = 1 } @groups;
-    }
-    else
-    {
-      $g{$app} = 1;
-    }
-  }
-
-  return [ keys %g ];
-}
-
-sub appgroup_members
-{
-  my ( $self, $appgroup ) = @_;
-
-  my @members = $self->{store}->get_children( $self->path("/conf/appgroups/bygroup/$appgroup") );
-
-  return @members if @members;
-  return $appgroup;
-}
-
 #}}}
 # {{{ deprecated unlock_host
 # remove active host from all environments
