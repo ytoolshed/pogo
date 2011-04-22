@@ -483,7 +483,7 @@ sub run
 {
   my ( $class, %args ) = @_;
   my $resp = Pogo::Engine::Response->new()->add_header( action => 'run' );
-  foreach my $arg (qw(user run_as command range password namespace secrets))
+  foreach my $arg (qw(user run_as command range namespace secrets))
   {
     if ( !exists $args{$arg} )
     {
