@@ -22,33 +22,31 @@ use Test::More tests => 1;
 use Carp qw(confess);
 use Data::Dumper;
 use FindBin qw($Bin);
-use JSON;
 use Log::Log4perl qw(:easy);
 use Net::SSLeay qw();
 use Sys::Hostname qw(hostname);
 use YAML::XS qw(Load LoadFile);
+use JSON qw(encode_json);
 
 use lib "$Bin/../lib";
 use lib "$Bin/lib";
 
 use PogoTesterAlarm;
+use PogoMockStore;
 
 chdir($Bin);
 
 use Pogo::Engine::Namespace;
 
 use Test::MockObject;
+use File::Basename;
+
 my $conf = LoadFile("$Bin/conf/example.yaml");
 
-my $store = Test::MockObject->new();
-for my $method (qw(store create exists delete_r))
-{
-  $store->mock( $method => sub { return 1; } );
-}
-$store->mock( "set" => sub { $_[0]->{ $_[1] } = $_[2] } );
-$store->mock( "get" => sub { return $_[0]->{ $_[1] } } );
+# Log::Log4perl->easy_init($DEBUG);
 
-my $slot = Test::MockObject->new();
+my $store = PogoMockStore->new();
+my $slot  = Test::MockObject->new();
 
 my $ns = Pogo::Engine::Namespace->new(
   store    => $store,
@@ -57,6 +55,11 @@ my $ns = Pogo::Engine::Namespace->new(
 );
 
 $ns->set_conf($conf);
+my $c = $ns->get_conf($conf);
+
+use Data::Dumper;
+# print Dumper( $c );
 
 ok( 1, "at the end" );
+
 1;
