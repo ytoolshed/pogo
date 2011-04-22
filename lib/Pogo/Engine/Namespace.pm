@@ -585,7 +585,31 @@ sub _get_conf_r
       $c->{$node} = $self->_get_conf_r($p);
     }
   }
-  return $c;
+  return numhash_to_array_r( $c );
+}
+
+sub numhash_to_array_r {
+  my ( $node ) = @_;
+
+  my $num_keys = 0;
+
+  for my $key ( keys %$node ) {
+      my $val = $node->{ $key };
+      if( ref( $val ) eq "HASH" ) {
+          $node->{ $key } = numhash_to_array_r( $val );
+      }
+      $num_keys++ if $key =~ /^\d+$/;
+  }
+
+  if( $num_keys and $num_keys == scalar keys %$node ) {
+      my @a = ();
+      for my $idx (keys %$node) {
+          $a[ $idx ] = $node->{$idx};
+      }
+      return \@a;
+  }
+
+  return $node;
 }
 
 sub get_conf
