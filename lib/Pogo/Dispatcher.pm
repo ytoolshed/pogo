@@ -118,7 +118,8 @@ sub load_root_transform
   my $path = "/pogo/root/";
   while ( my ($k, $v) = each(% {$instance->{root}} ) )
   {
-    store->create($path . $k, $v)
+    store->delete($path . $k);
+    store->create($path . $k, $v);
   }
 }
 
