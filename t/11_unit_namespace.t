@@ -60,6 +60,8 @@ my $c = $ns->get_conf($conf);
 use Data::Dumper;
 # print Dumper( $c );
 
+$ns->init();
+
 ok( 1, "at the end" );
 
 1;

@@ -16,13 +16,40 @@ sub new
   bless $self, $class;
 }
 
-sub store { return 1; }
+sub store { 
+    DEBUG "mockstore: store @_ (stubbed)";
+    return 1; 
+}
 
-sub create { return 1; }
+sub create { 
+    my( $self, $key ) = @_;
+    DEBUG "mockstore: create @_";
+    path2mhash( $key, $self->{store}, 1 );
 
-sub exists { return 1; }
+    return 1; 
+}
 
-sub delete_r { return 1; }
+sub exists { 
+    my( $self, $key ) = @_;
+    DEBUG "mockstore: exists @_";
+    return path2mhash( $key, $self->{store} );
+}
+
+sub delete_r { 
+    my( $self, $key ) = @_;
+    DEBUG "mockstore: delete_r @_";
+
+    my $dir = dirname( $key );
+
+    my $dref = path2mhash( $dir, $self->{store} );
+
+    if( defined $dref ) {
+        delete $dref->{ basename $key };
+        return 1;
+    }
+
+    return undef; 
+}
 
 sub set
 {
@@ -31,7 +58,7 @@ sub set
   my $base = basename($key);
   my $dir  = dirname($key);
 
-  path2mhash( $dir, $self->{store} )->{$base} = $val;
+  path2mhash( $dir, $self->{store}, 1 )->{$base} = $val;
 
   DEBUG "set($key, $val): ", defined $val ? $val : "[undef]";
   DEBUG "store: ", Dumper( $self->{store} );
@@ -46,8 +73,14 @@ sub get
   my $base = basename($key);
   my $dir  = dirname($key);
 
-  my $val = path2mhash( $dir, $self->{store} )->{$base};
+  my $val = undef;
+
+  if(defined path2mhash( $dir, $self->{store} ) ) {
+      $val = path2mhash( $dir, $self->{store} )->{$base};
+  }
+
   $val = '[undef]' unless defined $val;
+
   DEBUG "get($key): ", Dumper($val);
   return encode_json($val);
 }
@@ -56,7 +89,12 @@ sub get_children
 {
   my ( $self, $key ) = @_;
 
-  my @children = keys %{ path2mhash( $key, $self->{store} ) };
+  my $ref = path2mhash( $key, $self->{store} );
+
+  if( !defined $ref ) {
+      return undef;
+  }
+  my @children = keys %{ $ref };
   DEBUG "get_children($key): @children";
   return @children;
 }
@@ -64,7 +102,7 @@ sub get_children
 # helper to transform "a/b/c" to $href->{a}->{b}->{c}
 sub path2mhash
 {
-  my ( $path, $href ) = @_;
+  my ( $path, $href, $create ) = @_;
 
   my $p = $href;
 
@@ -73,6 +111,9 @@ sub path2mhash
     next if !length($part);
     if ( !exists $p->{$part} )
     {
+      if( !$create ) {
+          return undef;
+      }
       $p->{$part} = {};
     }
     $p = $p->{$part};
