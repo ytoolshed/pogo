@@ -72,7 +72,7 @@ sub new
   my $jobpath = store->create_sequence( '/pogo/job/p', $jobstate )
     or LOGDIE "Unable to create job node: " . store->get_error_name;
 
-  $jobpath =~ m{/(p\d+)$} or LOGDIE "malformed job path";
+  $jobpath =~ m{/(p\d+)$} or LOGDIE "malformed job path: $jobpath";
   $self->{id}   = $1;
   $self->{path} = $jobpath;
   $self->{ns}   = Pogo::Engine->namespace($ns);
@@ -577,7 +577,7 @@ sub start
     }
     else    # concurrent codepath
     {
-      DEBUG "we are concurrent.";
+      DEBUG "We are concurrent, flat targets are: @$flat_targets";
       foreach my $hostname (@$flat_targets)
       {
         my $host = $self->host( $hostname, 'waiting' );

@@ -1,3 +1,4 @@
+$self->set_host_state( $self->{_hosts}->{$hostname}, "waiting" )
 
 Andy:
     callback takes continuation and error continuation

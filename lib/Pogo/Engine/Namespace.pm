@@ -100,6 +100,7 @@ sub fetch_runnable_hosts
     $errc,
     sub {
       my ( $allslots, $hostslots ) = @_;
+
       local *__ANON__ = 'fetch_runnable_hosts:fetch_all_slots:cont';
 
       my $global_lock = store->lock( 'fetch_runnable_hosts:' . $job->id );
@@ -109,7 +110,10 @@ sub fetch_runnable_hosts
           my $slots = $hostslots->{$hostname};
 
           # is this host runnable?
-          next unless $job->host($hostname)->is_runnable;
+          my $host_is_runnable = $job->host($hostname)->is_runnable;
+          INFO "Host $hostname is", ($host_is_runnable ? "" : "n't"),
+               " runnable";
+          next unless $host_is_runnable;
 
           # if any slots have predecessors, then check that they're done
           my @pred_slots;
@@ -164,7 +168,10 @@ sub fetch_all_slots
   my %to_resolve  = ();
   my @slotlookups = ();
 
-  DEBUG Dumper $hostinfo_map;
+  DEBUG "Fetching all slots of job ", $job->id;
+
+  DEBUG sub { local $Data::Dumper::Indent = 1; 
+              return "hostinfo_map: " . Dumper $hostinfo_map; };
 
   my $concurrent = $job->concurrent;
   if ( defined $concurrent )
@@ -186,12 +193,18 @@ sub fetch_all_slots
       $maxdown = scalar $job->hosts;
     }
     $slot->{maxdown} = $maxdown;
+    DEBUG "Maxdown for job ", $job->id, ": $maxdown";
 
     # fill out our hostslots hash
     while ( my ( $hostname, $hostinfo ) = each %$hostinfo_map )
     {
       $hostslots{$hostname} = [$slot];
     }
+
+    DEBUG "Slots/Hostslots: ",
+      sub { local $Data::Dumper::Indent = 1; 
+            return "Slots: " . Dumper($slots) . 
+                   "Hostslots: " . Dumper(\%hostslots); };
 
     # our work here should be done
     return $cont->( $slots, \%hostslots );
