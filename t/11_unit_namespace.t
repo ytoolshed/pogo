@@ -36,23 +36,42 @@ use PogoMockStore;
 
 chdir($Bin);
 
+use Pogo::Engine;
 use Pogo::Engine::Namespace;
+use Pogo::Engine::Job;
 
 use Test::MockObject;
 use File::Basename;
 
 my $conf = LoadFile("$Bin/conf/example.yaml");
 
-# Log::Log4perl->easy_init($DEBUG);
+Log::Log4perl->easy_init({ level => $DEBUG, layout => "%F{1}-%L: %m%n" });
 
 my $store = PogoMockStore->new();
 my $slot  = Test::MockObject->new();
+
+my $secstore = Test::MockObject->new();
+$secstore->fake_module(
+    'Pogo::Dispatcher::AuthStore',
+    instance => sub { return $secstore; },
+    get      => sub {
+        my($self, $key) = @_;
+        return $self->{store}->{$key};
+    },
+    store    => sub {
+        my($self, $key, $val) = @_;
+        $self->{store}->{$key} = $val;
+    },
+);
 
 my $ns = Pogo::Engine::Namespace->new(
   store    => $store,
   get_slot => $slot,
   nsname   => "wonk",
 );
+
+  # caches it under its name for subsequent lookups
+Pogo::Engine->namespace( $ns );
 
 $ns->set_conf($conf);
 my $c = $ns->get_conf($conf);
@@ -62,6 +81,51 @@ use Data::Dumper;
 
 $ns->init();
 
+Pogo::Engine->instance( { store => $store });
 ok( 1, "at the end" );
 
+my $job = Pogo::Engine::Job->new({
+    store       => $store,
+    invoked_as  => "",
+    namespace   => $ns,
+    target      => { host => "blah" }, #["mytarget-1", "mytarget-2"],
+    user        => "fred",
+    run_as      => "",
+    password    => "",
+    timeout     => "",
+    job_timeout => "",
+    command     => "",
+    retry       => "",
+    prehook     => "",
+    posthook    => "",
+    secrets     => "",
+    email       => "",
+    im_handle   => "",
+    client      => "",
+    requesthost => "",
+    concurrent  => 1,
+    exe_name    => "",
+    exe_data    => "",
+});
+
+$job->start();
+
+$Data::Dumper::Indent = 1;
+
+$ns->fetch_runnable_hosts( 
+    $job, 
+    { "foo1.east.example.com" => { "bork" => 1 },
+    },
+    sub { INFO "err cont", Dumper( \@_ ); },
+    sub { INFO "ok cont", Dumper( \@_ ); },
+);
+
+DEBUG $store->_dump();
+
 1;
+
+__END__
+
+    qw(invoked_as namespace target user run_as password timeout job_timeout
+    command retry prehook posthook secrets email im_handle client
+    requesthost concurrent exe_name exe_data)

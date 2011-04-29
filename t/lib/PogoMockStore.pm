@@ -1,5 +1,21 @@
 # A mock for Pogo/Engine/Store.pm that works without zookeeper
 package PogoMockStore;
+use Test::MockObject;
+
+  # This is so that if we type
+  #    use PogoMockStore;
+  # in our test scripts, Pogo::Engine::Store::store() will be overridden
+  # to return the mock store instead. Also, it won't load Pogo::Engine::Store
+  # at all and its Zookeeper dependencies, but work standalone.
+sub import {
+    my $mock = Test::MockObject->new();
+    my $pms = PogoMockStore->new();
+    $mock->fake_module(
+        'Pogo::Engine::Store',
+        store => sub { return $pms; },
+        init  => sub { return 1; },
+    );
+}
 
 use Log::Log4perl qw(:easy);
 use JSON qw(encode_json);
@@ -16,8 +32,57 @@ sub new
   bless $self, $class;
 }
 
+sub create_sequence { 
+    my( $self, $key ) = @_;
+
+    my $dir = dirname $key;
+
+    DEBUG "mockstore: create_sequence @_";
+    my $href = path2mhash( $dir, $self->{store}, 1 );
+
+    my $max_seq = 0;
+
+    my $base = basename $key;
+
+    for my $key ( sort keys %href ) {
+        if( $key =~ /^$base(\d+)$/ ) {
+            if( $1 > $max_seq ) {
+                $max_seq = $1;
+            }
+        }
+    }
+
+    my $newkey = sprintf "$base%06d", $max_seq;
+    $href->{ $newkey } = undef;
+
+    DEBUG "mockstore: create_sequence created new key $newkey in $dir@_ ";
+    DEBUG "mockstore: ", $self->_dump();
+
+    return "$dir/$newkey";
+}
+
+sub init { 
+    DEBUG "mockstore: init @_ (stubbed)";
+    return 1; 
+}
+
 sub store { 
     DEBUG "mockstore: store @_ (stubbed)";
+    return 1; 
+}
+
+sub lock {
+    DEBUG "mockstore: lock @_ (stubbed)";
+    return 1; 
+}
+
+sub _lock_write {
+    DEBUG "mockstore: _lock_write @_ (stubbed)";
+    return 1; 
+}
+
+sub unlock {
+    DEBUG "mockstore: unlock @_ (stubbed)";
     return 1; 
 }
 
@@ -58,10 +123,11 @@ sub set
   my $base = basename($key);
   my $dir  = dirname($key);
 
+  $val =~ s/^"(.*)"$/$1/;
+
   path2mhash( $dir, $self->{store}, 1 )->{$base} = $val;
 
   DEBUG "set($key, $val): ", defined $val ? $val : "[undef]";
-  DEBUG "store: ", Dumper( $self->{store} );
 
   return 1;
 }
@@ -79,7 +145,7 @@ sub get
       $val = path2mhash( $dir, $self->{store} )->{$base};
   }
 
-  $val = '[undef]' unless defined $val;
+  $val = { $key => '[undef]' } unless defined $val;
 
   DEBUG "get($key): ", Dumper($val);
   return encode_json($val);
@@ -120,6 +186,30 @@ sub path2mhash
   }
 
   return $p;
+}
+
+sub _dump { 
+  my ( $self, $prefix, $subtree ) = @_;
+
+  my $so_far  = "";
+
+  $prefix  = "" unless defined $prefix;
+  $subtree = $self->{store} unless defined $subtree;
+
+  # DEBUG "pref=$prefix so_far=$so_far";
+
+  for my $key ( keys %$subtree ) {
+
+      my $val = $subtree->{ $key };
+
+      if( ref($val) eq "" ) {
+          $so_far .= "$prefix/$key\n";
+      } else {
+          $so_far .= $self->_dump( "$prefix/$key", $val );
+      }
+  }
+
+  return $so_far;
 }
 
 1;
