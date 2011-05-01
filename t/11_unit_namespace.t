@@ -19,7 +19,7 @@ use strict;
 use warnings;
 
 use Test::Exception;
-use Test::More tests => 21;
+use Test::More tests => 19;
 
 use Carp qw(confess);
 use Data::Dumper;
@@ -36,14 +36,14 @@ use lib "$Bin/lib";
 use PogoTesterAlarm;
 use PogoMockStore;
 
-# chdir($Bin);
-
 use Pogo::Engine;
 use Pogo::Engine::Namespace;
 use Pogo::Engine::Job;
 
 use Test::MockObject;
 use File::Basename;
+
+use Pogo::Engine::Store qw(store);
 
 my $conf = LoadFile("$Bin/conf/example.yaml");
 
@@ -100,80 +100,6 @@ is("@children", "p000001 p000002 p000003", "get_children");
 
 $store->delete_r("/pogo");
 
-  # Pogo::Dispatcher::AuthStore mockery
-my $secstore = Test::MockObject->new();
-$secstore->fake_module(
-    'Pogo::Dispatcher::AuthStore',
-    instance => sub { return $secstore; },
-);
-$secstore->mock(get => sub {
-        my($self, $key) = @_;
-        return $self->{store}->{$key};
-    });
-$secstore->mock(store => sub {
-        my($self, $key, $val) = @_;
-        $self->{store}->{$key} = $val;
-    });
-
-my $ns = Pogo::Engine::Namespace->new(
-  nsname   => "wonk",
-);
-
-$ns->init();
-
-  # caches it under its name for subsequent lookups
-#Pogo::Engine->namespace( $ns );
-
-$ns->set_conf($conf);
-my $c = $ns->get_conf($conf);
-
-use Data::Dumper;
-# print Dumper( $c );
-
-$ns->init();
-
-Pogo::Engine->instance( { store => $store });
-ok( 1, "at the end" );
-
-my $job = Pogo::Engine::Job->new({
-    invoked_as  => "gonzo",
-    namespace   => $ns->name,
-    target      => ["foo1.east.example.com"],
-    user        => "fred",
-    run_as      => "weeble",
-    password    => "secret",
-    timeout     => "2",
-    job_timeout => 10,
-    command     => "ls",
-    retry       => "1",
-    prehook     => "",
-    posthook    => "",
-    secrets     => "",
-    email       => "",
-    im_handle   => "",
-    client      => "",
-    requesthost => "",
-    concurrent  => 2,
-    exe_name    => "blech",
-    exe_data    => "wonk",
-});
-
-$job->start(
-     sub { ok 0, "err cont on start()" },
-     sub { ok 1, "success cont on start()"; },
-);
-
-$Data::Dumper::Indent = 1;
-
-$job->set_host_state( $job->{_hosts}->{"foo1.east.example.com"}, "waiting" );
-
-$ns->fetch_runnable_hosts( 
-    $job, 
-    { "foo1.east.example.com" => { "bork" => 1 },
-    },
-    sub { ok 0, "err cont: " . Dumper( \@_ ); },
-    sub { is( $_[0]->[0], "foo1.east.example.com", "host is runnable" );
-        },
-);
+ok(1, "at the end");
 
 1;
