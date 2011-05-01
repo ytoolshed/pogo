@@ -20,7 +20,6 @@ use common::sense;
 use JSON qw(encode_json decode_json);
 use Log::Log4perl qw(:easy);
 use Pogo::Engine::Store qw(store);
-BEGIN { *store = *Pogo::Engine::Store::store; } # for later mockery
 
 sub new
 {

@@ -26,7 +26,6 @@ use Set::Scalar;
 
 use Pogo::Engine::Namespace::Slot;
 use Pogo::Engine::Store qw(store);
-BEGIN { *store = *Pogo::Engine::Store::store; } # for later mockery
 use Pogo::Common qw(merge_hash);
 use JSON qw(encode_json decode_json);
 

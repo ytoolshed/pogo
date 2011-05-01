@@ -28,7 +28,6 @@ use Time::HiRes qw(time);
 
 use Pogo::Common;
 use Pogo::Engine::Store qw(store);
-BEGIN { *store = *Pogo::Engine::Store::store; } # for later mockery
 use Pogo::Engine::Job::Host;
 use Pogo::Dispatcher::AuthStore;
 

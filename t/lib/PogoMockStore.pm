@@ -254,15 +254,19 @@ use base 'Net::ZooKeeper::Mock::Node';
   # in our test scripts, Pogo::Engine::Store::store() will be overridden
   # to return the mock store instead. Also, it won't load Pogo::Engine::Store
   # at all and its Zookeeper dependencies, but work standalone.
-sub import {
-    my $mock = Test::MockObject->new();
-    my $pms = Net::ZooKeeper::Mock::Node->new();
-    $mock->fake_module(
-        'Pogo::Engine::Store',
-        store => sub { return $pms; }, # singleton used all over the place
-        init  => sub { return 1; },
-    );
-}
+my $mock = Test::MockObject->new();
+my $pms = Net::ZooKeeper::Mock::Node->new();
+$mock->fake_module(
+    'Pogo::Engine::Store',
+    store => sub { return $pms; }, # singleton used all over the place
+    init  => sub { return 1; },
+      # no fancy Exporter export_ok, just import it
+    import => sub {
+        my $callerpkg = caller();
+        no strict qw(refs);
+        *{"$callerpkg\::store"} = *{"Pogo::Engine::Store\::store"};
+    }
+);
 
 1;
 
@@ -279,11 +283,13 @@ PogoMockStore - A Mock for Pogo::Engine::Store without ZooKeeper
 
       # in the module using Pogo::Engine::Store 
     use Pogo::Engine::Store qw(store);
-    BEGIN { *store = *Pogo::Engine::Store::store; } # for later mockery
 
 =head1 DESCRIPTION
 
-Works similarly to Pogo::Engine::Store.
+Pretends to have loaded Pogo::Engine::Store already (so doesn't Barf if
+Net::ZooKeeper isn't installed, which the real Pogo::Engine::Store requires),
+overwrites the exported store() method in the target module, and offers a
+(almost complete) ZooKeeper mock behind the object returned by store().
 
 =head1 AUTHOR
 

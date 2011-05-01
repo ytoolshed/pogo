@@ -34,7 +34,6 @@ use Log::Log4perl qw(:easy);
 use Scalar::Util qw(refaddr);
 
 use Pogo::Engine::Store qw(store);
-BEGIN { *store = *Pogo::Engine::Store::store; } # for later mockery
 use Pogo::Dispatcher::AuthStore;
 use Pogo::Dispatcher::RPCConnection;
 use Pogo::Dispatcher::WorkerConnection;

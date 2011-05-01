@@ -18,7 +18,6 @@ use common::sense;
 
 use Log::Log4perl qw(:easy);
 use Pogo::Engine::Store qw(store);
-BEGIN { *store = *Pogo::Engine::Store::store; } # for later mockery
 
 sub new
 {

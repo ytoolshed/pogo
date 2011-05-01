@@ -29,7 +29,6 @@ use Exporter 'import';
 use Pogo::Engine::Job;
 use Pogo::Engine::Namespace;
 use Pogo::Engine::Store qw(store);
-BEGIN { *store = *Pogo::Engine::Store::store; } # for later mockery
 use Pogo::Engine::Response;
 use Pogo::Common;
 
