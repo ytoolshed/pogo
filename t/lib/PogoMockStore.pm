@@ -61,9 +61,14 @@ sub exists {
 }
 
 sub create {
-    my($self, $path) = @_;
+    my($self, $path, $value) = @_;
 
     DEBUG "zkm: create '$path'";
+
+    if( defined $value ) {
+        $self->set( $path, $value );
+    }
+
     return $self->path( $path, 1 );
 }
 
