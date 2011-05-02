@@ -1,2 +1,4 @@
 "add this to your vimrc to map 'X' to perltidy with the project's settings
 :nnoremap <buffer> <silent> X :w<Enter>1GdG:.!perltidy -pro=misc/perltidyrc %<Enter>
+"Run: ctags -R -f .ctags
+:set tags=.ctags
