@@ -771,6 +771,8 @@ sub continue
         return;
       }
 
+      DEBUG "nqueued=$nqueued nwaiting=$nwaiting";
+
       if ( $nqueued == 0 && $nwaiting > 0 )
       {
 
