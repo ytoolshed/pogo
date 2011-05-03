@@ -19,7 +19,7 @@ use strict;
 use warnings;
 
 use Test::Exception;
-use Test::More tests => 2;
+use Test::More tests => 3;
 
 use Carp qw(confess);
 use Data::Dumper;
@@ -46,7 +46,8 @@ use File::Basename;
 use Pogo::Engine::Store qw(store);
 use Log::Log4perl qw(:easy);
 
-# Log::Log4perl->easy_init({ level => $DEBUG, layout => "%F{1}-%L: %m%n" });
+# Log::Log4perl->easy_init({ level => $DEBUG, layout => "%F{1}-%L: %m%n",
+#    file => "stdout" });
 
   # Pogo::Dispatcher::AuthStore mockery
 my $secstore = Test::MockObject->new();
@@ -82,7 +83,7 @@ Pogo::Engine->instance();
 my $job = Pogo::Engine::Job->new({
     invoked_as  => "gonzo",
     namespace   => $ns->name,
-    target      => ["foo[1-2].east.example.com"],
+    target      => ["foo[1-4].east.example.com"],
     user        => "fred",
     run_as      => "weeble",
     password    => "secret",
@@ -103,10 +104,15 @@ my $job = Pogo::Engine::Job->new({
 });
 
 $job->start(
-     sub { ok 0, "err cont on start()" },
-     sub { ok 1, "success cont on start()"; },
+     sub { ok 0, "err cont on start(): @_" },
+     sub { ok 1, "success cont on start()"; 
+           my($nqueued, $nwaiting) = @_;
+           is($nqueued, 4, "4 hosts enqueued");
+           is($nwaiting, 0, "0 hosts waiting");
+         },
 );
 
+__END__
 $Data::Dumper::Indent = 1;
 
 $job->set_host_state( $job->{_hosts}->{"foo1.east.example.com"}, "waiting" );
