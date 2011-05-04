@@ -46,7 +46,7 @@ sub expand_targets
 
 sub fetch_target_meta
 {
-  my ( $self, $target, $errc, $cont, $logcont ) = @_;
+  my ( $self, $target, $nsname, $errc, $cont, $logcont ) = @_;
   my $hinfo = {};
 
   if ( !defined $self->{_target_cache}->{$target} )

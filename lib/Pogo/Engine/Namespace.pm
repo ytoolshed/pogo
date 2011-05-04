@@ -741,8 +741,10 @@ sub expand_targets
 
 sub fetch_target_meta
 {
-  my ( $self, $target, $errc, $cont ) = @_;
-  return $self->target_plugin->fetch_target_meta( $target, $errc, $cont );
+  my ( $self, $target, $nsname, $errc, $cont ) = @_;
+  DEBUG __PACKAGE__, "::fetch_target_meta";
+  return $self->target_plugin->fetch_target_meta( $target, $nsname, 
+                                                  $errc, $cont );
 }
 
 #}}}
@@ -752,6 +754,7 @@ sub fetch_target_meta
 sub unlock_host
 {
   my ( $self, $job, $host, $unlockseq ) = @_;
+  DEBUG __PACKAGE__, "::unlock_host";
 
   return LOGDIE "unlock_host is deprecated";
 

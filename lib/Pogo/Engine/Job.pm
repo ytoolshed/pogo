@@ -566,13 +566,19 @@ sub start
       };
 
       my $fetch_cont = sub {
+        my( $hinfo ) = @_;
         local *__ANON__ = 'AE:cb:fetch_target_meta:cont';
         DEBUG $self->id . ": adding hosts";
         DEBUG $self->id . ": computing slots";
-        $self->fetch_runnable_hosts();
+        $ns->fetch_runnable_hosts( $self, $hinfo, $errc, $cont );
+        DEBUG "Job after fetch_runnable_hosts: ", $self;
       };
 
-      $ns->fetch_target_meta( $flat_targets, $ns->name, $fetch_errc, $fetch_cont, );
+      DEBUG "Calling fetch_target_meta for @$flat_targets";
+      $ns->fetch_target_meta( $flat_targets, $ns->name, $fetch_errc, 
+                              $fetch_cont );
+      DEBUG "After fetch_target_meta";
+      return 1;
     }
     else    # concurrent codepath
     {
