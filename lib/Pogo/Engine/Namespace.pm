@@ -813,25 +813,86 @@ sub unlock_host
 
 =head1 NAME
 
-  CLASSNAME - SHORT DESCRIPTION
+  Pogo::Engine::Namespace
 
 =head1 SYNOPSIS
 
-CODE GOES HERE
+  # internal pogo api
 
 =head1 DESCRIPTION
 
-LONG_DESCRIPTION
+This module contains helper functions for configuration and execution of
+the constraints engine. To set the configuration for the namespace, use
 
-=head1 METHODS
+    $ns->set_conf($conf);
 
-B<methodexample>
+where $conf is a data structure obtained from a YAML file as shown below.
+The configuration is plugin-driven, and by default, it uses the
+Inline.pm plugin:
 
-=over 2
+    plugins:
+      targets: Pogo::Plugin::Inline
 
-methoddescription
+The Inline plugin allows
+(see the detailed Pogo::Plugin::Inline doc for details) for
+defining apps (targets, hosts), envs (key/value settings for targets), 
+sequences and constraints, like
 
-=back
+    apps:
+      frontend:
+        - foo[1-101].east.example.com
+        - foo[1-101].west.example.com
+      backend:
+        - bar[1-10].east.example.com
+        - bar[1-10].west.example.com
+    
+    envs:
+      coast:
+        east:
+          - foo[1-101].east.example.com
+          - bar[1-10].east.example.com
+        west:
+          - foo[1-101].west.example.com
+          - bar[1-10].west.example.com
+    
+    constraints:
+      coast:
+        concurrency:
+          - frontend: 25%
+          - backend: 1
+        sequence:
+          - [ backend, frontend ]
+
+which Pogo::Engine::Namespace transforms into a directory/file
+hierarchy in ZooKeeper for later processing by the dispatcher. 
+
+The apps (targets) defined above are stored like this:
+
+    /pogo/ns/nsname/conf/apps/backend/0: ["bar[1-10].east.example.com"]
+    /pogo/ns/nsname/conf/apps/backend/1: ["bar[1-10].west.example.com"]
+    /pogo/ns/nsname/conf/apps/frontend/0: ["foo[1-101].east.example.com"]
+    /pogo/ns/nsname/conf/apps/frontend/1: ["foo[1-101].west.example.com"]
+
+The constraints:
+
+    /pogo/ns/nsname/conf/cur/coast/backend: ["1"]
+    /pogo/ns/nsname/conf/cur/coast/frontend: ["25%"]
+
+Env settings:
+
+    /pogo/ns/nsname/conf/envs/coast/east/0: ["foo[1-101].east.example.com"]
+    /pogo/ns/nsname/conf/envs/coast/east/1: ["bar[1-10].east.example.com"]
+    /pogo/ns/nsname/conf/envs/coast/west/0: ["foo[1-101].west.example.com"]
+    /pogo/ns/nsname/conf/envs/coast/west/1: ["bar[1-10].west.example.com"]
+
+Sequences:
+
+    /pogo/ns/nsname/conf/seq/pred/coast/frontend: []
+    /pogo/ns/nsname/conf/seq/succ/coast/backend: []
+
+And even the plugin gets stored:
+
+    /pogo/ns/nsname/conf/plugins/targets: ["Pogo::Plugin::Inline"]
 
 =head1 SEE ALSO
 
