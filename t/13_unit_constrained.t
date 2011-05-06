@@ -20,6 +20,7 @@ use warnings;
 
 use Test::Exception;
 use Test::More tests => 1;
+use Test::Deep;
 
 use Carp qw(confess);
 use Data::Dumper;
@@ -44,6 +45,7 @@ use Test::MockObject;
 use File::Basename;
 
 use Pogo::Engine::Store qw(store);
+use Data::Dumper;
 
 # Log::Log4perl->easy_init({ level => $DEBUG, layout => "%F{1}-%L-%M: %m%n" });
 
@@ -70,18 +72,17 @@ $ns->init();
 
 my $conf = LoadFile("$Bin/conf/example.yaml");
 $ns->set_conf($conf);
-my $c = $ns->get_conf($conf);
-
-use Data::Dumper;
 
 $ns->init();
 
 Pogo::Engine->instance();
 
+my $target = "foo[1-4].east.example.com";
+
 my $job = Pogo::Engine::Job->new({
     invoked_as  => "gonzo",
     namespace   => $ns->name,
-    target      => ["foo[1-4].east.example.com"],
+    target      => [$target],
     user        => "fred",
     run_as      => "weeble",
     password    => "secret",
@@ -101,6 +102,37 @@ my $job = Pogo::Engine::Job->new({
     exe_data    => "wonk",
 });
 
+my $target_href = $ns->expand_targets( ["foo[1-4].east.example.com"] );
+my @target_range = qw(
+foo1.east.example.com
+foo2.east.example.com
+foo3.east.example.com
+foo4.east.example.com);
+
+cmp_deeply( $target_href, \@target_range, "target range" );
+
+__END__
+$ns->fetch_target_meta(
+    $ns
+    sub { die "err"; },
+    sub { ok(1, "success"); },
+}
+
+__END__
+$ns->fetch_runnable_hosts( 
+    $job, 
+    { "foo1.east.example.com" => { "bork" => 1 },
+      "foo2.east.example.com" => { "bork" => 1 },
+    },
+    sub { ok 0, "err cont: " . Dumper( \@_ ); },
+    sub { is( $_[0]->[0], "foo1.east.example.com", "host is runnable" );
+          DEBUG store()->_dump;
+          DEBUG Dumper( \@_ );
+        },
+);
+
+__END__
+
 $job->start(
      sub { ok 0, "err cont on start(): @_" },
      sub { ok 1, "success cont on start()"; 
@@ -117,17 +149,5 @@ $Data::Dumper::Indent = 1;
 
 $job->set_host_state( $job->{_hosts}->{"foo1.east.example.com"}, "waiting" );
 $job->set_host_state( $job->{_hosts}->{"foo2.east.example.com"}, "waiting" );
-
-$ns->fetch_runnable_hosts( 
-    $job, 
-    { "foo1.east.example.com" => { "bork" => 1 },
-      "foo2.east.example.com" => { "bork" => 1 },
-    },
-    sub { ok 0, "err cont: " . Dumper( \@_ ); },
-    sub { is( $_[0]->[0], "foo1.east.example.com", "host is runnable" );
-          DEBUG store()->_dump;
-          DEBUG Dumper( \@_ );
-        },
-);
 
 1;
