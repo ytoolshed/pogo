@@ -46,12 +46,16 @@ sub expand_targets
 
 sub fetch_target_meta
 {
-  my ( $self, $target, $nsname, $errc, $cont, $logcont ) = @_;
+  my ( $self, $targets, $nsname, $errc, $cont, $logcont, $opts ) = @_;
   my $hinfo = {};
+  $opts = {} unless defined $opts;
 
-  if ( !defined $self->{_target_cache}->{$target} )
+  my $cache_key = "default";
+  $cache_key = $opts->{cache_key} if defined $opts->{ cache_key };
+
+  if ( !defined $self->{_target_cache}->{$cache_key} )
   {
-    DEBUG "Start updating Inline meta cache";
+    DEBUG "Start updating Inline meta cache (cache key $cache_key)";
 
     # populate the cache anew - we might as well do it for all hosts
     my $conf = $self->{conf}->();
@@ -86,17 +90,23 @@ sub fetch_target_meta
 
     foreach my $target ( keys %$hinfo )
     {
-      $self->{_target_cache}->{$target}->{apps} = [ keys %{ $hinfo->{$target}->{apps} } ];
+      $self->{_target_cache}->{$cache_key}->{$target}->{apps} = 
+         [ keys %{ $hinfo->{$target}->{apps} } ];
+
       foreach my $envtype ( keys %{ $hinfo->{$target}->{envs} } )
       {
-        $self->{_target_cache}->{$target}->{envs}->{$envtype} =
+        $self->{_target_cache}->{$cache_key}->{$target}->{envs}->{$envtype} =
           $hinfo->{$target}->{envs}->{$envtype};
       }
     }
   }
 
-  DEBUG "End updating Inline meta cache";
-  $cont->( $self->{_target_cache}->{$target} );
+  DEBUG "End updating Inline meta cache (cache_key=$cache_key)";
+
+    # Only pass on data for the data we asked for
+  $cont->( { map { $_ => $self->{_target_cache}->{$cache_key}->{$_} } 
+               @$targets  }
+         );
 }
 
 # }}}
@@ -188,21 +198,74 @@ a subsequent call of the C<fetch_target_meta()> method as in
     my $meta_data;
     my $errcont = sub { print "Whoa! Error!\n" };
     my $cont    = sub { $meta_data = $_[0] };
-    $plugin->fetch_target_meta( "foo13.east.example.com", 
+    $plugin->fetch_target_meta( ["foo13.east.example.com"], 
                                 $errcont, $cont );
 
 will process the entire configuration file and cache it in memory (if it's not
-cached already) and return the following data structure for the specified host
-("foo13.east.example.com"):
+cached already) and call the continuation function with the following data 
+structure:
 
-    { 'apps' => [ 'frontend' ],
-      'envs' => { 
-        'coast' => 'east'
-       }
+    { 'foo13.east.example.com' =>
+          { 'apps' => [ 'frontend' ],
+              'envs' => { 
+                  'coast' => 'east'
+          }
     }
 
-Host "foo13.east.example.com" is therefore a member of the appgroup 'frontend' and
-carries an environment setting of C<coast =E<gt> east>.
+Host "foo13.east.example.com" is therefore a member of the appgroup 'frontend' and carries an environment setting of C<coast =E<gt> east>.
+
+C<fetch_target_meta()> also handles calls to obtain meta data of
+several targets at once:
+
+    $plugin->fetch_target_meta( ["foo13.east.example.com",
+                                 "foo14.east.example.com",
+                                ], 
+                                $errcont, $cont,
+                              );
+
+Upon completion, this will call the continuation with the following
+data structure:
+
+    { 'foo13.east.example.com' =>
+          { 'apps' => [ 'frontend' ],
+              'envs' => { 
+                  'coast' => 'east'
+          },
+      'foo14.east.example.com' =>
+          { 'apps' => [ 'frontend' ],
+              'envs' => { 
+                  'coast' => 'east'
+          },
+    }
+
+To enable C<fetch_target_meta> to rely heavily on advanced caching 
+techniques, it accepts an additional (and optional) C<cache_key>
+parameter:
+
+    $plugin->fetch_target_meta( ["foo13.east.example.com",
+                                 "foo14.east.example.com",
+                                ], 
+                                $errcont, $cont,
+                                { cache_key => "eastern_hosts" },
+                              );
+
+The C<cache_key> parameter ("eastern_hosts") defines the name of a
+target group that contains a superset of all requested targets.
+It enables the plugin to quickly check if cached data for all requested 
+targets is still valid and to effectively refresh it from the source
+in one fell swoop if necessary. In this way, it will not only refresh
+data for targets listed in the current request, but will be ready
+to serve cached data to future requests for targets belonging to the
+same group. In the case outlined above, the function only gets called
+for C<foo13.east.example.com> and C<foo14.east.example.com>, but if the
+plugin knows that 'eastern_hosts' contains in the range
+C<foo[1-100].east.example.com>, it may refresh all of them from 
+a (ficticious) external source and is then prepared for the next
+call when meta data on, say, C<foo42.east.example.com>, is requested.
+
+The Inline plugin doesn't use this feature (yet), since all data
+can be cached in memory indefinitely, but other plugins gain tremendous
+performance benefits from using it.
 
 =item C<expand_target>
 

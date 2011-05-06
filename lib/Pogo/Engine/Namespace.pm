@@ -222,46 +222,51 @@ sub fetch_all_slots
     $hostslots{$hostname} = [];
     foreach my $app ( @{ $hostinfo->{apps} } )
     {
-      foreach my $env ( @{ $hostinfo->{envs} } )
+      foreach my $envtype ( keys %{ $hostinfo->{envs} } )
       {
-        my ( $etype, $ename ) = ( $env->{key}, $env->{value} );
+          foreach my $env ( keys %{ $hostinfo->{envs}->{$envtype} } )
+          {
+              my ( $etype, $ename ) = ( $env->{key}, $env->{value} );
 
-        # skip if there are no constraints for this environment
-        next if ( !exists $const->{app}->{$etype} );
+              # skip if there are no constraints for this environment
+              next if ( !exists $const->{app}->{$etype} );
 
-        my $slot = $self->slot( $app, $etype, $ename );
+              my $slot = $self->slot( $app, $etype, $ename );
 
-        # if we have predecessors in the sequence for this app/environment, get
-        # those slots too
-        if ( exists $seq->{$etype} && exists $seq->{$ename}->{$app} )
-        {
-          $slot->{pred} = [ map { $self->slot( $_, $etype, $ename ) } @{ $seq->{$etype}->{$app} } ];
-          DEBUG "Sequence predecessors for "
-            . $slot->name . ": "
-            . join( ", ", map { $_->name } @{ $slot->{pred} } );
-        }
-        push @{ $hostslots{$hostname} }, $slot;
+              # if we have predecessors in the sequence for this 
+              # app/environment, get those slots too
+              if ( exists $seq->{$etype} && exists $seq->{$ename}->{$app} )
+              {
+                $slot->{pred} = [ map { $self->slot( $_, $etype, $ename ) } 
+                                      @{ $seq->{$etype}->{$app} } ];
+                DEBUG "Sequence predecessors for "
+                . $slot->name . ": "
+                . join( ", ", map { $_->name } @{ $slot->{pred} } );
+              }
+              push @{ $hostslots{$hostname} }, $slot;
 
-        my $concur = $const->{$app}->{$etype};
-        if ( $concur !~ m{^(\d+)%$} )
-        {
-          # not a percentage, a literal
-          $slot->{maxdown} = $concur;
-        }
-        else
-        {
-          # we need to resolve the percentage, and we do so asyncronously.
-          my $pct    = $1;
-          my $appexp = $self->app_members($app);
-          my $envexp = $self->env_members($env);
+              my $concur = $const->{$app}->{$etype};
+              if ( $concur !~ m{^(\d+)%$} )
+              {
+                # not a percentage, a literal
+                $slot->{maxdown} = $concur;
+              }
+              else
+              {
+                # we need to resolve the percentage, and we do so asyncronously.
+                my $pct    = $1;
+                my $appexp = $self->app_members($app);
+                my $envexp = $self->env_members($env);
 
-          $to_resolve{$appexp} = 1;
-          $to_resolve{$envexp} = 1;
+                $to_resolve{$appexp} = 1;
+                $to_resolve{$envexp} = 1;
 
-          push @slotlookups,
-            [ $slot, $appexp, $envexp, $pct ];   # $pct in these to be written by resolv $cont below
-        }
-      }
+                push @slotlookups,
+                [ $slot, $appexp, $envexp, $pct ];   # $pct in these to be written 
+                                                     # by resolv $cont below
+              }
+            }
+       }
     }
   }
 
