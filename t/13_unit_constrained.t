@@ -36,6 +36,7 @@ use lib "$Bin/lib";
 
 use PogoTesterAlarm;
 use PogoMockStore;
+use PogoMockAuthStore;
 
 use Pogo::Engine;
 use Pogo::Engine::Namespace;
@@ -48,21 +49,6 @@ use Pogo::Engine::Store qw(store);
 use Data::Dumper;
 
 # Log::Log4perl->easy_init({ level => $DEBUG, layout => "%F{1}-%L-%M: %m%n" });
-
-  # Pogo::Dispatcher::AuthStore mockery
-my $secstore = Test::MockObject->new();
-$secstore->fake_module(
-    'Pogo::Dispatcher::AuthStore',
-    instance => sub { return $secstore; },
-);
-$secstore->mock(get => sub {
-        my($self, $key) = @_;
-        return $self->{store}->{$key};
-    });
-$secstore->mock(store => sub {
-        my($self, $key, $val) = @_;
-        $self->{store}->{$key} = $val;
-    });
 
 my $ns = Pogo::Engine::Namespace->new(
   nsname   => "wonk",
