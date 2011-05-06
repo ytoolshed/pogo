@@ -19,7 +19,7 @@ use strict;
 use warnings;
 
 use Test::Exception;
-use Test::More tests => 1;
+use Test::More tests => 6;
 use Test::Deep;
 
 use Carp qw(confess);
@@ -30,6 +30,7 @@ use Net::SSLeay qw();
 use Sys::Hostname qw(hostname);
 use YAML::XS qw(Load LoadFile);
 use JSON qw(encode_json);
+use AnyEvent;
 
 use lib "$Bin/../lib";
 use lib "$Bin/lib";
@@ -97,12 +98,30 @@ foo4.east.example.com);
 
 cmp_deeply( $target_href, \@target_range, "target range" );
 
-__END__
+my $w = AnyEvent->condvar;
+my $result;
+
 $ns->fetch_target_meta(
-    $ns
+    [qw(foo13.east.example.com 
+        bar3.east.example.com
+        foo13.west.example.com
+        bar3.west.example.com
+    )],
+    $ns->name,
     sub { die "err"; },
-    sub { ok(1, "success"); },
-}
+    sub { ($result) = @_;
+          ok(1, "success"); 
+        },
+);
+
+is( $result->{"foo13.west.example.com"}->{apps}->[0], "frontend",
+    "fetch_target_meta" );
+is( $result->{"foo13.west.example.com"}->{envs}->{coast}->{west}, 1,
+    "fetch_target_meta" );
+is( $result->{"foo13.east.example.com"}->{envs}->{coast}->{east}, 1,
+    "fetch_target_meta" );
+is( $result->{"bar3.west.example.com"}->{apps}->[0], "backend",
+    "fetch_target_meta" );
 
 __END__
 $ns->fetch_runnable_hosts( 
