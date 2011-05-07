@@ -570,6 +570,7 @@ sub start
         local *__ANON__ = 'AE:cb:fetch_target_meta:cont';
         DEBUG $self->id . ": adding hosts";
         DEBUG $self->id . ": computing slots";
+        DEBUG sub { "Calling fetch_runnable_hosts with " . Dumper($hinfo) };
         $ns->fetch_runnable_hosts( $self, $hinfo, $errc, $cont );
         DEBUG "Job after fetch_runnable_hosts: ", $self;
       };

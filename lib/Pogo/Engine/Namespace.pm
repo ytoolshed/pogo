@@ -217,35 +217,59 @@ sub fetch_all_slots
   DEBUG Dumper [ $const, $seq ];
 
   # resolve all max_down_hosts for each app-env
+  # debug> p $hostname
+  #  foo13.west.example.com
+  #
+  # debug> x $hostinfo
+  #  0  HASH(0x9e76008)
+  #     'apps' => ARRAY(0x9e75fc8)
+  #        0  'frontend'
+  #     'envs' => HASH(0x9e76028)
+  #        'coast' => HASH(0x9e6dff8)
+  #           'west' => 1
+  #
+  # debug> x $seq
+  #  0  HASH(0x9c55d80)
+  #  'coast' => HASH(0x9c536f8)
+  #     'frontend' => ARRAY(0x9e6c290)
+  #         empty array
+  #
+  # debug> x $const
+  #  0  HASH(0x9e6bad0)
+  #  'coast' => HASH(0x9c558e0)
+  #     'backend' => '"1"'
+  #     'frontend' => '"25%"'
+
   while ( my ( $hostname, $hostinfo ) = each %$hostinfo_map )
   {
     $hostslots{$hostname} = [];
+
     foreach my $app ( @{ $hostinfo->{apps} } )
     {
       foreach my $envtype ( keys %{ $hostinfo->{envs} } )
       {
           foreach my $env ( keys %{ $hostinfo->{envs}->{$envtype} } )
           {
-              my ( $etype, $ename ) = ( $env->{key}, $env->{value} );
-
               # skip if there are no constraints for this environment
-              next if ( !exists $const->{app}->{$etype} );
+              # (remove this to fix [bug 4524855])
+              next if ( !exists $const->{app}->{$envtype} );
 
-              my $slot = $self->slot( $app, $etype, $ename );
+              my $slot = $self->slot( $app, $envtype, $env );
 
               # if we have predecessors in the sequence for this 
               # app/environment, get those slots too
-              if ( exists $seq->{$etype} && exists $seq->{$ename}->{$app} )
+              if ( exists $seq->{$envtype} && 
+                   exists $seq->{$env}->{$app} )
               {
-                $slot->{pred} = [ map { $self->slot( $_, $etype, $ename ) } 
-                                      @{ $seq->{$etype}->{$app} } ];
+                $slot->{pred} = [ map { $self->slot( $_, $envtype, $env ) } 
+                                      @{ $seq->{$envtype}->{$app} } ];
                 DEBUG "Sequence predecessors for "
                 . $slot->name . ": "
                 . join( ", ", map { $_->name } @{ $slot->{pred} } );
               }
               push @{ $hostslots{$hostname} }, $slot;
 
-              my $concur = $const->{$app}->{$etype};
+              my $concur = $const->{$app}->{$envtype};
               if ( $concur !~ m{^(\d+)%$} )
               {
                 # not a percentage, a literal

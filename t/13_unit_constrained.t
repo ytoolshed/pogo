@@ -19,7 +19,7 @@ use strict;
 use warnings;
 
 use Test::Exception;
-use Test::More tests => 6;
+use Test::More tests => 8;
 use Test::Deep;
 
 use Carp qw(confess);
@@ -66,10 +66,56 @@ Pogo::Engine->instance();
 
 my $target = "foo[1-4].east.example.com";
 
+my $target_href = $ns->expand_targets( [$target] );
+my @target_range = qw(
+foo1.east.example.com
+foo2.east.example.com
+foo3.east.example.com
+foo4.east.example.com);
+
+cmp_deeply( $target_href, \@target_range, "target range" );
+
+$target = [qw(foo13.east.example.com 
+        bar3.east.example.com
+        foo13.west.example.com
+        bar3.west.example.com
+    )];
+
+my $host_meta;
+
+$ns->fetch_target_meta(
+    $target,
+    $ns->name,
+    sub { die "err"; },
+    sub { ($host_meta) = @_;
+          ok(1, "success"); 
+        },
+);
+
+is( $host_meta->{"foo13.west.example.com"}->{apps}->[0], "frontend",
+    "fetch_target_meta" );
+is( $host_meta->{"foo13.west.example.com"}->{envs}->{coast}->{west}, 1,
+    "fetch_target_meta" );
+is( $host_meta->{"foo13.east.example.com"}->{envs}->{coast}->{east}, 1,
+    "fetch_target_meta" );
+is( $host_meta->{"bar3.west.example.com"}->{apps}->[0], "backend",
+    "fetch_target_meta" );
+
+my $result;
+
+$ns->fetch_target_meta(
+    $target,
+    $ns->name,
+    sub { die "err"; },
+    sub { ($host_meta) = @_;
+          ok(1, "success"); 
+        },
+);
+
 my $job = Pogo::Engine::Job->new({
     invoked_as  => "gonzo",
     namespace   => $ns->name,
-    target      => [$target],
+    target      => $target,
     user        => "fred",
     run_as      => "weeble",
     password    => "secret",
@@ -84,57 +130,35 @@ my $job = Pogo::Engine::Job->new({
     im_handle   => "",
     client      => "",
     requesthost => "",
-    #concurrent  => undef,
+    #concurrent  => 1,
     exe_name    => "blech",
     exe_data    => "wonk",
 });
 
-my $target_href = $ns->expand_targets( ["foo[1-4].east.example.com"] );
-my @target_range = qw(
-foo1.east.example.com
-foo2.east.example.com
-foo3.east.example.com
-foo4.east.example.com);
-
-cmp_deeply( $target_href, \@target_range, "target range" );
-
-my $w = AnyEvent->condvar;
-my $result;
-
-$ns->fetch_target_meta(
-    [qw(foo13.east.example.com 
-        bar3.east.example.com
-        foo13.west.example.com
-        bar3.west.example.com
-    )],
-    $ns->name,
-    sub { die "err"; },
-    sub { ($result) = @_;
-          ok(1, "success"); 
-        },
-);
-
-is( $result->{"foo13.west.example.com"}->{apps}->[0], "frontend",
-    "fetch_target_meta" );
-is( $result->{"foo13.west.example.com"}->{envs}->{coast}->{west}, 1,
-    "fetch_target_meta" );
-is( $result->{"foo13.east.example.com"}->{envs}->{coast}->{east}, 1,
-    "fetch_target_meta" );
-is( $result->{"bar3.west.example.com"}->{apps}->[0], "backend",
-    "fetch_target_meta" );
-
-__END__
 $ns->fetch_runnable_hosts( 
     $job, 
-    { "foo1.east.example.com" => { "bork" => 1 },
-      "foo2.east.example.com" => { "bork" => 1 },
-    },
-    sub { ok 0, "err cont: " . Dumper( \@_ ); },
-    sub { is( $_[0]->[0], "foo1.east.example.com", "host is runnable" );
-          DEBUG store()->_dump;
-          DEBUG Dumper( \@_ );
+    $host_meta,
+    sub { die "err cont: ", Dumper( \@_ ); },
+    sub { $result = \@_;
         },
 );
+
+ok(1, "at the end" );
+
+# print store->_dump();
+
+__END__
+
+$job->start(
+     sub { ok 0, "err cont on start(): @_" },
+     sub { ok 1, "success cont on start()"; 
+           my($nqueued, $nwaiting) = @_;
+           is($nqueued, 4, "4 hosts enqueued");
+           is($nwaiting, 0, "0 hosts waiting");
+         },
+);
+
+print Dumper($result);
 
 __END__
 
