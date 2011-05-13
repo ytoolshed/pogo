@@ -14,7 +14,6 @@ package Pogo::Plugin::Inline;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-use 5.008;
 use common::sense;
 
 use Data::Dumper;
@@ -27,9 +26,10 @@ sub new
   return bless \%opts, $class;
 }
 
+# {{{ expand_targets
 sub expand_targets
 {
-  my ($self, $targets) = @_;
+  my ( $self, $targets ) = @_;
   my @flat;
   foreach my $target (@$targets)
   {
@@ -37,26 +37,36 @@ sub expand_targets
   }
 
   my %uniq = ();
-  @flat = grep { ! $uniq{ $_ }++ } @flat;
+  @flat = grep { !$uniq{$_}++ } @flat;
   return \@flat;
 }
 
+# }}}
+# {{{ fetch_target_meta
+
 sub fetch_target_meta
 {
-  my ( $self, $target, $errc, $cont, $logcont ) = @_;
+  my ( $self, $targets, $nsname, $errc, $cont, $logcont, $opts ) = @_;
   my $hinfo = {};
+  $opts = {} unless defined $opts;
 
-  if ( !defined $self->{_target_cache}->{$target} )
+  my $cache_key = "default";
+  $cache_key = $opts->{cache_key} if defined $opts->{ cache_key };
+
+  if ( !defined $self->{_target_cache}->{$cache_key} )
   {
+    DEBUG "Start updating Inline meta cache (cache key $cache_key)";
+
     # populate the cache anew - we might as well do it for all hosts
     my $conf = $self->{conf}->();
 
     foreach my $app ( sort keys %{ $conf->{apps} } )
     {
-      foreach my $expression ( sort keys %{ $conf->{apps}->{$app} } )
+      foreach my $expression ( @{ $conf->{apps}->{$app} } )
       {
-        foreach my $host ( string_glob_permute( $conf->{apps}->{$app}->{$expression} ) )
+        foreach my $host ( string_glob_permute( $expression ) )
         {
+          DEBUG "{$host}->{apps}->{$app}";
           $hinfo->{$host}->{apps}->{$app} = 1;
         }
       }
@@ -66,11 +76,12 @@ sub fetch_target_meta
     {
       foreach my $envname ( sort keys %{ $conf->{envs}->{$envtype} } )
       {
-        foreach my $expression ( sort keys %{ $conf->{envs}->{$envtype}->{$envname} } )
+        foreach my $expression ( @{ $conf->{envs}->{$envtype}->{$envname} } )
         {
           foreach
-            my $host ( string_glob_permute( $conf->{envs}->{$envtype}->{$envname}->{$expression} ) )
+            my $host ( string_glob_permute( $expression ) )
           {
+            DEBUG "{$host}->{envs}->{$envtype}->{$envname}";
             $hinfo->{$host}->{envs}->{$envtype}->{$envname} = 1;
           }
         }
@@ -79,17 +90,26 @@ sub fetch_target_meta
 
     foreach my $target ( keys %$hinfo )
     {
-      $self->{_target_cache}->{$target}->{apps} = [ keys %{ $hinfo->{$target}->{apps} } ];
+      $self->{_target_cache}->{$cache_key}->{$target}->{apps} = 
+         [ keys %{ $hinfo->{$target}->{apps} } ];
+
       foreach my $envtype ( keys %{ $hinfo->{$target}->{envs} } )
       {
-        $self->{_target_cache}->{$target}->{envs}->{$envtype} =
+        $self->{_target_cache}->{$cache_key}->{$target}->{envs}->{$envtype} =
           $hinfo->{$target}->{envs}->{$envtype};
       }
     }
   }
 
-  $cont->( $self->{_target_cache}->{$target} );
+  DEBUG "End updating Inline meta cache (cache_key=$cache_key)";
+
+    # Only pass on data for the data we asked for
+  $cont->( { map { $_ => $self->{_target_cache}->{$cache_key}->{$_} } 
+               @$targets  }
+         );
 }
+
+# }}}
 
 1;
 
@@ -101,22 +121,254 @@ Pogo::Plugin::Inline
 
 =head1 SYNOPSIS
 
-    my @hosts = 
-       Pogo::Plugin::Inline->expand_targets( ["host[0-9].corp.com"] );
+    use Pogo::Plugin::Inline;
+
+    my $plugin = Pogo::Plugin::Inline->new(
+        conf => \&get_conf
+    );
 
 =head1 DESCRIPTION
 
-Expands hostname patterns to an array of hostnames.
+The Inline plugin parses Pogo YAML configuration files and provides
+the Pogo engine with data on 
+
+=over 4
+
+=item apps:
+
+groups of targets (hosts)
+
+=item envs:
+
+key/value settings for targets
+
+=item sequences:
+
+order in which apps (targets) are processed
+
+=item constraints:
+
+limitations on how many apps (targets) can be processed in parallel
+
+=back
 
 =head1 METHODS
 
-B<expand_targets( [$pattern, ..] )>
+=over 4
 
-=over 2
+=item C<new( conf => \&get_conf )>
 
-Expands 
+The C<conf> parameter to the constructor defines a reference to a function
+returning parsed YAML data, e.g.
+
+    apps:
+      frontend:
+        - foo[1-101].east.example.com
+        - foo[1-101].west.example.com
+      backend:
+        - bar[1-10].east.example.com
+        - bar[1-10].west.example.com
+    
+    envs:
+      coast:
+        east:
+          - foo[1-101].east.example.com
+          - bar[1-10].east.example.com
+        west:
+          - foo[1-101].west.example.com
+          - bar[1-10].west.example.com
+    
+    constraints:
+      - env: coast
+        sequences:
+          - envs: [ east, west ]
+            apps: [ backend, frontend ]
+        concurrency:
+          - frontend: 25%
+          - backend: 1
+
+as a Perl data structure. 
+
+=item C<fetch_target_meta>
+
+After creating a new plugin object with the constructor explained above, 
+a subsequent call of the C<fetch_target_meta()> method as in
+
+    # Cache/Return target meta info from conf file
+    my $meta_data;
+    my $errcont = sub { print "Whoa! Error!\n" };
+    my $cont    = sub { $meta_data = $_[0] };
+    $plugin->fetch_target_meta( ["foo13.east.example.com"], 
+                                $errcont, $cont );
+
+will process the entire configuration file and cache it in memory (if it's not
+cached already) and call the continuation function with the following data 
+structure:
+
+    { 'foo13.east.example.com' =>
+          { 'apps' => [ 'frontend' ],
+              'envs' => { 
+                  'coast' => 'east'
+          }
+    }
+
+Host "foo13.east.example.com" is therefore a member of the appgroup 'frontend' and carries an environment setting of C<coast =E<gt> east>.
+
+C<fetch_target_meta()> also handles calls to obtain meta data of
+several targets at once:
+
+    $plugin->fetch_target_meta( ["foo13.east.example.com",
+                                 "foo14.east.example.com",
+                                ], 
+                                $errcont, $cont,
+                              );
+
+Upon completion, this will call the continuation with the following
+data structure:
+
+    { 'foo13.east.example.com' =>
+          { 'apps' => [ 'frontend' ],
+              'envs' => { 
+                  'coast' => 'east'
+          },
+      'foo14.east.example.com' =>
+          { 'apps' => [ 'frontend' ],
+              'envs' => { 
+                  'coast' => 'east'
+          },
+    }
+
+To enable C<fetch_target_meta> to rely heavily on advanced caching 
+techniques, it accepts an additional (and optional) C<cache_key>
+parameter:
+
+    $plugin->fetch_target_meta( ["foo13.east.example.com",
+                                 "foo14.east.example.com",
+                                ], 
+                                $errcont, $cont,
+                                { cache_key => "eastern_hosts" },
+                              );
+
+The C<cache_key> parameter ("eastern_hosts") defines the name of a
+target group that contains a superset of all requested targets.
+It enables the plugin to quickly check if cached data for all requested 
+targets is still valid and to effectively refresh it from the source
+in one fell swoop if necessary. In this way, it will not only refresh
+data for targets listed in the current request, but will be ready
+to serve cached data to future requests for targets belonging to the
+same group. In the case outlined above, the function only gets called
+for C<foo13.east.example.com> and C<foo14.east.example.com>, but if the
+plugin knows that 'eastern_hosts' contains in the range
+C<foo[1-100].east.example.com>, it may refresh all of them from 
+a (ficticious) external source and is then prepared for the next
+call when meta data on, say, C<foo42.east.example.com>, is requested.
+
+The Inline plugin doesn't use this feature (yet), since all data
+can be cached in memory indefinitely, but other plugins gain tremendous
+performance benefits from using it.
+
+=item C<expand_target>
+
+Expands target text globs:
+
+    # Expand target ranges
+    my @targets = $plugin->expand_targets( ["host[0-9].corp.com"] );
+      # @targets now holds ("host0.corp.com", "host1.corp.com", ...)
 
 =back
+
+=head2 Multiple Constraints
+
+If you have two sets of machines whose update sequence depends on two different
+environment settings, simply define them in the "envs" section and then add
+two different "sequences" entries (one for each env variable) in the "constraints"
+section.
+
+For example, if your database servers need to be installed first inside the
+firewall and then in the colo, while your production application needs to be
+install first on the east coast and then on the west coast, this setup will
+accomplish the entire work:
+
+    apps:
+      web-master:
+        - web-master.east.corp.com
+        - web-master.west.corp.com
+      web-mirror:
+        - web-mirror.east.corp.com
+        - web-mirror.west.corp.com
+      db-master:
+        - db-master.colo.corp.com
+        - db-master.inside.corp.com
+      db-mirror:
+        - db-mirror.colo.corp.com
+        - db-mirror.inside.corp.com
+    
+    envs:
+      coast:
+        east:
+          - web-master.east.corp.com
+          - web-mirror.east.corp.com
+          - db-master.east.corp.com
+        west:
+          - web-master.west.corp.com
+          - web-mirror.west.corp.com
+          - db-master.west.corp.com
+      location:
+        colo:
+          - db-master.colo.corp.com
+          - db-mirror.colo.corp.com
+        inside:
+          - db-master.inside.corp.com
+          - db-mirror.inside.corp.com
+    
+    constraints:
+      - env: coast
+        sequences:
+          - envs: [ east, west ]
+            apps: [ web-mirror, web-master ]
+      - env: location
+        sequences:
+          - envs: [ inside, colo ]
+            apps: [ db-mirror, db-master ]
+
+This will result in a sequence of (| indicates targets installed in parallel with 
+the one on the preceding line):
+
+    web-mirror.east.corp.com 
+    | web-master.east.corp.com
+
+    web-mirror.west.corp.com 
+    | web-master.west.corp.com
+
+    db-master.inside.corp.com 
+    | db-mirror.inside.corp.com
+
+    db-master.colo.corp.com   
+    | db-mirror.colo.corp.com
+
+You could even add a third env type, "systype", which would be "web" for webservers
+and "db" for database servers, and add a sequence constraint that enforces updating
+database servers before web servers:
+
+      ...
+      - env: systype
+        sequences:
+          - envs: [ db, web ]
+            apps: [ db-mirror, db-master ]
+
+would result in a sequence of
+
+    db-master.inside.corp.com 
+    | db-mirror.inside.corp.com
+
+    db-master.colo.corp.com   
+    | db-mirror.colo.corp.com
+
+    web-mirror.east.corp.com 
+    | web-master.east.corp.com
+
+    web-mirror.west.corp.com 
+    | web-master.west.corp.com
 
 =head1 COPYRIGHT
 

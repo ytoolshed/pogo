@@ -1,0 +1,19 @@
+
+Andy:
+    callback takes continuation and error continuation
+
+    Engine: 
+    - fetch from zookeeper
+    - 
+
+xxx:
+
+    /pogo
+      /ns/<blah>
+          env (current executing environment)
+            <slots> = <app,envkey, envalue>
+
+
+envkey: "colo"
+envval: "sp1", "ac4" ...
+

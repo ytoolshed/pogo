@@ -14,9 +14,9 @@ package Pogo::Engine::Job;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-use 5.008;
 use common::sense;
 
+use Data::Dumper;
 use List::Util qw(min max);
 use AnyEvent;
 use Data::Dumper;    # note we actually use this
@@ -74,7 +74,7 @@ sub new
   my $jobpath = store->create_sequence( '/pogo/job/p', $jobstate )
     or LOGDIE "Unable to create job node: " . store->get_error_name;
 
-  $jobpath =~ m{/(p\d+)$} or LOGDIE "malformed job path";
+  $jobpath =~ m{/(p\d+)$} or LOGDIE "malformed job path: $jobpath";
   $self->{id}   = $1;
   $self->{path} = $jobpath;
   $self->{ns}   = Pogo::Engine->namespace($ns);
@@ -318,6 +318,7 @@ sub start_task
 
 sub retry_task
 {
+  DEBUG Dumper [@_];
   my ( $self, $hostname ) = @_;
   die "no host $hostname in job" if ( !$self->has_host($hostname) );
   my $host = $self->host($hostname);
@@ -572,17 +573,24 @@ sub start
       };
 
       my $fetch_cont = sub {
+        my( $hinfo ) = @_;
         local *__ANON__ = 'AE:cb:fetch_target_meta:cont';
         DEBUG $self->id . ": adding hosts";
         DEBUG $self->id . ": computing slots";
-        $self->fetch_runnable_hosts();
+        DEBUG sub { "Calling fetch_runnable_hosts with " . Dumper($hinfo) };
+        $ns->fetch_runnable_hosts( $self, $hinfo, $errc, $cont );
+        DEBUG "Job after fetch_runnable_hosts: ", $self;
       };
 
-      $ns->fetch_target_meta( $flat_targets, $ns->name, $fetch_errc, $fetch_cont, );
+      DEBUG "Calling fetch_target_meta for @$flat_targets";
+      $ns->fetch_target_meta( $flat_targets, $ns->name, $fetch_errc, 
+                              $fetch_cont );
+      DEBUG "After fetch_target_meta";
+      return 1;
     }
     else    # concurrent codepath
     {
-      DEBUG "we are concurrent.";
+      DEBUG "We are concurrent, flat targets are: @$flat_targets";
       foreach my $hostname (@$flat_targets)
       {
         my $host = $self->host( $hostname, 'waiting' );
@@ -776,6 +784,8 @@ sub continue
         $self->unlock_all();
         return;
       }
+
+      DEBUG "nqueued=$nqueued nwaiting=$nwaiting";
 
       if ( $nqueued == 0 && $nwaiting > 0 )
       {

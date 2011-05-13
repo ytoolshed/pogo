@@ -52,21 +52,27 @@ my %METHODS = (
   add_task      => 'add_task',
 );
 
-sub AUTOLOAD {
+sub AUTOLOAD
+{
   use vars '$AUTOLOAD';
-  my ($methodname) = ($AUTOLOAD =~ m/(\w+)$/);
-  if (my $method = $METHODS{$methodname}) {
-    shift @_; # throw out classname
-    Pogo::Engine->$method(@_);
-  } else {
-    my $response =  Pogo::Engine::Response->new;
+  DEBUG "in autoload for $AUTOLOAD";
+  my ($methodname) = ( $AUTOLOAD =~ m/(\w+)$/ );
+  if ( my $method = $METHODS{$methodname} )
+  {
+    shift @_;    # throw out classname
+    return Pogo::Engine->$method(@_);
+  }
+  else
+  {
+    my $response = Pogo::Engine::Response->new;
     $response->set_error("unknown rpc command '$methodname'");
     return $response;
   }
 }
 
 # Explicitly declare DESTROY method so it's not autoloaded
-sub DESTROY { 
+sub DESTROY
+{
 }
 
 # all rpc methods return an Engine::Response object
@@ -86,7 +92,7 @@ sub jobstatus   { shift; return Pogo::Engine->jobstatus(@_); }
 sub jobsnapshot { shift; return Pogo::Engine->jobsnapshot(@_); }
 sub joblog      { shift; return Pogo::Engine->joblog(@_); }
 
-sub run { _rpc_run(@_) };
+sub run { _rpc_run(@_) }
 
 sub _rpc_run
 {

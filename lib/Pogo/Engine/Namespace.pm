@@ -99,6 +99,7 @@ sub fetch_runnable_hosts
     $errc,
     sub {
       my ( $allslots, $hostslots ) = @_;
+
       local *__ANON__ = 'fetch_runnable_hosts:fetch_all_slots:cont';
 
       my $global_lock = store->lock( 'fetch_runnable_hosts:' . $job->id );
@@ -108,7 +109,10 @@ sub fetch_runnable_hosts
           my $slots = $hostslots->{$hostname};
 
           # is this host runnable?
-          next unless $job->host($hostname)->is_runnable;
+          my $host_is_runnable = $job->host($hostname)->is_runnable;
+          INFO "Host $hostname is", ($host_is_runnable ? "" : "n't"),
+               " runnable";
+          next unless $host_is_runnable;
 
           # if any slots have predecessors, then check that they're done
           my @pred_slots;
@@ -163,7 +167,10 @@ sub fetch_all_slots
   my %to_resolve  = ();
   my @slotlookups = ();
 
-  DEBUG Dumper $hostinfo_map;
+  DEBUG "Fetching all slots of job ", $job->id;
+
+  DEBUG sub { local $Data::Dumper::Indent = 1; 
+              return "hostinfo_map: " . Dumper $hostinfo_map; };
 
   my $concurrent = $job->concurrent;
   if ( defined $concurrent )
@@ -185,12 +192,18 @@ sub fetch_all_slots
       $maxdown = scalar $job->hosts;
     }
     $slot->{maxdown} = $maxdown;
+    DEBUG "Maxdown for job ", $job->id, ": $maxdown";
 
     # fill out our hostslots hash
     while ( my ( $hostname, $hostinfo ) = each %$hostinfo_map )
     {
       $hostslots{$hostname} = [$slot];
     }
+
+    DEBUG "Slots/Hostslots: ",
+      sub { local $Data::Dumper::Indent = 1; 
+            return "Slots: " . Dumper($slots) . 
+                   "Hostslots: " . Dumper(\%hostslots); };
 
     # our work here should be done
     return $cont->( $slots, \%hostslots );
@@ -204,51 +217,80 @@ sub fetch_all_slots
   DEBUG Dumper [ $const, $seq ];
 
   # resolve all max_down_hosts for each app-env
+  # debug> p $hostname
+  #  foo13.west.example.com
+  #
+  # debug> x $hostinfo
+  #  0  HASH(0x9e76008)
+  #     'apps' => ARRAY(0x9e75fc8)
+  #        0  'frontend'
+  #     'envs' => HASH(0x9e76028)
+  #        'coast' => HASH(0x9e6dff8)
+  #           'west' => 1
+  #
+  # debug> x $seq
+  #  0  HASH(0x9c55d80)
+  #  'coast' => HASH(0x9c536f8)
+  #     'frontend' => ARRAY(0x9e6c290)
+  #         empty array
+  #
+  # debug> x $const
+  #  0  HASH(0x9e6bad0)
+  #  'coast' => HASH(0x9c558e0)
+  #     'backend' => '"1"'
+  #     'frontend' => '"25%"'
+
   while ( my ( $hostname, $hostinfo ) = each %$hostinfo_map )
   {
     $hostslots{$hostname} = [];
+
     foreach my $app ( @{ $hostinfo->{apps} } )
     {
-      foreach my $env ( @{ $hostinfo->{envs} } )
+      foreach my $envtype ( keys %{ $hostinfo->{envs} } )
       {
-        my ( $etype, $ename ) = ( $env->{key}, $env->{value} );
+          foreach my $env ( keys %{ $hostinfo->{envs}->{$envtype} } )
+          {
+              # skip if there are no constraints for this environment
+              # (remove this to fix [bug 4524855])
+              next if ( !exists $const->{app}->{$envtype} );
 
-        # skip if there are no constraints for this environment
-        next if ( !exists $const->{app}->{$etype} );
+              my $slot = $self->slot( $app, $envtype, $env );
 
-        my $slot = $self->slot( $app, $etype, $ename );
+              # if we have predecessors in the sequence for this 
+              # app/environment, get those slots too
+              if ( exists $seq->{$envtype} && 
+                   exists $seq->{$env}->{$app} )
+              {
+                $slot->{pred} = [ map { $self->slot( $_, $envtype, $env ) } 
+                                      @{ $seq->{$envtype}->{$app} } ];
+                DEBUG "Sequence predecessors for "
+                . $slot->name . ": "
+                . join( ", ", map { $_->name } @{ $slot->{pred} } );
+              }
+              push @{ $hostslots{$hostname} }, $slot;
 
-        # if we have predecessors in the sequence for this app/environment, get
-        # those slots too
-        if ( exists $seq->{$etype} && exists $seq->{$ename}->{$app} )
-        {
-          $slot->{pred} = [ map { $self->slot( $_, $etype, $ename ) } @{ $seq->{$etype}->{$app} } ];
-          DEBUG "Sequence predecessors for "
-            . $slot->name . ": "
-            . join( ", ", map { $_->name } @{ $slot->{pred} } );
-        }
-        push @{ $hostslots{$hostname} }, $slot;
+              my $concur = $const->{$app}->{$envtype};
+              if ( $concur !~ m{^(\d+)%$} )
+              {
+                # not a percentage, a literal
+                $slot->{maxdown} = $concur;
+              }
+              else
+              {
+                # we need to resolve the percentage, and we do so asyncronously.
+                my $pct    = $1;
+                my $appexp = $self->app_members($app);
+                my $envexp = $self->env_members($env);
 
-        my $concur = $const->{$app}->{$etype};
-        if ( $concur !~ m{^(\d+)%$} )
-        {
-          # not a percentage, a literal
-          $slot->{maxdown} = $concur;
-        }
-        else
-        {
-          # we need to resolve the percentage, and we do so asyncronously.
-          my $pct    = $1;
-          my $appexp = $self->app_members($app);
-          my $envexp = $self->env_members($env);
+                $to_resolve{$appexp} = 1;
+                $to_resolve{$envexp} = 1;
 
-          $to_resolve{$appexp} = 1;
-          $to_resolve{$envexp} = 1;
-
-          push @slotlookups,
-            [ $slot, $appexp, $envexp, $pct ];   # $pct in these to be written by resolv $cont below
-        }
-      }
+                push @slotlookups,
+                [ $slot, $appexp, $envexp, $pct ];   # $pct in these to be written 
+                                                     # by resolv $cont below
+              }
+            }
+       }
     }
   }
 
@@ -548,7 +590,31 @@ sub _get_conf_r
       $c->{$node} = _get_conf_r($p);
     }
   }
-  return $c;
+  return numhash_to_array_r( $c );
+}
+
+sub numhash_to_array_r {
+  my ( $node ) = @_;
+
+  my $num_keys = 0;
+
+  for my $key ( keys %$node ) {
+      my $val = $node->{ $key };
+      if( ref( $val ) eq "HASH" ) {
+          $node->{ $key } = numhash_to_array_r( $val );
+      }
+      $num_keys++ if $key =~ /^\d+$/;
+  }
+
+  if( $num_keys and $num_keys == scalar keys %$node ) {
+      my @a = ();
+      for my $idx (keys %$node) {
+          $a[ $idx ] = $node->{$idx};
+      }
+      return \@a;
+  }
+
+  return $node;
 }
 
 sub get_conf
@@ -704,49 +770,10 @@ sub expand_targets
 
 sub fetch_target_meta
 {
-  my ( $self, $target, $errc, $cont ) = @_;
-  eval { $self->target_plugin->fetch_target_meta( $target, $errc, $cont ); };
-
-  if ($@)
-  {
-    $errc->($@);
-  }
-}
-
-# }}}
-# {{{ deprecated appgroup stuff
-# i'm not sure we need this if we move to the new config format
-
-sub translate_appgroups
-{
-  my ( $self, $apps ) = @_;
-
-  my %g;
-
-  foreach my $app (@$apps)
-  {
-    my @groups = store->get_children( $self->path("/conf/appgroups/byrole/$app") );
-    if (@groups)
-    {
-      map { $g{$_} = 1 } @groups;
-    }
-    else
-    {
-      $g{$app} = 1;
-    }
-  }
-
-  return [ keys %g ];
-}
-
-sub appgroup_members
-{
-  my ( $self, $appgroup ) = @_;
-
-  my @members = store->get_children( $self->path("/conf/appgroups/bygroup/$appgroup") );
-
-  return @members if @members;
-  return $appgroup;
+  my ( $self, $target, $nsname, $errc, $cont ) = @_;
+  DEBUG __PACKAGE__, "::fetch_target_meta";
+  return $self->target_plugin->fetch_target_meta( $target, $nsname, 
+                                                  $errc, $cont );
 }
 
 #}}}
@@ -756,6 +783,7 @@ sub appgroup_members
 sub unlock_host
 {
   my ( $self, $job, $host, $unlockseq ) = @_;
+  DEBUG __PACKAGE__, "::unlock_host";
 
   return LOGDIE "unlock_host is deprecated";
 
@@ -814,25 +842,86 @@ sub unlock_host
 
 =head1 NAME
 
-  CLASSNAME - SHORT DESCRIPTION
+  Pogo::Engine::Namespace
 
 =head1 SYNOPSIS
 
-CODE GOES HERE
+  # internal pogo api
 
 =head1 DESCRIPTION
 
-LONG_DESCRIPTION
+This module contains helper functions for configuration and execution of
+the constraints engine. To set the configuration for the namespace, use
 
-=head1 METHODS
+    $ns->set_conf($conf);
 
-B<methodexample>
+where $conf is a data structure obtained from a YAML file as shown below.
+The configuration is plugin-driven, and by default, it uses the
+Inline.pm plugin:
 
-=over 2
+    plugins:
+      targets: Pogo::Plugin::Inline
 
-methoddescription
+The Inline plugin allows
+(see the detailed Pogo::Plugin::Inline doc for details) for
+defining apps (targets, hosts), envs (key/value settings for targets), 
+sequences and constraints, like
 
-=back
+    apps:
+      frontend:
+        - foo[1-101].east.example.com
+        - foo[1-101].west.example.com
+      backend:
+        - bar[1-10].east.example.com
+        - bar[1-10].west.example.com
+    
+    envs:
+      coast:
+        east:
+          - foo[1-101].east.example.com
+          - bar[1-10].east.example.com
+        west:
+          - foo[1-101].west.example.com
+          - bar[1-10].west.example.com
+    
+    constraints:
+      coast:
+        concurrency:
+          - frontend: 25%
+          - backend: 1
+        sequence:
+          - [ backend, frontend ]
+
+which Pogo::Engine::Namespace transforms into a directory/file
+hierarchy in ZooKeeper for later processing by the dispatcher. 
+
+The apps (targets) defined above are stored like this:
+
+    /pogo/ns/nsname/conf/apps/backend/0: ["bar[1-10].east.example.com"]
+    /pogo/ns/nsname/conf/apps/backend/1: ["bar[1-10].west.example.com"]
+    /pogo/ns/nsname/conf/apps/frontend/0: ["foo[1-101].east.example.com"]
+    /pogo/ns/nsname/conf/apps/frontend/1: ["foo[1-101].west.example.com"]
+
+The constraints:
+
+    /pogo/ns/nsname/conf/cur/coast/backend: ["1"]
+    /pogo/ns/nsname/conf/cur/coast/frontend: ["25%"]
+
+Env settings:
+
+    /pogo/ns/nsname/conf/envs/coast/east/0: ["foo[1-101].east.example.com"]
+    /pogo/ns/nsname/conf/envs/coast/east/1: ["bar[1-10].east.example.com"]
+    /pogo/ns/nsname/conf/envs/coast/west/0: ["foo[1-101].west.example.com"]
+    /pogo/ns/nsname/conf/envs/coast/west/1: ["bar[1-10].west.example.com"]
+
+Sequences:
+
+    /pogo/ns/nsname/conf/seq/pred/coast/frontend: []
+    /pogo/ns/nsname/conf/seq/succ/coast/backend: []
+
+And even the plugin gets stored:
+
+    /pogo/ns/nsname/conf/plugins/targets: ["Pogo::Plugin::Inline"]
 
 =head1 SEE ALSO
 

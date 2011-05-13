@@ -17,7 +17,7 @@ use 5.008;
 use common::sense;
 
 use Test::Exception;
-use Test::More tests => 15;
+use Test::More tests => 18;
 
 use Carp qw(confess);
 use Data::Dumper;
@@ -51,6 +51,26 @@ sub hsort
   return $ahost cmp $bhost
     || $a cmp $b;
 }
+
+sub conf_read {
+    my $conf_file = "$Bin/conf/example.yaml";
+    my $data = LoadFile( $conf_file );
+}
+
+my $pl = Pogo::Plugin::Inline->new(
+    conf => \&conf_read,
+);
+
+my $result;
+my $data = $pl->fetch_target_meta(
+    "foo97.east.example.com",
+    sub {},
+    sub { $result = $_[0] },
+);
+
+is( ref($result), "HASH", "fetch_target_meta on yaml" );
+is( $result->{apps}->[0], "frontend", "fetch_target_meta on yaml" );
+is( $result->{envs}->{coast}->{east}, "1", "fetch_target_meta on yaml" );
 
 my %input = (
   'foo[1-2]'     => [ sort hsort ( 'foo1', 'foo2' ) ],

@@ -68,6 +68,8 @@ test_requires 'Net::SSLeay';
 test_requires 'Proc::Simple';
 test_requires 'Test::Exception';
 test_requires 'Test::More';
+test_requires 'Test::MockObject';
+test_requires 'Test::Deep';
 
 requires_external_bin 'java';
 
