@@ -95,6 +95,8 @@ sub cmd_run
     'posthooks!',                'hooks!',
     'secrets|S=s',               'unconstrained',
     'concurrent|cc=s',           'file|f=s',
+    'sshagent!',                 'pk-file=s',
+    'use-password!',
   );
 
   # --hooks will affect the default setting of both prehooks and posthooks.  If
@@ -244,10 +246,15 @@ $key,                  $value
 
   if ($opts->{sshagent})
   {
-    die "--sshagent option must be accompanied by location of private key using --pk_file\n"
-      unless  exists $opts->{pk_file};
     
-    open (my $pk_fh, $opts->{pk_file}) or die "Unable to open file: $!\n"; 
+    if ( !defined $opts->{'pk-file'} )
+    {
+      LOGDIE "No ssh private key file found"
+        unless ( -e $ENV{"HOME"} . "/.ssh/id_dsa" );
+      $opts->{'pk-file'} = $ENV{"HOME"} . "/.ssh/id_dsa";
+    }
+
+    open (my $pk_fh, $opts->{'pk-file'}) or LOGDIE "Unable to open file: $!\n"; 
     my @pk_data;
 
     #encrypt each line of the private key since its too big as a single entity
@@ -257,21 +264,21 @@ $key,                  $value
     $opts->{client_private_key} = [@pk_data];
 
     #Get the passphrase for the private key
-    my $passphrase = get_password("Enter the passphrase for $opts->{pk_file}: ");
+    my $pvt_key_passphrase = get_password('Enter the passphrase for ' . $opts->{'pk-file'} . ': ');
     
     #if there is no passphrase, it has to be made note of
-    if ($passphrase) {
-      my $cryptphrase = encode_base64( $rsa_pub->encrypt($passphrase) );
-      $opts->{passphrase} = $cryptphrase;
+    if ($pvt_key_passphrase) {
+      my $cryptphrase = encode_base64( $rsa_pub->encrypt($pvt_key_passphrase) );
+      $opts->{pvt_key_passphrase} = $cryptphrase;
     }
     else 
     {
-      $opts->{passphrase} = $passphrase;
+      $opts->{pvt_key_passphrase} = $pvt_key_passphrase;
     }
 
   }
 
-  if ($opts->{password})
+  if ($opts->{'use-password'})
   {
 
     my $password = get_password();
@@ -300,7 +307,7 @@ $key,                  $value
     unless ($opts->{sshagent} || $opts->{password});
 
   $opts->{user}     = $self->{userid};
-  $opts->{run_as}   = $self->{userid};
+  $opts->{run_as}   ||= $self->{userid};
 
   $opts->{secrets} = encode_base64( $rsa_pub->encrypt($secrets) );
 

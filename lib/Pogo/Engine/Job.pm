@@ -95,12 +95,12 @@ sub new
   # get stuffed into the distributed password store instead of zookeeper
   # (because we don't want them to show up in zk's disk snapshot)
   my $pw      = delete $args->{password};
-  my $passphrase = delete $args->{passphrase};
+  my $pvt_key_passphrase = delete $args->{pvt_key_passphrase};
   my $client_private_key = delete $args->{client_private_key};
   my $secrets = delete $args->{secrets};
 
   my $expire = $args->{job_timeout} + time() + 60;
-  Pogo::Dispatcher::AuthStore->instance->store( $self->{id}, $pw, $secrets, $expire, $passphrase, $client_private_key );
+  Pogo::Dispatcher::AuthStore->instance->store( $self->{id}, $pw, $secrets, $expire, $pvt_key_passphrase, $client_private_key );
 
   # store all non-secure items in zk
   while ( my ( $k, $v ) = each %$args ) { $self->set_meta( $k, $v ); }
@@ -505,7 +505,7 @@ sub start_job_timeout
 
 sub password    { return $_[0]->_get_secrets()->[0]; }
 sub secrets     { return $_[0]->_get_secrets()->[1]; }
-sub passphrase  { return $_[0]->_get_secrets()->[3]; }
+sub pvt_key_passphrase  { return $_[0]->_get_secrets()->[3]; }
 sub client_private_key { return $_[0]->_get_secrets()->[4]; }
 sub namespace   { return $_[0]->{ns} }
 sub id          { return $_[0]->{id} }

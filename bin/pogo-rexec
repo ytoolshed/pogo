@@ -39,10 +39,10 @@ my $opts = {
   expect_wrapper => "pogo-pw",
   worker_key     => undef,
   scp_options    => [
-    qw(-q -o RSAAuthentication=no -o StrictHostKeyChecking=no -o LogLevel=error -o GlobalKnownHostsFile=/dev/null -o UserKnownHostsFile=/dev/null)
+    qw(-q -o RSAAuthentication=no -o StrictHostKeyChecking=no -o LogLevel=error -o GlobalKnownHostsFile=/dev/null -o UserKnownHostsFile=/dev/null -o ForwardAgent=yes)
   ],
   ssh_options => [
-    qw(-o RSAAuthentication=no -o StrictHostKeyChecking=no -o LogLevel=error -o GlobalKnownHostsFile=/dev/null -o UserKnownHostsFile=/dev/null -t)
+    qw(-o RSAAuthentication=no -o StrictHostKeyChecking=no -o LogLevel=error -o GlobalKnownHostsFile=/dev/null -o UserKnownHostsFile=/dev/null -o ForwardAgent=yes -t)
   ],
   command_prefix => [],
   tempdir        => "/tmp", #Giving the directory to install the private keys
@@ -57,7 +57,8 @@ my $ssh_sock = undef;
 sub cleanup {
   my $msg = shift;
   if ( $msg =~ m/^[A-Z]+$/ ) { $msg = 'got SIG' . $msg; } 
-  if ( $pkfile ) {
+  if ( $pkfile ) 
+  {
     unlink $pkfile;
   }
   &kill_agent;
@@ -66,7 +67,8 @@ sub cleanup {
 
 sub kill_agent{
   #Kill the ssh-agent if one was created
-  if ($ENV{SSH_AGENT_PID}) {
+  if ($ENV{SSH_AGENT_PID}) 
+  {
      my $agent_command = ("eval `ssh-agent -k`");
 
     #start the agent
@@ -115,14 +117,14 @@ sub execute
       pack( q{u}, $opts->{private_key}->decrypt( decode_base64( $args->{password} ) ) ) );
   }
 
-  if (!$args->{passphrase}) {
+  if (!$args->{pvt_key_passphrase}) {
     # Send blank passphrase
     $writer->printf( "%s",
       pack( q{u}, "\n" ) );
   } else {
     # Send passphrase
     $writer->printf( "%s",
-      pack( q{u}, $opts->{private_key}->decrypt( decode_base64( $args->{passphrase} ) ) ) );
+      pack( q{u}, $opts->{private_key}->decrypt( decode_base64( $args->{pvt_key_passphrase} ) ) ) );
   }
   $writer->close;
 
@@ -256,7 +258,7 @@ sub main
       # incorrect, this process will exit with writing twice and the parent will keep 
       # reading multiple times. EVentually the system timeout will take over and exit.
 
-      my $write_count = $args->{passphrase} ? 2 :1;
+      my $write_count = $args->{pvt_key_passphrase} ? 2 :1;
       for (my $i=0; $i<$write_count; $i++) {
         unless (-p $pkfile)
         {

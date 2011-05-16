@@ -139,7 +139,7 @@ sub queue_task
         user               => $job->user,
         run_as             => $job->run_as,
         password           => $job->password,
-        passphrase         => $job->passphrase,
+        pvt_key_passphrase => $job->pvt_key_passphrase,
         client_private_key => $job->client_private_key, 
         host               => $host,
         timeout            => $job->timeout,

@@ -81,7 +81,7 @@ test_pogo
     password    => encrypt_secret('foo'),
     secrets     => encrypt_secret('bar'),
     client_private_key => encrypt_secret('private_key'),
-    passphrase  => encrypt_secret('passphrase'),
+    pvt_key_passphrase  => encrypt_secret('passphrase'),
     command     => 'echo job1',
     target      => [ 'foo[1-10].example.com', ],
     namespace   => 'example',
