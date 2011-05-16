@@ -250,16 +250,14 @@ sub fetch_all_slots
       {
           foreach my $env ( keys %{ $hostinfo->{envs}->{$envtype} } )
           {
-              # skip if there are no constraints for this environment
-              # (remove this to fix [bug 4524855])
-              next if ( !exists $const->{app}->{$envtype} );
+              # e.g. $app=frontend $envtype=coast $env=west
 
               my $slot = $self->slot( $app, $envtype, $env );
 
               # if we have predecessors in the sequence for this 
               # app/environment, get those slots too
               if ( exists $seq->{$envtype} && 
-                   exists $seq->{$env}->{$app} )
+                   exists $seq->{$envtype}->{$app} )
               {
                 $slot->{pred} = [ map { $self->slot( $_, $envtype, $env ) } 
                                       @{ $seq->{$envtype}->{$app} } ];
@@ -268,6 +266,9 @@ sub fetch_all_slots
                 . join( ", ", map { $_->name } @{ $slot->{pred} } );
               }
               push @{ $hostslots{$hostname} }, $slot;
+
+              next unless exists $const->{$app} and
+                          exists $const->{$app}->{$envtype};
 
               my $concur = $const->{$app}->{$envtype};
               if ( $concur !~ m{^(\d+)%$} )
@@ -902,6 +903,9 @@ The apps (targets) defined above are stored like this:
     /pogo/ns/nsname/conf/apps/frontend/0: ["foo[1-101].east.example.com"]
     /pogo/ns/nsname/conf/apps/frontend/1: ["foo[1-101].west.example.com"]
 
+Constraints on 
+
+For every environment type (e.g. 'coast'), the apps are mapped 
 The constraints:
 
     /pogo/ns/nsname/conf/cur/coast/backend: ["1"]
