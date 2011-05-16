@@ -1,0 +1,1505 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.6	//
+'___top' class='dummyTopAnchor'	CHI-0.45/htdocs/CHI.html	/^<a name='___top' class='dummyTopAnchor' ><\/a>$/;"	a
+'___top' class='dummyTopAnchor'	CHI-0.45/htdocs/CHI/Benchmarks.html	/^<a name='___top' class='dummyTopAnchor' ><\/a>$/;"	a
+'___top' class='dummyTopAnchor'	CHI-0.45/htdocs/CHI/CacheObject.html	/^<a name='___top' class='dummyTopAnchor' ><\/a>$/;"	a
+'___top' class='dummyTopAnchor'	CHI-0.45/htdocs/CHI/Constants.html	/^<a name='___top' class='dummyTopAnchor' ><\/a>$/;"	a
+'___top' class='dummyTopAnchor'	CHI-0.45/htdocs/CHI/Driver.html	/^<a name='___top' class='dummyTopAnchor' ><\/a>$/;"	a
+'___top' class='dummyTopAnchor'	CHI-0.45/htdocs/CHI/Driver/Base/CacheContainer.html	/^<a name='___top' class='dummyTopAnchor' ><\/a>$/;"	a
+'___top' class='dummyTopAnchor'	CHI-0.45/htdocs/CHI/Driver/CacheCache.html	/^<a name='___top' class='dummyTopAnchor' ><\/a>$/;"	a
+'___top' class='dummyTopAnchor'	CHI-0.45/htdocs/CHI/Driver/Development.html	/^<a name='___top' class='dummyTopAnchor' ><\/a>$/;"	a
+'___top' class='dummyTopAnchor'	CHI-0.45/htdocs/CHI/Driver/FastMmap.html	/^<a name='___top' class='dummyTopAnchor' ><\/a>$/;"	a
+'___top' class='dummyTopAnchor'	CHI-0.45/htdocs/CHI/Driver/File.html	/^<a name='___top' class='dummyTopAnchor' ><\/a>$/;"	a
+'___top' class='dummyTopAnchor'	CHI-0.45/htdocs/CHI/Driver/Memory.html	/^<a name='___top' class='dummyTopAnchor' ><\/a>$/;"	a
+'___top' class='dummyTopAnchor'	CHI-0.45/htdocs/CHI/Driver/Metacache.html	/^<a name='___top' class='dummyTopAnchor' ><\/a>$/;"	a
+'___top' class='dummyTopAnchor'	CHI-0.45/htdocs/CHI/Driver/Null.html	/^<a name='___top' class='dummyTopAnchor' ><\/a>$/;"	a
+'___top' class='dummyTopAnchor'	CHI-0.45/htdocs/CHI/Driver/RawMemory.html	/^<a name='___top' class='dummyTopAnchor' ><\/a>$/;"	a
+'___top' class='dummyTopAnchor'	CHI-0.45/htdocs/CHI/Stats.html	/^<a name='___top' class='dummyTopAnchor' ><\/a>$/;"	a
+ABSPERL	Makefile	/^ABSPERL = $(PERL)$/;"	m
+ABSPERLRUN	Makefile	/^ABSPERLRUN = $(ABSPERL)$/;"	m
+ABSPERLRUNINST	Makefile	/^ABSPERLRUNINST = $(ABSPERLRUN) "-I$(INST_ARCHLIB)" "-Iinc" "-I$(INST_LIB)"$/;"	m
+AR	Makefile	/^AR = ar$/;"	m
+AR_STATIC_ARGS	Makefile	/^AR_STATIC_ARGS = cr$/;"	m
+AUTOLOAD	blib/lib/Pogo/API/V3.pm	/^sub AUTOLOAD$/;"	s
+AUTOLOAD	blib/lib/Pogo/Client.pm	/^sub AUTOLOAD$/;"	s
+AUTOLOAD	inc/Module/Install/Base.pm	/^sub AUTOLOAD {$/;"	s
+AUTOLOAD	inc/Module/Install/Base.pm	/^sub AUTOLOAD {}$/;"	s
+AUTOLOAD	lib/Pogo/API/V3.pm	/^sub AUTOLOAD$/;"	s
+AUTOLOAD	lib/Pogo/Client.pm	/^sub AUTOLOAD$/;"	s
+AUTOSPLITFILE	Makefile	/^AUTOSPLITFILE = $(ABSPERLRUN)  -e 'use AutoSplit;  autosplit($$ARGV[0], $$ARGV[1], 0, 1, 1)' --$/;"	m
+BASEEXT	Makefile	/^BASEEXT = pogo$/;"	m
+BOOTDEP	Makefile	/^BOOTDEP = $/;"	m
+BOOTSTRAP	Makefile	/^BOOTSTRAP =$/;"	m
+BUILD	CHI-0.45/lib/CHI/Driver.pm	/^sub BUILD {$/;"	s
+BUILD	CHI-0.45/lib/CHI/Driver/CacheCache.pm	/^sub BUILD {$/;"	s
+BUILD	CHI-0.45/lib/CHI/Driver/FastMmap.pm	/^sub BUILD {$/;"	s
+BUILD	CHI-0.45/lib/CHI/Driver/Memory.pm	/^sub BUILD {$/;"	s
+BUILDARGS	CHI-0.45/lib/CHI/Driver/File.pm	/^sub BUILDARGS {$/;"	s
+BUILD_roles	CHI-0.45/lib/CHI/Driver.pm	/^sub BUILD_roles {$/;"	s
+C	inc/Module/Install/Win32.pm	/^C:\\WINDOWS\\COMMAND\\), then launch the MS-DOS command line shell, "cd" to$/;"	l
+CC	Makefile	/^CC = gcc$/;"	m
+CCCDLFLAGS	Makefile	/^CCCDLFLAGS = -fpic$/;"	m
+CCDLFLAGS	Makefile	/^CCDLFLAGS = -Wl,-E -Wl,-R\/home\/y\/lib -Wl,-R\/usr\/local\/lib$/;"	m
+CHI	CHI-0.45/lib/CHI/Test.pm	/^          CHI::Test::Util$/;"	l
+CHI	CHI-0.45/t/Bugs.t	/^CHI::t::Bugs->runtests;$/;"	l
+CHI	CHI-0.45/t/Initialize.t	/^CHI::t::Initialize->runtests;$/;"	l
+CHI	CHI-0.45/t/Sanity.t	/^CHI::t::Sanity->runtests;$/;"	l
+CHI	CHI-0.45/t/smoke-Driver-CacheCache.t	/^CHI::t::Driver::CacheCache->runtests;$/;"	l
+CHI	CHI-0.45/t/smoke-Driver-FastMmap.t	/^CHI::t::Driver::FastMmap->runtests;$/;"	l
+CHI	CHI-0.45/t/smoke-Driver-File-DepthZero.t	/^CHI::t::Driver::File::DepthZero->runtests;$/;"	l
+CHI	CHI-0.45/t/smoke-Driver-File.t	/^CHI::t::Driver::File->runtests;$/;"	l
+CHI_Max_Time	CHI-0.45/lib/CHI/Constants.pm	/^use constant CHI_Max_Time       => 0xffffffff;$/;"	c
+CHI_Meta_Namespace	CHI-0.45/lib/CHI/Constants.pm	/^use constant CHI_Meta_Namespace => '_CHI_METACACHE';$/;"	c
+CHMOD	Makefile	/^CHMOD = chmod$/;"	m
+CI	Makefile	/^CI = ci -u$/;"	m
+COMPRESS	Makefile	/^COMPRESS = gzip --best$/;"	m
+CONFIGDEP	Makefile	/^CONFIGDEP = $(PERL_ARCHLIB)$(DFSEP)Config.pm $(PERL_INC)$(DFSEP)config.h$/;"	m
+CP	Makefile	/^CP = cp$/;"	m
+C_FILES	Makefile	/^C_FILES  = $/;"	m
+Cache	CHI-0.45/etc/bench/bench.pl	/^                Cache::FastMmap->new( share_file => $fastmmap_file, );$/;"	l
+Cache	CHI-0.45/etc/bench/bench.pl	/^                Cache::FileCache->new($/;"	l
+Cache	CHI-0.45/etc/bench/bench.pl	/^                Cache::Memcached->new( { servers => ["localhost:11211"] } );$/;"	l
+Cache	CHI-0.45/etc/bench/bench.pl	/^                Cache::Memcached::Fast->new($/;"	l
+Cache	CHI-0.45/etc/bench/bench.pl	/^                Cache::Memcached::libmemcached->new($/;"	l
+Cache	CHI-0.45/etc/bench/bench.pl	/^                Cache::MemoryCache->new();$/;"	l
+Cache	CHI-0.45/etc/bench/bench.pl	/^                Cache::Ref::CART->new( size => 10000 );$/;"	l
+Carp	blib/lib/Pogo/Dispatcher.pm	/^  Carp::croak "Server already running" if $instance;$/;"	l
+Carp	blib/lib/Pogo/HTTP/Server.pm	/^  Carp::croak "Server already running" if $instance;$/;"	l
+Carp	lib/Pogo/Dispatcher.pm	/^  Carp::croak "Server already running" if $instance;$/;"	l
+Carp	lib/Pogo/HTTP/Server.pm	/^  Carp::croak "Server already running" if $instance;$/;"	l
+Class	CHI-0.45/etc/bench/bench.pl	/^            Class::MOP::load_class($_) foreach @$req;$/;"	l
+Class	CHI-0.45/lib/CHI.pm	/^        Class::MOP::load_class($driver_class);$/;"	l
+Class	CHI-0.45/lib/CHI/Driver/CacheCache.pm	/^    Class::MOP::load_class($cc_class);$/;"	l
+Class	CHI-0.45/lib/CHI/Test.pm	/^        Class::MOP::load_class($package);$/;"	l
+Class	CHI-0.45/lib/CHI/Util.pm	/^        Class::MOP::load_class($class_name);$/;"	l
+Class	CHI-0.45/lib/CHI/t/Driver.pm	/^Class::MOP::Class->create( 'My::CHI' => ( superclasses => ['CHI'] ) );$/;"	l
+Crypt	bin/pogo-rexec	/^       Crypt::OpenSSL::RSA->new_private_key( scalar read_file $opts->{worker_key} )$/;"	l
+Crypt	blib/lib/Pogo/Client/Commandline.pm	/^  Crypt::OpenSSL::RSA->import_random_seed();$/;"	l
+Crypt	lib/Pogo/Client/Commandline.pm	/^  Crypt::OpenSSL::RSA->import_random_seed();$/;"	l
+Crypt	t/lib/PogoTester.pm	/^    Crypt::OpenSSL::RSA->new_private_key( scalar read_file $worker_conf->{worker_key} );$/;"	l
+Crypt	t/lib/PogoTester.pm	/^  Crypt::OpenSSL::RSA->import_random_seed();$/;"	l
+Crypt	t/pogo-rexec-dummy	/^    Crypt::OpenSSL::RSA->new_private_key( scalar read_file $opts->{worker_key} ) )$/;"	l
+DEFAULT_PORT	blib/lib/Pogo/Dispatcher/AuthStore.pm	/^use constant DEFAULT_PORT => 9698;$/;"	c
+DEFAULT_PORT	blib/lib/Pogo/Dispatcher/RPCConnection.pm	/^use constant DEFAULT_PORT => 9696;$/;"	c
+DEFAULT_PORT	blib/lib/Pogo/Dispatcher/WorkerConnection.pm	/^use constant DEFAULT_PORT => 9697;$/;"	c
+DEFAULT_PORT	blib/lib/Pogo/Worker.pm	/^use constant DEFAULT_PORT => 9697;$/;"	c
+DEFAULT_PORT	lib/Pogo/Dispatcher/AuthStore.pm	/^use constant DEFAULT_PORT => 9698;$/;"	c
+DEFAULT_PORT	lib/Pogo/Dispatcher/RPCConnection.pm	/^use constant DEFAULT_PORT => 9696;$/;"	c
+DEFAULT_PORT	lib/Pogo/Dispatcher/WorkerConnection.pm	/^use constant DEFAULT_PORT => 9697;$/;"	c
+DEFAULT_PORT	lib/Pogo/Worker.pm	/^use constant DEFAULT_PORT => 9697;$/;"	c
+DEFINE_VERSION	Makefile	/^DEFINE_VERSION = -D$(VERSION_MACRO)=\\"$(VERSION)\\"$/;"	m
+DESTDIR	Makefile	/^DESTDIR = $/;"	m
+DESTINSTALLARCHLIB	Makefile	/^DESTINSTALLARCHLIB = $(DESTDIR)$(INSTALLARCHLIB)$/;"	m
+DESTINSTALLBIN	Makefile	/^DESTINSTALLBIN = $(DESTDIR)$(INSTALLBIN)$/;"	m
+DESTINSTALLMAN1DIR	Makefile	/^DESTINSTALLMAN1DIR = $(DESTDIR)$(INSTALLMAN1DIR)$/;"	m
+DESTINSTALLMAN3DIR	Makefile	/^DESTINSTALLMAN3DIR = $(DESTDIR)$(INSTALLMAN3DIR)$/;"	m
+DESTINSTALLPRIVLIB	Makefile	/^DESTINSTALLPRIVLIB = $(DESTDIR)$(INSTALLPRIVLIB)$/;"	m
+DESTINSTALLSCRIPT	Makefile	/^DESTINSTALLSCRIPT = $(DESTDIR)$(INSTALLSCRIPT)$/;"	m
+DESTINSTALLSITEARCH	Makefile	/^DESTINSTALLSITEARCH = $(DESTDIR)$(INSTALLSITEARCH)$/;"	m
+DESTINSTALLSITEBIN	Makefile	/^DESTINSTALLSITEBIN = $(DESTDIR)$(INSTALLSITEBIN)$/;"	m
+DESTINSTALLSITELIB	Makefile	/^DESTINSTALLSITELIB = $(DESTDIR)$(INSTALLSITELIB)$/;"	m
+DESTINSTALLSITEMAN1DIR	Makefile	/^DESTINSTALLSITEMAN1DIR = $(DESTDIR)$(INSTALLSITEMAN1DIR)$/;"	m
+DESTINSTALLSITEMAN3DIR	Makefile	/^DESTINSTALLSITEMAN3DIR = $(DESTDIR)$(INSTALLSITEMAN3DIR)$/;"	m
+DESTINSTALLSITESCRIPT	Makefile	/^DESTINSTALLSITESCRIPT = $(DESTDIR)$(INSTALLSITESCRIPT)$/;"	m
+DESTINSTALLVENDORARCH	Makefile	/^DESTINSTALLVENDORARCH = $(DESTDIR)$(INSTALLVENDORARCH)$/;"	m
+DESTINSTALLVENDORBIN	Makefile	/^DESTINSTALLVENDORBIN = $(DESTDIR)$(INSTALLVENDORBIN)$/;"	m
+DESTINSTALLVENDORLIB	Makefile	/^DESTINSTALLVENDORLIB = $(DESTDIR)$(INSTALLVENDORLIB)$/;"	m
+DESTINSTALLVENDORMAN1DIR	Makefile	/^DESTINSTALLVENDORMAN1DIR = $(DESTDIR)$(INSTALLVENDORMAN1DIR)$/;"	m
+DESTINSTALLVENDORMAN3DIR	Makefile	/^DESTINSTALLVENDORMAN3DIR = $(DESTDIR)$(INSTALLVENDORMAN3DIR)$/;"	m
+DESTINSTALLVENDORSCRIPT	Makefile	/^DESTINSTALLVENDORSCRIPT = $(DESTDIR)$(INSTALLVENDORSCRIPT)$/;"	m
+DESTROY	blib/lib/Pogo/API/V3.pm	/^sub DESTROY$/;"	s
+DESTROY	blib/lib/Pogo/Client.pm	/^sub DESTROY { }$/;"	s
+DESTROY	inc/Module/Install/Base.pm	/^sub DESTROY {}$/;"	s
+DESTROY	lib/Pogo/API/V3.pm	/^sub DESTROY$/;"	s
+DESTROY	lib/Pogo/Client.pm	/^sub DESTROY { }$/;"	s
+DEV_NULL	Makefile	/^DEV_NULL = > \/dev\/null 2>&1$/;"	m
+DFSEP	Makefile	/^DFSEP = $(DIRFILESEP)$/;"	m
+DIRFILESEP	Makefile	/^DIRFILESEP = \/$/;"	m
+DISTNAME	Makefile	/^DISTNAME = pogo$/;"	m
+DISTVNAME	Makefile	/^DISTVNAME = pogo-4.0$/;"	m
+DIST_CP	Makefile	/^DIST_CP = best$/;"	m
+DIST_DEFAULT	Makefile	/^DIST_DEFAULT = tardist$/;"	m
+DLBASE	Makefile	/^DLBASE = $(BASEEXT)$/;"	m
+DLEXT	Makefile	/^DLEXT = so$/;"	m
+DLSRC	Makefile	/^DLSRC = dl_dlopen.xs$/;"	m
+DOC_INSTALL	Makefile	/^DOC_INSTALL = $(ABSPERLRUN) "-MExtUtils::Command::MM" -e perllocal_install$/;"	m
+ECHO	Makefile	/^ECHO = echo$/;"	m
+ECHO_N	Makefile	/^ECHO_N = echo -n$/;"	m
+EQUALIZE_TIMESTAMP	Makefile	/^EQUALIZE_TIMESTAMP = $(ABSPERLRUN) "-MExtUtils::Command" -e eqtime$/;"	m
+EXE_EXT	Makefile	/^EXE_EXT = $/;"	m
+EXPORT_LIST	Makefile	/^EXPORT_LIST        = $/;"	m
+ExtUtils	inc/Module/Install/Can.pm	/^				ExtUtils::MM_Unix->maybe_command($file);$/;"	l
+ExtUtils	inc/Module/Install/Can.pm	/^				ExtUtils::MM_Win32->maybe_command($file);$/;"	l
+FIRST_MAKEFILE	Makefile	/^FIRST_MAKEFILE = Makefile$/;"	m
+FIXIN	Makefile	/^FIXIN = $(PERLRUN) "-MExtUtils::MY" -e "MY->fixin(shift)"$/;"	m
+FORMATTER	Makefile	/^  FORMATTER := --formatter TAP::Formatter::JUnit$/;"	m
+FULLEXT	Makefile	/^FULLEXT = pogo$/;"	m
+FULLPERL	Makefile	/^FULLPERL      = \/home\/y\/bin\/perl5.8.6$/;"	m
+FULLPERL	Makefile	/^FULLPERL = \/home\/y\/bin\/perl5.8.6 "-Iinc"$/;"	m
+FULLPERLRUN	Makefile	/^FULLPERLRUN = $(FULLPERL)$/;"	m
+FULLPERLRUNINST	Makefile	/^FULLPERLRUNINST = $(FULLPERLRUN) "-I$(INST_ARCHLIB)" "-Iinc" "-I$(INST_LIB)"$/;"	m
+FULL_AR	Makefile	/^FULL_AR = \/usr\/bin\/ar$/;"	m
+File	bin/pogo-rexec	/^  File::Temp->safe_level(File::Temp::HIGH);$/;"	l
+File	inc/Module/Install.pm	/^		File::Path::mkpath("$self->{prefix}\/$self->{author}");$/;"	l
+File	inc/Module/Install.pm	/^	File::Find::find( sub {$/;"	l
+File	inc/Module/Install/Makefile.pm	/^	File::Find::find( \\&_wanted_t, $dir );$/;"	l
+H_FILES	Makefile	/^H_FILES  = $/;"	m
+INSTALLARCHLIB	Makefile	/^INSTALLARCHLIB = $(INSTALL_BASE)\/lib\/perl5\/i686-linux-64int$/;"	m
+INSTALLBIN	Makefile	/^INSTALLBIN = $(INSTALL_BASE)\/bin$/;"	m
+INSTALLDIRS	Makefile	/^INSTALLDIRS = site$/;"	m
+INSTALLMAN1DIR	Makefile	/^INSTALLMAN1DIR = $(INSTALL_BASE)\/man\/man1$/;"	m
+INSTALLMAN3DIR	Makefile	/^INSTALLMAN3DIR = $(INSTALL_BASE)\/man\/man3$/;"	m
+INSTALLPRIVLIB	Makefile	/^INSTALLPRIVLIB = $(INSTALL_BASE)\/lib\/perl5$/;"	m
+INSTALLSCRIPT	Makefile	/^INSTALLSCRIPT = $(INSTALL_BASE)\/bin$/;"	m
+INSTALLSITEARCH	Makefile	/^INSTALLSITEARCH = $(INSTALL_BASE)\/lib\/perl5\/i686-linux-64int$/;"	m
+INSTALLSITEBIN	Makefile	/^INSTALLSITEBIN = $(INSTALL_BASE)\/bin$/;"	m
+INSTALLSITELIB	Makefile	/^INSTALLSITELIB = $(INSTALL_BASE)\/lib\/perl5$/;"	m
+INSTALLSITEMAN1DIR	Makefile	/^INSTALLSITEMAN1DIR = $(INSTALL_BASE)\/man\/man1$/;"	m
+INSTALLSITEMAN3DIR	Makefile	/^INSTALLSITEMAN3DIR = $(INSTALL_BASE)\/man\/man3$/;"	m
+INSTALLSITESCRIPT	Makefile	/^INSTALLSITESCRIPT = $(INSTALL_BASE)\/bin$/;"	m
+INSTALLVENDORARCH	Makefile	/^INSTALLVENDORARCH = $(INSTALL_BASE)\/lib\/perl5\/i686-linux-64int$/;"	m
+INSTALLVENDORBIN	Makefile	/^INSTALLVENDORBIN = $(INSTALL_BASE)\/bin$/;"	m
+INSTALLVENDORLIB	Makefile	/^INSTALLVENDORLIB = $(INSTALL_BASE)\/lib\/perl5$/;"	m
+INSTALLVENDORMAN1DIR	Makefile	/^INSTALLVENDORMAN1DIR = $(INSTALL_BASE)\/man\/man1$/;"	m
+INSTALLVENDORMAN3DIR	Makefile	/^INSTALLVENDORMAN3DIR = $(INSTALL_BASE)\/man\/man3$/;"	m
+INSTALLVENDORSCRIPT	Makefile	/^INSTALLVENDORSCRIPT = $(INSTALL_BASE)\/bin$/;"	m
+INSTALL_BASE	Makefile	/^INSTALL_BASE = \/home\/y\/var\/ycpan$/;"	m
+INST_ARCHAUTODIR	Makefile	/^INST_ARCHAUTODIR = $(INST_ARCHLIB)\/auto\/$(FULLEXT)$/;"	m
+INST_ARCHLIB	Makefile	/^INST_ARCHLIB = blib\/arch$/;"	m
+INST_ARCHLIBDIR	Makefile	/^INST_ARCHLIBDIR  = $(INST_ARCHLIB)$/;"	m
+INST_AUTODIR	Makefile	/^INST_AUTODIR     = $(INST_LIB)\/auto\/$(FULLEXT)$/;"	m
+INST_BIN	Makefile	/^INST_BIN = blib\/bin$/;"	m
+INST_BOOT	Makefile	/^INST_BOOT        = $/;"	m
+INST_DYNAMIC	Makefile	/^INST_DYNAMIC     = $/;"	m
+INST_LIB	Makefile	/^INST_LIB = blib\/lib$/;"	m
+INST_LIBDIR	Makefile	/^INST_LIBDIR      = $(INST_LIB)$/;"	m
+INST_MAN1DIR	Makefile	/^INST_MAN1DIR = blib\/man1$/;"	m
+INST_MAN3DIR	Makefile	/^INST_MAN3DIR = blib\/man3$/;"	m
+INST_SCRIPT	Makefile	/^INST_SCRIPT = blib\/script$/;"	m
+INST_STATIC	Makefile	/^INST_STATIC      = $/;"	m
+JOB	blib/lib/Pogo/Engine.pm	/^JOB: for ( ; $jobidx >= 0 && $limit > 0; $jobidx-- )$/;"	l
+JOB	lib/Pogo/Engine.pm	/^JOB: for ( ; $jobidx >= 0 && $limit > 0; $jobidx-- )$/;"	l
+JOBS	blib/lib/Pogo/Client/Commandline.pm	/^JOBS: foreach my $job ( sort { $b->{jobid} cmp $a->{jobid} } @jobs )$/;"	l
+JOBS	lib/Pogo/Client/Commandline.pm	/^JOBS: foreach my $job ( sort { $b->{jobid} cmp $a->{jobid} } @jobs )$/;"	l
+LD	Makefile	/^LD = gcc$/;"	m
+LDDLFLAGS	Makefile	/^LDDLFLAGS = -shared -L\/usr\/local\/lib$/;"	m
+LDFLAGS	Makefile	/^LDFLAGS =  -L\/usr\/local\/lib$/;"	m
+LDFROM	Makefile	/^LDFROM = $(OBJECT)$/;"	m
+LIBC	Makefile	/^LIBC = \/lib\/libc-2.3.2.so$/;"	m
+LIBPERL_A	Makefile	/^LIBPERL_A = libperl.a$/;"	m
+LIB_EXT	Makefile	/^LIB_EXT = .a$/;"	m
+LINKTYPE	Makefile	/^LINKTYPE = dynamic$/;"	m
+LWP	inc/Module/Install/Fetch.pm	/^        LWP::Simple::mirror($args{url}, $file);$/;"	l
+Log	bin/pogo-client	/^Log::Log4perl::init($/;"	l
+Log	bin/pogo-dispatcher	/^    Log::Log4perl->easy_init unless Log::Log4perl->initialized;$/;"	l
+Log	bin/pogo-dispatcher	/^    Log::Log4perl::get_logger->level($log_level);$/;"	l
+Log	bin/pogo-dispatcher	/^    Log::Log4perl::init( $opts->{log_conf} );$/;"	l
+Log	bin/pogo-dispatcher	/^  Log::Log4perl::init($/;"	l
+Log	bin/pogo-rexec	/^    Log::Log4perl::get_logger()->level( $opts->{loglevel} );$/;"	l
+Log	bin/pogo-rexec	/^    Log::Log4perl::init( $opts->{log4perl} );$/;"	l
+Log	bin/pogo-worker	/^    Log::Log4perl->easy_init unless Log::Log4perl->initialized;$/;"	l
+Log	bin/pogo-worker	/^    Log::Log4perl::get_logger->level($log_level);$/;"	l
+Log	bin/pogo-worker	/^    Log::Log4perl::init( $opts->{log_conf} );$/;"	l
+Log	blib/lib/Pogo/Client/Commandline.pm	/^    Log::Log4perl->get_logger("Pogo::Client")->level($DEBUG) if ( $self->{opts}->{debug} );$/;"	l
+Log	blib/lib/Pogo/Client/Commandline.pm	/^  Log::Log4perl::get_logger->level($DEBUG)$/;"	l
+Log	lib/Pogo/Client/Commandline.pm	/^    Log::Log4perl->get_logger("Pogo::Client")->level($DEBUG) if ( $self->{opts}->{debug} );$/;"	l
+Log	lib/Pogo/Client/Commandline.pm	/^  Log::Log4perl::get_logger->level($DEBUG)$/;"	l
+Log	misc/adm/authors-patch	/^Log::Log4perl->easy_init($DEBUG);$/;"	l
+Log	misc/adm/copyright-patch	/^Log::Log4perl->easy_init($DEBUG);$/;"	l
+Log	misc/loadconf.pl	/^Log::Log4perl::init($/;"	l
+Log	t/exampledummyworker	/^Log::Log4perl::init("$Bin\/conf\/log4perl.conf");$/;"	l
+Log	t/lib/PogoDummyWorker.pm	/^    Log::Log4perl::get_logger()->level( $opts->{loglevel} );$/;"	l
+Log	t/lib/PogoDummyWorker.pm	/^    Log::Log4perl::init( $opts->{log4perl} );$/;"	l
+Log	t/lib/PogoTester.pm	/^Log::Log4perl::init("$Bin\/conf\/log4perl.conf");$/;"	l
+Log	t/pogoctl	/^Log::Log4perl::easy_init($DEBUG);$/;"	l
+Log	ttt	/^Log::Log4perl->easy_init({ file => "blah.txt", level => $DEBUG });$/;"	l
+MACROEND	Makefile	/^MACROEND = $/;"	m
+MACROSTART	Makefile	/^MACROSTART = $/;"	m
+MAKE	Makefile	/^MAKE = make$/;"	m
+MAKEFILE_OLD	Makefile	/^MAKEFILE_OLD = Makefile.old$/;"	m
+MAKEMAKER	Makefile	/^MAKEMAKER   = \/home\/y\/lib\/perl5\/5.8\/ExtUtils\/MakeMaker.pm$/;"	m
+MAKE_APERL_FILE	Makefile	/^MAKE_APERL_FILE = Makefile.aperl$/;"	m
+MAN1EXT	Makefile	/^MAN1EXT = 1$/;"	m
+MAN1PODS	Makefile	/^MAN1PODS = $/;"	m
+MAN3EXT	Makefile	/^MAN3EXT = 3$/;"	m
+MAN3PODS	Makefile	/^MAN3PODS = lib\/Pogo\/API.pm \\$/;"	m
+MAP_TARGET	Makefile	/^MAP_TARGET    = perl$/;"	m
+MAX_WORKER_TASKS	blib/lib/Pogo/Dispatcher.pm	/^use constant MAX_WORKER_TASKS => 20;$/;"	c
+MAX_WORKER_TASKS	lib/Pogo/Dispatcher.pm	/^use constant MAX_WORKER_TASKS => 20;$/;"	c
+MKPATH	Makefile	/^MKPATH = $(ABSPERLRUN) "-MExtUtils::Command" -e mkpath$/;"	m
+MM_REVISION	Makefile	/^MM_REVISION = 54639$/;"	m
+MM_Unix_VERSION	Makefile	/^MM_Unix_VERSION = 6.44$/;"	m
+MM_VERSION	Makefile	/^MM_VERSION  = 6.44$/;"	m
+MOD_INSTALL	Makefile	/^MOD_INSTALL = $(ABSPERLRUN) -MExtUtils::Install -e 'install({@ARGV}, '\\''$(VERBINST)'\\'', 0, '\\''$(UNINST)'\\'');' --$/;"	m
+MV	Makefile	/^MV = mv$/;"	m
+Makefile	inc/Module/Install/Makefile.pm	/^sub Makefile { $_[0] }$/;"	s
+Manifest	Makefile	/^	$(NOECHO) cd $(DISTVNAME) && $(ABSPERLRUN) -MExtUtils::Manifest=maniadd -e 'eval { maniadd({q{META.yml} => q{Module meta-data (added by MakeMaker)}}) } ' \\$/;"	m
+Manifest	Makefile	/^	$(NOECHO) cd $(DISTVNAME) && $(ABSPERLRUN) -MExtUtils::Manifest=maniadd -e 'eval { maniadd({q{SIGNATURE} => q{Public-key signature (added by MakeMaker)}}) } ' \\$/;"	m
+Manifest	Makefile	/^	$(PERLRUN) "-MExtUtils::Manifest=manicopy,maniread" \\$/;"	m
+Meta	inc/Module/Install/Metadata.pm	/^sub Meta              { shift          }$/;"	s
+Meta_ResourceKeys	inc/Module/Install/Metadata.pm	/^sub Meta_ResourceKeys { @resource_keys }$/;"	s
+Meta_ScalarKeys	inc/Module/Install/Metadata.pm	/^sub Meta_ScalarKeys   { @scalar_keys   }$/;"	s
+Meta_TupleKeys	inc/Module/Install/Metadata.pm	/^sub Meta_TupleKeys    { @tuple_keys    }$/;"	s
+Module	inc/Module/Install.pm	/^Module::Install no longer supports Build.PL.$/;"	l
+Module	inc/Module/Install/Metadata.pm	/^		Module::Install::_read($_[0]) =~ m\/$/;"	l
+Module	inc/Module/Install/Metadata.pm	/^		Module::Install::_read($file) =~ m\/$/;"	l
+NAME	Makefile	/^NAME = pogo$/;"	m
+NAME_SYM	Makefile	/^NAME_SYM = pogo$/;"	m
+NOECHO	Makefile	/^NOECHO = @$/;"	m
+NOOP	Makefile	/^NOOP = $(SHELL) -c true$/;"	m
+Net	t/lib/PogoMockStore.pm	/^                     Net::ZooKeeper::Mock::Node->new( $/;"	l
+OBJECT	Makefile	/^OBJECT = $/;"	m
+OBJ_EXT	Makefile	/^OBJ_EXT = .o$/;"	m
+OSNAME	Makefile	/^OSNAME = linux$/;"	m
+OSVERS	Makefile	/^OSVERS = linux$/;"	m
+O_FILES	Makefile	/^O_FILES  = $/;"	m
+PARENT_NAME	Makefile	/^PARENT_NAME = $/;"	m
+PASTHRU	Makefile	/^PASTHRU = LIBPERL_A="$(LIBPERL_A)"\\$/;"	m
+PERL	Makefile	/^PERL = \/home\/y\/bin\/perl5.8.6 "-Iinc"$/;"	m
+PERLMAINCC	Makefile	/^PERLMAINCC = $(CC)$/;"	m
+PERLRUN	Makefile	/^PERLRUN = $(PERL)$/;"	m
+PERLRUNINST	Makefile	/^PERLRUNINST = $(PERLRUN) "-I$(INST_ARCHLIB)" "-Iinc" "-I$(INST_LIB)"$/;"	m
+PERL_ARCHIVE	Makefile	/^PERL_ARCHIVE       = $/;"	m
+PERL_ARCHIVE_AFTER	Makefile	/^PERL_ARCHIVE_AFTER = $/;"	m
+PERL_ARCHLIB	Makefile	/^PERL_ARCHLIB = \/home\/y\/lib\/perl5\/5.8\/i686-linux-64int$/;"	m
+PERL_CORE	Makefile	/^PERL_CORE = 0$/;"	m
+PERL_DL_NONLAZY	Makefile	/^	PERL_DL_NONLAZY=1 $(FULLPERLRUN) "-MExtUtils::Command::MM" "-e" "test_harness($(TEST_VERBOSE), 'inc', '$(INST_LIB)', '$(INST_ARCHLIB)')" $(TEST_FILES)$/;"	m
+PERL_DL_NONLAZY	Makefile	/^	PERL_DL_NONLAZY=1 $(FULLPERLRUN) $(TESTDB_SW) "-Iinc" "-I$(INST_LIB)" "-I$(INST_ARCHLIB)" $(TEST_FILE)$/;"	m
+PERL_INC	Makefile	/^PERL_INC = \/home\/y\/lib\/perl5\/5.8\/i686-linux-64int\/CORE$/;"	m
+PERL_LIB	Makefile	/^PERL_LIB =$/;"	m
+PERL_MALLOC_DEF	Makefile	/^PERL_MALLOC_DEF = -DPERL_EXTMALLOC_DEF -Dmalloc=Perl_malloc -Dfree=Perl_mfree -Drealloc=Perl_realloc -Dcalloc=Perl_calloc$/;"	m
+PERM_RW	Makefile	/^PERM_RW = 644$/;"	m
+PERM_RWX	Makefile	/^PERM_RWX = 755$/;"	m
+PM_TO_BLIB	Makefile	/^PM_TO_BLIB = lib\/Pogo\/Dispatcher\/RPCConnection.pm \\$/;"	m
+POD2MAN	Makefile	/^POD2MAN = $(POD2MAN_EXE)$/;"	m
+POD2MAN_EXE	Makefile	/^POD2MAN_EXE = $(PERLRUN) "-MExtUtils::Command::MM" -e pod2man "--"$/;"	m
+POGO_GLOBAL_CONF	blib/lib/Pogo/Client/Commandline.pm	/^use constant POGO_GLOBAL_CONF  => $Pogo::Common::CONFIGDIR . '\/client.conf';$/;"	c
+POGO_GLOBAL_CONF	lib/Pogo/Client/Commandline.pm	/^use constant POGO_GLOBAL_CONF  => $Pogo::Common::CONFIGDIR . '\/client.conf';$/;"	c
+POGO_SECRETS_FILE	blib/lib/Pogo/Client/Commandline.pm	/^use constant POGO_SECRETS_FILE => $ENV{HOME} . '\/.pogo_secrets';$/;"	c
+POGO_SECRETS_FILE	lib/Pogo/Client/Commandline.pm	/^use constant POGO_SECRETS_FILE => $ENV{HOME} . '\/.pogo_secrets';$/;"	c
+POGO_USER_CONF	blib/lib/Pogo/Client/Commandline.pm	/^use constant POGO_USER_CONF    => $ENV{HOME} . '\/.pogoconf';$/;"	c
+POGO_USER_CONF	lib/Pogo/Client/Commandline.pm	/^use constant POGO_USER_CONF    => $ENV{HOME} . '\/.pogoconf';$/;"	c
+POGO_WORKER_CERT	blib/lib/Pogo/Client/Commandline.pm	/^use constant POGO_WORKER_CERT  => $Pogo::Common::WORKER_CERT;$/;"	c
+POGO_WORKER_CERT	lib/Pogo/Client/Commandline.pm	/^use constant POGO_WORKER_CERT  => $Pogo::Common::WORKER_CERT;$/;"	c
+POSTOP	Makefile	/^POSTOP = $(NOECHO) $(NOOP)$/;"	m
+PREFIX	Makefile	/^PREFIX = $(INSTALL_BASE)$/;"	m
+PREOP	Makefile	/^PREOP = $(PERL) -I. "-MModule::Install::Admin" -e "dist_preop(q($(DISTVNAME)))"$/;"	m
+Pogo	bin/pogo-dispatcher	/^  Pogo::Dispatcher->run(%$opts);$/;"	l
+Pogo	bin/pogo-dispatcher	/^  Pogo::HTTP::Server->run(%$opts);$/;"	l
+Pogo	bin/pogo-worker	/^  Pogo::HTTP::Server->run(%$opts);$/;"	l
+Pogo	bin/pogo-worker	/^  Pogo::Worker->run(%$opts);$/;"	l
+Pogo	blib/lib/Pogo/Dispatcher.pm	/^        Pogo::Engine->job($jobid)->continue_deferred();$/;"	l
+Pogo	blib/lib/Pogo/Dispatcher.pm	/^  Pogo::Dispatcher::AuthStore->init($instance);$/;"	l
+Pogo	blib/lib/Pogo/Dispatcher.pm	/^  Pogo::Engine->init($instance);$/;"	l
+Pogo	blib/lib/Pogo/Dispatcher/WorkerConnection.pm	/^            Pogo::Dispatcher->idle_worker($self);$/;"	l
+Pogo	blib/lib/Pogo/Dispatcher/WorkerConnection.pm	/^        Pogo::Dispatcher->enlist_worker($self);$/;"	l
+Pogo	blib/lib/Pogo/Dispatcher/WorkerConnection.pm	/^      Pogo::Dispatcher->retire_worker($self);$/;"	l
+Pogo	blib/lib/Pogo/Dispatcher/WorkerConnection.pm	/^  Pogo::Dispatcher->busy_worker($self);$/;"	l
+Pogo	blib/lib/Pogo/Engine/Job.pm	/^        Pogo::Engine->add_task( 'runhost', $self->{id}, $hostname );$/;"	l
+Pogo	blib/lib/Pogo/Engine/Job.pm	/^    Pogo::Dispatcher->instance()->{stats}->{tasks_failed}++;$/;"	l
+Pogo	blib/lib/Pogo/Engine/Job.pm	/^  Pogo::Dispatcher->instance()->{stats}->{tasks_run}++;$/;"	l
+Pogo	blib/lib/Pogo/Engine/Job.pm	/^  Pogo::Dispatcher->purge_queue( $self->id );$/;"	l
+Pogo	blib/lib/Pogo/Engine/Job.pm	/^  Pogo::Dispatcher::AuthStore->instance->store( $self->{id}, $pw, $secrets, $expire );$/;"	l
+Pogo	blib/lib/Pogo/Engine/Job.pm	/^  Pogo::Engine->add_task( 'startjob', $self->{id} );$/;"	l
+Pogo	blib/lib/Pogo/Worker.pm	/^    Pogo::Worker::Connection->new($/;"	l
+Pogo	blib/lib/Pogo/Worker/Connection.pm	/^      Pogo::Worker->add_connection($self);$/;"	l
+Pogo	blib/lib/Pogo/Worker/Connection.pm	/^      Pogo::Worker->delete_connection($self);$/;"	l
+Pogo	blib/lib/Pogo/Worker/Connection.pm	/^  Pogo::Worker->send_response( [ 'start', $job_id, $host, $output_url ] );$/;"	l
+Pogo	blib/lib/Pogo/Worker/Connection.pm	/^  Pogo::Worker->send_response($/;"	l
+Pogo	lib/Pogo/Dispatcher.pm	/^        Pogo::Engine->job($jobid)->continue_deferred();$/;"	l
+Pogo	lib/Pogo/Dispatcher.pm	/^  Pogo::Dispatcher::AuthStore->init($instance);$/;"	l
+Pogo	lib/Pogo/Dispatcher.pm	/^  Pogo::Engine->init($instance);$/;"	l
+Pogo	lib/Pogo/Dispatcher/WorkerConnection.pm	/^            Pogo::Dispatcher->idle_worker($self);$/;"	l
+Pogo	lib/Pogo/Dispatcher/WorkerConnection.pm	/^        Pogo::Dispatcher->enlist_worker($self);$/;"	l
+Pogo	lib/Pogo/Dispatcher/WorkerConnection.pm	/^      Pogo::Dispatcher->retire_worker($self);$/;"	l
+Pogo	lib/Pogo/Dispatcher/WorkerConnection.pm	/^  Pogo::Dispatcher->busy_worker($self);$/;"	l
+Pogo	lib/Pogo/Engine.pm	/^  Pogo::Engine::Store->init($opts);$/;"	l
+Pogo	lib/Pogo/Engine/Job.pm	/^        Pogo::Engine->add_task( 'runhost', $self->{id}, $hostname );$/;"	l
+Pogo	lib/Pogo/Engine/Job.pm	/^    Pogo::Dispatcher->instance()->{stats}->{tasks_failed}++;$/;"	l
+Pogo	lib/Pogo/Engine/Job.pm	/^  Pogo::Dispatcher->instance()->{stats}->{tasks_run}++;$/;"	l
+Pogo	lib/Pogo/Engine/Job.pm	/^  Pogo::Dispatcher->purge_queue( $self->id );$/;"	l
+Pogo	lib/Pogo/Engine/Job.pm	/^  Pogo::Dispatcher::AuthStore->instance->store( $self->{id}, $pw, $secrets, $expire );$/;"	l
+Pogo	lib/Pogo/Engine/Job.pm	/^  Pogo::Engine->add_task( 'startjob', $self->{id} );$/;"	l
+Pogo	lib/Pogo/Worker.pm	/^    Pogo::Worker::Connection->new($/;"	l
+Pogo	lib/Pogo/Worker/Connection.pm	/^      Pogo::Worker->add_connection($self);$/;"	l
+Pogo	lib/Pogo/Worker/Connection.pm	/^      Pogo::Worker->delete_connection($self);$/;"	l
+Pogo	lib/Pogo/Worker/Connection.pm	/^  Pogo::Worker->send_response( [ 'start', $job_id, $host, $output_url ] );$/;"	l
+Pogo	lib/Pogo/Worker/Connection.pm	/^  Pogo::Worker->send_response($/;"	l
+Pogo	t/lib/PogoTester.pm	/^  Pogo::Dispatcher::AuthStore->init( { peers => ['localhost'] } );$/;"	l
+Pogo	t/lib/PogoTester.pm	/^  Pogo::Engine::Store->init($dispatcher_conf);$/;"	l
+RANLIB	Makefile	/^RANLIB = :$/;"	m
+RCS_LABEL	Makefile	/^RCS_LABEL = rcs -Nv$(VERSION_SYM): -q$/;"	m
+RM_F	Makefile	/^RM_F = rm -f$/;"	m
+RM_RF	Makefile	/^RM_RF = rm -rf$/;"	m
+SHAR	Makefile	/^SHAR = shar$/;"	m
+SHELL	Makefile	/^SHELL = \/bin\/sh$/;"	m
+SITEARCHEXP	Makefile	/^SITEARCHEXP = \/home\/y\/lib\/perl5\/site_perl\/5.8\/i686-linux-64int$/;"	m
+SITELIBEXP	Makefile	/^SITELIBEXP = \/home\/y\/lib\/perl5\/site_perl\/5.8$/;"	m
+SKIP	CHI-0.45/lib/CHI/Test/Util.pm	/^  SKIP: {$/;"	l
+SKIP	CHI-0.45/lib/CHI/t/Driver.pm	/^      SKIP: { skip "clear not supported", 9 }$/;"	l
+SKIP	CHI-0.45/lib/CHI/t/Driver.pm	/^      SKIP: { skip "get_namespaces not supported", 5 }$/;"	l
+SO	Makefile	/^SO = so$/;"	m
+SUFFIX	Makefile	/^SUFFIX = .gz$/;"	m
+Size_Key	CHI-0.45/lib/CHI/Driver/Role/IsSizeAware.pm	/^use constant Size_Key => 'CHI_IsSizeAware_size';$/;"	c
+TAR	Makefile	/^TAR = tar$/;"	m
+TARFLAGS	Makefile	/^TARFLAGS = cvf$/;"	m
+TESTDB_SW	Makefile	/^TESTDB_SW = -d$/;"	m
+TESTDIR	Makefile	/^TESTDIR := .\/t$/;"	m
+TESTRESULTDIR	Makefile	/^TESTRESULTDIR := .\/test-results$/;"	m
+TESTRESULTS	Makefile	/^TESTRESULTS := $(patsubst $(TESTDIR)\/%.t,$(TESTRESULTDIR)\/%.xml,$(TESTS))$/;"	m
+TESTS	Makefile	/^TESTS := $(wildcard $(TESTDIR)\/*.t)$/;"	m
+TEST_F	Makefile	/^TEST_F = test -f$/;"	m
+TEST_FILE	Makefile	/^TEST_FILE = test.pl$/;"	m
+TEST_FILES	Makefile	/^TEST_FILES = t\/*.t$/;"	m
+TEST_TYPE	Makefile	/^TEST_TYPE=test_$(LINKTYPE)$/;"	m
+TEST_VERBOSE	Makefile	/^TEST_VERBOSE=0$/;"	m
+TOUCH	Makefile	/^TOUCH = touch$/;"	m
+TO_INST_PM	Makefile	/^TO_INST_PM = lib\/Pogo\/API.pm \\$/;"	m
+TO_UNIX	Makefile	/^TO_UNIX = $(NOECHO) $(NOOP)$/;"	m
+T_COMPRESSED	CHI-0.45/lib/CHI/CacheObject.pm	/^use constant T_COMPRESSED   => 4;$/;"	c
+T_SERIALIZED	CHI-0.45/lib/CHI/CacheObject.pm	/^use constant T_SERIALIZED   => 1;$/;"	c
+T_UTF8_ENCODED	CHI-0.45/lib/CHI/CacheObject.pm	/^use constant T_UTF8_ENCODED => 2;$/;"	c
+Test	CHI-0.45/lib/CHI/Test.pm	/^          Test::Deep$/;"	l
+Test	CHI-0.45/lib/CHI/Test.pm	/^          Test::Exception$/;"	l
+Test	CHI-0.45/lib/CHI/Test.pm	/^          Test::More$/;"	l
+Test	CHI-0.45/lib/CHI/Test/Class.pm	/^    Test::Class::runtests($test_obj);$/;"	l
+Test	CHI-0.45/t/author-no-data-serializer.t	/^    Test::More::plan(skip_all => 'these tests are for testing by the author');$/;"	l
+Test	CHI-0.45/t/smoke-Driver-CacheCache.t	/^    Test::More::plan(skip_all => 'these tests are for "smoke bot" testing');$/;"	l
+Test	CHI-0.45/t/smoke-Driver-FastMmap.t	/^    Test::More::plan(skip_all => 'these tests are for "smoke bot" testing');$/;"	l
+Test	CHI-0.45/t/smoke-Driver-File-DepthZero.t	/^    Test::More::plan(skip_all => 'these tests are for "smoke bot" testing');$/;"	l
+Test	CHI-0.45/t/smoke-Driver-File.t	/^    Test::More::plan(skip_all => 'these tests are for "smoke bot" testing');$/;"	l
+Time	CHI-0.45/lib/CHI/Driver.pm	/^            Time::Duration::duration_exact($/;"	l
+UMASK_NULL	Makefile	/^UMASK_NULL = umask 0$/;"	m
+UNINST	Makefile	/^UNINST = 0$/;"	m
+UNINSTALL	Makefile	/^UNINSTALL = $(ABSPERLRUN) "-MExtUtils::Command::MM" -e uninstall$/;"	m
+USEMAKEFILE	Makefile	/^USEMAKEFILE = -f$/;"	m
+VENDORARCHEXP	Makefile	/^VENDORARCHEXP = $/;"	m
+VENDORLIBEXP	Makefile	/^VENDORLIBEXP = $/;"	m
+VERBINST	Makefile	/^VERBINST = 0$/;"	m
+VERSION	Makefile	/^VERSION = 4.0$/;"	m
+VERSION_FROM	Makefile	/^VERSION_FROM = $/;"	m
+VERSION_MACRO	Makefile	/^VERSION_MACRO = VERSION$/;"	m
+VERSION_SYM	Makefile	/^VERSION_SYM = 4_0$/;"	m
+WARN_IF_OLD_PACKLIST	Makefile	/^WARN_IF_OLD_PACKLIST = $(ABSPERLRUN) "-MExtUtils::Command::MM" -e warn_if_old_packlist$/;"	m
+WriteAll	inc/Module/Install/WriteAll.pm	/^sub WriteAll {$/;"	s
+XS_DEFINE_VERSION	Makefile	/^XS_DEFINE_VERSION = -D$(XS_VERSION_MACRO)=\\"$(XS_VERSION)\\"$/;"	m
+XS_FILES	Makefile	/^XS_FILES = $/;"	m
+XS_VERSION	Makefile	/^XS_VERSION = 4.0$/;"	m
+XS_VERSION_MACRO	Makefile	/^XS_VERSION_MACRO = XS_VERSION$/;"	m
+ZIP	Makefile	/^ZIP = zip$/;"	m
+ZIPFLAGS	Makefile	/^ZIPFLAGS = -r$/;"	m
+ZK_ACL	blib/lib/Pogo/Engine/Store/ZooKeeper.pm	/^use constant ZK_ACL        => ZOO_OPEN_ACL_UNSAFE;$/;"	c
+ZK_ACL	lib/Pogo/Engine/Store/ZooKeeper.pm	/^use constant ZK_ACL        => ZOO_OPEN_ACL_UNSAFE;$/;"	c
+ZK_PORT	blib/lib/Pogo/Engine/Store/ZooKeeper.pm	/^use constant ZK_PORT       => 2181;$/;"	c
+ZK_PORT	lib/Pogo/Engine/Store/ZooKeeper.pm	/^use constant ZK_PORT       => 2181;$/;"	c
+ZK_SERVERLIST	blib/lib/Pogo/Engine/Store/ZooKeeper.pm	/^use constant ZK_SERVERLIST => qw(localhost);$/;"	c
+ZK_SERVERLIST	lib/Pogo/Engine/Store/ZooKeeper.pm	/^use constant ZK_SERVERLIST => qw(localhost);$/;"	c
+_CLASS	inc/Module/Install.pm	/^sub _CLASS ($) {$/;"	s
+_add_to_size	CHI-0.45/lib/CHI/Driver/Role/IsSizeAware.pm	/^sub _add_to_size {$/;"	s
+_build_contained_cache	CHI-0.45/lib/CHI/Driver/CacheCache.pm	/^sub _build_contained_cache {$/;"	s
+_build_contained_cache	CHI-0.45/lib/CHI/Driver/FastMmap.pm	/^sub _build_contained_cache {$/;"	s
+_build_data_serializer	CHI-0.45/lib/CHI/Types.pm	/^sub _build_data_serializer {$/;"	s
+_build_digester	CHI-0.45/lib/CHI/Types.pm	/^sub _build_digester {$/;"	s
+_build_discard_policy	CHI-0.45/lib/CHI/Driver/Role/IsSizeAware.pm	/^sub _build_discard_policy {$/;"	s
+_build_label	CHI-0.45/lib/CHI/Driver.pm	/^sub _build_label {$/;"	s
+_build_meta_cache	CHI-0.45/lib/CHI/Driver/Metacache.pm	/^sub _build_meta_cache {$/;"	s
+_build_metacache	CHI-0.45/lib/CHI/Driver.pm	/^sub _build_metacache {$/;"	s
+_build_owner_namespace	CHI-0.45/lib/CHI/Driver/Metacache.pm	/^sub _build_owner_namespace {$/;"	s
+_build_path_to_namespace	CHI-0.45/lib/CHI/Driver/File.pm	/^sub _build_path_to_namespace {$/;"	s
+_build_short_driver_name	CHI-0.45/lib/CHI/Driver.pm	/^sub _build_short_driver_name {$/;"	s
+_caller	inc/Module/Install.pm	/^sub _caller {$/;"	s
+_client	blib/lib/Pogo/Client/Commandline.pm	/^sub _client$/;"	s
+_client	lib/Pogo/Client/Commandline.pm	/^sub _client$/;"	s
+_collect_keys_via_file_find	CHI-0.45/lib/CHI/Driver/File.pm	/^sub _collect_keys_via_file_find {$/;"	s
+_default_set_options	CHI-0.45/lib/CHI/Driver.pm	/^sub _default_set_options {$/;"	s
+_describe_cache_get	CHI-0.45/lib/CHI/Driver.pm	/^sub _describe_cache_get {$/;"	s
+_describe_cache_set	CHI-0.45/lib/CHI/Driver.pm	/^sub _describe_cache_set {$/;"	s
+_dispatch_error_msg	CHI-0.45/lib/CHI/Driver.pm	/^sub _dispatch_error_msg {$/;"	s
+_dump	t/lib/PogoMockStore.pm	/^sub _dump {$/;"	s
+_get	blib/lib/Pogo/Engine/Job.pm	/^sub _get$/;"	s
+_get	blib/lib/Pogo/Engine/Job/Host.pm	/^sub _get$/;"	s
+_get	lib/Pogo/Engine/Job.pm	/^sub _get$/;"	s
+_get	lib/Pogo/Engine/Job/Host.pm	/^sub _get$/;"	s
+_get_conf_r	blib/lib/Pogo/Engine/Namespace.pm	/^sub _get_conf_r$/;"	s
+_get_conf_r	lib/Pogo/Engine/Namespace.pm	/^sub _get_conf_r$/;"	s
+_get_host_count	blib/lib/Pogo/HTTP/Server.pm	/^sub _get_host_count$/;"	s
+_get_host_count	blib/lib/Pogo/UI.pm	/^sub _get_host_count$/;"	s
+_get_host_count	lib/Pogo/HTTP/Server.pm	/^sub _get_host_count$/;"	s
+_get_host_count	lib/Pogo/UI.pm	/^sub _get_host_count$/;"	s
+_get_iterator_for_discard_policy	CHI-0.45/lib/CHI/Driver/Role/IsSizeAware.pm	/^sub _get_iterator_for_discard_policy {$/;"	s
+_get_secrets	blib/lib/Pogo/Engine/Job.pm	/^sub _get_secrets$/;"	s
+_get_secrets	lib/Pogo/Engine/Job.pm	/^sub _get_secrets$/;"	s
+_handle_get_error	CHI-0.45/lib/CHI/Driver.pm	/^sub _handle_get_error {$/;"	s
+_handle_set_error	CHI-0.45/lib/CHI/Driver.pm	/^sub _handle_set_error {$/;"	s
+_has_constraints	blib/lib/Pogo/Engine/Namespace.pm	/^sub _has_constraints$/;"	s
+_has_constraints	lib/Pogo/Engine/Namespace.pm	/^sub _has_constraints$/;"	s
+_is_failed	blib/lib/Pogo/Engine/Job/Host.pm	/^sub _is_failed$/;"	s
+_is_failed	lib/Pogo/Engine/Job/Host.pm	/^sub _is_failed$/;"	s
+_is_finished	blib/lib/Pogo/Engine/Job/Host.pm	/^sub _is_finished$/;"	s
+_is_finished	lib/Pogo/Engine/Job/Host.pm	/^sub _is_finished$/;"	s
+_is_runnable	blib/lib/Pogo/Engine/Job/Host.pm	/^sub _is_runnable$/;"	s
+_is_runnable	lib/Pogo/Engine/Job/Host.pm	/^sub _is_runnable$/;"	s
+_is_running	blib/lib/Pogo/Engine/Job/Host.pm	/^sub _is_running$/;"	s
+_is_running	lib/Pogo/Engine/Job/Host.pm	/^sub _is_running$/;"	s
+_is_transformed	CHI-0.45/lib/CHI/CacheObject.pm	/^sub _is_transformed  { $_[0]->[f_is_transformed] }$/;"	s
+_list_jobs	blib/lib/Pogo/HTTP/Server.pm	/^sub _list_jobs$/;"	s
+_list_jobs	blib/lib/Pogo/UI.pm	/^sub _list_jobs$/;"	s
+_list_jobs	lib/Pogo/HTTP/Server.pm	/^sub _list_jobs$/;"	s
+_list_jobs	lib/Pogo/UI.pm	/^sub _list_jobs$/;"	s
+_listjobs	blib/lib/Pogo/Engine.pm	/^sub _listjobs$/;"	s
+_listjobs	lib/Pogo/Engine.pm	/^sub _listjobs$/;"	s
+_lock_read	blib/lib/Pogo/Engine/Store/ZooKeeper.pm	/^sub _lock_read$/;"	s
+_lock_read	lib/Pogo/Engine/Store/ZooKeeper.pm	/^sub _lock_read$/;"	s
+_lock_wait	blib/lib/Pogo/Engine/Store/ZooKeeper.pm	/^sub _lock_wait$/;"	s
+_lock_wait	lib/Pogo/Engine/Store/ZooKeeper.pm	/^sub _lock_wait$/;"	s
+_lock_write	blib/lib/Pogo/Engine/Store/ZooKeeper.pm	/^sub _lock_write$/;"	s
+_lock_write	lib/Pogo/Engine/Store/ZooKeeper.pm	/^sub _lock_write$/;"	s
+_lock_write	t/lib/PogoMockStore.pm	/^sub _lock_write {$/;"	s
+_log_get_result	CHI-0.45/lib/CHI/Driver.pm	/^sub _log_get_result {$/;"	s
+_log_set_result	CHI-0.45/lib/CHI/Driver.pm	/^sub _log_set_result {$/;"	s
+_lognode	blib/lib/Pogo/Engine/Job.pm	/^sub _lognode$/;"	s
+_lognode	lib/Pogo/Engine/Job.pm	/^sub _lognode$/;"	s
+_paginate	blib/lib/Pogo/HTTP/Server.pm	/^sub _paginate$/;"	s
+_paginate	blib/lib/Pogo/UI.pm	/^sub _paginate$/;"	s
+_paginate	lib/Pogo/HTTP/Server.pm	/^sub _paginate$/;"	s
+_paginate	lib/Pogo/UI.pm	/^sub _paginate$/;"	s
+_ping	blib/lib/Pogo/Engine.pm	/^sub _ping { return store->ping(@_); }$/;"	s
+_ping	lib/Pogo/Engine.pm	/^sub _ping { return store->ping(@_); }$/;"	s
+_prefixed_key	CHI-0.45/lib/CHI/Driver/Metacache.pm	/^sub _prefixed_key {$/;"	s
+_read	inc/Module/Install.pm	/^sub _read {$/;"	s
+_render_ui_template	blib/lib/Pogo/HTTP/Server.pm	/^sub _render_ui_template$/;"	s
+_render_ui_template	lib/Pogo/HTTP/Server.pm	/^sub _render_ui_template$/;"	s
+_resolve_host	blib/lib/Pogo/Dispatcher/AuthStore.pm	/^sub _resolve_host$/;"	s
+_resolve_host	lib/Pogo/Dispatcher/AuthStore.pm	/^sub _resolve_host$/;"	s
+_rpc_jobinfo	blib/lib/Pogo/API/V3.pm	/^sub _rpc_jobinfo     { my $self = shift; return Pogo::Engine->jobinfo(@_); }$/;"	s
+_rpc_jobinfo	lib/Pogo/API/V3.pm	/^sub _rpc_jobinfo     { my $self = shift; return Pogo::Engine->jobinfo(@_); }$/;"	s
+_rpc_joblog	blib/lib/Pogo/API/V3.pm	/^sub _rpc_joblog      { my $self = shift; return Pogo::Engine->joblog(@_); }$/;"	s
+_rpc_joblog	lib/Pogo/API/V3.pm	/^sub _rpc_joblog      { my $self = shift; return Pogo::Engine->joblog(@_); }$/;"	s
+_rpc_jobsnapshot	blib/lib/Pogo/API/V3.pm	/^sub _rpc_jobsnapshot { my $self = shift; return Pogo::Engine->jobsnapshot(@_); }$/;"	s
+_rpc_jobsnapshot	lib/Pogo/API/V3.pm	/^sub _rpc_jobsnapshot { my $self = shift; return Pogo::Engine->jobsnapshot(@_); }$/;"	s
+_rpc_jobstatus	blib/lib/Pogo/API/V3.pm	/^sub _rpc_jobstatus   { my $self = shift; return Pogo::Engine->jobstatus(@_); }$/;"	s
+_rpc_jobstatus	lib/Pogo/API/V3.pm	/^sub _rpc_jobstatus   { my $self = shift; return Pogo::Engine->jobstatus(@_); }$/;"	s
+_rpc_listjobs	blib/lib/Pogo/API/V3.pm	/^sub _rpc_listjobs    { my $self = shift; return Pogo::Engine->listjobs(@_); }$/;"	s
+_rpc_listjobs	lib/Pogo/API/V3.pm	/^sub _rpc_listjobs    { my $self = shift; return Pogo::Engine->listjobs(@_); }$/;"	s
+_rpc_ping	blib/lib/Pogo/API/V3.pm	/^sub _rpc_ping        { my $self = shift; return Pogo::Engine->ping(@_); }$/;"	s
+_rpc_ping	lib/Pogo/API/V3.pm	/^sub _rpc_ping        { my $self = shift; return Pogo::Engine->ping(@_); }$/;"	s
+_rpc_run	blib/lib/Pogo/API/V3.pm	/^sub _rpc_run$/;"	s
+_rpc_run	lib/Pogo/API/V3.pm	/^sub _rpc_run$/;"	s
+_rpc_stats	blib/lib/Pogo/API/V3.pm	/^sub _rpc_stats       { my $self = shift; return Pogo::Engine->stats(@_); }$/;"	s
+_rpc_stats	lib/Pogo/API/V3.pm	/^sub _rpc_stats       { my $self = shift; return Pogo::Engine->stats(@_); }$/;"	s
+_set	blib/lib/Pogo/Engine/Job.pm	/^sub _set$/;"	s
+_set	blib/lib/Pogo/Engine/Job/Host.pm	/^sub _set$/;"	s
+_set	lib/Pogo/Engine/Job.pm	/^sub _set$/;"	s
+_set	lib/Pogo/Engine/Job/Host.pm	/^sub _set$/;"	s
+_set_conf_r	blib/lib/Pogo/Engine/Namespace.pm	/^sub _set_conf_r$/;"	s
+_set_conf_r	lib/Pogo/Engine/Namespace.pm	/^sub _set_conf_r$/;"	s
+_set_size	CHI-0.45/lib/CHI/Driver/Role/IsSizeAware.pm	/^sub _set_size {$/;"	s
+_shrink_meta_value	blib/lib/Pogo/Engine/Job.pm	/^sub _shrink_meta_value$/;"	s
+_shrink_meta_value	lib/Pogo/Engine/Job.pm	/^sub _shrink_meta_value$/;"	s
+_store_local	blib/lib/Pogo/Dispatcher/AuthStore.pm	/^sub _store_local$/;"	s
+_store_local	lib/Pogo/Dispatcher/AuthStore.pm	/^sub _store_local$/;"	s
+_test_common_subcache_features	CHI-0.45/lib/CHI/t/Driver.pm	/^sub _test_common_subcache_features {$/;"	s
+_test_logging_with_l1_cache	CHI-0.45/lib/CHI/t/Driver.pm	/^sub _test_logging_with_l1_cache {$/;"	s
+_test_logging_with_mirror_cache	CHI-0.45/lib/CHI/t/Driver.pm	/^sub _test_logging_with_mirror_cache {$/;"	s
+_top	inc/Module/Install/Base.pm	/^sub _top { $_[0]->{_top} }$/;"	s
+_verify_cache_is_cleared	CHI-0.45/lib/CHI/t/Driver.pm	/^sub _verify_cache_is_cleared {$/;"	s
+_version	inc/Module/Install.pm	/^sub _version ($) {$/;"	s
+_wanted_t	inc/Module/Install/Makefile.pm	/^sub _wanted_t {$/;"	s
+_write	inc/Module/Install.pm	/^sub _write {$/;"	s
+_write_conf	blib/lib/Pogo/Engine/Namespace.pm	/^sub _write_conf$/;"	s
+_write_conf	lib/Pogo/Engine/Namespace.pm	/^sub _write_conf$/;"	s
+abstract_from	inc/Module/Install/Metadata.pm	/^sub abstract_from {$/;"	s
+accept	blib/lib/Pogo/Dispatcher/RPCConnection.pm	/^sub accept$/;"	s
+accept	blib/lib/Pogo/Dispatcher/WorkerConnection.pm	/^sub accept$/;"	s
+accept	lib/Pogo/Dispatcher/RPCConnection.pm	/^sub accept$/;"	s
+accept	lib/Pogo/Dispatcher/WorkerConnection.pm	/^sub accept$/;"	s
+activate_test_logger	CHI-0.45/lib/CHI/Test/Util.pm	/^sub activate_test_logger {$/;"	s
+active_tasks	blib/lib/Pogo/Dispatcher/WorkerConnection.pm	/^sub active_tasks$/;"	s
+active_tasks	lib/Pogo/Dispatcher/WorkerConnection.pm	/^sub active_tasks$/;"	s
+add_connection	blib/lib/Pogo/Worker.pm	/^sub add_connection$/;"	s
+add_connection	lib/Pogo/Worker.pm	/^sub add_connection$/;"	s
+add_header	blib/lib/Pogo/Engine/Response.pm	/^sub add_header$/;"	s
+add_header	lib/Pogo/Engine/Response.pm	/^sub add_header$/;"	s
+add_outputurl	blib/lib/Pogo/Engine/Job/Host.pm	/^sub add_outputurl$/;"	s
+add_outputurl	lib/Pogo/Engine/Job/Host.pm	/^sub add_outputurl$/;"	s
+add_record	blib/lib/Pogo/Engine/Response.pm	/^sub add_record$/;"	s
+add_record	lib/Pogo/Engine/Response.pm	/^sub add_record$/;"	s
+add_subcache	CHI-0.45/lib/CHI/Driver/Role/HasSubcaches.pm	/^sub add_subcache {$/;"	s
+add_task	blib/lib/Pogo/Engine.pm	/^sub add_task$/;"	s
+add_task	lib/Pogo/Engine.pm	/^sub add_task$/;"	s
+admin	inc/Module/Install/Base.pm	/^sub admin {$/;"	s
+all_from	inc/Module/Install/Metadata.pm	/^sub all_from {$/;"	s
+all_meta	blib/lib/Pogo/Engine/Job.pm	/^sub all_meta$/;"	s
+all_meta	lib/Pogo/Engine/Job.pm	/^sub all_meta$/;"	s
+args	t/lib/PogoTesterProc.pm	/^sub args { return @{ shift->{args} } }$/;"	s
+author_from	inc/Module/Install/Metadata.pm	/^sub author_from {$/;"	s
+authstore_rpc	t/lib/PogoTester.pm	/^sub authstore_rpc$/;"	s
+auto_provides	inc/Module/Install/Metadata.pm	/^sub auto_provides {$/;"	s
+autoload	inc/Module/Install.pm	/^sub autoload {$/;"	s
+bugtracker_from	inc/Module/Install/Metadata.pm	/^sub bugtracker_from {$/;"	s
+build_requires	inc/Module/Install/Metadata.pm	/^sub build_requires {$/;"	s
+build_subdirs	inc/Module/Install/Makefile.pm	/^sub build_subdirs {$/;"	s
+bundles	inc/Module/Install/Metadata.pm	/^sub bundles {$/;"	s
+busy_worker	blib/lib/Pogo/Dispatcher.pm	/^sub busy_worker$/;"	s
+busy_worker	lib/Pogo/Dispatcher.pm	/^sub busy_worker$/;"	s
+cache_generators	CHI-0.45/etc/bench/bench.pl	/^sub cache_generators {$/;"	s
+cache_object_class	CHI-0.45/lib/CHI/Driver.pm	/^sub cache_object_class { 'CHI::CacheObject' }$/;"	s
+call	inc/Module/Install.pm	/^sub call {$/;"	s
+callback	blib/lib/Pogo/Engine/Response.pm	/^sub callback$/;"	s
+callback	lib/Pogo/Engine/Response.pm	/^sub callback$/;"	s
+can_cc	inc/Module/Install/Can.pm	/^sub can_cc {$/;"	s
+can_load	CHI-0.45/lib/CHI/Util.pm	/^sub can_load {$/;"	s
+can_run	inc/Module/Install/Can.pm	/^sub can_run {$/;"	s
+can_use	inc/Module/Install/Can.pm	/^sub can_use {$/;"	s
+check_nmake	inc/Module/Install/Win32.pm	/^sub check_nmake {$/;"	s
+check_password	blib/lib/Pogo/Client/AuthCheck.pm	/^sub check_password$/;"	s
+check_password	lib/Pogo/Client/AuthCheck.pm	/^sub check_password$/;"	s
+clean_files	inc/Module/Install/Makefile.pm	/^sub clean_files {$/;"	s
+clear	CHI-0.45/lib/CHI/Driver.pm	/^sub clear {$/;"	s
+clear	CHI-0.45/lib/CHI/Driver/Base/CacheContainer.pm	/^sub clear {$/;"	s
+clear	CHI-0.45/lib/CHI/Driver/File.pm	/^sub clear {$/;"	s
+clear	CHI-0.45/lib/CHI/Driver/Memory.pm	/^sub clear {$/;"	s
+clear	CHI-0.45/lib/CHI/Driver/Null.pm	/^sub clear          { undef }$/;"	s
+clear	CHI-0.45/lib/CHI/Stats.pm	/^sub clear {$/;"	s
+client	t/lib/PogoTester.pm	/^sub client$/;"	s
+cmd_help	blib/lib/Pogo/Client/Commandline.pm	/^sub cmd_help$/;"	s
+cmd_help	lib/Pogo/Client/Commandline.pm	/^sub cmd_help$/;"	s
+cmd_index	blib/lib/Pogo/UI.pm	/^sub cmd_index$/;"	s
+cmd_index	lib/Pogo/UI.pm	/^sub cmd_index$/;"	s
+cmd_jobs	blib/lib/Pogo/Client/Commandline.pm	/^sub cmd_jobs$/;"	s
+cmd_jobs	lib/Pogo/Client/Commandline.pm	/^sub cmd_jobs$/;"	s
+cmd_log	blib/lib/Pogo/Client/Commandline.pm	/^sub cmd_log$/;"	s
+cmd_log	lib/Pogo/Client/Commandline.pm	/^sub cmd_log$/;"	s
+cmd_man	blib/lib/Pogo/Client/Commandline.pm	/^sub cmd_man$/;"	s
+cmd_man	lib/Pogo/Client/Commandline.pm	/^sub cmd_man$/;"	s
+cmd_ping	blib/lib/Pogo/Client/Commandline.pm	/^sub cmd_ping$/;"	s
+cmd_ping	lib/Pogo/Client/Commandline.pm	/^sub cmd_ping$/;"	s
+cmd_run	blib/lib/Pogo/Client/Commandline.pm	/^sub cmd_run$/;"	s
+cmd_run	lib/Pogo/Client/Commandline.pm	/^sub cmd_run$/;"	s
+cmd_status	blib/lib/Pogo/Client/Commandline.pm	/^sub cmd_status$/;"	s
+cmd_status	blib/lib/Pogo/UI.pm	/^sub cmd_status$/;"	s
+cmd_status	lib/Pogo/Client/Commandline.pm	/^sub cmd_status$/;"	s
+cmd_status	lib/Pogo/UI.pm	/^sub cmd_status$/;"	s
+cmd_usage	blib/lib/Pogo/Client/Commandline.pm	/^sub cmd_usage$/;"	s
+cmd_usage	lib/Pogo/Client/Commandline.pm	/^sub cmd_usage$/;"	s
+cmp_bool	CHI-0.45/lib/CHI/Test/Util.pm	/^sub cmp_bool {$/;"	s
+command	blib/lib/Pogo/Engine/Job.pm	/^sub command     { return $_[0]->meta('command'); }$/;"	s
+command	lib/Pogo/Engine/Job.pm	/^sub command     { return $_[0]->meta('command'); }$/;"	s
+compute	CHI-0.45/lib/CHI/Driver.pm	/^sub compute {$/;"	s
+concurrent	blib/lib/Pogo/Engine/Job.pm	/^sub concurrent  { return $_[0]->meta('concurrent'); }$/;"	s
+concurrent	lib/Pogo/Engine/Job.pm	/^sub concurrent  { return $_[0]->meta('concurrent'); }$/;"	s
+configure_requires	inc/Module/Install/Metadata.pm	/^sub configure_requires {$/;"	s
+content	blib/lib/Pogo/Engine/Response.pm	/^sub content$/;"	s
+content	lib/Pogo/Engine/Response.pm	/^sub content$/;"	s
+content_type	blib/lib/Pogo/UI.pm	/^sub content_type$/;"	s
+content_type	lib/Pogo/UI.pm	/^sub content_type$/;"	s
+continue	blib/lib/Pogo/Engine/Job.pm	/^sub continue$/;"	s
+continue	lib/Pogo/Engine/Job.pm	/^sub continue$/;"	s
+continue_deferred	blib/lib/Pogo/Engine/Job.pm	/^sub continue_deferred$/;"	s
+continue_deferred	lib/Pogo/Engine/Job.pm	/^sub continue_deferred$/;"	s
+create	blib/lib/Pogo/Engine/Store/ZooKeeper.pm	/^sub create$/;"	s
+create	lib/Pogo/Engine/Store/ZooKeeper.pm	/^sub create$/;"	s
+create	t/lib/PogoMockStore.pm	/^sub create {$/;"	s
+create_ephemeral	blib/lib/Pogo/Engine/Store/ZooKeeper.pm	/^sub create_ephemeral$/;"	s
+create_ephemeral	lib/Pogo/Engine/Store/ZooKeeper.pm	/^sub create_ephemeral$/;"	s
+create_sequence	blib/lib/Pogo/Engine/Store/ZooKeeper.pm	/^sub create_sequence$/;"	s
+create_sequence	lib/Pogo/Engine/Store/ZooKeeper.pm	/^sub create_sequence$/;"	s
+create_sequence	t/lib/PogoMockStore.pm	/^sub create_sequence { $/;"	s
+created_at	CHI-0.45/lib/CHI/CacheObject.pm	/^sub created_at       { $_[0]->[f_created_at] }$/;"	s
+cur_logidx	blib/lib/Pogo/Engine/Job.pm	/^sub cur_logidx$/;"	s
+cur_logidx	lib/Pogo/Engine/Job.pm	/^sub cur_logidx$/;"	s
+declare_unsupported_methods	CHI-0.45/lib/CHI/Driver.pm	/^sub declare_unsupported_methods {$/;"	s
+decrypt_secret	t/lib/PogoTester.pm	/^sub decrypt_secret$/;"	s
+default_discard_policy	CHI-0.45/lib/CHI/Driver/Memory.pm	/^sub default_discard_policy { 'lru' }$/;"	s
+delete	blib/lib/Pogo/Engine/Store/ZooKeeper.pm	/^sub delete       { return shift->{handle}->delete(@_); }$/;"	s
+delete	lib/Pogo/Engine/Store/ZooKeeper.pm	/^sub delete       { return shift->{handle}->delete(@_); }$/;"	s
+delete	t/lib/PogoMockStore.pm	/^sub delete {$/;"	s
+delete_connection	blib/lib/Pogo/Worker.pm	/^sub delete_connection$/;"	s
+delete_connection	lib/Pogo/Worker.pm	/^sub delete_connection$/;"	s
+delete_r	blib/lib/Pogo/Engine/Store/ZooKeeper.pm	/^sub delete_r$/;"	s
+delete_r	lib/Pogo/Engine/Store/ZooKeeper.pm	/^sub delete_r$/;"	s
+delete_r	t/lib/PogoMockStore.pm	/^sub delete_r { $/;"	s
+dequeue_msg	blib/lib/Pogo/Worker.pm	/^sub dequeue_msg$/;"	s
+dequeue_msg	lib/Pogo/Worker.pm	/^sub dequeue_msg$/;"	s
+deserialize	CHI-0.45/lib/CHI/Serializer/JSON.pm	/^sub deserialize {$/;"	s
+deserialize	CHI-0.45/lib/CHI/Serializer/Storable.pm	/^sub deserialize {$/;"	s
+deserialize	CHI-0.45/lib/CHI/t/Driver.pm	/^    sub deserialize { }$/;"	s
+digest_key	CHI-0.45/lib/CHI/Driver.pm	/^sub digest_key {$/;"	s
+disable	CHI-0.45/lib/CHI/Stats.pm	/^sub disable { $_[0]->{enabled} = 0 }$/;"	s
+discard_policy_arbitrary	CHI-0.45/lib/CHI/Driver/Role/IsSizeAware.pm	/^sub discard_policy_arbitrary {$/;"	s
+discard_policy_lru	CHI-0.45/lib/CHI/Driver/Memory.pm	/^sub discard_policy_lru {$/;"	s
+discard_to_size	CHI-0.45/lib/CHI/Driver/Role/IsSizeAware.pm	/^sub discard_to_size {$/;"	s
+dispatcher_cert	blib/lib/Pogo/Dispatcher.pm	/^sub dispatcher_cert$/;"	s
+dispatcher_cert	blib/lib/Pogo/Worker.pm	/^sub dispatcher_cert$/;"	s
+dispatcher_cert	lib/Pogo/Dispatcher.pm	/^sub dispatcher_cert$/;"	s
+dispatcher_cert	lib/Pogo/Worker.pm	/^sub dispatcher_cert$/;"	s
+dispatcher_host	blib/lib/Pogo/Worker.pm	/^sub dispatcher_host$/;"	s
+dispatcher_host	lib/Pogo/Worker.pm	/^sub dispatcher_host$/;"	s
+dispatcher_key	blib/lib/Pogo/Dispatcher.pm	/^sub dispatcher_key$/;"	s
+dispatcher_key	lib/Pogo/Dispatcher.pm	/^sub dispatcher_key$/;"	s
+dispatcher_port	blib/lib/Pogo/Worker.pm	/^sub dispatcher_port$/;"	s
+dispatcher_port	lib/Pogo/Worker.pm	/^sub dispatcher_port$/;"	s
+dispatcher_rpc	t/lib/PogoTester.pm	/^sub dispatcher_rpc$/;"	s
+display_log_event	blib/lib/Pogo/Client/Commandline.pm	/^sub display_log_event$/;"	s
+display_log_event	lib/Pogo/Client/Commandline.pm	/^sub display_log_event$/;"	s
+dist_server	blib/lib/Pogo/Worker.pm	/^sub dist_server$/;"	s
+dist_server	lib/Pogo/Worker.pm	/^sub dist_server$/;"	s
+dump_as_hash	CHI-0.45/lib/CHI/Driver.pm	/^sub dump_as_hash {$/;"	s
+dump_one_line	CHI-0.45/lib/CHI/Util.pm	/^sub dump_one_line {$/;"	s
+dumptree	misc/dumpzk	/^sub dumptree$/;"	s
+dynamic_config	inc/Module/Install/Metadata.pm	/^sub dynamic_config {$/;"	s
+early_expires_at	CHI-0.45/lib/CHI/CacheObject.pm	/^sub early_expires_at { $_[0]->[f_early_expires_at] }$/;"	s
+enable	CHI-0.45/lib/CHI/Stats.pm	/^sub enable  { $_[0]->{enabled} = 1 }$/;"	s
+encode_key	CHI-0.45/lib/CHI/Driver.pm	/^sub encode_key {$/;"	s
+encode_perl	blib/lib/Pogo/Engine/Job.pm	/^sub encode_perl$/;"	s
+encode_perl	lib/Pogo/Engine/Job.pm	/^sub encode_perl$/;"	s
+encrypt_secret	t/lib/PogoTester.pm	/^sub encrypt_secret$/;"	s
+enlist_worker	blib/lib/Pogo/Dispatcher.pm	/^sub enlist_worker$/;"	s
+enlist_worker	lib/Pogo/Dispatcher.pm	/^sub enlist_worker$/;"	s
+error	blib/lib/Pogo/UI.pm	/^sub error$/;"	s
+error	lib/Pogo/UI.pm	/^sub error$/;"	s
+escape_for_filename	CHI-0.45/lib/CHI/Driver.pm	/^sub escape_for_filename {$/;"	s
+escape_key	CHI-0.45/lib/CHI/Driver.pm	/^sub escape_key   { $_[1] }$/;"	s
+escape_key	CHI-0.45/lib/CHI/Driver/File.pm	/^sub escape_key {$/;"	s
+exec_helper	blib/lib/Pogo/Worker.pm	/^sub exec_helper$/;"	s
+exec_helper	lib/Pogo/Worker.pm	/^sub exec_helper$/;"	s
+execute	bin/pogo-rexec	/^sub execute$/;"	s
+execute	blib/lib/Pogo/Worker/Connection.pm	/^sub execute$/;"	s
+execute	lib/Pogo/Worker/Connection.pm	/^sub execute$/;"	s
+execute	t/pogo-rexec-dummy	/^sub execute$/;"	s
+exists	blib/lib/Pogo/Engine/Store/ZooKeeper.pm	/^sub exists       { return shift->{handle}->exists(@_); }$/;"	s
+exists	lib/Pogo/Engine/Store/ZooKeeper.pm	/^sub exists       { return shift->{handle}->exists(@_); }$/;"	s
+exists	t/lib/PogoMockStore.pm	/^sub exists {$/;"	s
+exists_and_is_expired	CHI-0.45/lib/CHI/Driver.pm	/^sub exists_and_is_expired {$/;"	s
+expand_expression	blib/lib/Pogo/Client/Commandline.pm	/^sub expand_expression$/;"	s
+expand_expression	lib/Pogo/Client/Commandline.pm	/^sub expand_expression$/;"	s
+expand_targets	blib/lib/Pogo/Engine/Namespace.pm	/^sub expand_targets$/;"	s
+expand_targets	blib/lib/Pogo/Plugin/Inline.pm	/^sub expand_targets$/;"	s
+expand_targets	lib/Pogo/Engine/Namespace.pm	/^sub expand_targets$/;"	s
+expand_targets	lib/Pogo/Plugin/Inline.pm	/^sub expand_targets$/;"	s
+expect_wrapper	blib/lib/Pogo/Worker.pm	/^sub expect_wrapper$/;"	s
+expect_wrapper	lib/Pogo/Worker.pm	/^sub expect_wrapper$/;"	s
+expire	CHI-0.45/lib/CHI/Driver.pm	/^sub expire {$/;"	s
+expires_at	CHI-0.45/lib/CHI/CacheObject.pm	/^sub expires_at       { $_[0]->[f_expires_at] }$/;"	s
+export_to_level	CHI-0.45/lib/CHI/Test.pm	/^sub export_to_level {$/;"	s
+extra_test_keys	CHI-0.45/lib/CHI/t/Driver.pm	/^sub extra_test_keys {$/;"	s
+f_cache_version	CHI-0.45/lib/CHI/CacheObject.pm	/^use constant f_cache_version    => 7;$/;"	c
+f_created_at	CHI-0.45/lib/CHI/CacheObject.pm	/^use constant f_created_at       => 3;$/;"	c
+f_early_expires_at	CHI-0.45/lib/CHI/CacheObject.pm	/^use constant f_early_expires_at => 4;$/;"	c
+f_expires_at	CHI-0.45/lib/CHI/CacheObject.pm	/^use constant f_expires_at       => 5;$/;"	c
+f_is_transformed	CHI-0.45/lib/CHI/CacheObject.pm	/^use constant f_is_transformed   => 6;$/;"	c
+f_key	CHI-0.45/lib/CHI/CacheObject.pm	/^use constant f_key              => 0;$/;"	c
+f_packed_data	CHI-0.45/lib/CHI/CacheObject.pm	/^use constant f_packed_data      => 9;$/;"	c
+f_raw_value	CHI-0.45/lib/CHI/CacheObject.pm	/^use constant f_raw_value        => 1;$/;"	c
+f_serializer	CHI-0.45/lib/CHI/CacheObject.pm	/^use constant f_serializer       => 2;$/;"	c
+f_size	CHI-0.45/lib/CHI/CacheObject.pm	/^use constant f_size             => 10;$/;"	c
+f_value	CHI-0.45/lib/CHI/CacheObject.pm	/^use constant f_value            => 8;$/;"	c
+failed_hosts	blib/lib/Pogo/Engine/Job.pm	/^sub failed_hosts$/;"	s
+failed_hosts	lib/Pogo/Engine/Job.pm	/^sub failed_hosts$/;"	s
+fast_catdir	CHI-0.45/lib/CHI/Util.pm	/^    sub fast_catdir {$/;"	s
+fast_catfile	CHI-0.45/lib/CHI/Util.pm	/^    sub fast_catfile {$/;"	s
+feature	inc/Module/Install/Metadata.pm	/^sub feature {$/;"	s
+features	inc/Module/Install/Metadata.pm	/^sub features {$/;"	s
+fetch	CHI-0.45/lib/CHI/Driver/Base/CacheContainer.pm	/^sub fetch {$/;"	s
+fetch	CHI-0.45/lib/CHI/Driver/File.pm	/^sub fetch {$/;"	s
+fetch	CHI-0.45/lib/CHI/Driver/Memory.pm	/^sub fetch {$/;"	s
+fetch	CHI-0.45/lib/CHI/Driver/Null.pm	/^sub fetch          { undef }$/;"	s
+fetch	CHI-0.45/lib/CHI/Test/Driver/Writeonly.pm	/^sub fetch {$/;"	s
+fetch_all_slots	blib/lib/Pogo/Engine/Namespace.pm	/^sub fetch_all_slots$/;"	s
+fetch_all_slots	lib/Pogo/Engine/Namespace.pm	/^sub fetch_all_slots$/;"	s
+fetch_multi_hashref	CHI-0.45/lib/CHI/Driver.pm	/^sub fetch_multi_hashref {$/;"	s
+fetch_runnable_hosts	blib/lib/Pogo/Engine/Namespace.pm	/^sub fetch_runnable_hosts$/;"	s
+fetch_runnable_hosts	lib/Pogo/Engine/Namespace.pm	/^sub fetch_runnable_hosts$/;"	s
+fetch_target_meta	blib/lib/Pogo/Engine/Namespace.pm	/^sub fetch_target_meta$/;"	s
+fetch_target_meta	blib/lib/Pogo/Plugin/Inline.pm	/^sub fetch_target_meta$/;"	s
+fetch_target_meta	lib/Pogo/Engine/Namespace.pm	/^sub fetch_target_meta$/;"	s
+fetch_target_meta	lib/Pogo/Plugin/Inline.pm	/^sub fetch_target_meta$/;"	s
+file_patch	misc/adm/authors-patch	/^sub file_patch {$/;"	s
+file_patch	misc/adm/copyright-patch	/^sub file_patch {$/;"	s
+filter_apps	blib/lib/Pogo/Engine/Namespace.pm	/^sub filter_apps$/;"	s
+filter_apps	lib/Pogo/Engine/Namespace.pm	/^sub filter_apps$/;"	s
+find_extensions	inc/Module/Install.pm	/^sub find_extensions {$/;"	s
+finish_task	blib/lib/Pogo/Engine/Job.pm	/^sub finish_task$/;"	s
+finish_task	lib/Pogo/Engine/Job.pm	/^sub finish_task$/;"	s
+fix_up_makefile	inc/Module/Install/Makefile.pm	/^sub fix_up_makefile {$/;"	s
+flush	CHI-0.45/lib/CHI/Stats.pm	/^sub flush {$/;"	s
+fm_cache	CHI-0.45/lib/CHI/Driver/FastMmap.pm	/^sub fm_cache {$/;"	s
+format	blib/lib/Pogo/Engine/Response.pm	/^sub format$/;"	s
+format	lib/Pogo/Engine/Response.pm	/^sub format$/;"	s
+format_time	CHI-0.45/lib/CHI/Stats.pm	/^sub format_time {$/;"	s
+ftp	inc/Module/Install/Win32.pm	/^  ftp:\/\/ftp.microsoft.com\/Softlib\/MSLFILES\/Nmake15.exe$/;"	l
+generate_temporary_filename	CHI-0.45/lib/CHI/Driver/File.pm	/^sub generate_temporary_filename {$/;"	s
+generate_temporary_filename	CHI-0.45/lib/CHI/t/Driver/File.pm	/^    sub generate_temporary_filename {$/;"	s
+get	CHI-0.45/lib/CHI/Driver.pm	/^sub get {$/;"	s
+get	CHI-0.45/lib/CHI/Driver/Metacache.pm	/^sub get {$/;"	s
+get	blib/lib/Pogo/Dispatcher/AuthStore.pm	/^sub get$/;"	s
+get	blib/lib/Pogo/Engine/Store/ZooKeeper.pm	/^sub get          { return shift->{handle}->get(@_); }$/;"	s
+get	lib/Pogo/Dispatcher/AuthStore.pm	/^sub get$/;"	s
+get	lib/Pogo/Engine/Job.pm	/^sub get$/;"	s
+get	lib/Pogo/Engine/Store/ZooKeeper.pm	/^sub get          { return shift->{handle}->get(@_); }$/;"	s
+get	t/lib/PogoMockStore.pm	/^sub get {$/;"	s
+get_all_curs	blib/lib/Pogo/Engine/Namespace.pm	/^sub get_all_curs$/;"	s
+get_all_curs	lib/Pogo/Engine/Namespace.pm	/^sub get_all_curs$/;"	s
+get_all_seqs	blib/lib/Pogo/Engine/Namespace.pm	/^sub get_all_seqs$/;"	s
+get_all_seqs	lib/Pogo/Engine/Namespace.pm	/^sub get_all_seqs$/;"	s
+get_children	blib/lib/Pogo/Engine/Store/ZooKeeper.pm	/^sub get_children { return shift->{handle}->get_children(@_); }$/;"	s
+get_children	lib/Pogo/Engine/Store/ZooKeeper.pm	/^sub get_children { return shift->{handle}->get_children(@_); }$/;"	s
+get_children	t/lib/PogoMockStore.pm	/^sub get_children$/;"	s
+get_children_version	blib/lib/Pogo/Engine/Store/ZooKeeper.pm	/^sub get_children_version$/;"	s
+get_children_version	lib/Pogo/Engine/Store/ZooKeeper.pm	/^sub get_children_version$/;"	s
+get_conf	blib/lib/Pogo/Engine/Namespace.pm	/^sub get_conf$/;"	s
+get_conf	lib/Pogo/Engine/Namespace.pm	/^sub get_conf$/;"	s
+get_conf_apps	blib/lib/Pogo/Engine/Namespace.pm	/^sub get_conf_apps$/;"	s
+get_conf_apps	lib/Pogo/Engine/Namespace.pm	/^sub get_conf_apps$/;"	s
+get_cur	blib/lib/Pogo/Engine/Namespace.pm	/^sub get_cur$/;"	s
+get_cur	lib/Pogo/Engine/Namespace.pm	/^sub get_cur$/;"	s
+get_curs	blib/lib/Pogo/Engine/Namespace.pm	/^sub get_curs$/;"	s
+get_curs	lib/Pogo/Engine/Namespace.pm	/^sub get_curs$/;"	s
+get_error	blib/lib/Pogo/Engine/Store/ZooKeeper.pm	/^sub get_error    { return shift->{handle}->get_error(@_); }$/;"	s
+get_error	lib/Pogo/Engine/Store/ZooKeeper.pm	/^sub get_error    { return shift->{handle}->get_error(@_); }$/;"	s
+get_error_name	blib/lib/Pogo/Engine/Store/ZooKeeper.pm	/^sub get_error_name$/;"	s
+get_error_name	lib/Pogo/Engine/Store/ZooKeeper.pm	/^sub get_error_name$/;"	s
+get_expires_at	CHI-0.45/lib/CHI/Driver.pm	/^sub get_expires_at {$/;"	s
+get_file	inc/Module/Install/Fetch.pm	/^sub get_file {$/;"	s
+get_keys	CHI-0.45/lib/CHI/Driver/Base/CacheContainer.pm	/^sub get_keys {$/;"	s
+get_keys	CHI-0.45/lib/CHI/Driver/FastMmap.pm	/^sub get_keys {$/;"	s
+get_keys	CHI-0.45/lib/CHI/Driver/File.pm	/^sub get_keys {$/;"	s
+get_keys	CHI-0.45/lib/CHI/Driver/Memory.pm	/^sub get_keys {$/;"	s
+get_keys	CHI-0.45/lib/CHI/Driver/Null.pm	/^sub get_keys       { return () }$/;"	s
+get_keys_iterator	CHI-0.45/lib/CHI/Driver.pm	/^sub get_keys_iterator {$/;"	s
+get_multi_arrayref	CHI-0.45/lib/CHI/Driver.pm	/^sub get_multi_arrayref {$/;"	s
+get_multi_hashref	CHI-0.45/lib/CHI/Driver.pm	/^sub get_multi_hashref {$/;"	s
+get_multi_hashref_objects	CHI-0.45/lib/CHI/Driver.pm	/^sub get_multi_hashref_objects {$/;"	s
+get_namespaces	CHI-0.45/lib/CHI/Driver/Base/CacheContainer.pm	/^sub get_namespaces {$/;"	s
+get_namespaces	CHI-0.45/lib/CHI/Driver/FastMmap.pm	/^sub get_namespaces {$/;"	s
+get_namespaces	CHI-0.45/lib/CHI/Driver/File.pm	/^sub get_namespaces {$/;"	s
+get_namespaces	CHI-0.45/lib/CHI/Driver/Memory.pm	/^sub get_namespaces {$/;"	s
+get_namespaces	CHI-0.45/lib/CHI/Driver/Null.pm	/^sub get_namespaces { return () }$/;"	s
+get_object	CHI-0.45/lib/CHI/Driver.pm	/^sub get_object {$/;"	s
+get_password	blib/lib/Pogo/Client/AuthCheck.pm	/^sub get_password$/;"	s
+get_password	lib/Pogo/Client/AuthCheck.pm	/^sub get_password$/;"	s
+get_seq_successors	blib/lib/Pogo/Engine/Namespace.pm	/^sub get_seq_successors$/;"	s
+get_seq_successors	lib/Pogo/Engine/Namespace.pm	/^sub get_seq_successors$/;"	s
+get_size	CHI-0.45/lib/CHI/Driver/Role/IsSizeAware.pm	/^sub get_size {$/;"	s
+globalstatus	blib/lib/Pogo/Engine.pm	/^sub globalstatus$/;"	s
+globalstatus	lib/Pogo/Engine.pm	/^sub globalstatus$/;"	s
+halt	blib/lib/Pogo/Engine/Job.pm	/^sub halt$/;"	s
+halt	lib/Pogo/Engine/Job.pm	/^sub halt$/;"	s
+handle_api	blib/lib/Pogo/HTTP/Server.pm	/^sub handle_api$/;"	s
+handle_api	lib/Pogo/HTTP/Server.pm	/^sub handle_api$/;"	s
+handle_async	blib/lib/Pogo/HTTP/Server.pm	/^sub handle_async$/;"	s
+handle_async	lib/Pogo/HTTP/Server.pm	/^sub handle_async$/;"	s
+handle_favicon	blib/lib/Pogo/HTTP/Server.pm	/^sub handle_favicon$/;"	s
+handle_favicon	lib/Pogo/HTTP/Server.pm	/^sub handle_favicon$/;"	s
+handle_options	blib/lib/Pogo/HTTP/Server.pm	/^sub handle_options$/;"	s
+handle_options	lib/Pogo/HTTP/Server.pm	/^sub handle_options$/;"	s
+handle_proxy	blib/lib/Pogo/HTTP/Server.pm	/^sub handle_proxy$/;"	s
+handle_proxy	lib/Pogo/HTTP/Server.pm	/^sub handle_proxy$/;"	s
+handle_static	blib/lib/Pogo/HTTP/Server.pm	/^sub handle_static$/;"	s
+handle_static	lib/Pogo/HTTP/Server.pm	/^sub handle_static$/;"	s
+handle_ui	blib/lib/Pogo/HTTP/Server.pm	/^sub handle_ui$/;"	s
+handle_ui	lib/Pogo/HTTP/Server.pm	/^sub handle_ui$/;"	s
+handle_ui_error	blib/lib/Pogo/HTTP/Server.pm	/^sub handle_ui_error$/;"	s
+handle_ui_error	lib/Pogo/HTTP/Server.pm	/^sub handle_ui_error$/;"	s
+handler	blib/lib/Pogo/API.pm	/^sub handler$/;"	s
+handler	blib/lib/Pogo/UI.pm	/^sub handler$/;"	s
+handler	lib/Pogo/API.pm	/^sub handler$/;"	s
+handler	lib/Pogo/UI.pm	/^sub handler$/;"	s
+has_header	blib/lib/Pogo/Engine/Response.pm	/^sub has_header$/;"	s
+has_header	lib/Pogo/Engine/Response.pm	/^sub has_header$/;"	s
+has_host	blib/lib/Pogo/Engine/Job.pm	/^sub has_host$/;"	s
+has_host	lib/Pogo/Engine/Job.pm	/^sub has_host$/;"	s
+has_moose_class	CHI-0.45/lib/CHI/Util.pm	/^sub has_moose_class {$/;"	s
+header	blib/lib/Pogo/Engine/Response.pm	/^sub header$/;"	s
+header	lib/Pogo/Engine/Response.pm	/^sub header$/;"	s
+host	blib/lib/Pogo/Engine/Job.pm	/^sub host$/;"	s
+host	blib/lib/Pogo/Worker/Connection.pm	/^sub host { return shift->{host}; }$/;"	s
+host	lib/Pogo/Engine/Job.pm	/^sub host$/;"	s
+host	lib/Pogo/Worker/Connection.pm	/^sub host { return shift->{host}; }$/;"	s
+hostinfo	blib/lib/Pogo/Engine.pm	/^sub hostinfo$/;"	s
+hostinfo	lib/Pogo/Engine.pm	/^sub hostinfo$/;"	s
+hostlog_url	blib/lib/Pogo/Engine.pm	/^sub hostlog_url$/;"	s
+hostlog_url	lib/Pogo/Engine.pm	/^sub hostlog_url$/;"	s
+hosts	blib/lib/Pogo/Engine/Job.pm	/^sub hosts$/;"	s
+hosts	lib/Pogo/Engine/Job.pm	/^sub hosts$/;"	s
+hosts_in_slot	blib/lib/Pogo/Engine/Job.pm	/^sub hosts_in_slot$/;"	s
+hosts_in_slot	lib/Pogo/Engine/Job.pm	/^sub hosts_in_slot$/;"	s
+http	inc/Module/Install/Win32.pm	/^  http:\/\/download.microsoft.com\/download\/vc15\/Patch\/1.52\/W95\/EN-US\/Nmake15.exe$/;"	l
+id	blib/lib/Pogo/Dispatcher/RPCConnection.pm	/^sub id$/;"	s
+id	blib/lib/Pogo/Dispatcher/WorkerConnection.pm	/^sub id$/;"	s
+id	blib/lib/Pogo/Engine/Job.pm	/^sub id          { return $_[0]->{id} }$/;"	s
+id	blib/lib/Pogo/Engine/Namespace/Slot.pm	/^sub id$/;"	s
+id	lib/Pogo/Dispatcher/RPCConnection.pm	/^sub id$/;"	s
+id	lib/Pogo/Dispatcher/WorkerConnection.pm	/^sub id$/;"	s
+id	lib/Pogo/Engine/Job.pm	/^sub id          { return $_[0]->{id} }$/;"	s
+id	lib/Pogo/Engine/Namespace/Slot.pm	/^sub id$/;"	s
+idle_worker	blib/lib/Pogo/Dispatcher.pm	/^sub idle_worker$/;"	s
+idle_worker	lib/Pogo/Dispatcher.pm	/^sub idle_worker$/;"	s
+import	CHI-0.45/lib/CHI/Test.pm	/^sub import {$/;"	s
+import	inc/Module/Install.pm	/^sub import {$/;"	s
+inc	inc/Module/Install/Makefile.pm	/^sub inc {$/;"	s
+info	blib/lib/Pogo/Engine/Job.pm	/^sub info$/;"	s
+info	blib/lib/Pogo/Engine/Job/Host.pm	/^sub info$/;"	s
+info	lib/Pogo/Engine/Job.pm	/^sub info$/;"	s
+info	lib/Pogo/Engine/Job/Host.pm	/^sub info$/;"	s
+init	blib/lib/Pogo/Dispatcher/AuthStore.pm	/^sub init$/;"	s
+init	blib/lib/Pogo/Engine.pm	/^sub init$/;"	s
+init	blib/lib/Pogo/Engine/Namespace.pm	/^sub init$/;"	s
+init	blib/lib/Pogo/Engine/Store.pm	/^sub init$/;"	s
+init	lib/Pogo/Dispatcher/AuthStore.pm	/^sub init$/;"	s
+init	lib/Pogo/Engine.pm	/^sub init$/;"	s
+init	lib/Pogo/Engine/Namespace.pm	/^sub init$/;"	s
+init	lib/Pogo/Engine/Store.pm	/^sub init$/;"	s
+init	t/lib/PogoMockStore.pm	/^sub init { $/;"	s
+init_slot	blib/lib/Pogo/Engine/Job.pm	/^sub init_slot$/;"	s
+init_slot	lib/Pogo/Engine/Job.pm	/^sub init_slot$/;"	s
+init_store	t/lib/PogoTester.pm	/^sub init_store$/;"	s
+install_as_core	inc/Module/Install/Metadata.pm	/^sub install_as_core    { $_[0]->installdirs('perl')   }$/;"	s
+install_as_cpan	inc/Module/Install/Metadata.pm	/^sub install_as_cpan    { $_[0]->installdirs('site')   }$/;"	s
+install_as_site	inc/Module/Install/Metadata.pm	/^sub install_as_site    { $_[0]->installdirs('site')   }$/;"	s
+install_as_vendor	inc/Module/Install/Metadata.pm	/^sub install_as_vendor  { $_[0]->installdirs('vendor') }$/;"	s
+install_requires	inc/Module/Install/Metadata.pm	/^sub install_requires   { shift->build_requires(@_) }$/;"	s
+install_script	inc/Module/Install/Metadata.pm	/^sub install_script {$/;"	s
+instance	blib/lib/Pogo/Dispatcher.pm	/^sub instance$/;"	s
+instance	blib/lib/Pogo/Dispatcher/AuthStore.pm	/^sub instance$/;"	s
+instance	blib/lib/Pogo/Engine.pm	/^sub instance$/;"	s
+instance	blib/lib/Pogo/Engine/Store.pm	/^sub instance$/;"	s
+instance	blib/lib/Pogo/Worker.pm	/^sub instance$/;"	s
+instance	lib/Pogo/Dispatcher.pm	/^sub instance$/;"	s
+instance	lib/Pogo/Dispatcher/AuthStore.pm	/^sub instance$/;"	s
+instance	lib/Pogo/Engine.pm	/^sub instance$/;"	s
+instance	lib/Pogo/Engine/Store.pm	/^sub instance$/;"	s
+instance	lib/Pogo/Worker.pm	/^sub instance$/;"	s
+instance	t/lib/PogoDummyWorker.pm	/^sub instance$/;"	s
+is_about	CHI-0.45/lib/CHI/t/Driver.pm	/^sub is_about {$/;"	s
+is_admin	inc/Module/Install/Base.pm	/^sub is_admin {$/;"	s
+is_bad	CHI-0.45/lib/CHI/t/Initialize.pm	/^sub is_bad {$/;"	s
+is_between	CHI-0.45/lib/CHI/Test/Util.pm	/^sub is_between {$/;"	s
+is_callback	blib/lib/Pogo/Engine/Response.pm	/^sub is_callback$/;"	s
+is_callback	lib/Pogo/Engine/Response.pm	/^sub is_callback$/;"	s
+is_empty	CHI-0.45/lib/CHI/Driver.pm	/^sub is_empty {$/;"	s
+is_error	blib/lib/Pogo/Engine/Response.pm	/^sub is_error$/;"	s
+is_error	lib/Pogo/Engine/Response.pm	/^sub is_error$/;"	s
+is_escaped_for_filename	CHI-0.45/lib/CHI/Driver.pm	/^sub is_escaped_for_filename {$/;"	s
+is_expired	CHI-0.45/lib/CHI/CacheObject.pm	/^sub is_expired {$/;"	s
+is_failed	blib/lib/Pogo/Engine/Job/Host.pm	/^sub is_failed   { return _is_failed( $_[0]->state ) }$/;"	s
+is_failed	lib/Pogo/Engine/Job/Host.pm	/^sub is_failed   { return _is_failed( $_[0]->state ) }$/;"	s
+is_finished	blib/lib/Pogo/Engine/Job/Host.pm	/^sub is_finished { return _is_finished( $_[0]->state ) }$/;"	s
+is_finished	lib/Pogo/Engine/Job/Host.pm	/^sub is_finished { return _is_finished( $_[0]->state ) }$/;"	s
+is_full	blib/lib/Pogo/Engine/Namespace/Slot.pm	/^sub is_full$/;"	s
+is_full	lib/Pogo/Engine/Namespace/Slot.pm	/^sub is_full$/;"	s
+is_good	CHI-0.45/lib/CHI/t/Initialize.pm	/^sub is_good {$/;"	s
+is_pushvar	blib/lib/Pogo/Engine/Response.pm	/^sub is_pushvar$/;"	s
+is_pushvar	lib/Pogo/Engine/Response.pm	/^sub is_pushvar$/;"	s
+is_runnable	blib/lib/Pogo/Engine/Job/Host.pm	/^sub is_runnable { return _is_runnable( $_[0]->state ) }$/;"	s
+is_runnable	lib/Pogo/Engine/Job/Host.pm	/^sub is_runnable { return _is_runnable( $_[0]->state ) }$/;"	s
+is_running	blib/lib/Pogo/Engine/Job.pm	/^sub is_running$/;"	s
+is_running	blib/lib/Pogo/Engine/Job/Host.pm	/^sub is_running  { return _is_running( $_[0]->state ) }$/;"	s
+is_running	lib/Pogo/Engine/Job.pm	/^sub is_running$/;"	s
+is_running	lib/Pogo/Engine/Job/Host.pm	/^sub is_running  { return _is_running( $_[0]->state ) }$/;"	s
+is_sequence_blocked	blib/lib/Pogo/Engine/Namespace.pm	/^sub is_sequence_blocked$/;"	s
+is_sequence_blocked	lib/Pogo/Engine/Namespace.pm	/^sub is_sequence_blocked$/;"	s
+is_slot_done	blib/lib/Pogo/Engine/Job.pm	/^sub is_slot_done$/;"	s
+is_slot_done	lib/Pogo/Engine/Job.pm	/^sub is_slot_done$/;"	s
+is_slot_successful	blib/lib/Pogo/Engine/Job.pm	/^sub is_slot_successful$/;"	s
+is_slot_successful	lib/Pogo/Engine/Job.pm	/^sub is_slot_successful$/;"	s
+is_success	blib/lib/Pogo/Engine/Response.pm	/^sub is_success$/;"	s
+is_success	lib/Pogo/Engine/Response.pm	/^sub is_success$/;"	s
+is_valid	CHI-0.45/lib/CHI/Driver.pm	/^sub is_valid {$/;"	s
+job	blib/lib/Pogo/Engine.pm	/^sub job$/;"	s
+job	blib/lib/Pogo/Engine/Job/Host.pm	/^sub job  { return $_[0]->{job}; }$/;"	s
+job	lib/Pogo/Engine.pm	/^sub job$/;"	s
+job	lib/Pogo/Engine/Job/Host.pm	/^sub job  { return $_[0]->{job}; }$/;"	s
+job_timeout	blib/lib/Pogo/Engine/Job.pm	/^sub job_timeout { return $_[0]->meta('job_timeout'); }$/;"	s
+job_timeout	lib/Pogo/Engine/Job.pm	/^sub job_timeout { return $_[0]->meta('job_timeout'); }$/;"	s
+jobalter	blib/lib/Pogo/Engine.pm	/^sub jobalter$/;"	s
+jobalter	lib/Pogo/Engine.pm	/^sub jobalter$/;"	s
+jobhalt	blib/lib/Pogo/Engine.pm	/^sub jobhalt$/;"	s
+jobhalt	lib/Pogo/Engine.pm	/^sub jobhalt$/;"	s
+jobhoststatus	blib/lib/Pogo/Engine.pm	/^sub jobhoststatus$/;"	s
+jobhoststatus	lib/Pogo/Engine.pm	/^sub jobhoststatus$/;"	s
+jobinfo	blib/lib/Pogo/API/V3.pm	/^sub jobinfo     { shift; return Pogo::Engine->jobinfo(@_); }$/;"	s
+jobinfo	blib/lib/Pogo/Engine.pm	/^sub jobinfo$/;"	s
+jobinfo	lib/Pogo/API/V3.pm	/^sub jobinfo     { shift; return Pogo::Engine->jobinfo(@_); }$/;"	s
+jobinfo	lib/Pogo/Engine.pm	/^sub jobinfo$/;"	s
+joblog	blib/lib/Pogo/API/V3.pm	/^sub joblog      { shift; return Pogo::Engine->joblog(@_); }$/;"	s
+joblog	blib/lib/Pogo/Engine.pm	/^sub joblog$/;"	s
+joblog	lib/Pogo/API/V3.pm	/^sub joblog      { shift; return Pogo::Engine->joblog(@_); }$/;"	s
+joblog	lib/Pogo/Engine.pm	/^sub joblog$/;"	s
+jobresume	blib/lib/Pogo/Engine.pm	/^sub jobresume$/;"	s
+jobresume	lib/Pogo/Engine.pm	/^sub jobresume$/;"	s
+jobretry	blib/lib/Pogo/Engine.pm	/^sub jobretry$/;"	s
+jobretry	lib/Pogo/Engine.pm	/^sub jobretry$/;"	s
+jobskip	blib/lib/Pogo/Engine.pm	/^sub jobskip$/;"	s
+jobskip	lib/Pogo/Engine.pm	/^sub jobskip$/;"	s
+jobsnapshot	blib/lib/Pogo/API/V3.pm	/^sub jobsnapshot { shift; return Pogo::Engine->jobsnapshot(@_); }$/;"	s
+jobsnapshot	blib/lib/Pogo/Engine.pm	/^sub jobsnapshot$/;"	s
+jobsnapshot	lib/Pogo/API/V3.pm	/^sub jobsnapshot { shift; return Pogo::Engine->jobsnapshot(@_); }$/;"	s
+jobsnapshot	lib/Pogo/Engine.pm	/^sub jobsnapshot$/;"	s
+jobstatus	blib/lib/Pogo/API/V3.pm	/^sub jobstatus   { shift; return Pogo::Engine->jobstatus(@_); }$/;"	s
+jobstatus	blib/lib/Pogo/Engine.pm	/^sub jobstatus$/;"	s
+jobstatus	lib/Pogo/API/V3.pm	/^sub jobstatus   { shift; return Pogo::Engine->jobstatus(@_); }$/;"	s
+jobstatus	lib/Pogo/Engine.pm	/^sub jobstatus$/;"	s
+key	CHI-0.45/lib/CHI/CacheObject.pm	/^sub key              { $_[0]->[f_key] }$/;"	s
+killit	t/pogoctl	/^sub killit$/;"	s
+kvpair	CHI-0.45/lib/CHI/t/Driver.pm	/^sub kvpair {$/;"	s
+lastjob	blib/lib/Pogo/Engine.pm	/^sub lastjob$/;"	s
+lastjob	lib/Pogo/Engine.pm	/^sub lastjob$/;"	s
+libs	inc/Module/Install/Makefile.pm	/^sub libs {$/;"	s
+license	inc/Module/Install/Metadata.pm	/^sub license {$/;"	s
+license_from	inc/Module/Install/Metadata.pm	/^sub license_from {$/;"	s
+listjobs	blib/lib/Pogo/API/V3.pm	/^sub listjobs    { shift; return Pogo::Engine->listjobs(@_); }$/;"	s
+listjobs	blib/lib/Pogo/Engine.pm	/^sub listjobs$/;"	s
+listjobs	lib/Pogo/API/V3.pm	/^sub listjobs    { shift; return Pogo::Engine->listjobs(@_); }$/;"	s
+listjobs	lib/Pogo/Engine.pm	/^sub listjobs$/;"	s
+listtaskq	blib/lib/Pogo/Engine.pm	/^sub listtaskq$/;"	s
+listtaskq	lib/Pogo/Engine.pm	/^sub listtaskq$/;"	s
+load	inc/Module/Install.pm	/^sub load {$/;"	s
+load_cookbook	blib/lib/Pogo/Client/Commandline.pm	/^sub load_cookbook$/;"	s
+load_cookbook	lib/Pogo/Client/Commandline.pm	/^sub load_cookbook$/;"	s
+load_data	blib/lib/Pogo/Engine/Response.pm	/^sub load_data$/;"	s
+load_data	lib/Pogo/Engine/Response.pm	/^sub load_data$/;"	s
+load_extensions	inc/Module/Install.pm	/^sub load_extensions {$/;"	s
+load_recipe	blib/lib/Pogo/Client/Commandline.pm	/^sub load_recipe$/;"	s
+load_recipe	lib/Pogo/Client/Commandline.pm	/^sub load_recipe$/;"	s
+load_secrets	blib/lib/Pogo/Client/Commandline.pm	/^sub load_secrets$/;"	s
+load_secrets	lib/Pogo/Client/Commandline.pm	/^sub load_secrets$/;"	s
+load_yaml	blib/lib/Pogo/Client/Commandline.pm	/^sub load_yaml$/;"	s
+load_yaml	lib/Pogo/Client/Commandline.pm	/^sub load_yaml$/;"	s
+loadconf	blib/lib/Pogo/Engine.pm	/^sub loadconf$/;"	s
+loadconf	lib/Pogo/Engine.pm	/^sub loadconf$/;"	s
+lock	blib/lib/Pogo/Engine/Job.pm	/^sub lock$/;"	s
+lock	blib/lib/Pogo/Engine/Store/ZooKeeper.pm	/^sub lock$/;"	s
+lock	lib/Pogo/Engine/Job.pm	/^sub lock$/;"	s
+lock	lib/Pogo/Engine/Store/ZooKeeper.pm	/^sub lock$/;"	s
+lock	t/lib/PogoMockStore.pm	/^sub lock {$/;"	s
+log	blib/lib/Pogo/Engine/Job.pm	/^sub log$/;"	s
+log	lib/Pogo/Engine/Job.pm	/^sub log$/;"	s
+log_namespace_stats	CHI-0.45/lib/CHI/Stats.pm	/^sub log_namespace_stats {$/;"	s
+logger	CHI-0.45/lib/CHI.pm	/^sub logger {$/;"	s
+main	bin/pogo-dispatcher	/^sub main$/;"	s
+main	bin/pogo-rexec	/^sub main$/;"	s
+main	bin/pogo-worker	/^sub main$/;"	s
+main	t/pogo-rexec-dummy	/^sub main$/;"	s
+main	t/pogoctl	/^sub main$/;"	s
+makemaker_append	inc/Module/Install/Makefile.pm	/^sub makemaker_append {$/;"	s
+makemaker_args	inc/Module/Install/Makefile.pm	/^sub makemaker_args {$/;"	s
+max_output	blib/lib/Pogo/Worker.pm	/^sub max_output$/;"	s
+max_output	lib/Pogo/Worker.pm	/^sub max_output$/;"	s
+merge_hash	blib/lib/Pogo/Client/Commandline.pm	/^sub merge_hash$/;"	s
+merge_hash	blib/lib/Pogo/Common.pm	/^sub merge_hash$/;"	s
+merge_hash	lib/Pogo/Client/Commandline.pm	/^sub merge_hash$/;"	s
+merge_hash	lib/Pogo/Common.pm	/^sub merge_hash$/;"	s
+meta	blib/lib/Pogo/Engine/Job.pm	/^sub meta$/;"	s
+meta	lib/Pogo/Engine/Job.pm	/^sub meta$/;"	s
+ms_time	CHI-0.45/etc/bench/bench.pl	/^sub ms_time {$/;"	s
+name	blib/lib/Pogo/Engine/Job/Host.pm	/^sub name { return $_[0]->{name}; }$/;"	s
+name	blib/lib/Pogo/Engine/Namespace.pm	/^sub name$/;"	s
+name	blib/lib/Pogo/Engine/Namespace/Slot.pm	/^sub name$/;"	s
+name	lib/Pogo/Engine/Job/Host.pm	/^sub name { return $_[0]->{name}; }$/;"	s
+name	lib/Pogo/Engine/Namespace.pm	/^sub name$/;"	s
+name	lib/Pogo/Engine/Namespace/Slot.pm	/^sub name$/;"	s
+name	t/lib/PogoTesterProc.pm	/^sub name { return shift->{name} }$/;"	s
+name_from	inc/Module/Install/Metadata.pm	/^sub name_from {$/;"	s
+namespace	blib/lib/Pogo/Engine.pm	/^sub namespace$/;"	s
+namespace	blib/lib/Pogo/Engine/Job.pm	/^sub namespace   { return $_[0]->{ns} }$/;"	s
+namespace	lib/Pogo/Engine.pm	/^sub namespace$/;"	s
+namespace	lib/Pogo/Engine/Job.pm	/^sub namespace   { return $_[0]->{ns} }$/;"	s
+new	CHI-0.45/lib/CHI.pm	/^sub new {$/;"	s
+new	CHI-0.45/lib/CHI/CacheObject.pm	/^sub new {$/;"	s
+new	blib/lib/Pogo/Client.pm	/^sub new$/;"	s
+new	blib/lib/Pogo/Engine/Job.pm	/^sub new$/;"	s
+new	blib/lib/Pogo/Engine/Job/Host.pm	/^sub new$/;"	s
+new	blib/lib/Pogo/Engine/Namespace.pm	/^sub new$/;"	s
+new	blib/lib/Pogo/Engine/Namespace/Slot.pm	/^sub new$/;"	s
+new	blib/lib/Pogo/Engine/Response.pm	/^sub new$/;"	s
+new	blib/lib/Pogo/Engine/Store/ZooKeeper.pm	/^sub new$/;"	s
+new	blib/lib/Pogo/Plugin/Inline.pm	/^sub new$/;"	s
+new	blib/lib/Pogo/UI.pm	/^sub new$/;"	s
+new	blib/lib/Pogo/Worker/Connection.pm	/^sub new$/;"	s
+new	inc/Module/Install.pm	/^sub new {$/;"	s
+new	inc/Module/Install/Base.pm	/^sub new { $Fake ||= bless(\\@_, $_[0]) }$/;"	s
+new	inc/Module/Install/Base.pm	/^sub new {$/;"	s
+new	lib/Pogo/Client.pm	/^sub new$/;"	s
+new	lib/Pogo/Engine/Job.pm	/^sub new$/;"	s
+new	lib/Pogo/Engine/Job/Host.pm	/^sub new$/;"	s
+new	lib/Pogo/Engine/Namespace.pm	/^sub new$/;"	s
+new	lib/Pogo/Engine/Namespace/Slot.pm	/^sub new$/;"	s
+new	lib/Pogo/Engine/Response.pm	/^sub new$/;"	s
+new	lib/Pogo/Engine/Store/ZooKeeper.pm	/^sub new$/;"	s
+new	lib/Pogo/Plugin/Inline.pm	/^sub new$/;"	s
+new	lib/Pogo/UI.pm	/^sub new$/;"	s
+new	lib/Pogo/Worker/Connection.pm	/^sub new$/;"	s
+new	t/lib/PogoMockStore.pm	/^sub new {$/;"	s
+new	t/lib/PogoTesterProc.pm	/^sub new$/;"	s
+new_cache	CHI-0.45/lib/CHI/t/Driver.pm	/^sub new_cache {$/;"	s
+new_cache	CHI-0.45/lib/CHI/t/Driver/Memory.pm	/^sub new_cache {$/;"	s
+new_cache	CHI-0.45/lib/CHI/t/Driver/RawMemory.pm	/^sub new_cache {$/;"	s
+new_cache_options	CHI-0.45/lib/CHI/t/Driver.pm	/^sub new_cache_options {$/;"	s
+new_cache_options	CHI-0.45/lib/CHI/t/Driver/CacheCache.pm	/^sub new_cache_options {$/;"	s
+new_cache_options	CHI-0.45/lib/CHI/t/Driver/FastMmap.pm	/^sub new_cache_options {$/;"	s
+new_cache_options	CHI-0.45/lib/CHI/t/Driver/File.pm	/^sub new_cache_options {$/;"	s
+new_cache_options	CHI-0.45/lib/CHI/t/Driver/File/DepthZero.pm	/^sub new_cache_options {$/;"	s
+new_cache_options	CHI-0.45/lib/CHI/t/Driver/Memory.pm	/^sub new_cache_options {$/;"	s
+new_cache_options	CHI-0.45/lib/CHI/t/Driver/Subcache/l1_cache.pm	/^sub new_cache_options {$/;"	s
+new_cache_options	CHI-0.45/lib/CHI/t/Driver/Subcache/mirror_cache.pm	/^sub new_cache_options {$/;"	s
+new_cleared_cache	CHI-0.45/lib/CHI/t/Driver.pm	/^sub new_cleared_cache {$/;"	s
+nlocked	blib/lib/Pogo/Engine/Namespace/Slot.pm	/^sub nlocked$/;"	s
+nlocked	lib/Pogo/Engine/Namespace/Slot.pm	/^sub nlocked$/;"	s
+no_index	inc/Module/Install/Metadata.pm	/^sub no_index {$/;"	s
+non_common_constructor_params	CHI-0.45/lib/CHI/Driver.pm	/^sub non_common_constructor_params {$/;"	s
+not	inc/Module/Install.pm	/^not:$/;"	l
+nuketree	misc/nukezk	/^sub nuketree$/;"	s
+num_workers	blib/lib/Pogo/Worker.pm	/^sub num_workers$/;"	s
+num_workers	lib/Pogo/Worker.pm	/^sub num_workers$/;"	s
+numhash_to_array_r	blib/lib/Pogo/Engine/Namespace.pm	/^sub numhash_to_array_r {$/;"	s
+numhash_to_array_r	lib/Pogo/Engine/Namespace.pm	/^sub numhash_to_array_r {$/;"	s
+output_dir	blib/lib/Pogo/Worker.pm	/^sub output_dir$/;"	s
+output_dir	lib/Pogo/Worker.pm	/^sub output_dir$/;"	s
+output_uri	blib/lib/Pogo/Worker.pm	/^sub output_uri$/;"	s
+output_uri	lib/Pogo/Worker.pm	/^sub output_uri$/;"	s
+outputurls	blib/lib/Pogo/Engine/Job/Host.pm	/^sub outputurls$/;"	s
+outputurls	lib/Pogo/Engine/Job/Host.pm	/^sub outputurls$/;"	s
+pack_to_data	CHI-0.45/lib/CHI/CacheObject.pm	/^sub pack_to_data {$/;"	s
+packages_to_import	CHI-0.45/lib/CHI/Test.pm	/^sub packages_to_import {$/;"	s
+parseUri	resources/parseuri.js	/^function parseUri (str) {$/;"	f
+parse_deployment	blib/lib/Pogo/Engine/Namespace.pm	/^sub parse_deployment$/;"	s
+parse_deployment	lib/Pogo/Engine/Namespace.pm	/^sub parse_deployment$/;"	s
+parse_log	blib/lib/Pogo/Engine/Job.pm	/^sub parse_log$/;"	s
+parse_log	lib/Pogo/Engine/Job.pm	/^sub parse_log$/;"	s
+parse_memory_size	CHI-0.45/lib/CHI/Util.pm	/^sub parse_memory_size {$/;"	s
+parse_stats_logs	CHI-0.45/lib/CHI/Stats.pm	/^sub parse_stats_logs {$/;"	s
+password	blib/lib/Pogo/Engine/Job.pm	/^sub password    { return $_[0]->_get_secrets()->[0]; }$/;"	s
+password	lib/Pogo/Engine/Job.pm	/^sub password    { return $_[0]->_get_secrets()->[0]; }$/;"	s
+path	blib/lib/Pogo/Engine/Job/Host.pm	/^sub path { return $_[0]->{path}; }$/;"	s
+path	blib/lib/Pogo/Engine/Namespace.pm	/^sub path$/;"	s
+path	lib/Pogo/Engine/Job/Host.pm	/^sub path { return $_[0]->{path}; }$/;"	s
+path	lib/Pogo/Engine/Namespace.pm	/^sub path$/;"	s
+path	t/lib/PogoMockStore.pm	/^sub path {$/;"	s
+path_to_key	CHI-0.45/lib/CHI/Driver/File.pm	/^sub path_to_key {$/;"	s
+perl_version	inc/Module/Install/Metadata.pm	/^sub perl_version {$/;"	s
+perl_version_from	inc/Module/Install/Metadata.pm	/^sub perl_version_from {$/;"	s
+ping	blib/lib/Pogo/API/V3.pm	/^sub ping        { shift; return Pogo::Engine->ping(@_); }$/;"	s
+ping	blib/lib/Pogo/Engine.pm	/^sub ping$/;"	s
+ping	blib/lib/Pogo/Engine/Store/ZooKeeper.pm	/^sub ping$/;"	s
+ping	lib/Pogo/API/V3.pm	/^sub ping        { shift; return Pogo::Engine->ping(@_); }$/;"	s
+ping	lib/Pogo/Engine.pm	/^sub ping$/;"	s
+ping	lib/Pogo/Engine/Store/ZooKeeper.pm	/^sub ping$/;"	s
+pogo_client	blib/lib/Pogo/UI.pm	/^sub pogo_client$/;"	s
+pogo_client	lib/Pogo/UI.pm	/^sub pogo_client$/;"	s
+poll	blib/lib/Pogo/Dispatcher.pm	/^sub poll$/;"	s
+poll	lib/Pogo/Dispatcher.pm	/^sub poll$/;"	s
+port	blib/lib/Pogo/Worker/Connection.pm	/^sub port { return shift->{port}; }$/;"	s
+port	lib/Pogo/Worker/Connection.pm	/^sub port { return shift->{port}; }$/;"	s
+postamble	inc/Module/Install/Makefile.pm	/^sub postamble {$/;"	s
+preamble	inc/Module/Install/Makefile.pm	/^sub preamble {$/;"	s
+preload	inc/Module/Install.pm	/^sub preload {$/;"	s
+process_key	CHI-0.45/lib/CHI/t/Driver.pm	/^sub process_key {$/;"	s
+process_keys	CHI-0.45/lib/CHI/t/Driver.pm	/^sub process_keys {$/;"	s
+process_options	blib/lib/Pogo/Client/Commandline.pm	/^sub process_options$/;"	s
+process_options	lib/Pogo/Client/Commandline.pm	/^sub process_options$/;"	s
+process_template	blib/lib/Pogo/UI.pm	/^sub process_template$/;"	s
+process_template	lib/Pogo/UI.pm	/^sub process_template$/;"	s
+prompt	inc/Module/Install/Makefile.pm	/^sub prompt {$/;"	s
+provides	inc/Module/Install/Metadata.pm	/^sub provides {$/;"	s
+purge	CHI-0.45/lib/CHI/Driver.pm	/^sub purge {$/;"	s
+purge_queue	blib/lib/Pogo/Dispatcher.pm	/^sub purge_queue$/;"	s
+purge_queue	lib/Pogo/Dispatcher.pm	/^sub purge_queue$/;"	s
+pushvar	blib/lib/Pogo/Engine/Response.pm	/^sub pushvar$/;"	s
+pushvar	lib/Pogo/Engine/Response.pm	/^sub pushvar$/;"	s
+queue_task	blib/lib/Pogo/Dispatcher/WorkerConnection.pm	/^sub queue_task$/;"	s
+queue_task	lib/Pogo/Dispatcher/WorkerConnection.pm	/^sub queue_task$/;"	s
+quote_array	blib/lib/Pogo/Client/Commandline.pm	/^sub quote_array$/;"	s
+quote_array	lib/Pogo/Client/Commandline.pm	/^sub quote_array$/;"	s
+random_string	CHI-0.45/lib/CHI/Test/Util.pm	/^sub random_string {$/;"	s
+read	inc/Module/Install/Metadata.pm	/^sub read {$/;"	s
+read_dir	CHI-0.45/lib/CHI/Util.pm	/^sub read_dir {$/;"	s
+read_file	CHI-0.45/lib/CHI/Util.pm	/^sub read_file {$/;"	s
+read_log	blib/lib/Pogo/Engine/Job.pm	/^sub read_log$/;"	s
+read_log	lib/Pogo/Engine/Job.pm	/^sub read_log$/;"	s
+read_pidfile	t/pogoctl	/^sub read_pidfile$/;"	s
+readonly_cache	CHI-0.45/lib/CHI/t/SetError.pm	/^sub readonly_cache {$/;"	s
+realclean_files	inc/Module/Install/Makefile.pm	/^sub realclean_files {$/;"	s
+recommends	inc/Module/Install/Metadata.pm	/^sub recommends {$/;"	s
+reconnect	blib/lib/Pogo/Worker/Connection.pm	/^sub reconnect$/;"	s
+reconnect	lib/Pogo/Worker/Connection.pm	/^sub reconnect$/;"	s
+record	blib/lib/Pogo/Engine/Response.pm	/^sub record$/;"	s
+record	lib/Pogo/Engine/Response.pm	/^sub record$/;"	s
+records	blib/lib/Pogo/Engine/Response.pm	/^sub records$/;"	s
+records	lib/Pogo/Engine/Response.pm	/^sub records$/;"	s
+release_host	blib/lib/Pogo/Engine/Job.pm	/^sub release_host$/;"	s
+release_host	lib/Pogo/Engine/Job.pm	/^sub release_host$/;"	s
+remote_env	bin/pogo-rexec	/^sub remote_env$/;"	s
+remote_host	blib/lib/Pogo/Dispatcher/RPCConnection.pm	/^sub remote_host$/;"	s
+remote_host	lib/Pogo/Dispatcher/RPCConnection.pm	/^sub remote_host$/;"	s
+remove	CHI-0.45/lib/CHI/Driver/Base/CacheContainer.pm	/^sub remove {$/;"	s
+remove	CHI-0.45/lib/CHI/Driver/File.pm	/^sub remove {$/;"	s
+remove	CHI-0.45/lib/CHI/Driver/Memory.pm	/^sub remove {$/;"	s
+remove	CHI-0.45/lib/CHI/Driver/Metacache.pm	/^sub remove {$/;"	s
+remove	CHI-0.45/lib/CHI/Driver/Null.pm	/^sub remove         { undef }$/;"	s
+remove_multi	CHI-0.45/lib/CHI/Driver.pm	/^sub remove_multi {$/;"	s
+repl	misc/adm/authors-patch	/^sub repl {$/;"	s
+required_modules	CHI-0.45/lib/CHI/Test/Class.pm	/^sub required_modules {$/;"	s
+required_modules	CHI-0.45/lib/CHI/t/Driver/CacheCache.pm	/^sub required_modules {$/;"	s
+required_modules	CHI-0.45/lib/CHI/t/Driver/FastMmap.pm	/^sub required_modules {$/;"	s
+required_modules	CHI-0.45/lib/CHI/t/RequiredModules.pm	/^sub required_modules { return { 'Data::Dumper' => undef, 'blarg' => undef } }$/;"	s
+requires	inc/Module/Install/Metadata.pm	/^sub requires {$/;"	s
+requires_external_bin	inc/Module/Install/External.pm	/^sub requires_external_bin {$/;"	s
+requires_external_cc	inc/Module/Install/External.pm	/^sub requires_external_cc {$/;"	s
+reserve	blib/lib/Pogo/Engine/Namespace/Slot.pm	/^sub reserve$/;"	s
+reserve	lib/Pogo/Engine/Namespace/Slot.pm	/^sub reserve$/;"	s
+reset	blib/lib/Pogo/Worker/Connection.pm	/^sub reset$/;"	s
+reset	lib/Pogo/Worker/Connection.pm	/^sub reset$/;"	s
+resolve	blib/lib/Pogo/Engine/Namespace.pm	/^sub resolve$/;"	s
+resolve	lib/Pogo/Engine/Namespace.pm	/^sub resolve$/;"	s
+resources	inc/Module/Install/Metadata.pm	/^sub resources {$/;"	s
+restart	t/pogoctl	/^sub restart$/;"	s
+resume	blib/lib/Pogo/Engine/Job.pm	/^sub resume$/;"	s
+resume	lib/Pogo/Engine/Job.pm	/^sub resume$/;"	s
+retire_worker	blib/lib/Pogo/Dispatcher.pm	/^sub retire_worker$/;"	s
+retire_worker	lib/Pogo/Dispatcher.pm	/^sub retire_worker$/;"	s
+retry	blib/lib/Pogo/Engine/Job.pm	/^sub retry       { return $_[0]->meta('retry'); }$/;"	s
+retry	lib/Pogo/Engine/Job.pm	/^sub retry       { return $_[0]->meta('retry'); }$/;"	s
+retry_task	blib/lib/Pogo/Engine/Job.pm	/^sub retry_task$/;"	s
+retry_task	lib/Pogo/Engine/Job.pm	/^sub retry_task$/;"	s
+rpc	blib/lib/Pogo/API/V3.pm	/^sub rpc$/;"	s
+rpc	lib/Pogo/API/V3.pm	/^sub rpc$/;"	s
+run	blib/lib/Pogo/API/V3.pm	/^sub run { _rpc_run(@_) }$/;"	s
+run	blib/lib/Pogo/Dispatcher.pm	/^sub run    #{{$/;"	s
+run	blib/lib/Pogo/Engine.pm	/^sub run$/;"	s
+run	blib/lib/Pogo/HTTP/Server.pm	/^sub run$/;"	s
+run	blib/lib/Pogo/Worker.pm	/^sub run$/;"	s
+run	blib/lib/Pogo/Worker/Connection.pm	/^sub run$/;"	s
+run	lib/Pogo/API/V3.pm	/^sub run { _rpc_run(@_) }$/;"	s
+run	lib/Pogo/Dispatcher.pm	/^sub run    #{{$/;"	s
+run	lib/Pogo/Engine.pm	/^sub run$/;"	s
+run	lib/Pogo/HTTP/Server.pm	/^sub run$/;"	s
+run	lib/Pogo/Worker.pm	/^sub run$/;"	s
+run	lib/Pogo/Worker/Connection.pm	/^sub run$/;"	s
+run_as	blib/lib/Pogo/Engine/Job.pm	/^sub run_as      { return $_[0]->meta('run_as'); }$/;"	s
+run_as	lib/Pogo/Engine/Job.pm	/^sub run_as      { return $_[0]->meta('run_as'); }$/;"	s
+run_command	blib/lib/Pogo/Worker/Connection.pm	/^sub run_command$/;"	s
+run_command	lib/Pogo/Worker/Connection.pm	/^sub run_command$/;"	s
+run_from_commandline	blib/lib/Pogo/Client/Commandline.pm	/^sub run_from_commandline$/;"	s
+run_from_commandline	lib/Pogo/Client/Commandline.pm	/^sub run_from_commandline$/;"	s
+runnable_hostinfo	blib/lib/Pogo/Engine/Job.pm	/^sub runnable_hostinfo$/;"	s
+runnable_hostinfo	lib/Pogo/Engine/Job.pm	/^sub runnable_hostinfo$/;"	s
+runnable_hosts	blib/lib/Pogo/Engine/Job.pm	/^sub runnable_hosts$/;"	s
+runnable_hosts	lib/Pogo/Engine/Job.pm	/^sub runnable_hosts$/;"	s
+running_hosts	blib/lib/Pogo/Engine/Job.pm	/^sub running_hosts$/;"	s
+running_hosts	lib/Pogo/Engine/Job.pm	/^sub running_hosts$/;"	s
+runtests	CHI-0.45/lib/CHI/Test/Class.pm	/^sub runtests {$/;"	s
+scp_options	blib/lib/Pogo/Worker.pm	/^sub scp_options$/;"	s
+scp_options	lib/Pogo/Worker.pm	/^sub scp_options$/;"	s
+secrets	blib/lib/Pogo/Engine/Job.pm	/^sub secrets     { return $_[0]->_get_secrets()->[1]; }$/;"	s
+secrets	lib/Pogo/Engine/Job.pm	/^sub secrets     { return $_[0]->_get_secrets()->[1]; }$/;"	s
+send_response	blib/lib/Pogo/Worker.pm	/^sub send_response$/;"	s
+send_response	blib/lib/Pogo/Worker/Connection.pm	/^sub send_response$/;"	s
+send_response	lib/Pogo/Worker.pm	/^sub send_response$/;"	s
+send_response	lib/Pogo/Worker/Connection.pm	/^sub send_response$/;"	s
+serialize	CHI-0.45/lib/CHI/Serializer/JSON.pm	/^sub serialize {$/;"	s
+serialize	CHI-0.45/lib/CHI/Serializer/Storable.pm	/^sub serialize {$/;"	s
+serialize	CHI-0.45/lib/CHI/t/Driver.pm	/^    sub serialize   { }$/;"	s
+serializer	CHI-0.45/lib/CHI/CacheObject.pm	/^sub serializer       { $_[0]->[f_serializer] }$/;"	s
+serializer	CHI-0.45/lib/CHI/Serializer/Storable.pm	/^sub serializer {$/;"	s
+set	CHI-0.45/lib/CHI/Driver.pm	/^sub set {$/;"	s
+set	CHI-0.45/lib/CHI/Driver/Metacache.pm	/^sub set {$/;"	s
+set	blib/lib/Pogo/Engine/Store/ZooKeeper.pm	/^sub set          { return shift->{handle}->set(@_); }$/;"	s
+set	lib/Pogo/Engine/Store/ZooKeeper.pm	/^sub set          { return shift->{handle}->set(@_); }$/;"	s
+set	t/lib/PogoMockStore.pm	/^sub set {$/;"	s
+set_callback	blib/lib/Pogo/Engine/Response.pm	/^sub set_callback$/;"	s
+set_callback	lib/Pogo/Engine/Response.pm	/^sub set_callback$/;"	s
+set_conf	blib/lib/Pogo/Engine/Namespace.pm	/^sub set_conf$/;"	s
+set_conf	lib/Pogo/Engine/Namespace.pm	/^sub set_conf$/;"	s
+set_early_expires_at	CHI-0.45/lib/CHI/CacheObject.pm	/^sub set_early_expires_at {$/;"	s
+set_error	blib/lib/Pogo/Engine/Response.pm	/^sub set_error$/;"	s
+set_error	lib/Pogo/Engine/Response.pm	/^sub set_error$/;"	s
+set_expires_at	CHI-0.45/lib/CHI/CacheObject.pm	/^sub set_expires_at {$/;"	s
+set_format	blib/lib/Pogo/Engine/Response.pm	/^sub set_format$/;"	s
+set_format	lib/Pogo/Engine/Response.pm	/^sub set_format$/;"	s
+set_header	blib/lib/Pogo/Engine/Response.pm	/^sub set_header$/;"	s
+set_header	lib/Pogo/Engine/Response.pm	/^sub set_header$/;"	s
+set_host_state	blib/lib/Pogo/Engine/Job.pm	/^sub set_host_state$/;"	s
+set_host_state	lib/Pogo/Engine/Job.pm	/^sub set_host_state$/;"	s
+set_hostinfo	blib/lib/Pogo/Engine/Job/Host.pm	/^sub set_hostinfo$/;"	s
+set_hostinfo	lib/Pogo/Engine/Job/Host.pm	/^sub set_hostinfo$/;"	s
+set_meta	blib/lib/Pogo/Engine/Job.pm	/^sub set_meta$/;"	s
+set_meta	lib/Pogo/Engine/Job.pm	/^sub set_meta$/;"	s
+set_multi	CHI-0.45/lib/CHI/Driver.pm	/^sub set_multi {$/;"	s
+set_object	CHI-0.45/lib/CHI/Driver.pm	/^sub set_object {$/;"	s
+set_ok	blib/lib/Pogo/Engine/Response.pm	/^sub set_ok$/;"	s
+set_ok	lib/Pogo/Engine/Response.pm	/^sub set_ok$/;"	s
+set_pushvar	blib/lib/Pogo/Engine/Response.pm	/^sub set_pushvar$/;"	s
+set_pushvar	lib/Pogo/Engine/Response.pm	/^sub set_pushvar$/;"	s
+set_records	blib/lib/Pogo/Engine/Response.pm	/^sub set_records$/;"	s
+set_records	lib/Pogo/Engine/Response.pm	/^sub set_records$/;"	s
+set_some_keys	CHI-0.45/lib/CHI/t/Driver.pm	/^sub set_some_keys {$/;"	s
+set_standard_keys_and_values	CHI-0.45/lib/CHI/t/Driver.pm	/^sub set_standard_keys_and_values {$/;"	s
+set_standard_keys_and_values	CHI-0.45/lib/CHI/t/Driver/CacheCache.pm	/^sub set_standard_keys_and_values {$/;"	s
+set_standard_keys_and_values	CHI-0.45/lib/CHI/t/Driver/Subcache.pm	/^sub set_standard_keys_and_values {$/;"	s
+set_standard_keys_and_values	CHI-0.45/t/set_permcache.pl	/^sub set_standard_keys_and_values {$/;"	s
+set_state	blib/lib/Pogo/Engine/Job.pm	/^sub set_state$/;"	s
+set_state	blib/lib/Pogo/Engine/Job/Host.pm	/^sub set_state$/;"	s
+set_state	lib/Pogo/Engine/Job.pm	/^sub set_state$/;"	s
+set_state	lib/Pogo/Engine/Job/Host.pm	/^sub set_state$/;"	s
+set_with_options	CHI-0.45/lib/CHI/Driver.pm	/^sub set_with_options {$/;"	s
+setup	CHI-0.45/lib/CHI/t/Driver.pm	/^sub setup : Test(setup) {$/;"	s
+sign	inc/Module/Install/Metadata.pm	/^sub sign {$/;"	s
+size	CHI-0.45/lib/CHI/CacheObject.pm	/^sub size             { $_[0]->[f_size] }$/;"	s
+skip_until	CHI-0.45/lib/CHI/Test/Util.pm	/^sub skip_until {$/;"	s
+slot	blib/lib/Pogo/Engine/Namespace.pm	/^sub slot$/;"	s
+slot	lib/Pogo/Engine/Namespace.pm	/^sub slot$/;"	s
+snapshot	blib/lib/Pogo/Engine/Job.pm	/^sub snapshot$/;"	s
+snapshot	lib/Pogo/Engine/Job.pm	/^sub snapshot$/;"	s
+sprintf	resources/sprintf.js	/^function sprintf()$/;"	f
+ssh_options	blib/lib/Pogo/Worker.pm	/^sub ssh_options$/;"	s
+ssh_options	lib/Pogo/Worker.pm	/^sub ssh_options$/;"	s
+standard_keys_and_values	CHI-0.45/lib/CHI/t/Driver.pm	/^sub standard_keys_and_values : Test(startup) {$/;"	s
+start	blib/lib/Pogo/Engine/Job.pm	/^sub start$/;"	s
+start	blib/lib/Pogo/UI.pm	/^sub start$/;"	s
+start	lib/Pogo/Engine/Job.pm	/^sub start$/;"	s
+start	lib/Pogo/UI.pm	/^sub start$/;"	s
+start	t/lib/PogoTesterProc.pm	/^sub start$/;"	s
+start	t/pogoctl	/^sub start$/;"	s
+start_client	blib/lib/Pogo/Dispatcher/AuthStore.pm	/^sub start_client$/;"	s
+start_client	lib/Pogo/Dispatcher/AuthStore.pm	/^sub start_client$/;"	s
+start_dispatcher	t/lib/PogoTester.pm	/^sub start_dispatcher$/;"	s
+start_job_timeout	blib/lib/Pogo/Engine/Job.pm	/^sub start_job_timeout$/;"	s
+start_job_timeout	lib/Pogo/Engine/Job.pm	/^sub start_job_timeout$/;"	s
+start_server	blib/lib/Pogo/Dispatcher/AuthStore.pm	/^sub start_server$/;"	s
+start_server	lib/Pogo/Dispatcher/AuthStore.pm	/^sub start_server$/;"	s
+start_task	blib/lib/Pogo/Engine/Job.pm	/^sub start_task$/;"	s
+start_task	lib/Pogo/Engine/Job.pm	/^sub start_task$/;"	s
+start_time	blib/lib/Pogo/Engine/Job.pm	/^sub start_time$/;"	s
+start_time	lib/Pogo/Engine/Job.pm	/^sub start_time$/;"	s
+start_worker	t/lib/PogoTester.pm	/^sub start_worker$/;"	s
+start_zookeeper	t/lib/PogoTester.pm	/^sub start_zookeeper$/;"	s
+stat	blib/lib/Pogo/Engine/Store/ZooKeeper.pm	/^sub stat         { return shift->{handle}->stat(@_); }$/;"	s
+stat	lib/Pogo/Engine/Store/ZooKeeper.pm	/^sub stat         { return shift->{handle}->stat(@_); }$/;"	s
+state	blib/lib/Pogo/Engine/Job.pm	/^sub state       { return $_[0]->{store}->get( $_[0]->{path} ); }$/;"	s
+state	blib/lib/Pogo/Engine/Job/Host.pm	/^sub state$/;"	s
+state	lib/Pogo/Engine/Job.pm	/^sub state       { return store->get( $_[0]->{path} ); }$/;"	s
+state	lib/Pogo/Engine/Job/Host.pm	/^sub state$/;"	s
+stats	CHI-0.45/lib/CHI.pm	/^sub stats {$/;"	s
+stats	blib/lib/Pogo/API/V3.pm	/^sub stats       { shift; return Pogo::Engine->stats(@_); }$/;"	s
+stats	blib/lib/Pogo/Engine.pm	/^sub stats$/;"	s
+stats	lib/Pogo/API/V3.pm	/^sub stats       { shift; return Pogo::Engine->stats(@_); }$/;"	s
+stats	lib/Pogo/Engine.pm	/^sub stats$/;"	s
+stats_for_driver	CHI-0.45/lib/CHI/Stats.pm	/^sub stats_for_driver {$/;"	s
+status_msg	blib/lib/Pogo/Engine/Response.pm	/^sub status_msg$/;"	s
+status_msg	lib/Pogo/Engine/Response.pm	/^sub status_msg$/;"	s
+stderr_log_path	t/lib/PogoTesterProc.pm	/^sub stderr_log_path$/;"	s
+stdout_log_path	t/lib/PogoTesterProc.pm	/^sub stdout_log_path$/;"	s
+stop	t/pogoctl	/^sub stop$/;"	s
+stop_dispatcher	t/lib/PogoTester.pm	/^sub stop_dispatcher$/;"	s
+stop_worker	t/lib/PogoTester.pm	/^sub stop_worker$/;"	s
+stop_zookeeper	t/lib/PogoTester.pm	/^sub stop_zookeeper$/;"	s
+store	CHI-0.45/lib/CHI/Driver/Base/CacheContainer.pm	/^sub store {$/;"	s
+store	CHI-0.45/lib/CHI/Driver/FastMmap.pm	/^sub store {$/;"	s
+store	CHI-0.45/lib/CHI/Driver/File.pm	/^sub store {$/;"	s
+store	CHI-0.45/lib/CHI/Driver/Memory.pm	/^sub store {$/;"	s
+store	CHI-0.45/lib/CHI/Driver/Null.pm	/^sub store          { undef }$/;"	s
+store	CHI-0.45/lib/CHI/Test/Driver/Readonly.pm	/^sub store {$/;"	s
+store	blib/lib/Pogo/Dispatcher/AuthStore.pm	/^sub store$/;"	s
+store	blib/lib/Pogo/Engine/Store.pm	/^sub store$/;"	s
+store	lib/Pogo/Dispatcher/AuthStore.pm	/^sub store$/;"	s
+store	lib/Pogo/Engine/Store.pm	/^sub store$/;"	s
+store	t/lib/PogoMockStore.pm	/^sub store { $/;"	s
+supports_clear	CHI-0.45/lib/CHI/t/Driver.pm	/^sub supports_clear              { 1 }$/;"	s
+supports_expires_on_backend	CHI-0.45/lib/CHI/t/Driver.pm	/^sub supports_expires_on_backend { 0 }$/;"	s
+supports_expires_on_backend	CHI-0.45/lib/CHI/t/Driver/CacheCache.pm	/^sub supports_expires_on_backend { 1 }$/;"	s
+supports_get_namespaces	CHI-0.45/lib/CHI/t/Driver.pm	/^sub supports_get_namespaces     { 1 }$/;"	s
+target_plugin	blib/lib/Pogo/Engine/Namespace.pm	/^sub target_plugin$/;"	s
+target_plugin	lib/Pogo/Engine/Namespace.pm	/^sub target_plugin$/;"	s
+test_48998	CHI-0.45/lib/CHI/t/Bugs.pm	/^sub test_48998 : Tests {$/;"	s
+test_bad_subcache_option	CHI-0.45/lib/CHI/t/Subcache.pm	/^sub test_bad_subcache_option : Tests {$/;"	s
+test_basic	CHI-0.45/lib/CHI/t/Null.pm	/^sub test_basic : Tests {$/;"	s
+test_blarg	CHI-0.45/lib/CHI/t/RequiredModules.pm	/^sub test_blarg : Tests {$/;"	s
+test_busy_lock	CHI-0.45/lib/CHI/t/Driver.pm	/^sub test_busy_lock : Tests {$/;"	s
+test_cache_object	CHI-0.45/lib/CHI/t/Driver.pm	/^sub test_cache_object : Tests {$/;"	s
+test_cache_ref	CHI-0.45/lib/CHI/t/Driver/RawMemory.pm	/^sub test_cache_ref : Tests {$/;"	s
+test_clear	CHI-0.45/lib/CHI/t/Driver.pm	/^sub test_clear : Tests {$/;"	s
+test_clear_datastore	CHI-0.45/lib/CHI/t/Driver/Memory.pm	/^sub test_clear_datastore : Tests {$/;"	s
+test_compress_threshold	CHI-0.45/lib/CHI/t/Driver.pm	/^sub test_compress_threshold : Tests {$/;"	s
+test_compress_threshold	CHI-0.45/lib/CHI/t/Driver/RawMemory.pm	/^sub test_compress_threshold            { }$/;"	s
+test_compute	CHI-0.45/lib/CHI/t/Driver.pm	/^sub test_compute : Tests {$/;"	s
+test_creation_and_deletion	CHI-0.45/lib/CHI/t/Driver/File.pm	/^sub test_creation_and_deletion : Tests {$/;"	s
+test_custom_discard_policy	CHI-0.45/lib/CHI/t/Driver.pm	/^sub test_custom_discard_policy : Tests {$/;"	s
+test_custom_discard_policy	CHI-0.45/lib/CHI/t/Driver/RawMemory.pm	/^sub test_custom_discard_policy         { }$/;"	s
+test_deep_copy	CHI-0.45/lib/CHI/t/Driver.pm	/^sub test_deep_copy : Tests {$/;"	s
+test_deep_copy	CHI-0.45/lib/CHI/t/Driver/RawMemory.pm	/^sub test_deep_copy            { }$/;"	s
+test_default_depth	CHI-0.45/lib/CHI/t/Driver/File.pm	/^sub test_default_depth : Tests {$/;"	s
+test_default_depth	CHI-0.45/lib/CHI/t/Driver/File/DepthZero.pm	/^sub test_default_depth : Tests {$/;"	s
+test_default_discard	CHI-0.45/lib/CHI/t/Driver/File.pm	/^sub test_default_discard : Tests {$/;"	s
+test_different_datastores	CHI-0.45/lib/CHI/t/Driver/Memory.pm	/^sub test_different_datastores : Tests {$/;"	s
+test_discard_timeout	CHI-0.45/lib/CHI/t/Driver.pm	/^sub test_discard_timeout : Tests {$/;"	s
+test_driver_class	CHI-0.45/lib/CHI/t/Driver.pm	/^sub test_driver_class : Tests {$/;"	s
+test_driver_options	CHI-0.45/lib/CHI/t/Initialize.pm	/^sub test_driver_options : Tests {$/;"	s
+test_driver_properties	CHI-0.45/lib/CHI/t/Driver.pm	/^sub test_driver_properties : Tests {$/;"	s
+test_encode	CHI-0.45/lib/CHI/t/Driver.pm	/^sub test_encode : Tests {$/;"	s
+test_expires_conditionally	CHI-0.45/lib/CHI/t/Driver.pm	/^sub test_expires_conditionally : Tests {$/;"	s
+test_expires_defaults	CHI-0.45/lib/CHI/t/Driver.pm	/^sub test_expires_defaults : Tests {$/;"	s
+test_expires_immediately	CHI-0.45/lib/CHI/t/Driver.pm	/^sub test_expires_immediately : Tests {$/;"	s
+test_expires_later	CHI-0.45/lib/CHI/t/Driver.pm	/^sub test_expires_later : Tests {$/;"	s
+test_expires_manually	CHI-0.45/lib/CHI/t/Driver.pm	/^sub test_expires_manually : Tests {$/;"	s
+test_expires_never	CHI-0.45/lib/CHI/t/Driver.pm	/^sub test_expires_never : Tests {$/;"	s
+test_expires_on_backend	CHI-0.45/lib/CHI/t/Driver.pm	/^sub test_expires_on_backend : Tests {$/;"	s
+test_expires_shortly	CHI-0.45/lib/CHI/t/Driver.pm	/^sub test_expires_shortly : Tests {$/;"	s
+test_expires_variance	CHI-0.45/lib/CHI/t/Driver.pm	/^sub test_expires_variance : Tests {$/;"	s
+test_fm_cache	CHI-0.45/lib/CHI/t/Driver/FastMmap.pm	/^sub test_fm_cache : Tests {$/;"	s
+test_generate_temporary_filename	CHI-0.45/lib/CHI/t/Driver/File.pm	/^sub test_generate_temporary_filename : Tests {$/;"	s
+test_get_errors	CHI-0.45/lib/CHI/t/GetError.pm	/^sub test_get_errors : Tests {$/;"	s
+test_global_or_datastore_required	CHI-0.45/lib/CHI/t/Driver/Memory.pm	/^sub test_global_or_datastore_required : Tests {$/;"	s
+test_ignore_bad_namespaces	CHI-0.45/lib/CHI/t/Driver/File.pm	/^sub test_ignore_bad_namespaces : Tests {$/;"	s
+test_import	CHI-0.45/lib/CHI/t/Constants.pm	/^sub test_import : Tests {$/;"	s
+test_key_types	CHI-0.45/lib/CHI/t/Driver.pm	/^sub test_key_types : Tests {$/;"	s
+test_l1_cache	CHI-0.45/lib/CHI/t/Driver.pm	/^sub test_l1_cache : Tests {$/;"	s
+test_l1_cache	CHI-0.45/lib/CHI/t/Driver/Subcache.pm	/^sub test_l1_cache : Tests {$/;"	s
+test_logging	CHI-0.45/lib/CHI/t/Driver.pm	/^sub test_logging : Tests {$/;"	s
+test_logging	CHI-0.45/lib/CHI/t/Driver/Subcache.pm	/^sub test_logging : Tests {$/;"	s
+test_lru_discard	CHI-0.45/lib/CHI/t/Driver/Memory.pm	/^sub test_lru_discard : Tests {$/;"	s
+test_lru_discard	CHI-0.45/lib/CHI/t/Driver/RawMemory.pm	/^sub test_lru_discard                   { }$/;"	s
+test_max_size	CHI-0.45/lib/CHI/t/Driver.pm	/^sub test_max_size : Tests {$/;"	s
+test_max_size	CHI-0.45/lib/CHI/t/Driver/RawMemory.pm	/^sub test_max_size : Tests {$/;"	s
+test_max_size_with_l1_cache	CHI-0.45/lib/CHI/t/Driver.pm	/^sub test_max_size_with_l1_cache : Tests {$/;"	s
+test_metacache	CHI-0.45/lib/CHI/t/Driver.pm	/^sub test_metacache : Tests {$/;"	s
+test_mirror_cache	CHI-0.45/lib/CHI/t/Driver.pm	/^sub test_mirror_cache : Tests {$/;"	s
+test_mirror_cache	CHI-0.45/lib/CHI/t/Driver/Subcache.pm	/^sub test_mirror_cache : Tests {$/;"	s
+test_missing_params	CHI-0.45/lib/CHI/t/Driver.pm	/^sub test_missing_params : Tests {$/;"	s
+test_multi	CHI-0.45/lib/CHI/t/Driver.pm	/^sub test_multi : Tests {$/;"	s
+test_multi_no_keys	CHI-0.45/lib/CHI/t/Driver.pm	/^sub test_multi_no_keys : Tests {$/;"	s
+test_multiple_procs	CHI-0.45/lib/CHI/t/Driver/CacheCache.pm	/^sub test_multiple_procs { }$/;"	s
+test_multiple_procs	CHI-0.45/lib/CHI/t/Driver/Memory.pm	/^sub test_multiple_procs { }$/;"	s
+test_namespaces	CHI-0.45/lib/CHI/t/Driver.pm	/^sub test_namespaces : Tests {$/;"	s
+test_no_leak	CHI-0.45/lib/CHI/t/Driver.pm	/^sub test_no_leak : Tests {$/;"	s
+test_non_common_constructor_params	CHI-0.45/lib/CHI/t/Util.pm	/^sub test_non_common_constructor_params : Tests {$/;"	s
+test_not_in_cache	CHI-0.45/lib/CHI/t/Driver.pm	/^sub test_not_in_cache : Tests {$/;"	s
+test_obj_ref	CHI-0.45/lib/CHI/t/Driver.pm	/^sub test_obj_ref : Tests {$/;"	s
+test_ok	CHI-0.45/lib/CHI/t/Sanity.pm	/^sub test_ok : Tests {$/;"	s
+test_option_inheritance	CHI-0.45/lib/CHI/t/Subcache.pm	/^sub test_option_inheritance : Tests {$/;"	s
+test_parameter_passthrough	CHI-0.45/lib/CHI/t/Driver/FastMmap.pm	/^sub test_parameter_passthrough : Tests {$/;"	s
+test_parse_memory_size	CHI-0.45/lib/CHI/t/Util.pm	/^sub test_parse_memory_size : Tests {$/;"	s
+test_persist	CHI-0.45/lib/CHI/t/Driver.pm	/^sub test_persist : Tests {$/;"	s
+test_pogo	t/lib/PogoTester.pm	/^sub test_pogo(&)$/;"	s
+test_random_string	CHI-0.45/lib/CHI/t/Util.pm	/^sub test_random_string : Tests {$/;"	s
+test_requires	inc/Module/Install/Metadata.pm	/^sub test_requires      { shift->build_requires(@_) }$/;"	s
+test_root_dir_does_not_exist	CHI-0.45/lib/CHI/t/Driver/File.pm	/^sub test_root_dir_does_not_exist : Tests {$/;"	s
+test_scalar_return_values	CHI-0.45/lib/CHI/t/Driver.pm	/^sub test_scalar_return_values : Tests {$/;"	s
+test_scalar_return_values	CHI-0.45/lib/CHI/t/Driver/RawMemory.pm	/^sub test_scalar_return_values { }$/;"	s
+test_serialize	CHI-0.45/lib/CHI/t/Driver.pm	/^sub test_serialize : Tests {$/;"	s
+test_serialize	CHI-0.45/lib/CHI/t/Driver/RawMemory.pm	/^sub test_serialize            { }$/;"	s
+test_serializers	CHI-0.45/lib/CHI/t/Driver.pm	/^sub test_serializers : Tests {$/;"	s
+test_serializers	CHI-0.45/lib/CHI/t/Driver/RawMemory.pm	/^sub test_serializers          { }$/;"	s
+test_set_errors	CHI-0.45/lib/CHI/t/SetError.pm	/^sub test_set_errors : Tests {$/;"	s
+test_short_driver_name	CHI-0.45/lib/CHI/t/Driver/Memory.pm	/^sub test_short_driver_name : Tests {$/;"	s
+test_short_driver_name	CHI-0.45/lib/CHI/t/Driver/NonMoose.pm	/^sub test_short_driver_name { }$/;"	s
+test_short_driver_name	CHI-0.45/lib/CHI/t/Driver/RawMemory.pm	/^sub test_short_driver_name : Tests {$/;"	s
+test_simple	CHI-0.45/lib/CHI/t/Driver.pm	/^sub test_simple : Tests {$/;"	s
+test_size_awareness	CHI-0.45/lib/CHI/t/Driver.pm	/^sub test_size_awareness : Tests {$/;"	s
+test_size_awareness	CHI-0.45/lib/CHI/t/Driver/RawMemory.pm	/^sub test_size_awareness : Tests {$/;"	s
+test_size_awareness_with_subcaches	CHI-0.45/lib/CHI/t/Driver.pm	/^sub test_size_awareness_with_subcaches : Tests {$/;"	s
+test_size_awareness_with_subcaches	CHI-0.45/lib/CHI/t/Driver/RawMemory.pm	/^sub test_size_awareness_with_subcaches { }$/;"	s
+test_stats	CHI-0.45/lib/CHI/t/Driver.pm	/^sub test_stats : Tests {$/;"	s
+test_stats	CHI-0.45/lib/CHI/t/Driver/RawMemory.pm	/^sub test_stats                         { }$/;"	s
+test_stats	CHI-0.45/lib/CHI/t/Driver/Subcache/l1_cache.pm	/^sub test_stats : Tests {$/;"	s
+test_subcache_overridable_params	CHI-0.45/lib/CHI/t/Driver.pm	/^sub test_subcache_overridable_params : Tests {$/;"	s
+test_subcache_overridable_params	CHI-0.45/lib/CHI/t/Driver/RawMemory.pm	/^sub test_subcache_overridable_params   { }$/;"	s
+test_unique_id	CHI-0.45/lib/CHI/t/Util.pm	/^sub test_unique_id : Tests {$/;"	s
+test_unsupported	CHI-0.45/lib/CHI/t/Subclass.pm	/^sub test_unsupported : Tests {$/;"	s
+test_value_too_large	CHI-0.45/lib/CHI/t/Driver/FastMmap.pm	/^sub test_value_too_large : Tests {$/;"	s
+test_zookeeper	t/lib/PogoTester.pm	/^sub test_zookeeper$/;"	s
+testing_chi_root_class	CHI-0.45/lib/CHI/t/Driver.pm	/^sub testing_chi_root_class {$/;"	s
+testing_driver_class	CHI-0.45/lib/CHI/t/Driver.pm	/^sub testing_driver_class {$/;"	s
+testing_driver_class	CHI-0.45/lib/CHI/t/Driver/File/DepthZero.pm	/^sub testing_driver_class { 'CHI::Driver::File' }$/;"	s
+testing_driver_class	CHI-0.45/lib/CHI/t/Driver/NonMoose.pm	/^sub testing_driver_class   { 'CHI::Test::Driver::NonMoose' }$/;"	s
+testing_driver_class	CHI-0.45/lib/CHI/t/Driver/Subcache/l1_cache.pm	/^sub testing_driver_class {$/;"	s
+testing_driver_class	CHI-0.45/lib/CHI/t/Driver/Subcache/mirror_cache.pm	/^sub testing_driver_class {$/;"	s
+tests_recursive	inc/Module/Install/Makefile.pm	/^sub tests_recursive {$/;"	s
+throw_error	blib/lib/Pogo/API.pm	/^sub throw_error$/;"	s
+throw_error	lib/Pogo/API.pm	/^sub throw_error$/;"	s
+timeout	blib/lib/Pogo/Engine/Job.pm	/^sub timeout     { return $_[0]->meta('timeout'); }$/;"	s
+timeout	lib/Pogo/Engine/Job.pm	/^sub timeout     { return $_[0]->meta('timeout'); }$/;"	s
+to_jobid	blib/lib/Pogo/Client/Commandline.pm	/^sub to_jobid$/;"	s
+to_jobid	blib/lib/Pogo/HTTP/Server.pm	/^sub to_jobid$/;"	s
+to_jobid	blib/lib/Pogo/UI.pm	/^sub to_jobid$/;"	s
+to_jobid	lib/Pogo/Client/Commandline.pm	/^sub to_jobid$/;"	s
+to_jobid	lib/Pogo/HTTP/Server.pm	/^sub to_jobid$/;"	s
+to_jobid	lib/Pogo/UI.pm	/^sub to_jobid$/;"	s
+to_string	blib/lib/Pogo/Engine/Response.pm	/^sub to_string$/;"	s
+to_string	lib/Pogo/Engine/Response.pm	/^sub to_string$/;"	s
+to_ts	blib/lib/Pogo/Client/Commandline.pm	/^sub to_ts$/;"	s
+to_ts	lib/Pogo/Client/Commandline.pm	/^sub to_ts$/;"	s
+transform_key	CHI-0.45/lib/CHI/Driver.pm	/^sub transform_key {$/;"	s
+traverse	t/lib/PogoMockStore.pm	/^sub traverse {$/;"	s
+ua	blib/lib/Pogo/Client.pm	/^sub ua$/;"	s
+ua	lib/Pogo/Client.pm	/^sub ua$/;"	s
+ui_index	blib/lib/Pogo/HTTP/Server.pm	/^sub ui_index$/;"	s
+ui_index	lib/Pogo/HTTP/Server.pm	/^sub ui_index$/;"	s
+ui_output	blib/lib/Pogo/HTTP/Server.pm	/^sub ui_output$/;"	s
+ui_output	lib/Pogo/HTTP/Server.pm	/^sub ui_output$/;"	s
+ui_status	blib/lib/Pogo/HTTP/Server.pm	/^sub ui_status$/;"	s
+ui_status	lib/Pogo/HTTP/Server.pm	/^sub ui_status$/;"	s
+ui_target	blib/lib/Pogo/HTTP/Server.pm	/^sub ui_target$/;"	s
+ui_target	lib/Pogo/HTTP/Server.pm	/^sub ui_target$/;"	s
+unblessed	blib/lib/Pogo/Engine/Response.pm	/^sub unblessed$/;"	s
+unblessed	lib/Pogo/Engine/Response.pm	/^sub unblessed$/;"	s
+unescape_for_filename	CHI-0.45/lib/CHI/Driver.pm	/^sub unescape_for_filename {$/;"	s
+unescape_key	CHI-0.45/lib/CHI/Driver.pm	/^sub unescape_key { $_[1] }$/;"	s
+unescape_key	CHI-0.45/lib/CHI/Driver/File.pm	/^sub unescape_key {$/;"	s
+unfinished_hosts	blib/lib/Pogo/Engine/Job.pm	/^sub unfinished_hosts$/;"	s
+unfinished_hosts	lib/Pogo/Engine/Job.pm	/^sub unfinished_hosts$/;"	s
+unfinished_hosts_in_slot	blib/lib/Pogo/Engine/Job.pm	/^sub unfinished_hosts_in_slot$/;"	s
+unfinished_hosts_in_slot	lib/Pogo/Engine/Job.pm	/^sub unfinished_hosts_in_slot$/;"	s
+unique_id	CHI-0.45/lib/CHI/Util.pm	/^    sub unique_id {$/;"	s
+unlink_pidfile	t/pogoctl	/^sub unlink_pidfile$/;"	s
+unlock	blib/lib/Pogo/Engine/Job.pm	/^sub unlock $/;"	s
+unlock	blib/lib/Pogo/Engine/Store/ZooKeeper.pm	/^sub unlock$/;"	s
+unlock	lib/Pogo/Engine/Job.pm	/^sub unlock { store->delete( $_[1] ); }$/;"	s
+unlock	lib/Pogo/Engine/Store/ZooKeeper.pm	/^sub unlock$/;"	s
+unlock	t/lib/PogoMockStore.pm	/^sub unlock {$/;"	s
+unlock_all	blib/lib/Pogo/Engine/Job.pm	/^sub unlock_all$/;"	s
+unlock_all	lib/Pogo/Engine/Job.pm	/^sub unlock_all$/;"	s
+unlock_host	blib/lib/Pogo/Engine/Namespace.pm	/^sub unlock_host$/;"	s
+unlock_host	lib/Pogo/Engine/Namespace.pm	/^sub unlock_host$/;"	s
+unlock_job	blib/lib/Pogo/Engine/Namespace.pm	/^sub unlock_job$/;"	s
+unlock_job	lib/Pogo/Engine/Namespace.pm	/^sub unlock_job$/;"	s
+unpack_from_data	CHI-0.45/lib/CHI/CacheObject.pm	/^sub unpack_from_data {$/;"	s
+unpack_from_data	CHI-0.45/lib/CHI/Driver.pm	/^sub unpack_from_data {$/;"	s
+unreserve	blib/lib/Pogo/Engine/Namespace/Slot.pm	/^sub unreserve$/;"	s
+unreserve	lib/Pogo/Engine/Namespace/Slot.pm	/^sub unreserve$/;"	s
+unsuccessful_hosts_in_slot	blib/lib/Pogo/Engine/Job.pm	/^sub unsuccessful_hosts_in_slot$/;"	s
+unsuccessful_hosts_in_slot	lib/Pogo/Engine/Job.pm	/^sub unsuccessful_hosts_in_slot$/;"	s
+uri_to_absuri	blib/lib/Pogo/Client/Commandline.pm	/^sub uri_to_absuri$/;"	s
+uri_to_absuri	blib/lib/Pogo/Common.pm	/^sub uri_to_absuri$/;"	s
+uri_to_absuri	lib/Pogo/Client/Commandline.pm	/^sub uri_to_absuri$/;"	s
+uri_to_absuri	lib/Pogo/Common.pm	/^sub uri_to_absuri$/;"	s
+usage	CHI-0.45/etc/bench/bench.pl	/^sub usage {$/;"	s
+user	blib/lib/Pogo/Engine/Job.pm	/^sub user        { return $_[0]->meta('user'); }$/;"	s
+user	lib/Pogo/Engine/Job.pm	/^sub user        { return $_[0]->meta('user'); }$/;"	s
+value	CHI-0.45/lib/CHI/CacheObject.pm	/^sub value {$/;"	s
+verify_valid_test_key	CHI-0.45/lib/CHI/Test/Driver/Role/CheckKeyValidity.pm	/^sub verify_valid_test_key {$/;"	s
+version_from	inc/Module/Install/Metadata.pm	/^sub version_from {$/;"	s
+worker_cert	blib/lib/Pogo/Dispatcher.pm	/^sub worker_cert$/;"	s
+worker_cert	blib/lib/Pogo/Worker.pm	/^sub worker_cert$/;"	s
+worker_cert	lib/Pogo/Dispatcher.pm	/^sub worker_cert$/;"	s
+worker_cert	lib/Pogo/Worker.pm	/^sub worker_cert$/;"	s
+worker_command	blib/lib/Pogo/Engine/Job.pm	/^sub worker_command$/;"	s
+worker_command	lib/Pogo/Engine/Job.pm	/^sub worker_command$/;"	s
+worker_key	blib/lib/Pogo/Worker.pm	/^sub worker_key$/;"	s
+worker_key	lib/Pogo/Worker.pm	/^sub worker_key$/;"	s
+worker_rpc	t/lib/PogoTester.pm	/^sub worker_rpc$/;"	s
+worker_script	blib/lib/Pogo/Dispatcher.pm	/^sub worker_script$/;"	s
+worker_script	lib/Pogo/Dispatcher.pm	/^sub worker_script$/;"	s
+write	inc/Module/Install/Makefile.pm	/^sub write {$/;"	s
+write	inc/Module/Install/Metadata.pm	/^sub write {$/;"	s
+write_file	CHI-0.45/lib/CHI/Util.pm	/^sub write_file {$/;"	s
+write_output_entry	blib/lib/Pogo/Worker/Connection.pm	/^sub write_output_entry$/;"	s
+write_output_entry	lib/Pogo/Worker/Connection.pm	/^sub write_output_entry$/;"	s
+write_pidfile	t/pogoctl	/^sub write_pidfile$/;"	s
+write_stats	blib/lib/Pogo/Dispatcher.pm	/^sub write_stats$/;"	s
+write_stats	lib/Pogo/Dispatcher.pm	/^sub write_stats$/;"	s
+writeonly_cache	CHI-0.45/lib/CHI/t/GetError.pm	/^sub writeonly_cache {$/;"	s

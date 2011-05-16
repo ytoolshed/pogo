@@ -57,11 +57,14 @@ sub AUTOLOAD
   DEBUG $self->{api} . " request: $rpc";
 
   my $r = $self->ua->request($post);
-  die "fatal error in request '$method': " . $r->status_line . "\n"
-    if $r->is_error;
+  if ( $r->is_error )
+  {
+    my $resp = Pogo::Engine::Response->new( $r->decoded_content );
+    ERROR "fatal error in request '$method': " . $r->status_line . "\n";
+    return $resp;
+  }
 
   DEBUG "response: " . $r->decoded_content;
-
   my $resp = Pogo::Engine::Response->new( $r->decoded_content );
 
   die "error from pogo server in request '$method': " . $resp->status_msg . "\n"

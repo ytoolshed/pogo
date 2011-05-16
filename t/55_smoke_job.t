@@ -100,7 +100,7 @@ test_pogo
   sleep $job1->{job_timeout};    # job should timeout
 
   my @records;
-  for (my $i = 0; $i <= $job1->{job_timeout}; $i++)
+  for (my $i = 0; $i <= $job1->{job_timeout} * 2; $i++)
   {
     $resp = client->jobstatus($jobid)
       or diag explain $@;
@@ -117,16 +117,16 @@ test_pogo
 
   # test jobretry
   dies_ok { $resp = client->jobretry( $jobid, ['foo11.example.com'] ) }
-  "job retry for host not in job"
+  "job retry for foo11.example.com"
     or diag explain $@;
 
-  ok( $@ =~ m/expired/, "job retry for host not in job" )
+  ok( $@ =~ m/expired/, "expiry message for foo11.example.com" )
     or diag explain $resp;
 
-  dies_ok { $resp = client->jobretry( $jobid, ['foo9.example.com'] ) } "job retry for host in job"
+  dies_ok { $resp = client->jobretry( $jobid, ['foo9.example.com'] ) } "job retry for foo9.example.com"
     or diag explain $@;
 
-  ok( $@ =~ /expired/, "job expired message" )
+  ok( $@ =~ m/expired/, "expiry message for foo9.example.com" )
     or diag explain $resp;
 
   # TODO: test successful retry, retry while job still running.

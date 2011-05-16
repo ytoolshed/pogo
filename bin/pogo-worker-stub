@@ -11,6 +11,7 @@ use constant LOCKFILE     => '/tmp/pogo_worker.lock';
 use constant POST_HOOKDIR => '/etc/pogo/post.d/';
 use constant PRE_HOOKDIR  => '/etc/pogo/pre.d/';
 use constant TEMPDIR      => '/tmp';
+use Safe;
 
 $SIG{HUP} = $SIG{INT} = $SIG{TERM} = $SIG{__DIE__} = \&cleanup;
 
@@ -49,7 +50,9 @@ sub run_hooks {
 
 sub main {
   print "\n";
-  $opts = eval(<DATA>);
+  my $compartment = Safe->new();
+  $opts = $compartment->reval(<DATA>);
+  die "safe eval failed: $@" if $@;
   die "bad options\n"
     unless $opts->{job}
       && $opts->{command}

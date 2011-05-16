@@ -969,7 +969,7 @@ sub uri_to_absuri
 {
   DEBUG Dumper \@_;
   my $rel_uri = shift;
-  my $base_uri = shift || $rel_uri;
+  my $base_uri = shift;
 
   $base_uri = URI->new($base_uri);
 

@@ -58,7 +58,7 @@ sub start
   open( STDOUT, '>' . $self->stdout_log_path );
   open( STDERR, '>' . $self->stderr_log_path );
 
-  $proc->kill_on_destroy(1);
+  $proc->kill_on_destroy(1) unless $ENV{POGO_PERSIST};
   DEBUG "Starting $self->{name}";
   $proc->start( @{ $self->{args} } );
 
