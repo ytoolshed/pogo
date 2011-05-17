@@ -169,23 +169,12 @@ returning parsed YAML data, e.g.
         - bar[1-10].east.example.com
         - bar[1-10].west.example.com
     
-    envs:
-      coast:
-        east:
-          - foo[1-101].east.example.com
-          - bar[1-10].east.example.com
-        west:
-          - foo[1-101].west.example.com
-          - bar[1-10].west.example.com
-    
     constraints:
-      - env: coast
-        sequences:
-          - envs: [ east, west ]
-            apps: [ backend, frontend ]
-        concurrency:
-          - frontend: 25%
-          - backend: 1
+      - sequences:
+        - apps: [ backend, frontend ]
+      - concurrency:
+        - frontend: 25%
+        - backend: 1
 
 as a Perl data structure. 
 
@@ -212,7 +201,8 @@ structure:
           }
     }
 
-Host "foo13.east.example.com" is therefore a member of the appgroup 'frontend' and carries an environment setting of C<coast =E<gt> east>.
+Host "foo13.east.example.com" is therefore a member of the appgroup 'frontend'
+and carries an environment setting of C<coast =E<gt> east>.
 
 C<fetch_target_meta()> also handles calls to obtain meta data of
 several targets at once:
@@ -277,11 +267,94 @@ Expands target text globs:
 
 =back
 
+=head1 Pogo Sequence and Constraints Handling
+
+Pogo configurations allow for processing targets in carefully defined
+sequences, while obeying configured limits of how many targets can be 
+processed in parallel.
+
+=head1 App Sequences
+
+Apps (groups of targets) can be processed in defined sequences. For
+example, to process the "backend" servers first, followed by the
+"frontend" servers, use this:
+
+    apps:
+      frontend:
+        - foo[1-101].east.example.com
+        - foo[1-101].west.example.com
+      backend:
+        - bar[1-10].east.example.com
+        - bar[1-10].west.example.com
+    
+    constraints:
+      - sequences:
+        - apps: [ backend, frontend ]
+
+=head1 Env Sequences
+
+Sequences aren't limited to targets defined in the C<apps> section. 
+Targets can also be 'tagged' with environment settings, which then
+can be used later to define in which order targets of certain 
+env settings will be processed.
+
+For example, to tag some targets with the attribute "coast" set to 
+either "east" or "west", and process them east to west, use this:
+
+    apps:
+      frontend:
+        - foo[1-101].east.example.com
+        - foo[1-101].west.example.com
+      backend:
+        - bar[1-10].east.example.com
+        - bar[1-10].west.example.com
+    
+    envs:
+      coast:
+        east:
+          - foo[1-101].east.example.com
+          - bar[1-10].east.example.com
+        west:
+          - foo[1-101].west.example.com
+          - bar[1-10].west.example.com
+
+    constraints:
+      - env: coast
+        sequences:
+          - envs: [ east, west ]
+
+The env-based sequence definition can be limited to apply to certain 
+apps only:
+
+    constraints:
+      - env: coast
+        sequences:
+          - envs: [ east, west ]
+            apps: [ frontend ]
+
+This will process targets in the "frontend" app from "east" to "west", but 
+process targets in the "backend" app unconstrained (i.e. in parallel
+unless there are other restrictions).
+
+=head2 Concurrency
+
+To limit the number of targets being processed in parallel (and hence
+the targets that are unavailable in production, e.g. during an upgrade),
+constraints on apps can be defined:
+
+    constraints:
+      - concurrency:
+        - frontend: 25%
+        - backend: 1
+
+This will only process 25% of all frontend machines in parallel, and 
+process backend machines one at a time.
+
 =head2 Multiple Constraints
 
 If you have two sets of machines whose update sequence depends on two different
-environment settings, simply define them in the "envs" section and then add
-two different "sequences" entries (one for each env variable) in the "constraints"
+environment settings, simply define them in the "envs" section and then add two
+different "sequences" entries (one for each env variable) in the "constraints"
 section.
 
 For example, if your database servers need to be installed first inside the
@@ -331,8 +404,8 @@ accomplish the entire work:
           - envs: [ inside, colo ]
             apps: [ db-mirror, db-master ]
 
-This will result in a sequence of (| indicates targets installed in parallel with 
-the one on the preceding line):
+This will result in a sequence of (| indicates targets installed in parallel 
+with the one on the preceding line):
 
     web-mirror.east.corp.com 
     | web-master.east.corp.com
@@ -346,9 +419,9 @@ the one on the preceding line):
     db-master.colo.corp.com   
     | db-mirror.colo.corp.com
 
-You could even add a third env type, "systype", which would be "web" for webservers
-and "db" for database servers, and add a sequence constraint that enforces updating
-database servers before web servers:
+You could even add a third env type, "systype", which would be "web" for
+webservers and "db" for database servers, and add a sequence constraint that
+enforces updating database servers before web servers:
 
       ...
       - env: systype
