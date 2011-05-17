@@ -467,9 +467,8 @@ sub set_conf
         # $second requires $first to go first within $env
         # $first is a predecessor of $second
         # $second is a successor of $first
-        # we just make sure these exist, don't define them
-        $conf->{seq}->{pred}->{$c_env_type}->{$second}->{$first};
-        $conf->{seq}->{succ}->{$c_env_type}->{$first}->{$second};
+        push @{ $conf->{seq}->{pred}->{$c_env_type}->{$second} }, $first;
+        push @{ $conf->{seq}->{succ}->{$c_env_type}->{$first}  }, $second;
       }
     }
 
