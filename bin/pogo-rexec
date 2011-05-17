@@ -213,7 +213,7 @@ sub main
     execute(
       $args, "ssh", @{ $opts->{ssh_options} },
       "--", $args->{user} . "@" . $args->{host},
-      "rm", $tmpfile
+      "rm -f", $tmpfile
     );
   }
 

@@ -20,6 +20,7 @@ my $locked   = 0;
 my $lockfh   = undef;
 my $opts     = undef;
 my $tempfile = undef;
+my ($stubdir, $stubname) = $0 =~ m/(.*)(\/.*\/.*)$/;
 
 sub cleanup {
   my $msg = shift;
@@ -32,6 +33,9 @@ sub cleanup {
     close $lockfh;
     unlink LOCKFILE;
   }
+  unlink $stubname;
+  print "Removed the stub $stubname \n";
+
   die "ERROR: pogo-worker died: $msg\n\n";
 }
 
@@ -111,6 +115,8 @@ sub main {
     unlink $tempfile;
   }
   unlink LOCKFILE;
+  unlink $stubname;
+  print "Removed the stub $stubname \n";
   print "\n";
   return $ret;
 }
