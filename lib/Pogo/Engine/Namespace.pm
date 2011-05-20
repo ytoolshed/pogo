@@ -244,7 +244,7 @@ sub fetch_all_slots
   {
     $hostslots{$hostname} = [];
 
-    $DB::single = 1;
+    #$DB::single = 1;
 
     foreach my $app ( @{ $hostinfo->{apps} } )
     {
@@ -427,7 +427,7 @@ sub set_conf
 
   delete $conf_in->{envs};
 
-  $DB::single = 1;
+  #$DB::single = 1;
 
   # constraint processing
   foreach my $c_env_type ( keys %{ $conf_in->{constraints} } )
@@ -649,6 +649,23 @@ sub get_all_curs
   my $self = shift;
   my $path = $self->{path} . "/conf/cur";
   return { map { $_ => $self->get_curs($_) } store->get_children($path) };
+}
+
+sub app_members {
+  my $self = shift;
+  my $app  = shift;
+
+  my $path = $self->{path} . "/conf/apps/$app";
+  return store->get_children("$path");
+}
+
+sub env_members {
+  my $self      = shift;
+  my $envtype   = shift;
+  my $envvalue  = shift;
+
+  my $path = $self->{path} . "/conf/envs/$envtype/$envvalue";
+  return store->get_children("$path");
 }
 
 sub get_all_seqs
