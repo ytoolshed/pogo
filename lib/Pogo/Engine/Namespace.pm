@@ -631,7 +631,7 @@ sub get_cur
 {
   my ( $self, $app, $key ) = @_;
   my $c = store->get( $self->{path} . "/conf/cur/$app/$key" );
-  return $c;
+  return JSON->new->utf8->allow_nonref->decode($c);
 }
 
 sub get_curs
