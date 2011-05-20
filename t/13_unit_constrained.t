@@ -49,7 +49,7 @@ use File::Basename;
 use Pogo::Engine::Store qw(store);
 use Data::Dumper;
 
-# Log::Log4perl->easy_init({ level => $DEBUG, layout => "%F{1}-%L-%M: %m%n" });
+Log::Log4perl->easy_init({ level => $DEBUG, layout => "%F{1}-%L-%M: %m%n" });
 
 my $ns = Pogo::Engine::Namespace->new(
   nsname   => "wonk",
@@ -135,20 +135,6 @@ my $job = Pogo::Engine::Job->new({
     exe_data    => "wonk",
 });
 
-$ns->fetch_runnable_hosts( 
-    $job, 
-    $host_meta,
-    sub { die "err cont: ", Dumper( \@_ ); },
-    sub { $result = \@_;
-        },
-);
-
-ok(1, "at the end" );
-
-# print store->_dump();
-
-__END__
-
 $job->start(
      sub { ok 0, "err cont on start(): @_" },
      sub { ok 1, "success cont on start()"; 
@@ -157,6 +143,21 @@ $job->start(
            is($nwaiting, 0, "0 hosts waiting");
          },
 );
+
+$ns->fetch_runnable_hosts( 
+    $job, 
+    $host_meta,
+    sub { die "err cont: ", Dumper( \@_ ); },
+    sub { $result = \@_;
+          print "result=", Dumper( \@_ );
+        },
+);
+
+ok(1, "at the end" );
+
+print store->_dump();
+
+__END__
 
 print Dumper($result);
 
