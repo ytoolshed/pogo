@@ -17,7 +17,7 @@
 use 5.008;
 use common::sense;
 
-use Test::More tests => 21;
+use Test::More tests => 22;
 use Test::Exception;
 
 use Data::Dumper;
@@ -74,6 +74,25 @@ test_pogo
     is( scalar @{$dispatcher->{workers_busy}}, 0, "zero workers_busy" )
       or diag explain $dispatcher;
   }
+
+  my $job0 = {
+    user        => 'test',
+    run_as      => 'test',
+    #password    => encrypt_secret('foo'),
+    secrets     => encrypt_secret('bar'),
+    #client_private_key => encrypt_secret('private_key'),
+    pvt_key_passphrase  => encrypt_secret('passphrase'),
+    command     => 'echo job1',
+    target      => [ 'foo[1-10].example.com', ],
+    namespace   => 'example',
+    timeout     => 5,
+    job_timeout => 5,
+    concurrent  => 1,
+  };
+
+  my $resp0;
+  dies_ok { $resp0 = client->run(%$job0); } 'run job0'
+    or diag explain $@;
 
   my $job1 = {
     user        => 'test',
