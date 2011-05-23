@@ -91,7 +91,7 @@ test_pogo
         my ( $handle, $data ) = @_;
         $data =~ m/Node count: (\d+)/;
         my $nodes = $1;
-        ok( $nodes == 15, "node count $nodes" );
+        ok( $nodes == 18, "node count $nodes" );
         $cv->send(1);
       }
     );
