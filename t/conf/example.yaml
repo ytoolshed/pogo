@@ -14,6 +14,8 @@ apps:
   backend:
     - bar[1-10].east.example.com
     - bar[1-10].west.example.com
+  tail:
+    - zar[1-10].west.example.com
 
 envs:
   coast:
@@ -30,4 +32,4 @@ constraints:
       - frontend: 25%
       - backend: 1
     sequence:
-      - [ backend, frontend ]
+      - [ backend, frontend, tail ]

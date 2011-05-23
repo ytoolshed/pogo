@@ -244,6 +244,8 @@ sub fetch_all_slots
   {
     $hostslots{$hostname} = [];
 
+    #$DB::single = 1;
+
     foreach my $app ( @{ $hostinfo->{apps} } )
     {
       foreach my $envtype ( keys %{ $hostinfo->{envs} } )
@@ -267,10 +269,10 @@ sub fetch_all_slots
               }
               push @{ $hostslots{$hostname} }, $slot;
 
-              next unless exists $const->{$app} and
-                          exists $const->{$app}->{$envtype};
+              next unless exists $const->{$envtype} and
+                          exists $const->{$envtype}->{$app};
 
-              my $concur = $const->{$app}->{$envtype};
+              my $concur = $const->{$envtype}->{$app};
               if ( $concur !~ m{^(\d+)%$} )
               {
                 # not a percentage, a literal
@@ -434,6 +436,8 @@ sub set_conf
 
   delete $conf_in->{envs};
 
+  #$DB::single = 1;
+
   # constraint processing
   foreach my $c_env_type ( keys %{ $conf_in->{constraints} } )
   {
@@ -476,9 +480,8 @@ sub set_conf
         # $second requires $first to go first within $env
         # $first is a predecessor of $second
         # $second is a successor of $first
-        # we just make sure these exist, don't define them
-        $conf->{seq}->{pred}->{$c_env_type}->{$second}->{$first};
-        $conf->{seq}->{succ}->{$c_env_type}->{$first}->{$second};
+        $conf->{seq}->{pred}->{$c_env_type}->{$second}->{$first} = 1;
+        $conf->{seq}->{succ}->{$c_env_type}->{$first}->{$second} = 1;
       }
     }
 
@@ -637,7 +640,7 @@ sub get_cur
 {
   my ( $self, $app, $key ) = @_;
   my $c = store->get( $self->{path} . "/conf/cur/$app/$key" );
-  return $c;
+  return JSON->new->utf8->allow_nonref->decode($c);
 }
 
 sub get_curs
@@ -655,6 +658,23 @@ sub get_all_curs
   my $self = shift;
   my $path = $self->{path} . "/conf/cur";
   return { map { $_ => $self->get_curs($_) } store->get_children($path) };
+}
+
+sub app_members {
+  my $self = shift;
+  my $app  = shift;
+
+  my $path = $self->{path} . "/conf/apps/$app";
+  return store->get_children("$path");
+}
+
+sub env_members {
+  my $self      = shift;
+  my $envtype   = shift;
+  my $envvalue  = shift;
+
+  my $path = $self->{path} . "/conf/envs/$envtype/$envvalue";
+  return store->get_children("$path");
 }
 
 sub get_all_seqs
@@ -929,8 +949,8 @@ Env settings:
 
 Sequences:
 
-    /pogo/ns/nsname/conf/seq/pred/coast/frontend: []
-    /pogo/ns/nsname/conf/seq/succ/coast/backend: []
+    /pogo/ns/nsname/conf/seq/pred/coast/frontend/backend
+    /pogo/ns/nsname/conf/seq/succ/coast/backend/frontend
 
 And even the plugin gets stored:
 
