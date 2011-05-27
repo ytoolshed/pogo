@@ -142,15 +142,15 @@ sub main
 
   # split if hostname:rootname combination is present
   my @target;
-  if ( $args->{host} =~ /:/ ) 
+  if ( $args->{host} =~ /:/ )
   {
     LOGDIE "Rootname present but missing command_root_transform property"
-      unless ( $args->{command_root_transform} ); 
-    @target = split(":", $args->{host});
+      unless ( $args->{command_root_transform} );
+    @target = split( ":", $args->{host} );
     $args->{host} = $target[0];
   }
 
-  if ($args->{command_root_transform})
+  if ( defined $args->{command_root_transform} )
   {
     LOGDIE "\${command} substring not found in $args->{command_root_transform} \n"
       unless $args->{command_root_transform} =~ /\${command}/;
@@ -182,9 +182,9 @@ sub main
     # that way we can pass args to our script
   }
 
-  # substitute the command_root_transform with the rootname 
+  # substitute the command_root_transform with the rootname
   # and the name of the pogo worker stub
-  if ( $args->{command_root_transform} && defined $target[1] )
+  if ( defined $args->{command_root_transform} && defined $target[1] )
   {
     $args->{command_root_transform} =~ s/\${rootname}/$target[1]/g;
     $args->{command_root_transform} =~ s/\${command}/$args->{command}->[0]/g;

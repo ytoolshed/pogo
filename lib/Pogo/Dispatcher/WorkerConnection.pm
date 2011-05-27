@@ -134,15 +134,15 @@ sub queue_task
   $self->{handle}->push_write(
     json => [
       "execute",
-      { job_id                  => $job->id,
-        command                 => $job->worker_command,
-        command_root_transform  => $job->command_root_transform,
-        user                    => $job->user,
-        run_as                  => $job->run_as,
-        password                => $job->password,
-        host                    => $host,
-        timeout                 => $job->timeout,
-        secrets                 => $job->secrets,
+      { job_id                 => $job->id,
+        command                => $job->worker_command,
+        command_root_transform => $job->command_root_transform,
+        user                   => $job->user,
+        run_as                 => $job->run_as,
+        password               => $job->password,
+        host                   => $host,
+        timeout                => $job->timeout,
+        secrets                => $job->secrets,
       }
     ]
   );

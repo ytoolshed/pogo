@@ -1,3 +1,5 @@
+package Pogo::Plugin::Root::Dummyroot;
+
 # Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,7 +16,15 @@
 
 use 5.008; 
 
-sub root_type() { return undef; }
-sub transform() { return undef; }
-sub priority() { return  undef; }
+sub new 
+{ 
+    my $self  = {};
+    bless $self;
+    return $self;
+}
 
+sub root_type { return undef; }
+sub transform { return undef; }
+sub priority  { return undef; }
+
+1;
