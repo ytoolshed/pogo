@@ -25,12 +25,13 @@ use JSON;
 use Log::Log4perl qw(:easy);
 use MIME::Base64 qw(encode_base64);
 use Time::HiRes qw(time);
-use JSON::XS qw(encode_json);
+use JSON::XS qw(encode_json decode_json);
 
 use Pogo::Common;
 use Pogo::Engine::Store qw(store);
 use Pogo::Engine::Job::Host;
 use Pogo::Dispatcher::AuthStore;
+use Pogo::Dispatcher;
 
 # wait 100ms for other hosts to finish before finding the next set of
 # runnable hosts
@@ -87,7 +88,19 @@ sub new
 
   bless $self, $class;
 
-  my $target = delete $args->{target};
+  $args->{target_keyring} = $self->{ns}->get_conf->{globals}->{target_keyring}; 
+  $args->{target_keyring} = Pogo::Dispatcher->target_keyring 
+    unless defined $args->{target_keyring};
+  LOGDIE "The job needs to be signed"
+    if ( (defined $args->{target_keyring}) && (!defined $args->{signature}) );
+
+  $args->{target} = encode_json($args->{target}); 
+  $args->{target_keyring} = encode_json($args->{target_keyring})
+    if ( defined $args->{target_keyring} );
+  $args->{signature_fields} = encode_json($args->{signature_fields})
+    if ( defined $args->{signature_fields} );
+  $args->{signature} = encode_json($args->{signature})
+    if ( defined $args->{signature} );
 
   # 'higher security tier' job arguments like encrypted passwords & passphrases
   # get stuffed into the distributed password store instead of zookeeper
@@ -100,7 +113,6 @@ sub new
 
   # store all non-secure items in zk
   while ( my ( $k, $v ) = each %$args ) { $self->set_meta( $k, $v ); }
-  $self->set_meta( 'target', encode_json($target) );
 
   Pogo::Engine->add_task( 'startjob', $self->{id} );
 
@@ -1032,9 +1044,17 @@ sub snapshot
 
 sub worker_command
 {
-  my $self        = shift;
-  my %meta        = $self->all_meta;
-  my $exe         = delete $meta{exe_data} || '';
+  my $self                = shift;
+  my %meta                = $self->all_meta;
+  my $exe                 = delete $meta{exe_data} || '';
+  $meta{target}           = decode_json($meta{target});
+  $meta{target_keyring}   = decode_json($meta{target_keyring})
+    if ( defined $meta{target_keyring} );
+  $meta{signature_fields} = decode_json($meta{signature_fields})
+    if ( defined $meta{signature_fields} );
+  $meta{signature}        = decode_json($meta{signature})
+    if ( defined $meta{signature} );
+
   my $worker_stub = read_file( Pogo::Dispatcher->instance->worker_script )
     . encode_perl(
     { job => $self->id,

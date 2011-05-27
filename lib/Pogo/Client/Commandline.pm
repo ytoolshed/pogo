@@ -31,11 +31,14 @@ use Pod::Usage qw(pod2usage);
 use POSIX qw(strftime);
 use Sys::Hostname qw(hostname);
 use Time::HiRes qw(gettimeofday tv_interval);
-use YAML::XS qw(LoadFile);
+use YAML::Syck qw(LoadFile DumpFile);
+#use File::Temp qw(tempfile);
+#use GnuPG qw(:algo);
 
 use Pogo::Common;
 use Pogo::Client;
 use Pogo::Client::AuthCheck qw(get_password check_password);
+use Pogo::Client::GPGSignature qw(create_signature);
 
 use constant POGO_GLOBAL_CONF  => $Pogo::Common::CONFIGDIR . '/client.conf';
 use constant POGO_USER_CONF    => $ENV{HOME} . '/.pogoconf';
@@ -87,7 +90,7 @@ sub cmd_run
     secrets     => POGO_SECRETS_FILE,
   };
   GetOptions(
-    my $cmdline_opts = {}, 'cookbook|C=s',
+    my $cmdline_opts = {},       'cookbook|C=s',
     'hostfile|H=s',              'target|host|h=s@',
     'job_timeout|job-timeout=i', 'dryrun|n',
     'recipe|R=s',                'retry|r=i',
@@ -95,6 +98,8 @@ sub cmd_run
     'posthooks!',                'hooks!',
     'secrets|S=s',               'unconstrained',
     'concurrent|cc=s',           'file|f=s',
+    'keyring-dir|K=s',           'keyring-userid|U=s',
+    'createsig!',
   );
 
   # --hooks will affect the default setting of both prehooks and posthooks.  If
@@ -123,67 +128,24 @@ sub cmd_run
 
   # merge per-cmd options over global options and cookbook options
   $opts = merge_hash( $opts, $cmdline_opts );
-  if ( @ARGV > 0 )
-  {
-    $opts->{command} = "@ARGV";
-  }
-  elsif ( $opts->{cmd} )
-  {
-    $opts->{command} = delete $opts->{cmd};
-  }
 
-  # run an anonymous executable?
-  if ( defined $opts->{file} )
-  {
-    die "file \"" . $opts->{file} . "\" does not exist\n" unless -e $opts->{file};
-    die "unable to read \"" . $opts->{file} . "\"\n"      unless -r $opts->{file};
-
-    $opts->{exe_name} = ( split( /\//, $opts->{file} ) )[-1];
-    $opts->{exe_data} = encode_base64( read_file( $opts->{file} ) );
-    $opts->{command}  = "Attached file: " . $opts->{exe_name};
-  }
+  $opts->{command} = $self->load_command($opts);
 
   die "run needs a command\n"
     unless defined $opts->{command};
 
-  my @targets;
-
-  if ( exists $opts->{target} )
-  {
-    push @targets, @{ delete $opts->{target} };
-  }
-
-  if ( $opts->{hostfile} )
-  {
-    foreach my $hostfile ( @{ $opts->{hostfile} } )
-    {
-      if ( -r $hostfile )
-      {
-        open( my $fh, '<', $hostfile )
-          or die "Couldn't open file: $!";
-
-        while ( my $host = <$fh> )
-        {
-          next unless $host;
-          next if $host =~ m/^\s*#/;
-          chomp($host);
-          push @targets, $host;
-        }
-        close($fh);
-      }
-      else
-      {
-        die "couldn't read '$hostfile'";
-      }
-    }
-  }
-
-  if ( @targets == 0 )
-  {
-    die "run needs hosts!\n";
-  }
-
+  my @targets = $self->load_targets($opts);
+  delete $opts->{target};
+  LOGDIE "run needs hosts!\n" if ( @targets == 0 );
   $opts->{target} = \@targets;
+  
+  # generate a signature and add it to the job metadata
+  if ( defined $opts->{createsig} && $opts->{createsig} )
+  {
+    my %signature = create_signature($opts);
+    if ( exists $opts->{signature} ) { push( @{ $opts->{signature} }, \%signature ); }
+    else { $opts->{signature} = [ \%signature ]; }
+  }
 
   # secrets
   my $secrets;
@@ -285,6 +247,102 @@ $key,                  $value
 }
 
 #}}} cmd_run
+#{{{ cmd_gensig
+
+sub cmd_gensig
+{
+  my $self = shift;
+  GetOptions(
+    my $cmdline_opts = {}, 'recipe|R=s', 
+    'cookbook|C=s',        'keyring-dir|K=s',
+    'keyring-userid|U=s',  'replace-signature!', 
+    'list-signatures!',
+  );
+
+  LOGDIE "recipe name is required"
+    if ( !defined $cmdline_opts->{recipe} );
+  LOGDIE "cookbook location is required"
+    if ( !defined $cmdline_opts->{cookbook} );
+
+  my $opts;
+  my $recipe;
+
+  foreach my $options qw(debug help)
+  {
+    $opts->{$options} = $self->{opts}->{$options} if defined $self->{opts}->{$options};
+  }
+
+  # load the recipe from the cookbook
+  my $cookbook = $self->load_cookbook( $cmdline_opts->{cookbook} );
+  if ( defined $cookbook )
+  {
+    $recipe = $self->load_recipe( $cmdline_opts->{recipe}, $cookbook );
+    $opts = merge_hash( $opts, $recipe );
+  }
+
+  $opts = merge_hash( $opts, $cmdline_opts );
+
+  if ( defined $cmdline_opts->{'list-signatures'} )
+  {
+    if ( defined $opts->{signature} )
+    {
+      print "Signatures: \n\n";
+      for my $signature ( @{ $opts->{signature} } )
+      {
+        print "name      : $signature->{name} \n";
+        print "signature : \n$signature->{sig} \n";
+      }
+    }
+    else
+    {
+      print "The recipe does not contain any signatures \n";
+    }
+    return 0;
+  }
+
+  # load the command to be executed on the target
+  $opts->{command} = $self->load_command($opts);
+
+  # load the list of target nodes from
+  # the hostfile or target option
+  my @targets = $self->load_targets($opts);
+  $opts->{target} = \@targets if (@targets != 0);
+
+  # create the signature hash for the recipe
+  my %signature = create_signature($opts);
+
+  # append the signature to the recipe and
+  # write it back to the cookbook
+  foreach my $record (@$cookbook)
+  {
+    next if ( !defined $record );    # skip blank records
+    if ( $record->{name} eq $cmdline_opts->{recipe} )
+    {
+      $record->{signature_fields} = $opts->{signature_fields}
+        unless $record->{signature_fields};
+      # if the recipe already contains some signatures
+      # append the generated signature to this field
+      # else create a new hash key in the recipe
+      if ( ( defined $record->{signature} )
+        && ( !defined $cmdline_opts->{'replace-signature'} ) )
+      {
+        push( @{ $record->{signature} }, \%signature );
+      }
+      else { $record->{signature} = [ \%signature ]; }
+      last;
+    }
+  }
+
+  # remove the old recipe file and
+  # create a new one with the signature
+  rename( $cmdline_opts->{cookbook}, $cmdline_opts->{cookbook} . ".old" );
+  DumpFile( $cmdline_opts->{cookbook}, $cookbook );
+  INFO("Recipe $cmdline_opts->{recipe} is appended with the signature");
+
+  return 0;
+}
+
+#}}}
 #{{{ cmd_ping
 
 sub cmd_ping
@@ -403,7 +461,7 @@ sub cmd_status
     die "no jobid specified";
   }
 
-  # expand the range if needed
+  # expand the targets if needed
   my $target;
   if ( defined $opts->{target} )
   {
@@ -858,6 +916,71 @@ sub to_jobid
   }
 
   return $new_jobid;
+}
+
+sub load_command
+{
+  my ( $self, $opts ) = @_;
+  
+  if ( @ARGV > 0 )
+  {
+    $opts->{command} = "@ARGV";
+  }
+  elsif ( $opts->{cmd} )
+  {
+    $opts->{command} = delete $opts->{cmd};
+  }
+
+  # run an anonymous executable?
+  if ( defined $opts->{file} )
+  {
+    die "file \"" . $opts->{file} . "\" does not exist\n" unless -e $opts->{file};
+    die "unable to read \"" . $opts->{file} . "\"\n"      unless -r $opts->{file};
+
+    $opts->{exe_name} = ( split( /\//, $opts->{file} ) )[-1];
+    $opts->{exe_data} = encode_base64( read_file( $opts->{file} ) );
+    $opts->{command}  = "Attached file: " . $opts->{exe_name};
+  }
+
+  return $opts->{command};
+}
+
+sub load_targets
+{
+  my ( $self, $opts ) = @_;
+  my @targets;
+  
+  if ( exists $opts->{target} )
+  {
+    push @targets, @{ delete $opts->{target} };
+  }
+
+  if ( $opts->{hostfile} )
+  {
+    foreach my $hostfile ( @{ $opts->{hostfile} } )
+    {
+      if ( -r $hostfile )
+      {
+        open( my $fh, '<', $hostfile )
+          or die "Couldn't open file: $!";
+
+        while ( my $host = <$fh> )
+        {
+          next unless $host;
+          next if $host =~ m/^\s*#/;
+          chomp($host);
+          push @targets, $host;
+        }
+        close($fh);
+      }
+      else
+      {
+        die "couldn't read '$hostfile'";
+      }
+    }
+  }
+
+  return @targets;
 }
 
 sub load_cookbook

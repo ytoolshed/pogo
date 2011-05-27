@@ -389,6 +389,11 @@ sub instance
   return $instance;
 }
 
+sub target_keyring
+{
+  return $instance->{target_keyring};
+}
+
 # }}}
 
 1;
