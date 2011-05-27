@@ -116,14 +116,15 @@ sub load_root_transform
   eval { load_root_plugin(); };
   LOGDIE $@ if $@;
   my $path = "/pogo/root/";
-  while ( my ($k, $v) = each(% {$instance->{root}} ) )
+  while ( my ( $k, $v ) = each( %{ $instance->{root} } ) )
   {
-    store->delete($path . $k);
-    store->create($path . $k, $v);
+    store->delete( $path . $k );
+    store->create( $path . $k, $v )
+      or LOGDIE "couldn't create '$path' node: " . store->get_error_name;
   }
 }
 
-# Looka into Pogo/Plugin/Root for root transform plugins
+# Look into Pogo/Plugin/Root for root transform plugins
 # The plugins should have the following interface
 # sub root_type : returns root type string
 # sub transform : return transform string
@@ -135,16 +136,16 @@ sub load_root_plugin
 {
   DEBUG "loading plugin";
   my $plugin_base_class = "Pogo::Plugin::Root";
-  (my $plugin_base_dir = $plugin_base_class) =~ s#::#/#g;
+  ( my $plugin_base_dir = $plugin_base_class ) =~ s#::#/#g;
   my $rex = qr/(.*)\.pm$/;
   my $dir;
 
-  for my $incdir (@INC) 
+  for my $incdir (@INC)
   {
-    if(-d "$incdir/$plugin_base_dir") 
+    if ( -d "$incdir/$plugin_base_dir" )
     {
       $dir = "$incdir/$plugin_base_dir";
-      if(! <$dir/*>) 
+      if ( !<$dir/*> )
       {
         ERROR "Skipping empty plugin dir $dir";
         next;
@@ -154,31 +155,33 @@ sub load_root_plugin
     }
   }
 
-  if(! $dir) 
+  if ( !$dir )
   {
-      INFO "No plugins found";
-      return;
+    INFO "No plugins found";
+    return;
   }
 
   $instance->{root} = {};
   my @default_root;
   opendir DIR, $dir or LOGDIE "Cannot open dir $dir \n";
-  for my $entry (readdir DIR) 
+  for my $entry ( readdir DIR )
   {
     next if $entry !~ $rex;
     my $plugin_class = "${plugin_base_class}::$1";
     eval "require $plugin_class";
 
-    $instance->{root}->{ &root_type() } = &transform();
-    if ( $default_root[0] < &priority() )
+    my $plugin = $plugin_class->new();
+
+    $instance->{root}->{ $plugin->root_type() } = $plugin->transform();
+    if ( $default_root[0] < $plugin->priority() )
     {
-      $default_root[0] = &priority();
-      $default_root[1] = &root_type();
+      $default_root[0] = $plugin->priority();
+      $default_root[1] = $plugin->root_type();
     }
     DEBUG "Loaded plugin " . $plugin_class;
   }
-  $instance->{root}->{default} = $default_root[1]; 
-  
+  $instance->{root}->{default} = $default_root[1];
+
   closedir DIR;
 }
 
