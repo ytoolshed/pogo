@@ -18,13 +18,14 @@ use 5.008;
 use common::sense;
 
 use Test::Exception;
-use Test::More tests => 10;
+use Test::More tests => 12;
 
 use Carp qw(confess);
 use FindBin qw($Bin);
 use Log::Log4perl qw(:easy);
 use Sys::Hostname qw(hostname);
 use YAML::XS qw(LoadFile);
+use Pogo::Engine::Store qw(store);
 
 use lib "$Bin/lib";
 use PogoTester;
@@ -34,7 +35,14 @@ test_pogo
 {
   my $t;
 
+  # root plugin
+  lives_ok { $t = store->get("/pogo/root/default"); } 'default plugin'
+    or diag explain $t;
+  is( $t, 'dummyroot3', 'plugins loaded')
+    or diag explain $t;
+
   # ping
+  undef $t;
   lives_ok { $t = client->ping(); } 'ping send'
     or diag explain $t;
   ok( $t->is_success, 'ping success ' . $t->status_msg )
@@ -66,6 +74,7 @@ test_pogo
     or diag explain $t;
   ok( $t->is_success, "loadconf success " . $t->status_msg )
     or diag explain $t;
+
 };
 
 done_testing;

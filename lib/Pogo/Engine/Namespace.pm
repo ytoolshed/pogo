@@ -397,6 +397,15 @@ sub set_conf
 
   my $name = $self->name;
 
+  # globals processing
+  foreach my $global ( keys %{ $conf_in->{globals} } )
+  {
+    DEBUG "processing '$name/global/$global'";
+    $conf->{globals}->{$global} = delete $conf_in->{globals}->{$global};
+  }
+
+  delete $conf_in->{globals};
+
   # plugin processing
   foreach my $plugin ( keys %{ $conf_in->{plugins} } )
   {
