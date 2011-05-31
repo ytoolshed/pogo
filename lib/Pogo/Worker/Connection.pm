@@ -27,6 +27,7 @@ use POSIX qw(WEXITSTATUS SIGTERM);
 use Time::HiRes qw(time);
 use IO::File;
 use Scalar::Util qw(refaddr);
+use File::Path;
 
 sub new
 {
@@ -211,7 +212,7 @@ sub execute
     $n++;
   } while ( -f $output_filename );
 
-  mkdir($save_dir) unless ( -d $save_dir );
+  mkpath($save_dir) unless ( -d $save_dir );
 
   # Send args
   $writer->print( encode_json( $task->{args} ) );

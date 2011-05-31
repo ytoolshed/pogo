@@ -25,6 +25,7 @@ use JSON;
 use Log::Log4perl qw(:easy);
 use MIME::Base64 qw(encode_base64);
 use Time::HiRes qw(time);
+use JSON::XS qw(encode_json);
 
 use Pogo::Common;
 use Pogo::Engine::Store qw(store);
@@ -518,6 +519,19 @@ sub command     { return $_[0]->meta('command'); }
 sub concurrent  { return $_[0]->meta('concurrent'); }
 sub state       { return store->get( $_[0]->{path} ); }
 
+# Returns the transform for a given root type
+# root_type precedence :
+# root_type param in client.conf >
+# root_type param in namespace >
+# zookeeper /pogo/root/default
+sub command_root_transform
+{
+  my $root = $_[0]->meta('root_type');
+  $root = $_[0]->{ns}->get_conf->{globals}->{root_type} unless $root;
+  $root = store->get("/pogo/root/default") unless $root;
+  return store->get( "/pogo/root/" . $root );
+}
+
 sub set_state
 {
   my ( $self, $state, $msg, @extra ) = @_;
@@ -573,7 +587,7 @@ sub start
       };
 
       my $fetch_cont = sub {
-        my( $hinfo ) = @_;
+        my ($hinfo) = @_;
         local *__ANON__ = 'AE:cb:fetch_target_meta:cont';
         DEBUG $self->id . ": adding hosts";
         DEBUG $self->id . ": computing slots";
@@ -583,8 +597,7 @@ sub start
       };
 
       DEBUG "Calling fetch_target_meta for @$flat_targets";
-      $ns->fetch_target_meta( $flat_targets, $ns->name, $fetch_errc, 
-                              $fetch_cont );
+      $ns->fetch_target_meta( $flat_targets, $ns->name, $fetch_errc, $fetch_cont );
       DEBUG "After fetch_target_meta";
       return 1;
     }

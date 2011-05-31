@@ -296,6 +296,24 @@ sub main
      push @{ $opts->{scp_options} }, ("-o", "PubkeyAuthentication=no");
      push @{ $opts->{ssh_options} }, ("-o", "PubkeyAuthentication=no");
   }
+  # split if hostname:rootname combination is present
+  my @target;
+  if ( $args->{host} =~ /:/ )
+  {
+    LOGDIE "Rootname present but missing command_root_transform property"
+      unless ( $args->{command_root_transform} );
+    @target = split( ":", $args->{host} );
+    $args->{host} = $target[0];
+  }
+
+  if ( defined $args->{command_root_transform} )
+  {
+    LOGDIE "\${command} substring not found in $args->{command_root_transform} \n"
+      unless $args->{command_root_transform} =~ /\${command}/;
+
+    LOGDIE "\${rootname} substring not found in $args->{command_root_transform} \n"
+      unless $args->{command_root_transform} =~ /\${rootname}/;
+  }
 
   # insert POGO_JOB_ID into the remote environment
   $remote_env->{POGO_JOB_ID} = $args->{job_id};
@@ -320,6 +338,15 @@ sub main
     # that way we can pass args to our script
   }
 
+  # substitute the command_root_transform with the rootname
+  # and the name of the pogo worker stub
+  if ( defined $args->{command_root_transform} && defined $target[1] )
+  {
+    $args->{command_root_transform} =~ s/\${rootname}/$target[1]/g;
+    $args->{command_root_transform} =~ s/\${command}/$args->{command}->[0]/g;
+    $args->{command}->[0] = $args->{command_root_transform};
+  }
+
   # Prepend "sudo -u <user>" if we are running as someone else
   if ( $args->{run_as} ne $args->{user} )
   {
@@ -342,7 +369,7 @@ sub main
     execute(
       $args, "ssh", @{ $opts->{ssh_options} },
       "--", $args->{user} . "@" . $args->{host},
-      "rm", $tmpfile
+      "rm -f", $tmpfile
     );
   }
   

@@ -129,7 +129,7 @@ sub _rpc_run
   my $opts = {};
   foreach my $arg (
     qw(invoked_as namespace target user run_as password pvt_key_passphrase client_private_key 
-    timeout job_timeout command retry prehook posthook secrets email 
+    timeout job_timeout command retry prehook posthook secrets email root_type
     im_handle client requesthost concurrent exe_name exe_data)
     )
   {
