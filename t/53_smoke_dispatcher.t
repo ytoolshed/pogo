@@ -48,7 +48,7 @@ test_pogo
     or diag explain $t;
   ok( $t->is_success, 'stats success ' . $t->status_msg )
     or diag explain $t;
-  ok( $t->unblessed->[1]->[0]->{hostname} eq hostname(), 'stats' )
+  ok( $t->unblessed->{records}->[0]->{hostname} eq hostname(), 'stats' )
     or diag explain $t;
 
   # badcmd
