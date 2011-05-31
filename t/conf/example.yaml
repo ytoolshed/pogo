@@ -1,5 +1,9 @@
 # example constraints
 ---
+
+globals:
+   root_type: dummyroot2 
+
 plugins:
   targets: Pogo::Plugin::Inline
 

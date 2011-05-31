@@ -483,13 +483,20 @@ sub run
 {
   my ( $class, %args ) = @_;
   my $resp = Pogo::Engine::Response->new()->add_header( action => 'run' );
-  foreach my $arg (qw(user run_as command range password namespace secrets))
+  foreach my $arg (qw(user run_as command range namespace secrets))
   {
     if ( !exists $args{$arg} )
     {
       $resp->set_error("missing '$arg'");
       return $resp;
     }
+  }
+
+  unless (exists $args{'password'} || exists $args{'client_private_key'})
+  {
+    $resp->set_error("Either password or passphrase and client_private_key combination " .
+                     "needs to be provided with 'run' request");
+    return $resp;
   }
 
   my $run_as  = $args{run_as};
@@ -503,7 +510,9 @@ sub run
 
   my $opts = {};
   foreach my $arg (
-    qw(invoked_as namespace range user run_as password timeout job_timeout command retry prehook posthook secrets email im_handle client requesthost concurrent exe_name exe_data)
+    qw(invoked_as namespace range user run_as password pvt_key_passphrase client_private_key 
+       timeout job_timeout command retry prehook posthook secrets email root_type
+       im_handle client requesthost concurrent exe_name exe_data)
     )
   {
     $opts->{$arg} = $args{$arg} if exists $args{$arg};

@@ -36,12 +36,14 @@ use LWP;
 use Net::SSLeay;
 use Template;
 use YAML::XS qw(LoadFile);
+use File::Copy;
+use File::Path;
 
 use lib "$Bin/../lib";
 use lib "$Bin/../../lib";
 
 use Pogo::Engine;
-use Pogo::Engine::Store;
+use Pogo::Engine::Store qw(store);
 use Pogo::Dispatcher::AuthStore;
 use Pogo::Client;
 use PogoTesterProc;
@@ -94,6 +96,28 @@ sub start_dispatcher
     return 0;
   }
 
+  # move the plugins from Pogo::Plugin::Root to 
+  # t/.tmp/Plugin/Root
+  # move the test plugins to Pogo::Plugin::Root
+  mkpath "$Bin/.tmp/Plugin/Root"
+    unless -d "$Bin/.tmp/Plugin/Root";
+    
+  my @src = glob("$Bin/../lib/Pogo/Plugin/Root/*.pm");
+  my $dst = "$Bin/.tmp/Plugin/Root";
+  for my $file (@src)
+  {
+    move($file, $dst)
+      or LOGDIE "Copy failed: $!";
+  }
+  
+  my @src = glob("$Bin/lib/Plugin/Root/*.pm");
+  my $dst = "$Bin/../lib/Pogo/Plugin/Root";
+  for my $file (@src)
+  {
+    copy($file, $dst)
+      or LOGDIE "Copy failed: $!";
+  }
+
   my @args = (
     '/usr/bin/env',                'perl', "-I$Bin/../lib", "-I$Bin/lib",
     "$Bin/../bin/pogo-dispatcher", "-f",   "$Bin/conf/dispatcher.conf"
@@ -104,6 +128,23 @@ sub start_dispatcher
   $dispatcher_proc = $starter->start();
 
   sleep 5;
+
+  # remove the test plugins
+  # move the plugins from t/.tmp/Plugin/Root 
+  # to Pogo::Plugin::Root
+  my @src = glob("$Bin/../lib/Pogo/Plugin/Root/*.pm");
+  for my $file (@src)
+  {
+    unlink($file) or LOGDIE "Delete failed: $!";
+  }
+
+  my @src = glob("$Bin/.tmp/Plugin/Root/*.pm");
+  my $dst = "$Bin/../lib/Pogo/Plugin/Root";
+  for my $file (@src)
+  {
+    move($file, $dst)
+      or LOGDIE "Move failed: $!";
+  }  
 
   LOGDIE sprintf( "Couldn't start dispatcher!  Check %s and %s",
     $starter->stderr_log_path, $starter->stdout_log_path )

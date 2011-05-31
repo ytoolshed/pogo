@@ -95,6 +95,8 @@ sub cmd_run
     'posthooks!',                'hooks!',
     'secrets|S=s',               'unconstrained',
     'concurrent|cc=s',           'file|f=s',
+    'sshagent!',                 'pk-file=s',
+    'use-password!',
   );
 
   # --hooks will affect the default setting of both prehooks and posthooks.  If
@@ -237,32 +239,75 @@ $key,                  $value
     return 0;
   }
 
-  my $password = get_password();
-
-  # use CLI::Auth to validate
-  # note that this is just testing against the local password in case you happen
-  # to use the same one everywhere - to avoid spewing the wrong password to
-  # thousands of hosts, this is not a real auth check
-  if ( $opts->{check_password} )
-  {
-    if ( !check_password( $self->{userid}, $password ) )
-    {
-      die
-        "Local password check failed, bailing\nset 'check_password: 0' in your .pogoconf to disable\n";
-    }
-  }
-
   # bring the crypto
   Crypt::OpenSSL::RSA->import_random_seed();
   my $x509    = Crypt::OpenSSL::X509->new_from_file( $opts->{worker_cert} );
   my $rsa_pub = Crypt::OpenSSL::RSA->new_public_key( $x509->pubkey() );
 
-  # encrypt the password
-  my $cryptpw = encode_base64( $rsa_pub->encrypt($password) );
+  if ($opts->{sshagent})
+  {
+    
+    if ( !defined $opts->{'pk-file'} )
+    {
+      LOGDIE "No ssh private key file found"
+        unless ( -e $ENV{"HOME"} . "/.ssh/id_dsa" );
+      $opts->{'pk-file'} = $ENV{"HOME"} . "/.ssh/id_dsa";
+    }
+
+    open (my $pk_fh, $opts->{'pk-file'}) or LOGDIE "Unable to open file: $!\n"; 
+    my @pk_data;
+
+    #encrypt each line of the private key since its too big as a single entity
+    while (<$pk_fh>) {
+      push @pk_data, encode_base64( $rsa_pub->encrypt($_));
+    }
+    $opts->{client_private_key} = [@pk_data];
+
+    #Get the passphrase for the private key
+    my $pvt_key_passphrase = get_password('Enter the passphrase for ' . $opts->{'pk-file'} . ': ');
+    
+    #if there is no passphrase, it has to be made note of
+    if ($pvt_key_passphrase) {
+      my $cryptphrase = encode_base64( $rsa_pub->encrypt($pvt_key_passphrase) );
+      $opts->{pvt_key_passphrase} = $cryptphrase;
+    }
+    else 
+    {
+      $opts->{pvt_key_passphrase} = $pvt_key_passphrase;
+    }
+
+  }
+
+  if ($opts->{'use-password'})
+  {
+
+    my $password = get_password();
+
+    # use CLI::Auth to validate
+    # note that this is just testing against the local password in case you happen
+    # to use the same one everywhere - to avoid spewing the wrong password to
+    # thousands of hosts, this is not a real auth check
+    if ( $opts->{check_password} )
+    {
+      if ( !check_password( $self->{userid}, $password ) )
+      {
+        die
+          "Local password check failed, bailing\nset 'check_password: 0' in your .pogoconf to disable\n";
+      }
+    }
+
+    # encrypt the password 
+    my $cryptpw = encode_base64( $rsa_pub->encrypt($password) );
+
+    $opts->{password} = $cryptpw;
+
+  }
+
+  die "Need atleast one authentication mechanism with --password or --sshagent\n"
+    unless ($opts->{sshagent} || $opts->{password});
 
   $opts->{user}     = $self->{userid};
-  $opts->{run_as}   = $self->{userid};
-  $opts->{password} = $cryptpw;
+  $opts->{run_as}   ||= $self->{userid};
 
   $opts->{secrets} = encode_base64( $rsa_pub->encrypt($secrets) );
 

@@ -27,6 +27,7 @@ use POSIX qw(WEXITSTATUS SIGTERM);
 use Time::HiRes qw(time);
 use IO::File;
 use Scalar::Util qw(refaddr);
+use File::Path;
 
 sub new
 {
@@ -164,11 +165,18 @@ sub execute
   my ( $self, $task_id ) = @_;
   my $task = $self->{tasks}->{$task_id};
 
-  for (qw(job_id command user run_as password host timeout))
+  for (qw(job_id command user run_as host timeout))
   {
     return $self->reset( $task_id, "500", "Missing required argument $_" )
       unless defined( $task->{args}->{$_} );
   }
+
+  #Check to make sure atleast one form of authentication is provided
+  if (!$task->{args}->{"client_private_key"} && !$task->{args}->{"password"}) {
+    return $self->reset( $task_id, "500", "Missing authentication parameters" )
+  }
+
+
   INFO "[$task_id] Executing job for " . $task->{args}->{user};
 
   # Disable any existing SIGCHLD handlers that may be interfering
@@ -204,7 +212,7 @@ sub execute
     $n++;
   } while ( -f $output_filename );
 
-  mkdir($save_dir) unless ( -d $save_dir );
+  mkpath($save_dir) unless ( -d $save_dir );
 
   # Send args
   $writer->print( encode_json( $task->{args} ) );

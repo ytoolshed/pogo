@@ -17,7 +17,7 @@
 use 5.008;
 use common::sense;
 
-use Test::More tests => 21;
+use Test::More tests => 28;
 use Test::Exception;
 
 use Data::Dumper;
@@ -26,6 +26,11 @@ use FindBin qw($Bin);
 use Sys::Hostname qw(hostname);
 use Time::HiRes qw(sleep);
 use YAML::XS qw(LoadFile);
+
+use Pogo::Engine::Job;
+use Pogo::Engine::Store qw(store);
+use Pogo::Engine;
+use Pogo::Dispatcher::AuthStore;
 
 use lib "$Bin/../lib";
 use lib "$Bin/lib";
@@ -43,6 +48,39 @@ test_pogo
   is( $t->record, 0xDEADBEEF, 'ping recv' )
     or diag explain $t;
 
+  # default_transform
+  undef $t;
+  my $conf = {
+    peers => [ "localhost" ],
+    rpc_port => 7655,
+  };
+  Pogo::Dispatcher::AuthStore->init($conf);
+  
+  my $opts = {
+    store => 'zookeeper',
+    store_options => { port => 18121,},
+  };
+  Pogo::Engine::Store->init($opts);
+
+  my $opts = {
+    user        => 'test',
+    run_as      => 'test',
+    password    => encrypt_secret('foo'),
+    secrets     => encrypt_secret('bar'),
+    command     => 'echo jobdefault',
+    target      => [ 'foo.example.com', ],
+    namespace   => 'example',
+    timeout     => 1,
+    job_timeout => 1,
+    concurrent  => 1,
+  };
+  my $job;
+  $job = Pogo::Engine::Job->new($opts);
+  lives_ok{ $t = $job->command_root_transform(); } 'load default transform'
+    or diag explain $t;
+  is( $t, "dummyroot3 \${rootname} --cmd \${command}", 'default transform loaded' )
+    or diag explain $t;
+
   # loadconf
   undef $t;
   my $conf_to_load;
@@ -54,6 +92,35 @@ test_pogo
     or diag explain $t;
 
   sleep 1;
+
+  # namespace transform
+  undef $t;
+  lives_ok{ $t = $job->command_root_transform(); } 'load namespace transform'
+    or diag explain $t;
+  is( $t, "dummyroot2 \${rootname} --cmd \${command}", 'namespace transform loaded' )
+    or diag explain $t;
+
+  # job transform
+  undef $t;
+  my $opts = {
+    user        => 'test',
+    run_as      => 'test',
+    password    => encrypt_secret('foo'),
+    secrets     => encrypt_secret('bar'),
+    command     => 'echo jobclient',
+    target      => [ 'foo.example.com', ],
+    namespace   => 'example',
+    root_type   => 'dummyroot1',
+    timeout     => 1,
+    job_timeout => 1,
+    concurrent  => 1,
+  };
+  my $job;
+  $job = Pogo::Engine::Job->new($opts);
+  lives_ok{ $t = $job->command_root_transform(); } 'load client transform'
+    or diag explain $t;
+  is( $t, "dummyroot1 \${rootname} --cmd \${command}", 'client transform loaded' )
+    or diag explain $t;
 
   undef $t;
   lives_ok { $t = client->stats(); } 'stats send'
@@ -75,11 +142,32 @@ test_pogo
       or diag explain $dispatcher;
   }
 
+  my $job0 = {
+    user        => 'test',
+    run_as      => 'test',
+    #password    => encrypt_secret('foo'),
+    secrets     => encrypt_secret('bar'),
+    #client_private_key => encrypt_secret('private_key'),
+    pvt_key_passphrase  => encrypt_secret('passphrase'),
+    command     => 'echo job1',
+    target      => [ 'foo[1-10].example.com', ],
+    namespace   => 'example',
+    timeout     => 5,
+    job_timeout => 5,
+    concurrent  => 1,
+  };
+
+  my $resp0;
+  dies_ok { $resp0 = client->run(%$job0); } 'run job0'
+    or diag explain $@;
+
   my $job1 = {
     user        => 'test',
     run_as      => 'test',
     password    => encrypt_secret('foo'),
     secrets     => encrypt_secret('bar'),
+    client_private_key => encrypt_secret('private_key'),
+    pvt_key_passphrase  => encrypt_secret('passphrase'),
     command     => 'echo job1',
     target      => [ 'foo[1-10].example.com', ],
     namespace   => 'example',
@@ -95,7 +183,7 @@ test_pogo
 
   my $jobid = $resp->record;
 
-  ok( $jobid eq 'p0000000000', "got jobid" );
+  ok( $jobid eq 'p0000000002', "got jobid" );
 
   sleep $job1->{job_timeout};    # job should timeout
 

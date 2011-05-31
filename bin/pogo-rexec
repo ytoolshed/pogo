@@ -25,7 +25,10 @@ use IPC::Open3 qw(open3);
 use JSON qw(decode_json);
 use Log::Log4perl qw(:easy);
 use MIME::Base64 qw(decode_base64);
-use POSIX qw(WEXITSTATUS);
+use POSIX qw(WEXITSTATUS mkfifo);
+
+#Register all signals if they exist, then clean up the private key file
+$SIG{HUP} = $SIG{INT} = $SIG{TERM} = $SIG{__DIE__} = \&cleanup;
 
 BEGIN
 {
@@ -36,15 +39,50 @@ my $opts = {
   expect_wrapper => "pogo-pw",
   worker_key     => undef,
   scp_options    => [
-    qw(-q -o RSAAuthentication=no -o PubkeyAuthentication=no -o StrictHostKeyChecking=no -o LogLevel=error -o GlobalKnownHostsFile=/dev/null -o UserKnownHostsFile=/dev/null)
+    qw(-q -o RSAAuthentication=no -o StrictHostKeyChecking=no -o LogLevel=error -o GlobalKnownHostsFile=/dev/null -o UserKnownHostsFile=/dev/null -o ForwardAgent=yes)
   ],
   ssh_options => [
-    qw(-o RSAAuthentication=no -o PubkeyAuthentication=no -o StrictHostKeyChecking=no -o LogLevel=error -o GlobalKnownHostsFile=/dev/null -o UserKnownHostsFile=/dev/null -t)
+    qw(-o RSAAuthentication=no -o StrictHostKeyChecking=no -o LogLevel=error -o GlobalKnownHostsFile=/dev/null -o UserKnownHostsFile=/dev/null -o ForwardAgent=yes -t)
   ],
   command_prefix => [],
+  tempdir        => "/tmp", #Giving the directory to install the private keys
 };
 
 my $remote_env = { PATH => '/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin', };
+
+my $pkfile = undef;
+my $ssh_agent_pid = undef;
+my $ssh_sock = undef;
+
+sub cleanup {
+  my $msg = shift;
+  if ( $msg =~ m/^[A-Z]+$/ ) { $msg = 'got SIG' . $msg; } 
+  if ( $pkfile ) 
+  {
+    unlink $pkfile;
+  }
+  &kill_agent;
+  LOGDIE "ERROR: pogo-rexec died: $msg\n\n";
+}
+
+sub kill_agent{
+  #Kill the ssh-agent if one was created
+  if ($ENV{SSH_AGENT_PID}) 
+  {
+     my $agent_command = ("eval `ssh-agent -k`");
+
+    #start the agent
+    my ( $writer, $reader ) = ( IO::Handle->new, IO::Handle->new );
+    my $pid;
+    eval { $pid = open3( $writer, $reader, undef, $agent_command); };
+    if ($@)
+    {
+      LOGDIE "Error: $@";
+    }
+
+  }
+
+}
 
 sub remote_env
 {
@@ -69,10 +107,25 @@ sub execute
   # Send timeout
   $writer->print( $args->{timeout}, "\n" );
 
-  # Send password
-  $writer->printf( "%s\n",
-    pack( q{u}, $opts->{private_key}->decrypt( decode_base64( $args->{password} ) ) ) );
+  if (!$args->{password}) {
+    # Send blank password
+    $writer->printf( "%s",
+      pack( q{u}, "\n" ) );
+  } else {
+    # Send password
+    $writer->printf( "%s",
+      pack( q{u}, $opts->{private_key}->decrypt( decode_base64( $args->{password} ) ) ) );
+  }
 
+  if (!$args->{pvt_key_passphrase}) {
+    # Send blank passphrase
+    $writer->printf( "%s",
+      pack( q{u}, "\n" ) );
+  } else {
+    # Send passphrase
+    $writer->printf( "%s",
+      pack( q{u}, $opts->{private_key}->decrypt( decode_base64( $args->{pvt_key_passphrase} ) ) ) );
+  }
   $writer->close;
 
   # Copy remote command's output to ours.
@@ -82,6 +135,7 @@ sub execute
   }
 
   # Reap child and return its exit status to our caller.
+
   my $p = waitpid( $pid, 0 );
   return WEXITSTATUS($?);
 }
@@ -132,12 +186,133 @@ sub main
   $args = decode_json( STDIN->getline() );
 
   # Check for required arguments
-  for (qw(job_id command user run_as password host timeout))
+  for (qw(job_id command user run_as host timeout))
   {
     unless ( defined $args->{$_} )
     {
       LOGDIE "Missing required argument $_\n";
     }
+  }
+
+  #Check to make sure atleast one form of authentication is provided
+  if (!$args->{client_private_key} && !$args->{password}) {
+    LOGDIE "Missing authentication parameters\n";
+  }
+
+  #If it is using private key authenticaion, set up ssh-agent
+  if ($args->{client_private_key}) {
+    #prepare the command to start ssh-agent
+    my $agent_command = 'eval `ssh-agent` ; echo SSH_AUTH_SOCK=$SSH_AUTH_SOCK ; echo SSH_AGENT_PID=$SSH_AGENT_PID ; ';
+
+    #start the agent
+    my ( $writer, $reader ) = ( IO::Handle->new, IO::Handle->new );
+    my $pid;
+    eval { $pid = open3( $writer, $reader, undef, $agent_command); };
+    if ($@)
+    {
+      LOGDIE "Error: $@";
+    }
+
+    #fetch the socket and pid
+    while (my $line = $reader->getline) {
+      $ssh_agent_pid=$1 if($line =~ m/SSH_AGENT_PID=(\d+)$/);  
+      $ssh_sock = $1 if($line =~ m/SSH_AUTH_SOCK=(.+)$/);
+    }
+
+    #set the socket for this program and all its children
+    $ENV{SSH_AUTH_SOCK} = $ssh_sock;
+    $ENV{SSH_AGENT_PID} = $ssh_agent_pid;
+
+    #add the key to the agent using ssh-add
+    #decrypt the private key and store in tmp
+    my $pk_data;
+    my $n =0;
+    while  (exists ${ $args->{client_private_key} }[$n]){
+      my $data = ${ $args->{client_private_key} }[$n++];
+      my $dkdata = $opts->{private_key}->decrypt( decode_base64($data));
+      $pk_data .= $dkdata;
+
+    }
+
+    # create a named pipe and make sure it does not already exists
+    $pkfile = sprintf "%s/%d-%d-0000", $opts->{tempdir}, $$, time;
+    while (-p $pkfile )
+    {
+      $pkfile = sprintf "%s/%d-%d-0000", $opts->{tempdir}, $$, time;
+    }
+
+    # the named pipe blocks till some one reads and ssh-add also blocks till its completed,
+    # so both these will deadlock. So we fork the process here, let the pipe run in the child,
+    # start the ssh-add in the parent and once they are completed, we merge them back
+    my $pipepid = fork;
+    if (not defined $pipepid) # not enough resources
+    {
+      LOGDIE "Resources not available for forking.\n";
+    } 
+    elsif($pipepid ==0)  # Child
+    {
+      # ssh-add first adds without passphrase and then tries next time with passphrase
+      # since fifo is read once only, if the given private key does not have a passphrase,
+      # this writing has to be only once, if it has a correct passphrase, it has to be 
+      # done twice. So based on passphrase, we write it once or twice. If the passphrase is 
+      # incorrect, this process will exit with writing twice and the parent will keep 
+      # reading multiple times. EVentually the system timeout will take over and exit.
+
+      my $write_count = $args->{pvt_key_passphrase} ? 2 :1;
+      for (my $i=0; $i<$write_count; $i++) {
+        unless (-p $pkfile)
+        {
+            unlink($pkfile);
+            mkfifo($pkfile, 0600) or LOGDIE "can't mkfifo $pkfile: $!";
+        }
+
+        # next line blocks until there's a reader
+        open(FIFO, "> $pkfile") or LOGDIE "can't write $pkfile: $!";
+        print FIFO $pk_data;
+        close(FIFO);
+        sleep 1;# to avoid dup signals and let ssh-add catch up
+
+      }
+      exit(0);
+    } 
+    else  #parent
+    {
+      #run ssh-add with the private key
+      execute ($args, "ssh-add", "$pkfile");
+      waitpid($pipepid,0);  #wait for child
+
+    }
+
+    #Unlink the pk file
+    if ( $pkfile ) {
+      unlink $pkfile;
+    }
+
+   push @{ $opts->{scp_options} }, ("-o", "PubkeyAuthentication=yes");
+   push @{ $opts->{ssh_options} }, ("-o", "PubkeyAuthentication=yes");
+
+
+  } else {
+     push @{ $opts->{scp_options} }, ("-o", "PubkeyAuthentication=no");
+     push @{ $opts->{ssh_options} }, ("-o", "PubkeyAuthentication=no");
+  }
+  # split if hostname:rootname combination is present
+  my @target;
+  if ( $args->{host} =~ /:/ )
+  {
+    LOGDIE "Rootname present but missing command_root_transform property"
+      unless ( $args->{command_root_transform} );
+    @target = split( ":", $args->{host} );
+    $args->{host} = $target[0];
+  }
+
+  if ( defined $args->{command_root_transform} )
+  {
+    LOGDIE "\${command} substring not found in $args->{command_root_transform} \n"
+      unless $args->{command_root_transform} =~ /\${command}/;
+
+    LOGDIE "\${rootname} substring not found in $args->{command_root_transform} \n"
+      unless $args->{command_root_transform} =~ /\${rootname}/;
   }
 
   # insert POGO_JOB_ID into the remote environment
@@ -163,6 +338,15 @@ sub main
     # that way we can pass args to our script
   }
 
+  # substitute the command_root_transform with the rootname
+  # and the name of the pogo worker stub
+  if ( defined $args->{command_root_transform} && defined $target[1] )
+  {
+    $args->{command_root_transform} =~ s/\${rootname}/$target[1]/g;
+    $args->{command_root_transform} =~ s/\${command}/$args->{command}->[0]/g;
+    $args->{command}->[0] = $args->{command_root_transform};
+  }
+
   # Prepend "sudo -u <user>" if we are running as someone else
   if ( $args->{run_as} ne $args->{user} )
   {
@@ -185,9 +369,13 @@ sub main
     execute(
       $args, "ssh", @{ $opts->{ssh_options} },
       "--", $args->{user} . "@" . $args->{host},
-      "rm", $tmpfile
+      "rm -f", $tmpfile
     );
   }
+  
+
+  &kill_agent;
+ 
 
   return $exit_status;
 }
