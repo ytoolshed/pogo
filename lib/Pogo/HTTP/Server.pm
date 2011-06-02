@@ -26,6 +26,7 @@ use HTTP::Date qw(str2time);
 use JSON::XS;
 use Log::Log4perl qw(:easy);
 use MIME::Types qw(by_suffix);
+use Module::Pluggable search_path => ['Pogo::HTTP::Server::Plugin'], instantiate => 'new' ;
 use POSIX qw(strftime);
 use Template;
 
@@ -727,6 +728,9 @@ sub _render_ui_template
   $resp_code    ||= 200;
   $content_type ||= 'text/html';
 
+  # clean user -provided variables to be rendered
+  $data = $self->encoder->html_encode( $data );
+
   # add ui config items, stripping the "ui_" portion of the name
   map { $data->{ substr( $_, 3 ) } ||= $self->{$_} } grep {/^ui_/} keys %$self;
   # this guy will be interpolated unless it's already been defined
@@ -742,6 +746,44 @@ sub _render_ui_template
         [ $resp_code, $RESPONSE_MSGS{$resp_code}, { 'Content-type' => $content_type }, $output ] );
     }
   ) or die $instance->{tt}->error, "\n";
+}
+
+# returns an encoding object with a html_encode() method to recursively HTML-encode
+# variable for insertion in our templates. When multiple possible modules are found,
+# a priority() method is used to decide which to use.
+sub encoder
+{
+  my $self = shift;
+
+  return $self->{encoder}
+    if defined $self->{encoder};
+
+  foreach my $plugin_obj ($self->plugins)
+  {
+    DEBUG 'looking at ' . ref($plugin_obj);
+
+    next unless $plugin_obj->can('html_encode');
+    next unless $plugin_obj->can('priority');
+
+    DEBUG 'found plugin for HTML -encoding: ' . ref($plugin_obj) . ', priority: ' . $plugin_obj->priority;
+
+    if ( ! defined $self->{encoder} )
+    {
+      $self->{encoder} = $plugin_obj;
+    }
+    elsif ( $plugin_obj->priority > $self->{encoder}->priority )
+    {
+      $self->{encoder} = $plugin_obj;
+    }
+  }
+
+  LOGDIE 'No appropriate plugin found for encoding HTML entities. '
+       . 'Pogo/HTTP/Server/Plugin/Default.pm should have been part of the original installation?'
+    unless $self->{encoder};
+
+  DEBUG 'using ' . ref($self->{encoder}) . ' for HTML entity encoding';
+
+  return $self->{encoder};
 }
 
 # }}}
