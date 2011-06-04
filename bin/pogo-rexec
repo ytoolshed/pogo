@@ -26,7 +26,7 @@ use JSON qw(decode_json);
 use Log::Log4perl qw(:easy);
 use MIME::Base64 qw(decode_base64);
 use POSIX qw(WEXITSTATUS mkfifo);
-use Digest::SHA qw(sha1_base64);
+use Digest::SHA qw(sha1_hex);
 
 #Register all signals if they exist, then clean up the private key file
 $SIG{HUP} = $SIG{INT} = $SIG{TERM} = $SIG{__DIE__} = \&cleanup;
@@ -246,10 +246,10 @@ sub main
     }
 
     # create a named pipe and make sure it does not already exists
-    $pkfile = "$opts->{tempdir}/" . sha1_base64( sprintf "%0.5f-%d-%d", rand(), $$, time );
+    $pkfile = "$opts->{tempdir}/" . sha1_hex( sprintf "%0.5f-%d-%d", rand(), $$, time );
     while ( -p $pkfile )
     {
-      $pkfile = "$opts->{tempdir}/" . sha1_base64( printf "%0.5f-%d-%d", rand(), $$, time );
+      $pkfile = "$opts->{tempdir}/" . sha1_hex( printf "%0.5f-%d-%d", rand(), $$, time );
     }
 
     # the named pipe blocks till some one reads and ssh-add also blocks till its completed,
