@@ -38,7 +38,7 @@ test_pogo
   # root plugin
   lives_ok { $t = store->get("/pogo/root/default"); } 'default plugin'
     or diag explain $t;
-  is( $t, 'dummyroot3', 'plugins loaded')
+  is( $t, 'dummyroot3', 'plugins loaded' )
     or diag explain $t;
 
   # ping

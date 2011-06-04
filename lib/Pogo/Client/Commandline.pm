@@ -249,9 +249,10 @@ $key,                  $value
     
     if ( !defined $opts->{'pk-file'} )
     {
+      my $ssh_home = $ENV{"HOME"} . "/.ssh/id_dsa";
       LOGDIE "No ssh private key file found"
-        unless ( -e $ENV{"HOME"} . "/.ssh/id_dsa" );
-      $opts->{'pk-file'} = $ENV{"HOME"} . "/.ssh/id_dsa";
+        unless ( -e $ssh_home);
+      $opts->{'pk-file'} = $ssh_home;
     }
 
     open (my $pk_fh, $opts->{'pk-file'}) or LOGDIE "Unable to open file: $!\n"; 

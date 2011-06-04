@@ -51,14 +51,14 @@ test_pogo
   # default_transform
   undef $t;
   my $conf = {
-    peers => [ "localhost" ],
+    peers    => ["localhost"],
     rpc_port => 7655,
   };
   Pogo::Dispatcher::AuthStore->init($conf);
-  
+
   my $opts = {
-    store => 'zookeeper',
-    store_options => { port => 18121,},
+    store         => 'zookeeper',
+    store_options => { port => 18121, },
   };
   Pogo::Engine::Store->init($opts);
 
@@ -76,7 +76,7 @@ test_pogo
   };
   my $job;
   $job = Pogo::Engine::Job->new($opts);
-  lives_ok{ $t = $job->command_root_transform(); } 'load default transform'
+  lives_ok { $t = $job->command_root_transform(); } 'load default transform'
     or diag explain $t;
   is( $t, "dummyroot3 \${rootname} --cmd \${command}", 'default transform loaded' )
     or diag explain $t;
@@ -95,7 +95,7 @@ test_pogo
 
   # namespace transform
   undef $t;
-  lives_ok{ $t = $job->command_root_transform(); } 'load namespace transform'
+  lives_ok { $t = $job->command_root_transform(); } 'load namespace transform'
     or diag explain $t;
   is( $t, "dummyroot2 \${rootname} --cmd \${command}", 'namespace transform loaded' )
     or diag explain $t;
@@ -117,7 +117,7 @@ test_pogo
   };
   my $job;
   $job = Pogo::Engine::Job->new($opts);
-  lives_ok{ $t = $job->command_root_transform(); } 'load client transform'
+  lives_ok { $t = $job->command_root_transform(); } 'load client transform'
     or diag explain $t;
   is( $t, "dummyroot1 \${rootname} --cmd \${command}", 'client transform loaded' )
     or diag explain $t;
@@ -136,25 +136,25 @@ test_pogo
       or diag explain $dispatcher;
     ok( exists $dispatcher->{workers_busy}, "exists workers_busy" )
       or diag explain $dispatcher;
-    is( scalar @{$dispatcher->{workers_idle}}, 1, "one workers_idle" )
+    is( scalar @{ $dispatcher->{workers_idle} }, 1, "one workers_idle" )
       or diag explain $dispatcher;
-    is( scalar @{$dispatcher->{workers_busy}}, 0, "zero workers_busy" )
+    is( scalar @{ $dispatcher->{workers_busy} }, 0, "zero workers_busy" )
       or diag explain $dispatcher;
   }
 
   my $job0 = {
-    user        => 'test',
-    run_as      => 'test',
+    user   => 'test',
+    run_as => 'test',
     #password    => encrypt_secret('foo'),
-    secrets     => encrypt_secret('bar'),
+    secrets => encrypt_secret('bar'),
     #client_private_key => encrypt_secret('private_key'),
-    pvt_key_passphrase  => encrypt_secret('passphrase'),
-    command     => 'echo job1',
-    target      => [ 'foo[1-10].example.com', ],
-    namespace   => 'example',
-    timeout     => 5,
-    job_timeout => 5,
-    concurrent  => 1,
+    pvt_key_passphrase => encrypt_secret('passphrase'),
+    command            => 'echo job1',
+    target             => [ 'foo[1-10].example.com', ],
+    namespace          => 'example',
+    timeout            => 5,
+    job_timeout        => 5,
+    concurrent         => 1,
   };
 
   my $resp0;
@@ -162,18 +162,18 @@ test_pogo
     or diag explain $@;
 
   my $job1 = {
-    user        => 'test',
-    run_as      => 'test',
-    password    => encrypt_secret('foo'),
-    secrets     => encrypt_secret('bar'),
+    user               => 'test',
+    run_as             => 'test',
+    password           => encrypt_secret('foo'),
+    secrets            => encrypt_secret('bar'),
     client_private_key => encrypt_secret('private_key'),
-    pvt_key_passphrase  => encrypt_secret('passphrase'),
-    command     => 'echo job1',
-    target      => [ 'foo[1-10].example.com', ],
-    namespace   => 'example',
-    timeout     => 5,
-    job_timeout => 5,
-    concurrent  => 1,
+    pvt_key_passphrase => encrypt_secret('passphrase'),
+    command            => 'echo job1',
+    target             => [ 'foo[1-10].example.com', ],
+    namespace          => 'example',
+    timeout            => 5,
+    job_timeout        => 5,
+    concurrent         => 1,
   };
 
   my $resp;
@@ -188,7 +188,7 @@ test_pogo
   sleep $job1->{job_timeout};    # job should timeout
 
   my @records;
-  for (my $i = 0; $i <= $job1->{job_timeout} * 2; $i++)
+  for ( my $i = 0; $i <= $job1->{job_timeout} * 2; $i++ )
   {
     $resp = client->jobstatus($jobid)
       or diag explain $@;
@@ -211,7 +211,8 @@ test_pogo
   ok( $@ =~ m/expired/, "expiry message for foo11.example.com" )
     or diag explain $resp;
 
-  dies_ok { $resp = client->jobretry( $jobid, ['foo9.example.com'] ) } "job retry for foo9.example.com"
+  dies_ok { $resp = client->jobretry( $jobid, ['foo9.example.com'] ) }
+  "job retry for foo9.example.com"
     or diag explain $@;
 
   ok( $@ =~ m/expired/, "expiry message for foo9.example.com" )

@@ -26,6 +26,7 @@ use JSON qw(decode_json);
 use Log::Log4perl qw(:easy);
 use MIME::Base64 qw(decode_base64);
 use POSIX qw(WEXITSTATUS mkfifo);
+use Digest::SHA qw(sha1_base64);
 
 #Register all signals if they exist, then clean up the private key file
 $SIG{HUP} = $SIG{INT} = $SIG{TERM} = $SIG{__DIE__} = \&cleanup;
@@ -45,19 +46,21 @@ my $opts = {
     qw(-o RSAAuthentication=no -o StrictHostKeyChecking=no -o LogLevel=error -o GlobalKnownHostsFile=/dev/null -o UserKnownHostsFile=/dev/null -o ForwardAgent=yes -t)
   ],
   command_prefix => [],
-  tempdir        => "/tmp", #Giving the directory to install the private keys
+  tempdir =>
+    "/tmp",    #The default directory where the named pipe will be created for storing private key.
 };
 
 my $remote_env = { PATH => '/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin', };
 
-my $pkfile = undef;
+my $pkfile        = undef;
 my $ssh_agent_pid = undef;
-my $ssh_sock = undef;
+my $ssh_sock      = undef;
 
-sub cleanup {
+sub cleanup
+{
   my $msg = shift;
-  if ( $msg =~ m/^[A-Z]+$/ ) { $msg = 'got SIG' . $msg; } 
-  if ( $pkfile ) 
+  if ( $msg =~ m/^[A-Z]+$/ ) { $msg = 'got SIG' . $msg; }
+  if ($pkfile)
   {
     unlink $pkfile;
   }
@@ -65,16 +68,17 @@ sub cleanup {
   LOGDIE "ERROR: pogo-rexec died: $msg\n\n";
 }
 
-sub kill_agent{
+sub kill_agent
+{
   #Kill the ssh-agent if one was created
-  if ($ENV{SSH_AGENT_PID}) 
+  if ( $ENV{SSH_AGENT_PID} )
   {
-     my $agent_command = ("eval `ssh-agent -k`");
+    my $agent_command = ("eval `ssh-agent -k`");
 
     #start the agent
     my ( $writer, $reader ) = ( IO::Handle->new, IO::Handle->new );
     my $pid;
-    eval { $pid = open3( $writer, $reader, undef, $agent_command); };
+    eval { $pid = open3( $writer, $reader, undef, $agent_command ); };
     if ($@)
     {
       LOGDIE "Error: $@";
@@ -107,21 +111,25 @@ sub execute
   # Send timeout
   $writer->print( $args->{timeout}, "\n" );
 
-  if (!$args->{password}) {
+  if ( !$args->{password} )
+  {
     # Send blank password
-    $writer->printf( "%s",
-      pack( q{u}, "\n" ) );
-  } else {
+    $writer->printf( "%s", pack( q{u}, "\n" ) );
+  }
+  else
+  {
     # Send password
     $writer->printf( "%s",
       pack( q{u}, $opts->{private_key}->decrypt( decode_base64( $args->{password} ) ) ) );
   }
 
-  if (!$args->{pvt_key_passphrase}) {
+  if ( !$args->{pvt_key_passphrase} )
+  {
     # Send blank passphrase
-    $writer->printf( "%s",
-      pack( q{u}, "\n" ) );
-  } else {
+    $writer->printf( "%s", pack( q{u}, "\n" ) );
+  }
+  else
+  {
     # Send passphrase
     $writer->printf( "%s",
       pack( q{u}, $opts->{private_key}->decrypt( decode_base64( $args->{pvt_key_passphrase} ) ) ) );
@@ -195,28 +203,32 @@ sub main
   }
 
   #Check to make sure atleast one form of authentication is provided
-  if (!$args->{client_private_key} && !$args->{password}) {
+  if ( !$args->{client_private_key} && !$args->{password} )
+  {
     LOGDIE "Missing authentication parameters\n";
   }
 
   #If it is using private key authenticaion, set up ssh-agent
-  if ($args->{client_private_key}) {
+  if ( $args->{client_private_key} )
+  {
     #prepare the command to start ssh-agent
-    my $agent_command = 'eval `ssh-agent` ; echo SSH_AUTH_SOCK=$SSH_AUTH_SOCK ; echo SSH_AGENT_PID=$SSH_AGENT_PID ; ';
+    my $agent_command =
+      'eval `ssh-agent` ; echo SSH_AUTH_SOCK=$SSH_AUTH_SOCK ; echo SSH_AGENT_PID=$SSH_AGENT_PID ; ';
 
     #start the agent
     my ( $writer, $reader ) = ( IO::Handle->new, IO::Handle->new );
     my $pid;
-    eval { $pid = open3( $writer, $reader, undef, $agent_command); };
+    eval { $pid = open3( $writer, $reader, undef, $agent_command ); };
     if ($@)
     {
       LOGDIE "Error: $@";
     }
 
     #fetch the socket and pid
-    while (my $line = $reader->getline) {
-      $ssh_agent_pid=$1 if($line =~ m/SSH_AGENT_PID=(\d+)$/);  
-      $ssh_sock = $1 if($line =~ m/SSH_AUTH_SOCK=(.+)$/);
+    while ( my $line = $reader->getline )
+    {
+      $ssh_agent_pid = $1 if ( $line =~ m/SSH_AGENT_PID=(\d+)$/ );
+      $ssh_sock      = $1 if ( $line =~ m/SSH_AUTH_SOCK=(.+)$/ );
     }
 
     #set the socket for this program and all its children
@@ -224,77 +236,79 @@ sub main
     $ENV{SSH_AGENT_PID} = $ssh_agent_pid;
 
     #add the key to the agent using ssh-add
-    #decrypt the private key and store in tmp
+    #decrypt the private key and send it to the named pipe
     my $pk_data;
-    my $n =0;
-    while  (exists ${ $args->{client_private_key} }[$n]){
-      my $data = ${ $args->{client_private_key} }[$n++];
-      my $dkdata = $opts->{private_key}->decrypt( decode_base64($data));
+    for my $data ( @{ $args->{client_private_key} } )
+    {
+      my $dkdata = $opts->{private_key}->decrypt( decode_base64($data) );
       $pk_data .= $dkdata;
 
     }
 
     # create a named pipe and make sure it does not already exists
-    $pkfile = sprintf "%s/%d-%d-0000", $opts->{tempdir}, $$, time;
-    while (-p $pkfile )
+    $pkfile = "$opts->{tempdir}/" . sha1_base64( sprintf "%0.5f-%d-%d", rand(), $$, time );
+    while ( -p $pkfile )
     {
-      $pkfile = sprintf "%s/%d-%d-0000", $opts->{tempdir}, $$, time;
+      $pkfile = "$opts->{tempdir}/" . sha1_base64( printf "%0.5f-%d-%d", rand(), $$, time );
     }
 
     # the named pipe blocks till some one reads and ssh-add also blocks till its completed,
     # so both these will deadlock. So we fork the process here, let the pipe run in the child,
     # start the ssh-add in the parent and once they are completed, we merge them back
     my $pipepid = fork;
-    if (not defined $pipepid) # not enough resources
+    if ( not defined $pipepid )    # not enough resources
     {
       LOGDIE "Resources not available for forking.\n";
-    } 
-    elsif($pipepid ==0)  # Child
+    }
+    elsif ( $pipepid == 0 )        # Child
     {
       # ssh-add first adds without passphrase and then tries next time with passphrase
       # since fifo is read once only, if the given private key does not have a passphrase,
-      # this writing has to be only once, if it has a correct passphrase, it has to be 
-      # done twice. So based on passphrase, we write it once or twice. If the passphrase is 
-      # incorrect, this process will exit with writing twice and the parent will keep 
+      # this writing has to be only once, if it has a correct passphrase, it has to be
+      # done twice. So based on passphrase, we write it once or twice. If the passphrase is
+      # incorrect, this process will exit with writing twice and the parent will keep
       # reading multiple times. EVentually the system timeout will take over and exit.
 
-      my $write_count = $args->{pvt_key_passphrase} ? 2 :1;
-      for (my $i=0; $i<$write_count; $i++) {
-        unless (-p $pkfile)
+      my $write_count = $args->{pvt_key_passphrase} ? 2 : 1;
+      for ( my $i = 0; $i < $write_count; $i++ )
+      {
+        unless ( -p $pkfile )
         {
-            unlink($pkfile);
-            mkfifo($pkfile, 0600) or LOGDIE "can't mkfifo $pkfile: $!";
+          unlink($pkfile);
+          mkfifo( $pkfile, 0600 ) or LOGDIE "can't mkfifo $pkfile: $!";
         }
 
         # next line blocks until there's a reader
-        open(FIFO, "> $pkfile") or LOGDIE "can't write $pkfile: $!";
+        open( FIFO, "> $pkfile" ) or LOGDIE "can't write $pkfile: $!";
         print FIFO $pk_data;
         close(FIFO);
-        sleep 1;# to avoid dup signals and let ssh-add catch up
+        sleep 1;    # to avoid dup signals and let ssh-add catch up
 
       }
       exit(0);
-    } 
-    else  #parent
+    }
+    else            #parent
     {
       #run ssh-add with the private key
-      execute ($args, "ssh-add", "$pkfile");
-      waitpid($pipepid,0);  #wait for child
+      execute( $args, "ssh-add", "$pkfile" );
+      waitpid( $pipepid, 0 );    #wait for child
 
     }
 
     #Unlink the pk file
-    if ( $pkfile ) {
+    if ($pkfile)
+    {
       unlink $pkfile;
     }
 
-   push @{ $opts->{scp_options} }, ("-o", "PubkeyAuthentication=yes");
-   push @{ $opts->{ssh_options} }, ("-o", "PubkeyAuthentication=yes");
+    push @{ $opts->{scp_options} }, ( "-o", "PubkeyAuthentication=yes" );
+    push @{ $opts->{ssh_options} }, ( "-o", "PubkeyAuthentication=yes" );
 
-
-  } else {
-     push @{ $opts->{scp_options} }, ("-o", "PubkeyAuthentication=no");
-     push @{ $opts->{ssh_options} }, ("-o", "PubkeyAuthentication=no");
+  }
+  else
+  {
+    push @{ $opts->{scp_options} }, ( "-o", "PubkeyAuthentication=no" );
+    push @{ $opts->{ssh_options} }, ( "-o", "PubkeyAuthentication=no" );
   }
   # split if hostname:rootname combination is present
   my @target;
@@ -372,10 +386,8 @@ sub main
       "rm -f", $tmpfile
     );
   }
-  
 
   &kill_agent;
- 
 
   return $exit_status;
 }
