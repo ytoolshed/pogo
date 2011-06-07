@@ -29,9 +29,9 @@ use PogoTester;
 sub start
 {
   $ENV{POGO_PERSIST} = 1;
-  write_pidfile( 'zookeeper', PogoTester::start_zookeeper());
-  write_pidfile( 'dispatcher', PogoTester::start_dispatcher());
-  write_pidfile( 'worker', PogoTester::start_worker());
+  write_pidfile( 'zookeeper', PogoTester::start_zookeeper() );
+  write_pidfile( 'dispatcher', PogoTester::start_dispatcher() );
+  write_pidfile( 'worker', PogoTester::start_worker() );
 }
 
 sub stop
@@ -45,6 +45,10 @@ sub killit
 {
   my ($name) = @_;
   my $pid = read_pidfile($name);
+  if ( ! defined $pid ) {
+      DEBUG "no pid file for $name, assuming stopped already";
+      return;
+  }
   DEBUG "killing $name ($pid)";
   kill 15, $pid;
   unlink_pidfile($name);
@@ -69,6 +73,7 @@ sub write_pidfile
 sub read_pidfile
 {
   my ($name) = @_;
+  return unless ( -R "/tmp/$name.pid" );
   open my $fh, '<', "/tmp/$name.pid"
     or die "Can't open '/tmp/$name.pid': $!";
   local $/;
