@@ -66,20 +66,22 @@ sub load_data
     $self->set_error("Unable to parse content: $@");
     return;
   }
-  elsif ( scalar @$data != 2 )
+  elsif ( ref $data ne 'HASH'
+       or ! defined $data->{header}
+       or ! defined $data->{records}  )
   {
-    ERROR "Badly-formed response: wrong number of elements";
+    ERROR "Badly-formed response: expecting hash with two elements, 'header' and 'records'";
     DEBUG Dumper $data;
-    $self->set_error("Badly-formed response: wrong number of elements");
+    $self->set_error("Badly-formed response: expecting hash with two elements, 'header' and 'records'");
     return;
   }
 
-  $self->{_header}  = $data->[0];
-  $self->{_records} = $data->[1];
+  $self->{_header}  = $data->{header};
+  $self->{_records} = $data->{records};
   $self->{_state} =
-      $data->[0]->{status} eq 'OK'    ? RESPONSE_OK
-    : $data->[0]->{status} eq 'ERROR' ? RESPONSE_ERROR
-    :                                   RESPONSE_UNKNOWN;
+      $data->{header}->{status} eq 'OK'    ? RESPONSE_OK
+    : $data->{header}->{status} eq 'ERROR' ? RESPONSE_ERROR
+    :                                        RESPONSE_UNKNOWN;
   return 1;
 }
 
@@ -233,8 +235,8 @@ sub add_header
 
 sub has_header
 {
-  my $self = shift;
-  return exists $self->{_header}->{shift};
+  my ( $self, $name ) = @_; 
+  return exists $self->{_header}->{$name};
 }
 
 # }}} header
@@ -350,13 +352,14 @@ sub to_string
 sub content
 {
   my $self = shift;
-  return $self->to_string( [ $self->{_header}, $self->{_records} ] );
+  return $self->to_string( { header => $self->{_header}, records => $self->{_records} } );
 }
 
+# CHANGE ...maybe? used in RPCConnection
 sub unblessed
 {
   my $self = shift;
-  return [ $self->{_header}, $self->{_records} ];
+  return { header => $self->{_header}, records => $self->{_records} };
 }
 
 # }}} stringify

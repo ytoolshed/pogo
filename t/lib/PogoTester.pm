@@ -96,25 +96,25 @@ sub start_dispatcher
     return 0;
   }
 
-  # move the plugins from Pogo::Plugin::Root to 
+  # move the plugins from Pogo::Plugin::Root to
   # t/.tmp/Plugin/Root
   # move the test plugins to Pogo::Plugin::Root
   mkpath "$Bin/.tmp/Plugin/Root"
     unless -d "$Bin/.tmp/Plugin/Root";
-    
+
   my @src = glob("$Bin/../lib/Pogo/Plugin/Root/*.pm");
   my $dst = "$Bin/.tmp/Plugin/Root";
   for my $file (@src)
   {
-    move($file, $dst)
+    move( $file, $dst )
       or LOGDIE "Copy failed: $!";
   }
-  
+
   my @src = glob("$Bin/lib/Plugin/Root/*.pm");
   my $dst = "$Bin/../lib/Pogo/Plugin/Root";
   for my $file (@src)
   {
-    copy($file, $dst)
+    copy( $file, $dst )
       or LOGDIE "Copy failed: $!";
   }
 
@@ -130,7 +130,7 @@ sub start_dispatcher
   sleep 5;
 
   # remove the test plugins
-  # move the plugins from t/.tmp/Plugin/Root 
+  # move the plugins from t/.tmp/Plugin/Root
   # to Pogo::Plugin::Root
   my @src = glob("$Bin/../lib/Pogo/Plugin/Root/*.pm");
   for my $file (@src)
@@ -142,9 +142,9 @@ sub start_dispatcher
   my $dst = "$Bin/../lib/Pogo/Plugin/Root";
   for my $file (@src)
   {
-    move($file, $dst)
+    move( $file, $dst )
       or LOGDIE "Move failed: $!";
-  }  
+  }
 
   LOGDIE sprintf( "Couldn't start dispatcher!  Check %s and %s",
     $starter->stderr_log_path, $starter->stdout_log_path )

@@ -38,7 +38,7 @@ test_pogo
   # root plugin
   lives_ok { $t = store->get("/pogo/root/default"); } 'default plugin'
     or diag explain $t;
-  is( $t, 'dummyroot3', 'plugins loaded')
+  is( $t, 'dummyroot3', 'plugins loaded' )
     or diag explain $t;
 
   # ping
@@ -56,7 +56,7 @@ test_pogo
     or diag explain $t;
   ok( $t->is_success, 'stats success ' . $t->status_msg )
     or diag explain $t;
-  ok( $t->unblessed->[1]->[0]->{hostname} eq hostname(), 'stats' )
+  ok( $t->unblessed->{records}->[0]->{hostname} eq hostname(), 'stats' )
     or diag explain $t;
 
   # badcmd

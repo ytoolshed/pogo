@@ -56,11 +56,14 @@ sub new
 {
   my ( $class, $args ) = @_;
 
-  foreach my $opt (qw(target namespace user run_as password command timeout job_timeout))
+  foreach my $opt (qw(target namespace user run_as command timeout job_timeout))
   {
     LOGDIE "missing require job parameter '$opt'"
       unless exists $args->{$opt};
   }
+
+  LOGDIE "need atleast one authenticaton mechanism"
+    unless ($args->{password} || $args->{client_private_key});
 
   my $ns = $args->{namespace};
 
@@ -106,10 +109,12 @@ sub new
   # get stuffed into the distributed password store instead of zookeeper
   # (because we don't want them to show up in zk's disk snapshot)
   my $pw      = delete $args->{password};
+  my $pvt_key_passphrase = delete $args->{pvt_key_passphrase};
+  my $client_private_key = delete $args->{client_private_key};
   my $secrets = delete $args->{secrets};
 
   my $expire = $args->{job_timeout} + time() + 60;
-  Pogo::Dispatcher::AuthStore->instance->store( $self->{id}, $pw, $secrets, $expire );
+  Pogo::Dispatcher::AuthStore->instance->store( $self->{id}, $pw, $secrets, $expire, $pvt_key_passphrase, $client_private_key );
 
   # store all non-secure items in zk
   while ( my ( $k, $v ) = each %$args ) { $self->set_meta( $k, $v ); }
@@ -511,18 +516,20 @@ sub start_job_timeout
 # }}}
 # {{{ various accessors
 
-sub password                { return $_[0]->_get_secrets()->[0]; }
-sub secrets                 { return $_[0]->_get_secrets()->[1]; }
-sub namespace               { return $_[0]->{ns} }
-sub id                      { return $_[0]->{id} }
-sub user                    { return $_[0]->meta('user'); }
-sub run_as                  { return $_[0]->meta('run_as'); }
-sub timeout                 { return $_[0]->meta('timeout'); }
-sub job_timeout             { return $_[0]->meta('job_timeout'); }
-sub retry                   { return $_[0]->meta('retry'); }
-sub command                 { return $_[0]->meta('command'); }
-sub concurrent              { return $_[0]->meta('concurrent'); }
-sub state                   { return store->get( $_[0]->{path} ); }
+sub password    { return $_[0]->_get_secrets()->[0]; }
+sub secrets     { return $_[0]->_get_secrets()->[1]; }
+sub pvt_key_passphrase  { return $_[0]->_get_secrets()->[3]; }
+sub client_private_key { return $_[0]->_get_secrets()->[4]; }
+sub namespace   { return $_[0]->{ns} }
+sub id          { return $_[0]->{id} }
+sub user        { return $_[0]->meta('user'); }
+sub run_as      { return $_[0]->meta('run_as'); }
+sub timeout     { return $_[0]->meta('timeout'); }
+sub job_timeout { return $_[0]->meta('job_timeout'); }
+sub retry       { return $_[0]->meta('retry'); }
+sub command     { return $_[0]->meta('command'); }
+sub concurrent  { return $_[0]->meta('concurrent'); }
+sub state       { return store->get( $_[0]->{path} ); }
 
 # Returns the transform for a given root type
 # root_type precedence :
@@ -530,13 +537,13 @@ sub state                   { return store->get( $_[0]->{path} ); }
 # root_type param in namespace >
 # zookeeper /pogo/root/default
 sub command_root_transform
-{ 
-  my $root = $_[0]->meta('root_type'); 
+{
+  my $root = $_[0]->meta('root_type');
   $root = $_[0]->{ns}->get_conf->{globals}->{root_type} unless $root;
   $root = store->get("/pogo/root/default") unless $root;
-  return store->get("/pogo/root/" . $root);
+  return store->get( "/pogo/root/" . $root );
 }
-  
+
 sub set_state
 {
   my ( $self, $state, $msg, @extra ) = @_;
@@ -592,7 +599,7 @@ sub start
       };
 
       my $fetch_cont = sub {
-        my( $hinfo ) = @_;
+        my ($hinfo) = @_;
         local *__ANON__ = 'AE:cb:fetch_target_meta:cont';
         DEBUG $self->id . ": adding hosts";
         DEBUG $self->id . ": computing slots";
@@ -602,8 +609,7 @@ sub start
       };
 
       DEBUG "Calling fetch_target_meta for @$flat_targets";
-      $ns->fetch_target_meta( $flat_targets, $ns->name, $fetch_errc, 
-                              $fetch_cont );
+      $ns->fetch_target_meta( $flat_targets, $ns->name, $fetch_errc, $fetch_cont );
       DEBUG "After fetch_target_meta";
       return 1;
     }
