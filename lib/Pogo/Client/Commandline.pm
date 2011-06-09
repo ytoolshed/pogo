@@ -32,8 +32,6 @@ use POSIX qw(strftime);
 use Sys::Hostname qw(hostname);
 use Time::HiRes qw(gettimeofday tv_interval);
 use YAML::Syck qw(LoadFile DumpFile);
-#use File::Temp qw(tempfile);
-#use GnuPG qw(:algo);
 
 use Pogo::Common;
 use Pogo::Client;
