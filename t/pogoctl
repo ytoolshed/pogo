@@ -29,9 +29,9 @@ use PogoTester;
 sub start
 {
   $ENV{POGO_PERSIST} = 1;
-  write_pidfile( 'zookeeper', PogoTester::start_zookeeper() );
+  write_pidfile( 'zookeeper',  PogoTester::start_zookeeper() );
   write_pidfile( 'dispatcher', PogoTester::start_dispatcher() );
-  write_pidfile( 'worker', PogoTester::start_worker() );
+  write_pidfile( 'worker',     PogoTester::start_worker() );
 }
 
 sub stop
@@ -45,15 +45,15 @@ sub killit
 {
   my ($name) = @_;
   my $pid = read_pidfile($name);
-  if ( ! defined $pid ) {
-      DEBUG "no pid file for $name, assuming stopped already";
-      return;
+  if ( !defined $pid )
+  {
+    DEBUG "no pid file for $name, assuming stopped already";
+    return;
   }
   DEBUG "killing $name ($pid)";
   kill 15, $pid;
   unlink_pidfile($name);
 }
-
 
 sub restart
 {
@@ -63,8 +63,8 @@ sub restart
 
 sub write_pidfile
 {
-  my ($name, $pid) = @_;
-  sysopen( my $fh, "/tmp/$name.pid", O_CREAT|O_EXCL|O_WRONLY )
+  my ( $name, $pid ) = @_;
+  sysopen( my $fh, "/tmp/$name.pid", O_CREAT | O_EXCL | O_WRONLY )
     or die "Can't open pid file: $!";
   print $fh $pid;
   close($fh);
@@ -91,17 +91,17 @@ sub unlink_pidfile
 
 sub main
 {
-  if ($ARGV[0] eq 'start')
+  if ( $ARGV[0] eq 'start' )
   {
     start();
     return 0;
   }
-  elsif ($ARGV[0] eq 'stop')
+  elsif ( $ARGV[0] eq 'stop' )
   {
     stop();
     return 0;
   }
-  elsif ($ARGV[0] eq 'restart')
+  elsif ( $ARGV[0] eq 'restart' )
   {
     restart();
     return 0;

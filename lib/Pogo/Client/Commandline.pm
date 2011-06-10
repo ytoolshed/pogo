@@ -88,7 +88,7 @@ sub cmd_run
     secrets     => POGO_SECRETS_FILE,
   };
   GetOptions(
-    my $cmdline_opts = {},       'cookbook|C=s',
+    my $cmdline_opts = {}, 'cookbook|C=s',
     'hostfile|H=s',              'target|host|h=s@',
     'job_timeout|job-timeout=i', 'dryrun|n',
     'recipe|R=s',                'retry|r=i',
@@ -137,13 +137,13 @@ sub cmd_run
   delete $opts->{target};
   LOGDIE "run needs hosts!\n" if ( @targets == 0 );
   $opts->{target} = \@targets;
-  
+
   # generate a signature and add it to the job metadata
   if ( defined $opts->{createsig} && $opts->{createsig} )
   {
     my %signature = create_signature($opts);
     if ( exists $opts->{signature} ) { push( @{ $opts->{signature} }, \%signature ); }
-    else { $opts->{signature} = [ \%signature ]; }
+    else                             { $opts->{signature} = [ \%signature ]; }
   }
 
   # secrets
@@ -203,42 +203,45 @@ $key,                  $value
   my $x509    = Crypt::OpenSSL::X509->new_from_file( $opts->{worker_cert} );
   my $rsa_pub = Crypt::OpenSSL::RSA->new_public_key( $x509->pubkey() );
 
-  if ($opts->{sshagent})
+  if ( $opts->{sshagent} )
   {
-    
+
     if ( !defined $opts->{'pk-file'} )
     {
       my $ssh_home = $ENV{"HOME"} . "/.ssh/id_dsa";
       LOGDIE "No ssh private key file found"
-        unless ( -e $ssh_home);
+        unless ( -e $ssh_home );
       $opts->{'pk-file'} = $ssh_home;
     }
 
-    open (my $pk_fh, $opts->{'pk-file'}) or LOGDIE "Unable to open file: $!\n"; 
+    open( my $pk_fh, $opts->{'pk-file'} ) or LOGDIE "Unable to open file: $!\n";
     my @pk_data;
 
     #encrypt each line of the private key since its too big as a single entity
-    while (<$pk_fh>) {
-      push @pk_data, encode_base64( $rsa_pub->encrypt($_));
+    while (<$pk_fh>)
+    {
+      push @pk_data, encode_base64( $rsa_pub->encrypt($_) );
     }
     $opts->{client_private_key} = [@pk_data];
 
     #Get the passphrase for the private key
-    my $pvt_key_passphrase = get_password('Enter the passphrase for ' . $opts->{'pk-file'} . ': ');
-    
+    my $pvt_key_passphrase =
+      get_password( 'Enter the passphrase for ' . $opts->{'pk-file'} . ': ' );
+
     #if there is no passphrase, it has to be made note of
-    if ($pvt_key_passphrase) {
+    if ($pvt_key_passphrase)
+    {
       my $cryptphrase = encode_base64( $rsa_pub->encrypt($pvt_key_passphrase) );
       $opts->{pvt_key_passphrase} = $cryptphrase;
     }
-    else 
+    else
     {
       $opts->{pvt_key_passphrase} = $pvt_key_passphrase;
     }
 
   }
 
-  if ($opts->{'use-password'})
+  if ( $opts->{'use-password'} )
   {
 
     my $password = get_password();
@@ -256,7 +259,7 @@ $key,                  $value
       }
     }
 
-    # encrypt the password 
+    # encrypt the password
     my $cryptpw = encode_base64( $rsa_pub->encrypt($password) );
 
     $opts->{password} = $cryptpw;
@@ -264,10 +267,10 @@ $key,                  $value
   }
 
   die "Need atleast one authentication mechanism with --password or --sshagent\n"
-    unless ($opts->{sshagent} || $opts->{password});
+    unless ( $opts->{sshagent} || $opts->{password} );
 
-  $opts->{user}     = $self->{userid};
-  $opts->{run_as}   ||= $self->{userid};
+  $opts->{user} = $self->{userid};
+  $opts->{run_as} ||= $self->{userid};
 
   $opts->{secrets} = encode_base64( $rsa_pub->encrypt($secrets) );
 
@@ -296,10 +299,8 @@ sub cmd_gensig
 {
   my $self = shift;
   GetOptions(
-    my $cmdline_opts = {}, 'recipe|R=s', 
-    'cookbook|C=s',        'keyring-dir|K=s',
-    'keyring-userid|U=s',  'replace-signature!', 
-    'list-signatures!',
+    my $cmdline_opts = {}, 'recipe|R=s', 'cookbook|C=s', 'keyring-dir|K=s',
+    'keyring-userid|U=s', 'replace-signature!', 'list-signatures!',
   );
 
   LOGDIE "recipe name is required"
@@ -349,7 +350,7 @@ sub cmd_gensig
   # load the list of target nodes from
   # the hostfile or target option
   my @targets = $self->load_targets($opts);
-  $opts->{target} = \@targets if (@targets != 0);
+  $opts->{target} = \@targets if ( @targets != 0 );
 
   # create the signature hash for the recipe
   my %signature = create_signature($opts);
@@ -964,7 +965,7 @@ sub to_jobid
 sub load_command
 {
   my ( $self, $opts ) = @_;
-  
+
   if ( @ARGV > 0 )
   {
     $opts->{command} = "@ARGV";
@@ -992,7 +993,7 @@ sub load_targets
 {
   my ( $self, $opts ) = @_;
   my @targets;
-  
+
   if ( exists $opts->{target} )
   {
     push @targets, @{ delete $opts->{target} };
@@ -1134,7 +1135,7 @@ sub load_yaml
 sub uri_to_absuri
 {
   DEBUG Dumper \@_;
-  my $rel_uri = shift;
+  my $rel_uri  = shift;
   my $base_uri = shift;
 
   $base_uri = URI->new($base_uri);

@@ -67,12 +67,13 @@ sub load_data
     return;
   }
   elsif ( ref $data ne 'HASH'
-       or ! defined $data->{header}
-       or ! defined $data->{records}  )
+    or !defined $data->{header}
+    or !defined $data->{records} )
   {
     ERROR "Badly-formed response: expecting hash with two elements, 'header' and 'records'";
     DEBUG Dumper $data;
-    $self->set_error("Badly-formed response: expecting hash with two elements, 'header' and 'records'");
+    $self->set_error(
+      "Badly-formed response: expecting hash with two elements, 'header' and 'records'");
     return;
   }
 
@@ -235,7 +236,7 @@ sub add_header
 
 sub has_header
 {
-  my ( $self, $name ) = @_; 
+  my ( $self, $name ) = @_;
   return exists $self->{_header}->{$name};
 }
 

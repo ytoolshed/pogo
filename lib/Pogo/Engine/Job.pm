@@ -63,7 +63,7 @@ sub new
   }
 
   LOGDIE "need atleast one authenticaton mechanism"
-    unless ($args->{password} || $args->{client_private_key});
+    unless ( $args->{password} || $args->{client_private_key} );
 
   my $ns = $args->{namespace};
 
@@ -91,30 +91,31 @@ sub new
 
   bless $self, $class;
 
-  $args->{target_keyring} = $self->{ns}->get_conf->{globals}->{target_keyring}; 
-  $args->{target_keyring} = Pogo::Dispatcher->target_keyring 
+  $args->{target_keyring} = $self->{ns}->get_conf->{globals}->{target_keyring};
+  $args->{target_keyring} = Pogo::Dispatcher->target_keyring
     unless defined $args->{target_keyring};
   LOGDIE "The job needs to be signed"
-    if ( (defined $args->{target_keyring}) && (!defined $args->{signature}) );
+    if ( ( defined $args->{target_keyring} ) && ( !defined $args->{signature} ) );
 
-  $args->{target} = encode_json($args->{target}); 
-  $args->{target_keyring} = encode_json($args->{target_keyring})
+  $args->{target}         = encode_json( $args->{target} );
+  $args->{target_keyring} = encode_json( $args->{target_keyring} )
     if ( defined $args->{target_keyring} );
-  $args->{signature_fields} = encode_json($args->{signature_fields})
+  $args->{signature_fields} = encode_json( $args->{signature_fields} )
     if ( defined $args->{signature_fields} );
-  $args->{signature} = encode_json($args->{signature})
+  $args->{signature} = encode_json( $args->{signature} )
     if ( defined $args->{signature} );
 
   # 'higher security tier' job arguments like encrypted passwords & passphrases
   # get stuffed into the distributed password store instead of zookeeper
   # (because we don't want them to show up in zk's disk snapshot)
-  my $pw      = delete $args->{password};
+  my $pw                 = delete $args->{password};
   my $pvt_key_passphrase = delete $args->{pvt_key_passphrase};
   my $client_private_key = delete $args->{client_private_key};
-  my $secrets = delete $args->{secrets};
+  my $secrets            = delete $args->{secrets};
 
   my $expire = $args->{job_timeout} + time() + 60;
-  Pogo::Dispatcher::AuthStore->instance->store( $self->{id}, $pw, $secrets, $expire, $pvt_key_passphrase, $client_private_key );
+  Pogo::Dispatcher::AuthStore->instance->store( $self->{id}, $pw, $secrets, $expire,
+    $pvt_key_passphrase, $client_private_key );
 
   # store all non-secure items in zk
   while ( my ( $k, $v ) = each %$args ) { $self->set_meta( $k, $v ); }
@@ -516,20 +517,20 @@ sub start_job_timeout
 # }}}
 # {{{ various accessors
 
-sub password    { return $_[0]->_get_secrets()->[0]; }
-sub secrets     { return $_[0]->_get_secrets()->[1]; }
-sub pvt_key_passphrase  { return $_[0]->_get_secrets()->[3]; }
+sub password           { return $_[0]->_get_secrets()->[0]; }
+sub secrets            { return $_[0]->_get_secrets()->[1]; }
+sub pvt_key_passphrase { return $_[0]->_get_secrets()->[3]; }
 sub client_private_key { return $_[0]->_get_secrets()->[4]; }
-sub namespace   { return $_[0]->{ns} }
-sub id          { return $_[0]->{id} }
-sub user        { return $_[0]->meta('user'); }
-sub run_as      { return $_[0]->meta('run_as'); }
-sub timeout     { return $_[0]->meta('timeout'); }
-sub job_timeout { return $_[0]->meta('job_timeout'); }
-sub retry       { return $_[0]->meta('retry'); }
-sub command     { return $_[0]->meta('command'); }
-sub concurrent  { return $_[0]->meta('concurrent'); }
-sub state       { return store->get( $_[0]->{path} ); }
+sub namespace          { return $_[0]->{ns} }
+sub id                 { return $_[0]->{id} }
+sub user               { return $_[0]->meta('user'); }
+sub run_as             { return $_[0]->meta('run_as'); }
+sub timeout            { return $_[0]->meta('timeout'); }
+sub job_timeout        { return $_[0]->meta('job_timeout'); }
+sub retry              { return $_[0]->meta('retry'); }
+sub command            { return $_[0]->meta('command'); }
+sub concurrent         { return $_[0]->meta('concurrent'); }
+sub state              { return store->get( $_[0]->{path} ); }
 
 # Returns the transform for a given root type
 # root_type precedence :
@@ -1050,15 +1051,15 @@ sub snapshot
 
 sub worker_command
 {
-  my $self                = shift;
-  my %meta                = $self->all_meta;
-  my $exe                 = delete $meta{exe_data} || '';
-  $meta{target}           = decode_json($meta{target});
-  $meta{target_keyring}   = decode_json($meta{target_keyring})
+  my $self = shift;
+  my %meta = $self->all_meta;
+  my $exe  = delete $meta{exe_data} || '';
+  $meta{target}         = decode_json( $meta{target} );
+  $meta{target_keyring} = decode_json( $meta{target_keyring} )
     if ( defined $meta{target_keyring} );
-  $meta{signature_fields} = decode_json($meta{signature_fields})
+  $meta{signature_fields} = decode_json( $meta{signature_fields} )
     if ( defined $meta{signature_fields} );
-  $meta{signature}        = decode_json($meta{signature})
+  $meta{signature} = decode_json( $meta{signature} )
     if ( defined $meta{signature} );
 
   my $worker_stub = read_file( Pogo::Dispatcher->instance->worker_script )

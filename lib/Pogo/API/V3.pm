@@ -110,10 +110,10 @@ sub _rpc_run
     }
   }
 
-  unless (exists $args{'password'} || exists $args{'client_private_key'})
+  unless ( exists $args{'password'} || exists $args{'client_private_key'} )
   {
-    $resp->set_error("Either password or passphrase and client_private_key combination " .
-                     "needs to be provided with 'run' request");
+    $resp->set_error( "Either password or passphrase and client_private_key combination "
+        . "needs to be provided with 'run' request" );
     DEBUG "failed run, password or passphrase and private key not provided";
     return $resp;
   }
@@ -128,9 +128,9 @@ sub _rpc_run
 
   my $opts = {};
   foreach my $arg (
-    qw(invoked_as namespace target user run_as password pvt_key_passphrase 
-    client_private_key timeout job_timeout command retry prehook posthook 
-    secrets email root_type im_handle client requesthost concurrent exe_name 
+    qw(invoked_as namespace target user run_as password pvt_key_passphrase
+    client_private_key timeout job_timeout command retry prehook posthook
+    secrets email root_type im_handle client requesthost concurrent exe_name
     exe_data signature_fields signature)
     )
   {

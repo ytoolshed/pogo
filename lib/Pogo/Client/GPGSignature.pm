@@ -28,7 +28,7 @@ our @EXPORT_OK = qw(create_signature);
 
 sub create_signature
 {
-  my $opts  = shift;
+  my $opts = shift;
 
   my $gpg_passphrase;
   #Get the passphrase for the private key
