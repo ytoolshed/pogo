@@ -1,4 +1,4 @@
-package Pogo::HTTP::Server::Plugin::Default;
+package Pogo::Plugin::HTMLEncode::Default;
 
 # Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
 #

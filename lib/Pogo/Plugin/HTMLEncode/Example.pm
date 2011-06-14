@@ -1,4 +1,4 @@
-package Pogo::HTTP::Server::Plugin::Example;
+package Pogo::Plugin::HTMLEncode::Example;
 
 # Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
 #
@@ -57,11 +57,11 @@ sub priority { return -1; }
 
 =head1 NAME
 
-Pogo::HTTP::Server::Plugin::Example
+Pogo::Plugin::HTMLEncode::Example
 
 =head1 SYNOPSIS
 
-    module Pogo::HTTP::Server::Plugin::MyPlugin;
+    package Pogo::Plugin::HTMLEncode::MyPlugin;
 
     sub new { return bless( {}, $_[0] ); }
 
@@ -80,7 +80,7 @@ Pogo::HTTP::Server::Plugin::Example
 
 =head1 DESCRIPTION
 
-Pogo comes installed with a default scheme (Pogo::HTTP::Server::Plugin::Default)
+Pogo comes installed with a default scheme (Pogo::Plugin::HTMLEncode::Default)
 for encoding user-provided data so that it can safely be displayed in an 
 HTML/Javascript context, using HTML::Entities::encode_entities(). For the 
 vast majority of users that will work just fine, but some installations 
