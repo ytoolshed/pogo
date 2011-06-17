@@ -30,6 +30,9 @@ sub create_signature
 {
   my $opts = shift;
 
+  LOGDIE "run_as and command are needed to sign a job"
+    if ( !defined $opts->{command} || !defined $opts->{run_as} );
+
   my $gpg_passphrase;
   #Get the passphrase for the private key
   $gpg_passphrase = get_password("Enter the gpg passphrase to sign $opts->{recipe}: ");
@@ -118,31 +121,15 @@ sub create_signature
 
 =pod
 
-=head1 NAME
-
-  CLASSNAME - SHORT DESCRIPTION
-
-=head1 SYNOPSIS
-
-CODE GOES HERE
-
 =head1 DESCRIPTION
 
-LONG_DESCRIPTION
+GPGSignature takes infomation about the job metadata and creates a GPG signature out of it. GPGSignature specifically looks for "command run_as target namespace" and if present "pre and post hooks" to create a signature out of. The create_signature method takes in all the job meta data and returns a signature hash containing two fields, one is "sig" which is the signature itself and two "name" which is the user who signed the job meta data. 
 
-=head1 METHODS
+=head1 create_signature 
 
 B<methodexample>
 
-=over 2
-
-methoddescription
-
 =back
-
-=head1 SEE ALSO
-
-L<Pogo::Dispatcher>
 
 =head1 COPYRIGHT
 

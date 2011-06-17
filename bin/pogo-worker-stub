@@ -39,7 +39,7 @@ sub cleanup
   unlink $stubname;
   print "Removed the stub $stubname \n";
 
-  die "ERROR: pogo-worker died: $msg\n\n";
+  die "ERROR: pogo-worker died: $msg";
 }
 
 sub run_hooks
@@ -53,7 +53,7 @@ sub run_hooks
   {
     print "pogo-worker: running hook '$run'\n";
     my $ret = system($run) >> 8;
-    if ( $ret != 0 ) { die "hook '$run' exited $ret, bailing out\n"; }
+    if ( $ret != 0 ) { die "hook '$run' exited $ret, bailing out"; }
   }
 }
 
@@ -63,7 +63,7 @@ sub main
   my $compartment = Safe->new();
   $opts = $compartment->reval(<DATA>);
   die "safe eval failed: $@" if $@;
-  die "bad options\n"
+  die "bad options"
     unless $opts->{job}
       && $opts->{command}
       && exists $opts->{retry}
@@ -71,10 +71,10 @@ sub main
   if ( $opts->{signature_fields} )
   {
     #die if the signature is not present
-    die "Required data for verifying signatures not present\n"
+    die "Required data for verifying signatures not present"
       unless ( $opts->{signature}
       && $opts->{target_keyring}
-      && ( $opts->{target_keyring} ne 'ARRAY' ) );
+      && ( ref( $opts->{target_keyring} ) ne 'ARRAY' ) );
 
     my %keyring_dir_hash = map { $_ => 0 } @{ $opts->{target_keyring} };
 
@@ -96,7 +96,7 @@ sub main
     #verify presence of all required fields
     foreach my $required_field (@required_fields)
     {
-      die "A required field needed in the signature is missing: $required_field\n"
+      die "A required field needed in the signature is missing: $required_field"
         unless exists $fields_hash{$required_field};
 
     }
@@ -105,7 +105,7 @@ sub main
     my $serialization;
     foreach my $field (@fields)
     {
-      die "A required field needed for signature verification is missing: $field\n"
+      die "A required field needed for signature verification is missing: $field"
         unless exists $opts->{$field};
       if ( ( $field eq 'signature_fields' ) || ( $field eq 'target' ) )
       {
@@ -119,17 +119,17 @@ sub main
 
     #store data in a temp file
     my $data_file = File::Temp->new( DIR => TEMPDIR(), UNLINK => 1 );
-    chmod( 0600, $data_file );
+    chmod( 0600, $data_file->filename );
     $data_file->print($serialization);
     close $data_file;
 
     foreach my $sig_hash ( @{ ( $opts->{signature} ) } )
     {
-      die "Required fields for signature are not present\n"
-        unless ( $sig_hash->{sig} && $sig_hash->{name} );
+      die "Required fields for signature are not present"
+        unless ( defined $sig_hash->{sig} && defined $sig_hash->{name} );
       #store the signature in another temp file
       my $signature_file = File::Temp->new( DIR => TEMPDIR(), UNLINK => 1 );
-      chmod( 0600, $signature_file );
+      chmod( 0600, $signature_file->filename );
       $signature_file->print( $sig_hash->{sig} );
       close $signature_file;
 
@@ -144,13 +144,9 @@ sub main
           . ' --verify '
           . $signature_file->filename . ' '
           . $data_file->filename;
-        eval { $result = system($execute_string) >> 8; };
-        if ($@)
-        {
-          unlink $signature_file;
-          unlink $data_file;
-          die "Verifying signature failed: $@ for user $sig_hash->{name} \n";
-        }
+        $result = system($execute_string) >> 8;
+        die "Verifying signature failed: $@ for user $sig_hash->{name} "
+          if ($@);
 
         #The signature is not verifiable against the current keyring
         if ( $result != 0 )
@@ -174,22 +170,20 @@ sub main
       {
         unlink $signature_file;
         unlink $data_file;
-        die "Exit code: $result, User $sig_hash->{name} not in any keyrings \n "
+        die "Exit code: $result, User $sig_hash->{name} not in any keyrings "
           . "or Signature invalid or Data invalid\n";
       }
-      #print "Signature verified for user $sig_hash->{name}!\n";
       unlink $signature_file;
     }
 
     #Check the keyring hash that each keyring has atleast one user siging the data
     while ( my ( $key, $value ) = each(%keyring_dir_hash) )
     {
-      die "No user from keyring $key signed the data\n"
+      die "No user from keyring $key signed the data"
         if ( !$value );
     }
 
     unlink $data_file;
-    #print "\nAll signatures verified against all keyrings\n";
 
   }
   print "pogo-worker: loaded; retry=$opts->{retry}, timeout=$opts->{timeout}\n";
@@ -231,19 +225,19 @@ sub main
   while ( $ret != 0 && $count <= $opts->{retry} )
   {
     eval {
-      $SIG{ALRM} = sub { die "command timed out\n"; };
+      $SIG{ALRM} = sub { die "command timed out"; };
       alarm $opts->{timeout};
       $ret = system( $opts->{command} ) >> 8;
       alarm 0;
     };
-    if ($@) { die "command timed out\n"; }
+    if ($@) { die "command timed out"; }
     last if $ret == 0;
     print "WARNING: pogo-worker: command exited $ret";
     $count ? print ", retry $count of $opts->{retry}\n" : print "\n";
     $count++;
     sleep 5;
   }
-  if ( $ret != 0 ) { die "command exited $ret\n"; }
+  if ( $ret != 0 ) { die "command exited $ret"; }
   print "pogo-worker: command exit $ret\n";
   run_hooks(POST_HOOKDIR) if $opts->{posthook};
   if ( $tempfile && -e $tempfile )
