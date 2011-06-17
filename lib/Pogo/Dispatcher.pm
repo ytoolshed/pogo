@@ -134,55 +134,21 @@ sub load_root_transform
 # which is the root_type with highest priority
 sub load_root_plugin
 {
-  DEBUG "loading plugin";
-  my $plugin_base_class = "Pogo::Plugin::Root";
-  ( my $plugin_base_dir = $plugin_base_class ) =~ s#::#/#g;
-  my $rex = qr/(.*)\.pm$/;
-  my $dir;
-
-  for my $incdir (@INC)
-  {
-    if ( -d "$incdir/$plugin_base_dir" )
-    {
-      $dir = "$incdir/$plugin_base_dir";
-      if ( !<$dir/*> )
-      {
-        ERROR "Skipping empty plugin dir $dir";
-        next;
-      }
-      DEBUG "Found plugin dir: $dir";
-      last;
-    }
-  }
-
-  if ( !$dir )
-  {
-    INFO "No plugins found";
-    return;
-  }
-
-  $instance->{root} = {};
+  # holds name and priority of default root
   my @default_root;
-  opendir DIR, $dir or LOGDIE "Cannot open dir $dir \n";
-  for my $entry ( readdir DIR )
+
+  foreach my $root_plugin (
+    Pogo::Plugin->load_multiple( 'Root', { required_methods => [ 'root_type', 'transform' ] } ) )
   {
-    next if $entry !~ $rex;
-    my $plugin_class = "${plugin_base_class}::$1";
-    eval "require $plugin_class";
+    DEBUG "processing Root type: " . $root_plugin->root_type();
 
-    my $plugin = $plugin_class->new();
-
-    $instance->{root}->{ $plugin->root_type() } = $plugin->transform();
-    if ( $default_root[0] < $plugin->priority() )
-    {
-      $default_root[0] = $plugin->priority();
-      $default_root[1] = $plugin->root_type();
-    }
-    DEBUG "Loaded plugin " . $plugin_class;
+    # add this root transform to our list
+    $instance->{root}->{ $root_plugin->root_type() } = $root_plugin->transform();
   }
-  $instance->{root}->{default} = $default_root[1];
 
-  closedir DIR;
+  # record our default root type, which is still stored in Pogo::Plugin
+  $instance->{root}->{default} =
+    Pogo::Plugin->load( 'Root', { required_methods => [ 'root_type', 'transform' ] } )->root_type();
 }
 
 sub purge_queue

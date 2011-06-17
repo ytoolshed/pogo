@@ -23,8 +23,8 @@ sub new
     return $self;
 }
 
-sub root_type { return undef; }
-sub transform { return undef; }
-sub priority  { return undef; }
+sub root_type { return 'dummy'; }
+sub transform { return ''; }
+sub priority  { return -1; }
 
 1;

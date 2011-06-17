@@ -20,7 +20,7 @@ use warnings;
 use strict;
 
 use Log::Log4perl qw(:easy);
-use Module::Pluggable search_path => ['Pogo::Plugin'], instantiate => 'new' ;
+use Module::Pluggable search_path => ['Pogo::Plugin'], instantiate => 'new';
 
 my $instance;
 
@@ -31,10 +31,10 @@ sub load
   $class->_init();
 
   LOGDIE "Missing argument, type, to $class\->load()"
-      unless $type;
+    unless $type;
 
   return $instance->{$type}
-     if defined $instance->{$type};
+    if defined $instance->{$type};
 
   $instance->search_path( new => "Pogo::Plugin::$type" );
   DEBUG "looking for '$type' plugin";
@@ -44,23 +44,47 @@ sub load
     if $args->{required_methods};
 
   # check each potential plugin
-  PLUGIN: foreach my $plugin_obj ($instance->plugins)
+  foreach my $plugin_obj ( $instance->plugins )
   {
-    DEBUG "evaluating '$type' plugin: " . ref($plugin_obj);
+    my $plugin_name = ref($plugin_obj);
+
+    DEBUG "evaluating '$type' plugin: $plugin_name";
 
     # priority() method is always required
-    next PLUGIN unless $plugin_obj->can('priority');
-
-    # check that other specified methods are present
-    foreach my $required_method ( @required_methods )
+    unless ( $plugin_obj->can('priority') )
     {
-      next PLUGIN unless $plugin_obj->can($required_method);
+      LOGDIE "$plugin_name is missing the required method 'priority()'. Fix the "
+        . "associated .pm file or remove it.";
     }
 
-    DEBUG "found valid '$type' plugin: " . ref($plugin_obj) . ', priority: ' . $plugin_obj->priority;
+    # check that other specified methods are present
+    foreach my $required_method (@required_methods)
+    {
+      unless ( $plugin_obj->can($required_method) )
+      {
+        LOGDIE "$plugin_name is missing the required method '$required_method()'. "
+          . "Fix the associated .pm file or remove it.";
+      }
+    }
 
-    # compare to other loaded plugins of this type
-    if ( ! defined $instance->{$type} )
+    DEBUG "found valid '$type' plugin: $plugin_name, priority: " . $plugin_obj->priority;
+
+# if we're loading multiple plugins of this type, add this plugin to the list regardless of priority
+    if ( $args->{multiple} )
+    {
+      DEBUG "adding instance of $plugin_name to list of plugins";
+      if ( exists $instance->{_lists}->{$type} )
+      {
+        push( @{ $instance->{_lists}->{$type} }, $plugin_obj );
+      }
+      else
+      {
+        $instance->{_lists}->{$type} = [$plugin_obj];
+      }
+    }
+
+    # compare to other loaded plugins of this type to determine highest priority
+    if ( !defined $instance->{$type} )
     {
       $instance->{$type} = $plugin_obj;
     }
@@ -68,10 +92,10 @@ sub load
     {
       $instance->{$type} = $plugin_obj;
     }
-  }
+  }    # end foreach $plugin_obj
 
-  LOGDIE "No appropriate '$type' plugin found. "
-       . "lib/Pogo/Plugin/$type/Default.pm should have been part of the original installation?"
+  LOGDIE "No appropriate '$type' plugin found. The original installation should include "
+    . "a default plugin module in lib/Pogo/Plugin/$type/"
     unless $instance->{$type};
 
   DEBUG 'using ' . ref( $instance->{$type} ) . " for '$type' plugin";
@@ -79,25 +103,29 @@ sub load
   return $instance->{$type};
 }
 
-sub add_search_path
+# loads all available plugins, returning them as a list of objects
+sub load_multiple
 {
-    my ( $self, $path ) = @_;
+  my ( $class, $type, $args ) = @_;
 
-    DEBUG "Adding plugin search path: '$path'";
-    $self->search_path( add => $path );
+  $class->_init();
+
+  $class->load( $type, { %$args, multiple => 1 } );
+
+  return @{ $instance->{_lists}->{$type} };
 }
 
+# makes sure $instance is initialized
 sub _init
 {
-    my $class = shift;
+  my $class = shift;
 
-    return $instance
-        if defined $instance;
+  return $instance
+    if defined $instance;
 
-    $instance = {};
-    return bless( $instance, $class );
+  $instance = {};
+  return bless( $instance, $class );
 }
-
 
 =pod
 
@@ -189,6 +217,5 @@ Apache 2.0
   Robert Phan <robert.phan@gmail.com>
 
 =cut
-
 
 1;
