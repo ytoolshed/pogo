@@ -138,24 +138,25 @@ sub cmd_run
   LOGDIE "run needs hosts!\n" if ( @targets == 0 );
   $opts->{target} = \@targets;
 
+
+  # secrets
+  if ( defined $opts->{secrets} && $opts->{secrets} ne '' )
+  {
+    $opts->{loaded_secrets} = load_secrets( $opts->{secrets} );
+
+    if ( !$opts->{loaded_secrets} )
+    {
+      ERROR "Can't load secrets from $opts->{secrets}: $!";
+    }
+  }
+
+
   # generate a signature and add it to the job metadata
   if ( defined $opts->{createsig} && $opts->{createsig} )
   {
     my %signature = create_signature($opts);
     if ( exists $opts->{signature} ) { push( @{ $opts->{signature} }, \%signature ); }
     else                             { $opts->{signature} = [ \%signature ]; }
-  }
-
-  # secrets
-  my $secrets;
-  if ( defined $opts->{secrets} && $opts->{secrets} ne '' )
-  {
-    $secrets = load_secrets( $opts->{secrets} );
-
-    if ( !$secrets )
-    {
-      ERROR "Can't load secrets from $opts->{secrets}: $!";
-    }
   }
 
   # --unconstrained means we're 100% in parallel
@@ -225,8 +226,21 @@ $key,                  $value
     $opts->{client_private_key} = [@pk_data];
 
     #Get the passphrase for the private key
-    my $pvt_key_passphrase =
-      get_password( 'Enter the passphrase for ' . $opts->{'pk-file'} . ': ' );
+    #Passphrases are to be fetched from a file if option is set, else prompt
+    my $pvt_key_passphrase;
+    if ( $opts->{'use-secrets-file'} )
+    {
+      LOGDIE "Fetch from file failed for private key passphrase"
+         if ( !$opts->{loaded_secrets} && !defined $opts->{loaded_secrets}->{'pvt_key_passphrase'} ); 
+      $pvt_key_passphrase = delete $opts->{loaded_secrets}->{'pvt_key_passphrase'};
+      
+    }
+    else
+    {
+
+      #Get the passphrase for the private key
+      $pvt_key_passphrase = get_password( "Enter the passphrase for " . $opts->{'pk-file'} . ": " );
+    }
 
     #if there is no passphrase, it has to be made note of
     if ($pvt_key_passphrase)
@@ -244,7 +258,20 @@ $key,                  $value
   if ( $opts->{'use-password'} )
   {
 
-    my $password = get_password();
+    #Passwords are to be fetched from a file if option is set, else prompt
+    my $password;;
+    if ( $opts->{'use-secrets-file'} )
+    {
+      LOGDIE "Fetch from file failed for password"
+         if ( !$opts->{loaded_secrets} && !defined $opts->{loaded_secrets}->{'unix_password'} ); 
+      $password = delete $opts->{loaded_secrets}->{'unix_password'};
+    }
+    else
+    {
+
+      #Get the passphrase for the private key
+      $password = get_password();
+    }
 
     # use CLI::Auth to validate
     # note that this is just testing against the local password in case you happen
@@ -272,7 +299,7 @@ $key,                  $value
   $opts->{user} = $self->{userid};
   $opts->{run_as} ||= $self->{userid};
 
-  $opts->{secrets} = encode_base64( $rsa_pub->encrypt($secrets) );
+  $opts->{secrets} = encode_base64( $rsa_pub->encrypt($opts->{loaded_secrets}) );
 
   my $resp = $self->_client->run(%$opts);
 
@@ -301,6 +328,7 @@ sub cmd_gensig
   GetOptions(
     my $cmdline_opts = {}, 'recipe|R=s', 'cookbook|C=s', 'keyring-dir|K=s',
     'keyring-userid|U=s', 'replace-signature!', 'list-signatures!',
+    'secrets|S=s',
   );
 
   LOGDIE "recipe name is required"
@@ -311,7 +339,7 @@ sub cmd_gensig
   my $opts;
   my $recipe;
 
-  foreach my $options qw(debug help)
+  foreach my $options qw(debug help use-secrets-file)
   {
     $opts->{$options} = $self->{opts}->{$options} if defined $self->{opts}->{$options};
   }
@@ -351,6 +379,17 @@ sub cmd_gensig
   # the hostfile or target option
   my @targets = $self->load_targets($opts);
   $opts->{target} = \@targets if ( @targets != 0 );
+
+  # secrets
+  if ( defined $opts->{secrets} && $opts->{secrets} ne '' )
+  {
+    $opts->{loaded_secrets} = load_secrets( $opts->{secrets} );
+
+    if ( !$opts->{loaded_secrets} )
+    {
+      ERROR "Can't load secrets from $opts->{secrets}: $!";
+    }
+  }
 
   # create the signature hash for the recipe
   my %signature = create_signature($opts);
@@ -744,7 +783,8 @@ sub process_options
 
   # first, process global options and see if we have an alt config file
   GetOptions( $cmdline_opts, 'help|?', 'api=s', 'configfile|c=s', 'debug', 'namespace|ns=s',
-    'worker_cert=s' );
+    'use-secrets-file!',
+    'worker_cert=s', );
 
   Log::Log4perl::get_logger->level($DEBUG)
     if $cmdline_opts->{debug};

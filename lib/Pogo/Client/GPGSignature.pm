@@ -20,6 +20,7 @@ use common::sense;
 use File::Temp qw(tempfile);
 use Log::Log4perl qw(:easy);
 use GnuPG qw(:algo);
+use Data::Dumper;
 
 use Pogo::Client::AuthCheck qw(get_password);
 
@@ -34,8 +35,21 @@ sub create_signature
     if ( !defined $opts->{command} || !defined $opts->{run_as} );
 
   my $gpg_passphrase;
-  #Get the passphrase for the private key
-  $gpg_passphrase = get_password("Enter the gpg passphrase to sign $opts->{recipe}: ");
+  #If the user asks to use the keydb, we use the passphrase from there
+
+  if ( $opts->{'use-secrets-file'} )
+  {
+      LOGDIE "Fetch from file failed for gpg key passphrase"
+         if ( !$opts->{loaded_secrets} && !defined $opts->{loaded_secrets}->{'pvt_key_passphrase'} ); 
+      $gpg_passphrase = delete $opts->{loaded_secrets}->{'gpg_passphrase'};
+  }
+  else
+  {
+
+    #Get the passphrase for the private key
+    $gpg_passphrase = get_password("Enter the gpg passphrase to sign $opts->{recipe}: ");
+  }
+
 
   # if the keyring-userid is not provided
   # default to unix userid
