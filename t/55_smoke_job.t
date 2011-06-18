@@ -127,7 +127,7 @@ test_pogo
     or diag explain $t;
   ok( $t->is_success, 'stats success' )
     or diag explain $t;
-  is( $t->unblessed->[1]->[0]->{hostname}, hostname(), 'stats' )
+  is( $t->unblessed->{records}->[0]->{hostname}, hostname(), 'stats' )
     or diag explain $t;
 
   foreach my $dispatcher ( $t->records )
