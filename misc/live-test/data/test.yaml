@@ -1,0 +1,17 @@
+  # v1 Old style config
+appgroups:
+  frontend:
+    - frontend.host
+  backend:
+    - backend.host
+
+sequences:
+  cluster:
+    - [backend, frontend]
+  
+constraints:
+  frontend:
+    cluster: 3
+
+  backend:
+    cluster: 1
