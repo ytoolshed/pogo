@@ -24,21 +24,26 @@ use HTML::Entities;
 sub new { return bless( {}, $_[0] ); }
 
 # html-encodes data structures recursively
-sub html_encode {
-    my $self = shift;
-    my $value = shift;
+sub html_encode
+{
+  my $self  = shift;
+  my $value = shift;
 
-    if ( ref $value eq 'HASH' ) {
-        foreach my $key ( keys %{ $value } ) {
-            $value->{ $key } = $self->html_encode( $value->{ $key } );
-        }
-        return $value;
-
-    } elsif ( ref $value eq 'ARRAY' ) {
-        return [ map { $self->html_encode( $_ ) } @$value ];
+  if ( ref $value eq 'HASH' )
+  {
+    foreach my $key ( keys %{$value} )
+    {
+      $value->{$key} = $self->html_encode( $value->{$key} );
     }
+    return $value;
 
-    return encode_entities( $value );
+  }
+  elsif ( ref $value eq 'ARRAY' )
+  {
+    return [ map { $self->html_encode($_) } @$value ];
+  }
+
+  return encode_entities($value);
 }
 
 # indicates the priority for this plugin, versus other possible HTML-encoding plugins

@@ -14,7 +14,7 @@ package Pogo::Plugin::Root::Example;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-use 5.008; 
+use 5.008;
 
 # constructor has to be named new()
 sub new { return bless( {}, $_[0] ); }
@@ -24,15 +24,17 @@ sub root_type { return 'example'; }
 
 # mandatory method transform just returns the transform used to expand a
 # 'rootname' and 'command' into a full command to be executed on the host
-sub transform { return 'cp ${command} /tmp/${rootname}${command}'. 
-                       ' && sudo chroot /some/special/root/directory/${rootname} --cmd ${command}'.
-                       ' && rm -f /tmp/${rootname}${command}'; }
+sub transform
+{
+  return 'cp ${command} /tmp/${rootname}${command}'
+    . ' && sudo chroot /some/special/root/directory/${rootname} --cmd ${command}'
+    . ' && rm -f /tmp/${rootname}${command}';
+}
 
 # indicates the priority versus other installed root plugins
-sub priority  { return -1; }
+sub priority { return -1; }
 
 1;
-
 
 =pod
 

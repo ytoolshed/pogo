@@ -729,7 +729,7 @@ sub _render_ui_template
   $content_type ||= 'text/html';
 
   # clean user -provided variables to be rendered
-  $data = $self->encoder->html_encode( $data );
+  $data = $self->encoder->html_encode($data);
 
   # add ui config items, stripping the "ui_" portion of the name
   map { $data->{ substr( $_, 3 ) } ||= $self->{$_} } grep {/^ui_/} keys %$self;
@@ -753,9 +753,9 @@ sub encoder
 {
   my $self = shift;
 
-  if ( ! defined $self->{encoder} )
+  if ( !defined $self->{encoder} )
   {
-    $self->{encoder} = Pogo::Plugin->load( 'HTMLEncode', { required_methods => [ 'html_encode' ] } ); 
+    $self->{encoder} = Pogo::Plugin->load( 'HTMLEncode', { required_methods => ['html_encode'] } );
   }
 
   return $self->{encoder};

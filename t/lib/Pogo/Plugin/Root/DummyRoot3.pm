@@ -18,10 +18,10 @@ use 5.008;
 use Log::Log4perl qw(:easy);
 
 sub new
-{ 
-    my $self  = {};
-    bless $self;
-    return $self;
+{
+  my $self = {};
+  bless $self;
+  return $self;
 }
 
 sub root_type { return "dummyroot3"; }

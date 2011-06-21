@@ -19,32 +19,36 @@ use common::sense;
 use warnings;
 use strict;
 
-
 # constructor has to be named new()
 sub new { return bless( {}, $_[0] ); }
 
 # mandatory method html_encode has to handle data structures recursively
-sub html_encode {
-    my $self = shift;
-    my $value = shift;
+sub html_encode
+{
+  my $self  = shift;
+  my $value = shift;
 
-    if ( ref $value eq 'HASH' ) {
-        foreach my $key ( keys %{ $value } ) {
-            $value->{ $key } = $self->html_encode( $value->{ $key } );
-        }
-        return $value;
-
-    } elsif ( ref $value eq 'ARRAY' ) {
-        return [ map { $self->html_encode( $_ ) } @$value ];
+  if ( ref $value eq 'HASH' )
+  {
+    foreach my $key ( keys %{$value} )
+    {
+      $value->{$key} = $self->html_encode( $value->{$key} );
     }
-
-    $value =~ s/&/ENCODED THIS [ &amp; ]/g;
-    $value =~ s/</ENCODED THIS [ &lt; ]/g;
-    $value =~ s/>/ENCODED THIS [ &gt; ]/g;
-    $value =~ s/"/ENCODED THIS [ &quot; ]/g;
-    $value =~ s/'/ENCODED THIS [ &#39; ]/g;
-
     return $value;
+
+  }
+  elsif ( ref $value eq 'ARRAY' )
+  {
+    return [ map { $self->html_encode($_) } @$value ];
+  }
+
+  $value =~ s/&/ENCODED THIS [ &amp; ]/g;
+  $value =~ s/</ENCODED THIS [ &lt; ]/g;
+  $value =~ s/>/ENCODED THIS [ &gt; ]/g;
+  $value =~ s/"/ENCODED THIS [ &quot; ]/g;
+  $value =~ s/'/ENCODED THIS [ &#39; ]/g;
+
+  return $value;
 }
 
 # indicates the priority for this plugin, versus other possible

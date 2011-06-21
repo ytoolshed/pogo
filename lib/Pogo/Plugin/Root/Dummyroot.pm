@@ -14,17 +14,21 @@ package Pogo::Plugin::Root::Dummyroot;
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-use 5.008; 
+use 5.008;
 
-sub new 
-{ 
-    my $self  = {};
-    bless $self;
-    return $self;
+sub new
+{
+  my $self = {};
+  bless $self;
+  return $self;
 }
 
 sub root_type { return 'dummy'; }
-sub transform { return 'echo "no actual transform defined. root name is: ${rootname}, command is: ${command}"'; }
-sub priority  { return -1; }
+
+sub transform
+{
+  return 'echo "no actual transform defined. root name is: ${rootname}, command is: ${command}"';
+}
+sub priority { return -1; }
 
 1;

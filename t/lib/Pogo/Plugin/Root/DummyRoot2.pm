@@ -17,10 +17,10 @@ package Pogo::Plugin::Root::DummyRoot2;
 use 5.008;
 
 sub new
-{ 
-    my $self  = {};
-    bless $self;
-    return $self;
+{
+  my $self = {};
+  bless $self;
+  return $self;
 }
 
 sub root_type { return "dummyroot2"; }
