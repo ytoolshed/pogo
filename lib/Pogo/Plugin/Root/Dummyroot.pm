@@ -24,7 +24,7 @@ sub new
 }
 
 sub root_type { return 'dummy'; }
-sub transform { return ''; }
+sub transform { return 'echo "no actual transform defined. root name is: ${rootname}, command is: ${command}"'; }
 sub priority  { return -1; }
 
 1;

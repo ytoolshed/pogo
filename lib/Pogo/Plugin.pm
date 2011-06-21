@@ -24,6 +24,7 @@ use Module::Pluggable search_path => ['Pogo::Plugin'], instantiate => 'new';
 
 my $instance;
 
+# returns highest-priority plugin
 sub load
 {
   my ( $class, $type, $args ) = @_;
@@ -69,7 +70,7 @@ sub load
 
     DEBUG "found valid '$type' plugin: $plugin_name, priority: " . $plugin_obj->priority;
 
-# if we're loading multiple plugins of this type, add this plugin to the list regardless of priority
+    # if we're loading multiple plugins of this type, add this plugin to the list regardless of priority
     if ( $args->{multiple} )
     {
       DEBUG "adding instance of $plugin_name to list of plugins";
@@ -141,6 +142,10 @@ Pogo::Plugin
 
     $widget->do_stuff();
 
+Or, to load several plugins:
+
+    my @widgets = Pogo::Plugin->load_multiple( 'Widget', { required_methods => [ 'do_stuff' ] } );
+
 Then within a .pm file in the lib/Pogo/Plugin/Widget/ directory:
 
     package Pogo::Plugin::Widget::MySpecialWidget;
@@ -173,8 +178,6 @@ automaticallly use your module, no configuration file editing necessary.
 
 =head1 METHODS
 
-From the calling code's point of view, just one to be concerned about:
-
 =over 4
 
 =item load()
@@ -182,14 +185,25 @@ From the calling code's point of view, just one to be concerned about:
     load( $type )
     load( $type, \%args )
 
-=back
-
 C<$type> is the kind of plugin C<Pogo::Plugin> should attempt to load. For
 example if you specify 'Widget', C<Pogo::Plugin> will look under
 C<lib/Pogo/Plugin/Widget/> for potential plugins.
 
 Specifying C<required_methods> in C<\%args> will require that any loaded 
 plugins has the methods specified.
+
+Specifying C<multiple => 1> in C<\%args> will cause all valid plugins to be
+stored in memory, where they can later be accessed via L<load_multiple()>.
+The default plugin will be returned.
+
+=item load_multiple()
+
+    load_multiple( $type )
+    load_multiple( $type, \%args )
+
+Works exactly like C<load()>, but returns a list of all available plugins.
+
+=back
 
 =head1 WRITING PLUGINS
 
