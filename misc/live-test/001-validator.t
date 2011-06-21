@@ -19,8 +19,10 @@ my $req   = POST $validator_url, [ 'new' => $content, 'file' => $file ];
 
 my $resp  = $ua->request( $req );
 
-print $resp->as_string();
+plan tests => 3;
 
-plan tests => 1;
+# print STDERR $resp->as_string();
 
 ok 1, "first";
+is $resp->is_success(), 1, "pogo-validator successful";
+like $resp->as_string(), qr/"status":"OK"/, "status ok";
