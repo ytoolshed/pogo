@@ -6,7 +6,7 @@
 *~
 *.sw[op]
 META.yml
-Makefile
+./Makefile
 Makefile.old
 blib
 build/test-results/*
@@ -17,4 +17,3 @@ t/apache/
 .tmp
 lib/Pogo/Plugin/*
 !lib/Pogo/Plugin/Inline.pm
-
