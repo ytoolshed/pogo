@@ -255,7 +255,7 @@ $key,                  $value
 
   }
 
-  if ( $opts->{'use-password'} )
+  if ( !$opts->{sshagent} || $opts->{'use-password'} )
   {
 
     #Passwords are to be fetched from a file if option is set, else prompt
