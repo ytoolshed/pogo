@@ -6,7 +6,7 @@
 *~
 *.sw[op]
 META.yml
-Makefile
+./Makefile
 Makefile.old
 blib
 build/test-results/*

@@ -24,6 +24,7 @@ set cpassp ""
 fconfigure stdin -blocking 1
 set timeout [gets stdin]
 set cpasswd [gets stdin]
+set cpassp [gets stdin]
 fconfigure stdin -blocking 0
 
 eval spawn -noecho $argv
@@ -45,7 +46,7 @@ expect {
     exit 255
   }
   "assword:" {
-    send_user " (supplied by pogo-pw)"
+    send_user " (supplied by pogo-pw)\n"
     set passwd [exec perl -n -e "print unpack(q{u},\$_)" << "$cpasswd"]
     log_user 0
     send -- "$passwd\r"
