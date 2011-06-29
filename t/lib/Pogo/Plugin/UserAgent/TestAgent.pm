@@ -1,4 +1,4 @@
-package Pogo::Plugin::Root::DummyRoot2;
+package Pogo::Plugin::UserAgent::TestAgent;
 
 # Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
 #
@@ -15,16 +15,33 @@ package Pogo::Plugin::Root::DummyRoot2;
 # limitations under the License.
 
 use 5.008;
+use common::sense;
+use warnings;
+use strict;
+
+use LWP::UserAgent;
+use base 'LWP::UserAgent';
+
+our $VERSION = '0.1';
 
 sub new
-{ 
-    my $self  = {};
-    bless $self;
-    return $self;
+{
+  my $class = shift;
+  my $self  = $class->SUPER::new(
+    timeout => 65,
+    agent   => "Pogo/TestAgent/$VERSION",
+  );
+  return bless( $self, $class );
 }
 
-sub root_type { return "dummyroot2"; }
-sub transform { return "dummyroot2 \${rootname} --cmd \${command}"; }
-sub priority  { return 5; }
+sub get
+{
+  my $self = shift;
+  my $url  = shift;
+
+  return $self->SUPER::get( $url, @_ );
+}
+
+sub priority { return 100; }
 
 1;

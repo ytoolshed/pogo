@@ -26,6 +26,7 @@ use HTTP::Date qw(str2time);
 use JSON::XS;
 use Log::Log4perl qw(:easy);
 use MIME::Types qw(by_suffix);
+use Pogo::Plugin;
 use POSIX qw(strftime);
 use Template;
 
@@ -727,6 +728,9 @@ sub _render_ui_template
   $resp_code    ||= 200;
   $content_type ||= 'text/html';
 
+  # clean user -provided variables to be rendered
+  $data = $self->encoder->html_encode($data);
+
   # add ui config items, stripping the "ui_" portion of the name
   map { $data->{ substr( $_, 3 ) } ||= $self->{$_} } grep {/^ui_/} keys %$self;
   # this guy will be interpolated unless it's already been defined
@@ -742,6 +746,19 @@ sub _render_ui_template
         [ $resp_code, $RESPONSE_MSGS{$resp_code}, { 'Content-type' => $content_type }, $output ] );
     }
   ) or die $instance->{tt}->error, "\n";
+}
+
+# get our encoding plugin
+sub encoder
+{
+  my $self = shift;
+
+  if ( !defined $self->{encoder} )
+  {
+    $self->{encoder} = Pogo::Plugin->load( 'HTMLEncode', { required_methods => ['html_encode'] } );
+  }
+
+  return $self->{encoder};
 }
 
 # }}}

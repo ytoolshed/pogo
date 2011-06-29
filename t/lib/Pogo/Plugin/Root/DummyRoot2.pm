@@ -1,4 +1,4 @@
-package Pogo::Plugin::Root::DummyRoot1;
+package Pogo::Plugin::Root::DummyRoot2;
 
 # Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
 #
@@ -17,14 +17,14 @@ package Pogo::Plugin::Root::DummyRoot1;
 use 5.008;
 
 sub new
-{ 
-    my $self  = {};
-    bless $self;
-    return $self;
+{
+  my $self = {};
+  bless $self;
+  return $self;
 }
 
-sub root_type { return "dummyroot1"; }
-sub transform { return "dummyroot1 \${rootname} --cmd \${command}"; }
-sub priority  { return 1; }
+sub root_type { return "dummyroot2"; }
+sub transform { return "dummyroot2 \${rootname} --cmd \${command}"; }
+sub priority  { return 5; }
 
 1;

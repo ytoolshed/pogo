@@ -1,4 +1,4 @@
-package Pogo::Plugin::Root::Dummyroot;
+package Pogo::Plugin::UserAgent::Default;
 
 # Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
 #
@@ -15,20 +15,26 @@ package Pogo::Plugin::Root::Dummyroot;
 # limitations under the License.
 
 use 5.008;
+use common::sense;
+use warnings;
+use strict;
+
+use LWP::UserAgent qw();
+use base 'LWP::UserAgent';
+
+our $VERSION = '4.0';    # TODO: double check if there's a better way to set this...
 
 sub new
 {
-  my $self = {};
-  bless $self;
-  return $self;
+  my $class = shift;
+  my $self  = $class->SUPER::new(
+    timeout => 65,
+    agent   => "Pogo/LWP::UserAgent/$VERSION",
+  );
+  return bless( $self, $class );
 }
 
-sub root_type { return 'dummy'; }
-
-sub transform
-{
-  return 'echo "no actual transform defined. root name is: ${rootname}, command is: ${command}"';
-}
-sub priority { return -1; }
+# indicates the priority for this plugin, versus other possible HTML-encoding plugins
+sub priority { return 1; }
 
 1;

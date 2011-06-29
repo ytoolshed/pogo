@@ -1,4 +1,4 @@
-package Pogo::Plugin::Root::Dummyroot;
+package Pogo::Plugin::Root::DummyRoot1;
 
 # Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
 #
@@ -23,12 +23,8 @@ sub new
   return $self;
 }
 
-sub root_type { return 'dummy'; }
-
-sub transform
-{
-  return 'echo "no actual transform defined. root name is: ${rootname}, command is: ${command}"';
-}
-sub priority { return -1; }
+sub root_type { return "dummyroot1"; }
+sub transform { return "dummyroot1 \${rootname} --cmd \${command}"; }
+sub priority  { return 1; }
 
 1;
