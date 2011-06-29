@@ -1101,7 +1101,7 @@ sub load_yaml
   my $uri = uri_to_absuri(@_);
 
   my $r;
-  eval { $r = $self->_client->ua->->get($uri); };
+  eval { $r = $Pogo::Common::USERAGENT->get($uri); };
   if ($@)
   {
     LOGDIE "Couldn't fetch uri '$uri': $@\n";
