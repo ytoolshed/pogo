@@ -876,6 +876,8 @@ sub _client
     Log::Log4perl->get_logger("Pogo::Client")->level($DEBUG) if ( $self->{opts}->{debug} );
   }
 
+  DEBUG sprintf "Using user agent type: '%s'", ref( $self->{pogoclient}->ua() );
+
   return $self->{pogoclient};
 }
 
@@ -1099,7 +1101,7 @@ sub load_yaml
   my $uri = uri_to_absuri(@_);
 
   my $r;
-  eval { $r = $Pogo::Common::USERAGENT->get($uri); };
+  eval { $r = $self->_client->ua->->get($uri); };
   if ($@)
   {
     LOGDIE "Couldn't fetch uri '$uri': $@\n";
