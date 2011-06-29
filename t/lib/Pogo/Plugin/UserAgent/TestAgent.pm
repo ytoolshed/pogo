@@ -26,18 +26,20 @@ our $VERSION = '0.1';
 
 sub new
 {
-    my $class = shift;
-    my $self = $class->SUPER::new( timeout => 65,
-                                   agent   => "Pogo/TestAgent/$VERSION", );
-    return bless( $self, $class );
+  my $class = shift;
+  my $self  = $class->SUPER::new(
+    timeout => 65,
+    agent   => "Pogo/TestAgent/$VERSION",
+  );
+  return bless( $self, $class );
 }
 
 sub get
 {
-    my $self = shift;
-    my $url  = shift;
+  my $self = shift;
+  my $url  = shift;
 
-    return $self->SUPER::get($url,@_);
+  return $self->SUPER::get( $url, @_ );
 }
 
 sub priority { return 100; }

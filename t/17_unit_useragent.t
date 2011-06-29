@@ -39,7 +39,11 @@ test_pogo
     or diag explain $t;
 
   # make sure we got the right UA plugin
-  is( ref( client->ua() ), 'Pogo::Plugin::UserAgent::TestAgent', 'loaded correct UA Plugin, Pogo::Plugin::UserAgent::TestAgent' );
+  is(
+    ref( client->ua() ),
+    'Pogo::Plugin::UserAgent::TestAgent',
+    'loaded correct UA Plugin, Pogo::Plugin::UserAgent::TestAgent'
+  );
 };
 
 done_testing;

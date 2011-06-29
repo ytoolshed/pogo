@@ -22,14 +22,16 @@ use strict;
 use LWP::UserAgent qw();
 use base 'LWP::UserAgent';
 
-our $VERSION = '4.0'; # XXX: double check if there's a better way to set this...
+our $VERSION = '4.0';    # TODO: double check if there's a better way to set this...
 
 sub new
 {
-    my $class = shift;
-    my $self = $class->SUPER::new( timeout => 65,
-                                   agent   => "Pogo/LWP::UserAgent/$VERSION", );
-    return bless( $self, $class );
+  my $class = shift;
+  my $self  = $class->SUPER::new(
+    timeout => 65,
+    agent   => "Pogo/LWP::UserAgent/$VERSION",
+  );
+  return bless( $self, $class );
 }
 
 # indicates the priority for this plugin, versus other possible HTML-encoding plugins
