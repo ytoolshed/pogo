@@ -27,6 +27,7 @@ use Set::Scalar;
 use Pogo::Engine::Namespace::Slot;
 use Pogo::Engine::Store qw(store);
 use Pogo::Common qw(merge_hash);
+use Pogo::Plugin;
 use JSON qw(encode_json decode_json);
 
 # Naming convention:
@@ -388,12 +389,6 @@ sub set_conf
   # copy the conf ref, since we're going to modify the crap out of it below
   my $conf_in = dclone $conf_ref;
   my $conf    = {};
-
-  # use default plugins if none are defined
-  #if ( !defined $conf_in->{plugins} )
-  #{
-  #  $conf_in->{plugins}->{targets} = 'Pogo::Plugin::Inline';
-  #}
 
   my $name = $self->name;
 
@@ -770,20 +765,15 @@ sub get_seq_successors
 sub target_plugin
 {
   my $self = shift;
-  my $name = $self->get_conf->{plugins}->{targets} || 'Pogo::Plugin::Inline';
+  if ( !exists $self->{_plugin_cache}->{planner} ){
+      $self->{_plugin_cache}->{planner} = Pogo::Plugin->load( 'Planner', { required_methods => ['expand_targets','fetch_target_meta'] } );
 
-  if ( !exists $self->{_plugin_cache}->{$name} )
-  {
-    eval "use $name;";
-    # this is a coderef because we want to make sure the data is fresh
-    # the plugin should do caching of it's own metadata, not the configuration
-    $self->{_plugin_cache}->{$name} = $name->new(
-      conf      => sub { $self->get_conf },
-      namespace => $self->name,
-    );
+      # set conf code and namespace
+      $self->{_plugin_cache}->{planner}->conf( sub { $self->get_conf } );
+      $self->{_plugin_cache}->{planner}->namespace( $self->name );
   }
 
-  return $self->{_plugin_cache}->{$name};
+  return $self->{_plugin_cache}->{planner};
 }
 
 # }}}
