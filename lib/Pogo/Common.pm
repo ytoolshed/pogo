@@ -16,17 +16,14 @@ package Pogo::Common;
 
 use 5.008;
 use Exporter 'import';
-use LWP::UserAgent qw();
 use Log::Log4perl qw(:easy);
+use Pogo::Plugin;
 use URI;
 use URI::file;
 
 our $PREFIX    = '/usr/local';
 our $VERSION   = '4.0';
-our $USERAGENT = LWP::UserAgent->new(
-  timeout => 65,
-  agent   => "Pogo/$VERSION",
-);
+our $USERAGENT = Pogo::Plugin->load( 'UserAgent', { required_methods => [ 'get', 'request' ] } );
 
 our $CONFIGDIR   = '/usr/local/etc/pogo/';
 our $WORKER_CERT = "$CONFIGDIR/worker.cert";

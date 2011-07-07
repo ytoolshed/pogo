@@ -876,6 +876,8 @@ sub _client
     Log::Log4perl->get_logger("Pogo::Client")->level($DEBUG) if ( $self->{opts}->{debug} );
   }
 
+  DEBUG sprintf "Using user agent type: '%s'", ref( $self->{pogoclient}->ua() );
+
   return $self->{pogoclient};
 }
 
