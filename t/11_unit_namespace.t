@@ -52,7 +52,7 @@ my $conf = LoadFile("$Bin/conf/example.yaml");
 my $store = PogoMockStore->new();
 $store->create( '/foo/bar/baz' );
 
-my $str = $store->_dump();
+my $str = $store->_dump_full_structure();
 is($str, <<EOT, "PogoMockStore simple");
 /
 /foo
@@ -69,7 +69,7 @@ ok($store->set("/pogo/job/p000000", 2), "set after create");
 is($store->get("/pogo/job/p000000"), 2, "get after set");
 
 ok($store->delete_r("/pogo/job/p000000"), "delete base node");
-$str = $store->_dump();
+$str = $store->_dump_full_structure();
 is($str, <<EOT, "PogoMockStore simple");
 /
 /pogo
@@ -77,7 +77,7 @@ is($str, <<EOT, "PogoMockStore simple");
 EOT
 
 ok($store->delete_r("/pogo"), "delete top-level entry");
-$str = $store->_dump();
+$str = $store->_dump_full_structure();
 is($str, <<EOT, "PogoMockStore empty");
 /
 EOT
