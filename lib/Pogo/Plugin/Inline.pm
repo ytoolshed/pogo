@@ -51,7 +51,7 @@ sub fetch_target_meta
   $opts = {} unless defined $opts;
 
   my $cache_key = "default";
-  $cache_key = $opts->{cache_key} if defined $opts->{ cache_key };
+  $cache_key = $opts->{cache_key} if defined $opts->{cache_key};
 
   if ( !defined $self->{_target_cache}->{$cache_key} )
   {
@@ -64,7 +64,7 @@ sub fetch_target_meta
     {
       foreach my $expression ( @{ $conf->{apps}->{$app} } )
       {
-        foreach my $host ( string_glob_permute( $expression ) )
+        foreach my $host ( string_glob_permute($expression) )
         {
           DEBUG "{$host}->{apps}->{$app}";
           $hinfo->{$host}->{apps}->{$app} = 1;
@@ -78,8 +78,7 @@ sub fetch_target_meta
       {
         foreach my $expression ( @{ $conf->{envs}->{$envtype}->{$envname} } )
         {
-          foreach
-            my $host ( string_glob_permute( $expression ) )
+          foreach my $host ( string_glob_permute($expression) )
           {
             DEBUG "{$host}->{envs}->{$envtype}->{$envname}";
             $hinfo->{$host}->{envs}->{$envtype}->{$envname} = 1;
@@ -90,8 +89,8 @@ sub fetch_target_meta
 
     foreach my $target ( keys %$hinfo )
     {
-      $self->{_target_cache}->{$cache_key}->{$target}->{apps} = 
-         [ keys %{ $hinfo->{$target}->{apps} } ];
+      $self->{_target_cache}->{$cache_key}->{$target}->{apps} =
+        [ keys %{ $hinfo->{$target}->{apps} } ];
 
       foreach my $envtype ( keys %{ $hinfo->{$target}->{envs} } )
       {
@@ -103,10 +102,8 @@ sub fetch_target_meta
 
   DEBUG "End updating Inline meta cache (cache_key=$cache_key)";
 
-    # Only pass on data for the data we asked for
-  $cont->( { map { $_ => $self->{_target_cache}->{$cache_key}->{$_} } 
-               @$targets  }
-         );
+  # Only pass on data for the data we asked for
+  $cont->( { map { $_ => $self->{_target_cache}->{$cache_key}->{$_} } @$targets } );
 }
 
 # }}}

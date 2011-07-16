@@ -33,6 +33,7 @@ requires 'Fcntl';
 requires 'File::Slurp';
 requires 'File::Temp';
 requires 'Getopt::Long';
+requires 'GnuPG';
 requires 'HTML::Entities';
 requires 'HTTP::Request';
 requires 'IO::File';
@@ -72,6 +73,7 @@ test_requires 'Test::Exception';
 test_requires 'Test::More';
 test_requires 'Test::MockObject';
 test_requires 'Test::Deep';
+test_requires 'TAP::Formatter::JUnit';
 
 requires_external_bin 'java';
 
