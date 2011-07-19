@@ -41,9 +41,7 @@ sub _dump {
 
     $self->traverse( sub {
         my( $node ) = @_;
-        if( !defined $node->{content} or
-            !length $node->{content} and
-            scalar keys %{$node->{children}} ) {
+        if( !defined $node->{content} ) {
                   # Don't print empty path parts
             return;
         }

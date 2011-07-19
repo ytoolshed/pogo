@@ -50,14 +50,14 @@ my $conf = LoadFile("$Bin/conf/example.yaml");
 # Log::Log4perl->easy_init({ level => $DEBUG, layout => "%F{1}-%L: %m%n" });
 
 my $store = PogoMockStore->new();
+$store->create( '/foo' );
+$store->create( '/foo/bar' );
 $store->create( '/foo/bar/baz' );
+$store->set('/foo/bar/baz', 'quack');
 
 my $str = $store->_dump();
 is($str, <<EOT, "PogoMockStore simple");
-/
-/foo
-/foo/bar
-/foo/bar/baz
+/foo/bar/baz: [quack]
 EOT
 
 $store = PogoMockStore->new();
@@ -70,17 +70,11 @@ is($store->get("/pogo/job/p000000"), 2, "get after set");
 
 ok($store->delete_r("/pogo/job/p000000"), "delete base node");
 $str = $store->_dump();
-is($str, <<EOT, "PogoMockStore simple");
-/
-/pogo
-/pogo/job
-EOT
+is($str, '', "PogoMockStore delete_r");
 
 ok($store->delete_r("/pogo"), "delete top-level entry");
 $str = $store->_dump();
-is($str, <<EOT, "PogoMockStore empty");
-/
-EOT
+is($str, '', "PogoMockStore empty");
 
 ok($store->create("/pogo/job/p000000/meta/target"), "create deep dir");
 ok($store->set("/pogo/job/p000000/meta/target", ["blah"]), "set array");
