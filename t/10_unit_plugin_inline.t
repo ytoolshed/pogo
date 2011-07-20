@@ -62,15 +62,19 @@ my $pl = Pogo::Plugin::Inline->new(
 );
 
 my $result;
+my $target = "foo97.east.example.com";
 my $data = $pl->fetch_target_meta(
-    "foo97.east.example.com",
-    sub {},
+    [$target],
+    "somenamespace",
+    sub { print "in errsub\n"; },
     sub { $result = $_[0] },
 );
 
 is( ref($result), "HASH", "fetch_target_meta on yaml" );
-is( $result->{apps}->[0], "frontend", "fetch_target_meta on yaml" );
-is( $result->{envs}->{coast}->{east}, "1", "fetch_target_meta on yaml" );
+is( $result->{$target}->{apps}->[0], 
+    "frontend", "fetch_target_meta on yaml" );
+is( $result->{$target}->{envs}->{coast}->{east}, "1", 
+    "fetch_target_meta on yaml" );
 
 my %input = (
   'foo[1-2]'     => [ sort hsort ( 'foo1', 'foo2' ) ],
