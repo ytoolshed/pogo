@@ -30,7 +30,6 @@ use lib "$Bin/../lib";
 use PogoTesterAlarm;
 
 chdir($Bin);
-diag("dir: $Bin");
 ok( Log::Log4perl::init("$Bin/conf/log4perl.conf"), "log4perl" );
 use_ok( 'Pogo::Plugin', 'use Pogo::Plugin' );
 
@@ -38,9 +37,10 @@ my $html =
   'here is some <b>marked up</b> HTML that needs <blink style="font-face:bold;">encoding</blink>';
 
 # test that HTML encoder plugin is loaded and works
-ok( my $encoder = Pogo::Plugin->load( 'HTMLEncode', { required_methods => ['html_encode'] } ),
-  'load HTMLEncode plugins' );
-diag( "HTML snippet before and after encoding:\n####### $html\n####### "
+my $encoder;
+ok( $encoder = Pogo::Plugin->load( 'HTMLEncode', { required_methods => ['html_encode'] } ),
+  'load HTMLEncode plugins' ) or
+    diag( "HTML snippet before and after encoding:\n####### $html\n####### "
     . $encoder->html_encode($html) );
 # this is not a comprehensive HTML -encoding test, just checking that we loaded something minimally functional
 unlike( $encoder->html_encode($html), qr{[<>]}, 'HTML characters (<,>) removed' );
@@ -72,11 +72,17 @@ like(
   'Pogo::Plugin::MultiPlugin::Three was selected'
 );
 
+  # Suppress stderr output
+open STDERR, ">/dev/null";
+
 # test that bad plugins cause death
-throws_ok(
-  sub { Pogo::Plugin->load( 'BadPlugin', { required_methods => ['do_stuff'] } ) },
-  qr{Fix the associated \.pm file or remove it\.},
-  'fail to load non-valid BadPlugin plugins, with correct exception thrown'
-);
+{ local $^W = undef;
+  throws_ok(
+    sub { Pogo::Plugin->load( 'BadPlugin', 
+            { required_methods => ['do_stuff'] } ) },
+    qr{Fix the associated \.pm file or remove it\.},
+    'fail to load non-valid BadPlugin plugins, with correct exception thrown'
+  );
+}
 
 done_testing();
