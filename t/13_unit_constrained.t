@@ -49,7 +49,7 @@ use File::Basename;
 use Pogo::Engine::Store qw(store);
 use Data::Dumper;
 
-Log::Log4perl->easy_init({ level => $DEBUG, layout => "%F{1}-%L-%M: %m%n" });
+# Log::Log4perl->easy_init({ level => $DEBUG, layout => "%F{1}-%L-%M: %m%n" });
 
 my $ns = Pogo::Engine::Namespace->new(
   nsname   => "wonk",
@@ -155,7 +155,7 @@ $ns->fetch_runnable_hosts(
 
 ok(1, "at the end" );
 
-print store->_dump();
+# print store->_dump();
 
 __END__
 
