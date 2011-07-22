@@ -269,6 +269,33 @@ sub delete       {
 sub get_children { return shift->{handle}->get_children(@_); }
 sub get_error    { return shift->{handle}->get_error(@_); }
 
+  # traverse tree recursively
+sub traverse {
+    my($self, $path, $callback, $args) = @_;
+
+    $callback->( $self, $path, $args );
+
+    for my $childname ( $self->get_children( $path ) ) {
+        $self->traverse( "$path/$childname", $callback, $args );
+    }
+}
+
+sub _dump {
+    my($self, $path) = @_;
+
+    my $string = "";
+
+    $self->traverse( $path, 
+                     sub {
+                         my($self, $path, $args) = @_;
+                         my $content = $self->get( $path );
+                         $content = '[undef]' unless defined $content;
+                         $string .= "$path: $content\n";
+                     }
+    );
+    return $string;
+}
+
 1;
 
 =pod
