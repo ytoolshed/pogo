@@ -351,13 +351,16 @@ sub jobstatus
 {
   my ( $class, $jobid ) = @_;
   my $job = $instance->job($jobid);
+
   my $resp = Pogo::Engine::Response->new()->add_header( action => 'jobstatus' );
 
   if ( !defined $job )
   {
+    ERROR "jobstatus: jobid $jobid not found";
     $resp->set_error("jobid $jobid not found");
     return $resp;
   }
+  INFO "jobstatus of $jobid: ", $job->state;
   $resp->add_record( $job->state );
   my @hostlist = map { $resp->add_record( [ $_->name, $_->state ] ) } $job->hosts;
   $resp->add_header( hosts => join ',', @hostlist );

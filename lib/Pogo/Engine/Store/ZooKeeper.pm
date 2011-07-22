@@ -128,8 +128,12 @@ sub ping
 sub create
 {
   my ( $self, $path, $contents, %opts ) = @_;
+
   $opts{acl} ||= ZK_ACL;
   my $ret;
+
+  DEBUG "zk create $path $contents";
+
   eval { $ret = $self->{handle}->create( $path, $contents, %opts ); };
   return $ret;
 }
@@ -254,8 +258,14 @@ sub unlock
 sub stat         { return shift->{handle}->stat(@_); }
 sub exists       { return shift->{handle}->exists(@_); }
 sub get          { return shift->{handle}->get(@_); }
-sub set          { return shift->{handle}->set(@_); }
-sub delete       { return shift->{handle}->delete(@_); }
+sub set          { 
+  DEBUG "zk set @_";
+  return shift->{handle}->set(@_); 
+}
+sub delete       { 
+  DEBUG "zk delete @_";
+  return shift->{handle}->delete(@_); 
+}
 sub get_children { return shift->{handle}->get_children(@_); }
 sub get_error    { return shift->{handle}->get_error(@_); }
 

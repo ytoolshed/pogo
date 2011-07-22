@@ -334,7 +334,13 @@ sub retry_task
 {
   DEBUG Dumper [@_];
   my ( $self, $hostname ) = @_;
-  die "no host $hostname in job" if ( !$self->has_host($hostname) );
+
+  if ( !$self->has_host($hostname) ) {
+      die "no host $hostname in job (" . 
+        join(", ", map { $_->name() } $self->hosts() ) . 
+        ")";
+  }
+
   my $host = $self->host($hostname);
   if ( $host->state eq 'failed' or $host->state eq 'finished' )
   {
