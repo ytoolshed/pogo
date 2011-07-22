@@ -58,6 +58,7 @@ my %ZOO_ERROR_NAME   = map { $_->[1] => $_->[0] } @ZOO_ERRORS;
 sub new
 {
   my ( $class, $opts ) = @_;
+
   my @serverlist =
     defined $opts->{serverlist}
     ? @{ $opts->{serverlist} }
@@ -68,13 +69,27 @@ sub new
   my $serverlist = pop(@serverlist) . ":$serverport";
   map { $serverlist .= ",$_:$serverport" } @serverlist;
 
-  DEBUG "serverlist=$serverlist";
+  INFO "Connecting to serverlist=$serverlist";
 
-  my $self = { handle => Net::ZooKeeper->new($serverlist), };
+  my $self = { handle => Net::ZooKeeper->new($serverlist) };
   LOGDIE "couldn't init zookeeper: $!" unless defined $self->{handle}->{session_id};
+
+  INFO "Connected to serverlist=$serverlist";
+
   bless $self, $class;
 
-  INFO "Connected to '$serverlist'";
+  if( !$opts->{noinit} )
+  {
+      $self->init($opts);
+  }
+
+  return $self;
+}
+
+sub init
+{
+  my ( $self, $opts ) = @_;
+
   DEBUG sprintf( "Session timeout is %.2f seconds.\n", $self->{handle}->{session_timeout} / 1000 );
 
   $self->{handle}->{data_read_len} = 1048576;
