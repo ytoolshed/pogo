@@ -308,7 +308,8 @@ sub handle_static
     open my $fh, '<', $filepath
       or confess "couldn't open file";
     seek $fh, $start, SEEK_SET if $start;
-    sysread $fh, my $buffer, $len;
+    my $buffer;
+    sysread $fh, $buffer, $len;
     $response_headers->{'Content-Range'} = sprintf "bytes %d-%d/%d", $start, $end, $size;
     $response_headers->{'Content-length'} = $len;
     $request->respond( [ 206, $RESPONSE_MSGS{206}, $response_headers, $buffer ] );
