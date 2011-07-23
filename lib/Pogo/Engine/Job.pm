@@ -866,13 +866,57 @@ sub log
 
 # determine job start time by the first log entry's timestamp
 # TODO: what's the retval when the first log entry isn't valid JSON?
+sub is_expired
+{
+  my ($self) = @_;
+
+  my $start_time  = $self->start_time;
+  my $job_timeout = $self->job_timeout;
+  my $job_id      = $self->id();
+
+  DEBUG "job=$job_id start_time=$start_time job_timeout=$job_timeout ",
+        "time=", time;
+
+  if ( ( $start_time + $job_timeout ) <= time )
+  {
+    INFO "Job $job_id expired " .
+        int( time - $start_time - $job_timeout ),
+        " seconds ago.";
+    return 1;
+  }
+
+  DEBUG "Job $job_id still active for another ",
+    int( $start_time + $job_timeout - time ), " seconds.";
+
+  return 0;
+}
+
+# determine job start time by the first log entry's timestamp
+# TODO: what's the retval when the first log entry isn't valid JSON?
 sub start_time
 {
   my ($self) = @_;
-  if ( my $data = store->get( $self->{path} . '/log/' . _lognode(0) ) )
+
+  my $start_time = 0;
+
+  if ( my $json = store->get( $self->{path} . '/log/' . _lognode(0) ) )
   {
-    return eval { $data = decode_json $data; return $data->[0]; };
+    my $data;
+    eval {
+        $data = decode_json $json;
+    };
+
+    if($@ or ref($data) ne "ARRAY") {
+        ERROR "Whoa, invalid JSON, can't determine start_time: $json";
+    } else {
+        $start_time = $data->[0];
+    }
+  } else {
+    ERROR "Lognode not found, can't determine job start time";
   }
+
+  DEBUG "Start time of job ", $self->id(), " is $start_time";
+  return $start_time;
 }
 
 sub _lognode

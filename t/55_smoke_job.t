@@ -190,6 +190,8 @@ test_pogo
 
   ok( $jobid eq 'p0000000002', "got jobid" );
 
+  # print "start_time(client)=", time, "\n";
+
   sleep $job1->{job_timeout};    # job should timeout
 
   my @records;
@@ -201,9 +203,22 @@ test_pogo
       or diag explain $resp;
     @records = $resp->records;
 
-    last if $records[0] eq 'halted';
+    # diag explain "records: ", \@records;
+
+    last if @records[0] eq "halted";
     sleep 1;
   }
+
+    # our client time might be off by a couple of seconds, wait some more
+    # if job hasn't expired yet
+  for(1..5) {
+    $resp = client->jobstatus($jobid)
+      or diag explain $@;
+    last if $resp->header('is_expired');
+    sleep 1;
+  }
+
+  # print "time(client)=", time, "\n";
 
   is( $records[0], 'halted', "job $jobid halted" )
     or diag explain \@records;

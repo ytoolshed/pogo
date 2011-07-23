@@ -284,7 +284,7 @@ sub jobretry
     return $resp;
   }
 
-  if ( ( $job->start_time + $job->job_timeout ) <= time )
+  if ( $job->is_expired() )
   {
     $resp->set_error("jobid $jobid has expired");
     return $resp;
@@ -364,6 +364,9 @@ sub jobstatus
   $resp->add_record( $job->state );
   my @hostlist = map { $resp->add_record( [ $_->name, $_->state ] ) } $job->hosts;
   $resp->add_header( hosts => join ',', @hostlist );
+  $resp->add_header( start_time   => int($job->start_time) );
+  $resp->add_header( current_time => time );
+  $resp->add_header( is_expired => $job->is_expired );
   $resp->set_ok;
 
   return $resp;
