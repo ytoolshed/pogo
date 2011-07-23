@@ -103,15 +103,20 @@ sub hostinfo
 
   # call this asyncronously as it may be ugly
   $ns->fetch_target_meta(
-    $target,
+    [$target],
+    $namespace,
     sub {
       my $err = shift;
+      ERROR "fetch_target_meta returned '$err'";
       return $resp->set_error($err);
     },
     sub {
-      my ( $results, $hosts ) = @_;
-      $resp->add_header( hosts => join( ',', @$hosts ) );
-      $resp->set_records( [$results] );
+      my ( $results ) = @_;
+
+      DEBUG sub { "fetch_target_meta success: results=" . Dumper( $results ); };
+
+      $resp->add_header( hosts => join( ',', keys %$results ) );
+      $resp->set_records( [$results->{$target}] );
       return $resp->set_ok;
     },
   );
@@ -291,7 +296,7 @@ sub jobretry
   }
 
   my $out = [ map { $job->retry_task($_) } @$hostnames ];
-  DEBUG Dumper [ $out, $hostnames ];
+  DEBUG sub { Dumper [ $out, $hostnames ] };
   $instance->add_task( 'resumejob', $job->{id} );
 
   $resp->set_records($out);

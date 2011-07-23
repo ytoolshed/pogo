@@ -47,6 +47,10 @@ sub expand_targets
 sub fetch_target_meta
 {
   my ( $self, $targets, $nsname, $errc, $cont, $logcont, $opts ) = @_;
+
+  DEBUG sub { "fetch_target_meta: targets=" . Dumper($targets) . 
+              "nsname=$nsname" };
+
   my $hinfo = {};
   $opts = {} unless defined $opts;
 

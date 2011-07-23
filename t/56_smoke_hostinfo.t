@@ -34,6 +34,11 @@ use PogoTesterAlarm;
 
 test_pogo
 {
+  if( $ENV{ DEBUG } ) {
+      system("xterm -exec 'tail -f .tmp/dispatcher.log' &");
+      system("xterm -exec 'tail -f .tmp/worker.log' &");
+  }
+
   my $t;
   lives_ok { $t = client->ping(); } 'ping send'
     or diag explain $t;
