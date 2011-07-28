@@ -834,7 +834,7 @@ sub continue
         }
       }
 
-      return $cont->( $nqueued, $nwaiting );
+      return $cont->( $runnable, $unrunnable, $global_lock );
     }
   );
 }

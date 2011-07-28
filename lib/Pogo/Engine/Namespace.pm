@@ -245,6 +245,8 @@ sub fetch_all_slots
   {
     $hostslots{$hostname} = [];
 
+    my $host = $job->host( $hostname, 'waiting' );
+
     #$DB::single = 1;
 
     foreach my $app ( @{ $hostinfo->{apps} } )
@@ -311,8 +313,8 @@ sub fetch_all_slots
         my $apptargets = Set::Scalar->new( @{ $resolved->{$appexp} } );
         my $envtargets = Set::Scalar->new( @{ $resolved->{$envexp} } );
 
-        # TODO: do we need to speed this up with Bit::Vector?
-        my $nhosts = scalar @{ $apptargets->intersection($envtargets) };
+        my @hosts = $apptargets->intersection($envtargets);
+        my $nhosts = scalar @hosts;
 
         $slot->{maxdown} = max( 1, int( $pct * $nhosts / 100 ) );
         DEBUG "slot: @$lookup -> $slot->{maxdown} max down";
@@ -376,7 +378,9 @@ sub unlock_job
 sub resolve
 {
   my ( $self, $lookups, $errc, $cont ) = @_;
-  DEBUG Dumper $lookups;
+
+  DEBUG "Resolve calling continuation";
+  $cont->( {} );
 }
 
 # }}}

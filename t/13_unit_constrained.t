@@ -19,11 +19,10 @@ use strict;
 use warnings;
 
 use Test::Exception;
-use Test::More tests => 8;
+use Test::More tests => 14;
 use Test::Deep;
 
 use Carp qw(confess);
-use Data::Dumper;
 use FindBin qw($Bin);
 use Log::Log4perl qw(:easy);
 use Net::SSLeay qw();
@@ -135,22 +134,23 @@ my $job = Pogo::Engine::Job->new({
     exe_data    => "wonk",
 });
 
+my $continue = 0;
+
 $job->start(
      sub { ok 0, "err cont on start(): @_" },
      sub { ok 1, "success cont on start()"; 
-           my($nqueued, $nwaiting) = @_;
-           is($nqueued, 4, "4 hosts enqueued");
-           is($nwaiting, 0, "0 hosts waiting");
-         },
-);
+           my($runnable, $unrunnable) = @_;
 
-$ns->fetch_runnable_hosts( 
-    $job, 
-    $host_meta,
-    sub { die "err cont: ", Dumper( \@_ ); },
-    sub { $result = \@_;
-          print "result=", Dumper( \@_ );
-        },
+           return if $continue++;
+
+           is $runnable->[0], 'bar3.east.example.com', "runnable host";
+           is $runnable->[1], 'bar3.west.example.com', "runnable host";
+
+           is $unrunnable->{ 'foo13.west.example.com' }, 'coast west backend',
+              "unrunnable host";
+           is $unrunnable->{ 'foo13.east.example.com' }, 'coast east backend',
+              "unrunnable host";
+         },
 );
 
 ok(1, "at the end" );
