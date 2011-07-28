@@ -37,7 +37,7 @@ chdir($Bin);
 
 ok( Log::Log4perl::init("$Bin/conf/log4perl.conf"), "log4perl" );
 
-use Pogo::Plugin::Inline;
+use Pogo::Plugin::Planner::Default;
 
 sub hsort
 {
@@ -57,9 +57,8 @@ sub conf_read {
     my $data = LoadFile( $conf_file );
 }
 
-my $pl = Pogo::Plugin::Inline->new(
-    conf => \&conf_read,
-);
+my $pl = Pogo::Plugin::Planner::Default->new();
+$pl->conf( \&conf_read );
 
 my $result;
 my $target = "foo97.east.example.com";
@@ -92,7 +91,7 @@ my %input = (
 
 while ( my ( $expr, $res ) = each %input )
 {
-  my $flat      = Pogo::Plugin::Inline->expand_targets( [$expr] );
+  my $flat      = Pogo::Plugin::Planner::Default->expand_targets( [$expr] );
   my $size_flat = scalar @$flat;
   my $size_expr = scalar @$res;
   is( $size_flat, $size_expr, "$expr size" )
@@ -105,7 +104,7 @@ my $all_expr = [ sort hsort keys %input ];
 my @all_res;
 foreach my $res ( @input{ @$all_expr } ) { push @all_res, @$res; }
 
-my $all_flat      = Pogo::Plugin::Inline->expand_targets($all_expr);
+my $all_flat      = Pogo::Plugin::Planner::Default->expand_targets($all_expr);
 my $all_res_size  = scalar @all_res;
 my $all_flat_size = scalar @$all_flat;
 

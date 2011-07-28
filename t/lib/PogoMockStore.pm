@@ -53,6 +53,24 @@ sub _dump {
     return $string;
 }
 
+# dumps out emtpy nodes as well as nodes with content
+sub _dump_full_structure {
+    my($self) = @_;
+
+    my $string = "";
+
+    $self->traverse( sub {
+        my( $node ) = @_;
+        $string .= "$node->{path}";
+        if( defined $node->{content} ) {
+            $string .= ": [$node->{content}]";
+        }
+        $string .= "\n";
+    });
+
+    return $string;
+}
+
 sub exists {
     my($self, $path) = @_;
 

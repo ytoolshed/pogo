@@ -55,8 +55,11 @@ $store->create( '/foo/bar' );
 $store->create( '/foo/bar/baz' );
 $store->set('/foo/bar/baz', 'quack');
 
-my $str = $store->_dump();
+my $str = $store->_dump_full_structure();
 is($str, <<EOT, "PogoMockStore simple");
+/
+/foo
+/foo/bar
 /foo/bar/baz: [quack]
 EOT
 

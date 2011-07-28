@@ -1,4 +1,4 @@
-package Pogo::Plugin::Inline;
+package Pogo::Plugin::Planner::Default;
 
 # Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
 #
@@ -22,8 +22,8 @@ use String::Glob::Permute qw(string_glob_permute);
 
 sub new
 {
-  my ( $class, %opts ) = @_;
-  return bless \%opts, $class;
+  my $class = shift;
+  return bless {}, $class;
 }
 
 # {{{ expand_targets
@@ -106,11 +106,47 @@ sub fetch_target_meta
 
   DEBUG "End updating Inline meta cache (cache_key=$cache_key)";
 
-  # Only pass on data for the data we asked for
-  $cont->( { map { $_ => $self->{_target_cache}->{$cache_key}->{$_} } @$targets } );
+  DEBUG "cont is ". Dumper($cont);
+
+    # Only pass on data for the data we asked for
+  $cont->( { map { $_ => $self->{_target_cache}->{$cache_key}->{$_} } 
+               @$targets  }
+         );
 }
 
 # }}}
+
+
+# set/get method for {conf}, a code ref
+sub conf
+{
+  my ( $self, $conf_sub ) = @_;
+
+  if ( $conf_sub )
+  {
+    LOGDIE 'first argument to Pogo::Plugin::Planner::Default->conf() must be a code reference'
+        unless 'CODE' eq ref( $conf_sub ) ;
+
+    $self->{conf} = $conf_sub;
+  }
+  return $self->{conf};
+}
+
+# set/get method for namespace
+#    TODO: do we even *do* anything with the ::Inline::namespace value???
+sub namespace
+{
+  my ( $self, $ns ) = @_;
+
+  if ( $ns )
+  {
+    $self->{namespace} = $ns;
+  }
+  return $self->{namespace};
+}
+
+
+sub priority { return 1; }
 
 1;
 
