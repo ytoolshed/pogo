@@ -49,6 +49,7 @@ requires 'MIME::Types';
 requires 'Module::Pluggable';
 requires 'Net::SSLeay';
 requires 'Net::ZooKeeper';
+requires 'PasswordMonkey';
 requires 'POSIX';
 requires 'Pod::Find';
 requires 'Pod::Usage';

@@ -1,4 +1,4 @@
-#!/usr/bin/expect --
+#!/usr/local/bin/perl
 
 # Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
 #
@@ -14,68 +14,127 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-## main ()
+use strict;
+use warnings;
+use PasswordMonkey;
+use Term::ReadKey;
+use Log::Log4perl qw(:easy);
+use PasswordMonkey::Filler::PogoPassword;
+use PasswordMonkey::Filler::PogoPassphrase;
+use PasswordMonkey::Filler::PogoGPG;
+use PasswordMonkey::Bouncer::Wait;
+use Getopt::Std;
 
-set cpasswd ""
-set cresetpasswd ""
-set cresetpasswd2 ""
-set cpassp ""
+getopts( "vq", \my %opts );
 
-fconfigure stdin -blocking 1
-set timeout [gets stdin]
-set cpasswd [gets stdin]
-set cpassp [gets stdin]
-fconfigure stdin -blocking 0
+my $level = $ERROR;
+$level = $DEBUG if $opts{v};
+$level = $OFF   if $opts{q};
 
-eval spawn -noecho $argv
-
-expect {
-  "Sorry, try again." {
-    exit 255
-  }
-  "Mismatch; try again, EOF to quit." {
-    exit 255
-  }
-  "New password:" {
-    exit 255
-  }
-  "Retype new password:" {
-    exit 255
-  }
-  "Permission denied, please try again." {
-    exit 255
-  }
-  "assword:" {
-    send_user " (supplied by pogo-pw)\n"
-    set passwd [exec perl -n -e "print unpack(q{u},\$_)" << "$cpasswd"]
-    log_user 0
-    send -- "$passwd\r"
-    set passwd $cpasswd
-    log_user 1
-    exp_continue
-  }
-  -re "(Enter passphrase for .+:|Bad passphrase, try again:)" {
-    if {$expect_out(1,string) == "Bad passphrase, try again:"} {
-      exit 255
-    }
-    send_user " (supplied by pogo-pw)\n"
-    set passp [exec perl -n -e "print unpack(q{u},\$_)" << "$cpassp"]
-    log_user 0
-    send -- "$passp\r"
-    set passp $cpassp
-    log_user 1
-    exp_continue
-  }
-  -re {key fingerprint is [a-zA-Z0-9:]+\.[\r\n]+Are you sure you want to continue connecting \(yes/no\)\?} {
-    send -- "yes\r"
-    exp_continue
-  }
-  eof {
-    set status [lindex [wait] 3]
-    exit $status
-  }
-  timeout {
-    puts stderr "Timeout reached: Process shut down after $timeout seconds of inactivity."
-    exit 254
-  }
+if( $opts{v} ) {
+    $Expect::Exp_Internal = 1;
 }
+
+Log::Log4perl->easy_init({ level => $level, layout => "%m%n" });
+
+DEBUG "$0: Reading parameters";
+
+ # Get parameters from STDIN
+my $timeout = <STDIN>;
+chomp $timeout;
+
+DEBUG "$0: timeout=$timeout";
+
+my $passwd  = <STDIN>;
+chomp $passwd;
+
+DEBUG "$0: Got passwd";
+
+my $passphrase = <STDIN>;
+chomp $passphrase;
+
+DEBUG "$0: Got passphrase";
+
+DEBUG "$0: Setting up fillers";
+
+my $monkey = PasswordMonkey->new(
+    timeout => $timeout 
+);
+my $waiter = PasswordMonkey::Bouncer::Wait->new( seconds => 2 );
+
+my $pwfiller = PasswordMonkey::Filler::PogoPassword->new(
+    password => sub { unpack 'u', $passwd }
+);
+$pwfiller->bouncer_add( $waiter );
+$monkey->filler_add( $pwfiller );
+
+my $ppfiller = PasswordMonkey::Filler::PogoPassphrase->new(
+    password => sub { unpack 'u', $passphrase }
+);
+$ppfiller->bouncer_add( $waiter );
+$monkey->filler_add( $ppfiller );
+
+my $gpgfiller = PasswordMonkey::Filler::PogoGPG->new();
+$monkey->filler_add( $gpgfiller );
+
+$monkey->spawn( @ARGV );
+$monkey->go();
+
+if( ! $monkey->is_success ) {
+    if( $monkey->timed_out ) {
+        ERROR "$0: Timed out";
+        exit 254;
+    } else {
+        ERROR "$0: Error: ", $monkey->exit_status();
+        my $exit_code = ($monkey->exit_status() >> 8);
+        ERROR "$0: Exit code $exit_code";
+        exit $exit_code;
+    }
+}
+
+INFO "$0 done.";
+
+__END__
+
+=head1 NAME
+
+    pogo-pw - Run a command and fill in password prompts
+
+=head1 SYNOPSIS
+
+    echo "timeout\nuupasswd\n" pogo-pw command args
+
+=head1 OPTIONS
+
+=over 8
+
+=item B<-v>
+
+Be verbose.
+
+=back
+
+=head1 DESCRIPTION
+
+C<pogo-pw> runs pogo commands and fills in password prompts automatically.
+
+=head1 EXAMPLES
+
+  $ pogo-pw sudo ls
+
+=head1 COPYRIGHT
+
+Apache 2.0
+
+=head1 AUTHORS
+
+  Andrew Sloane <andy@a1k0n.net>
+  Ian Bettinger <ibettinger@yahoo.com>
+  Michael Fischer <michael+pogo@dynamine.net>
+  Mike Schilli <m@perlmeister.com>
+  Nicholas Harteau <nrh@hep.cat>
+  Nick Purvis <nep@noisetu.be>
+  Robert Phan <robert.phan@gmail.com>
+  Srini Singanallur <ssingan@yahoo.com>
+  Yogesh Natarajan <yogesh_ny@yahoo.co.in>
+
