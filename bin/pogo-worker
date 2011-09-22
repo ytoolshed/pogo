@@ -46,6 +46,9 @@ sub main
     output_uri      => 'http://' . hostname() . '/static/',
   };
 
+  # opts that are arrays, specified as comma-delimited lists (my_option=foo,bar,baz)
+  my %array_opts = map { $_ => 1 } qw( dispatchers );
+
   my $log_conf;
   my $log_level;
   my $cmdline_opts     = {};
@@ -85,6 +88,11 @@ sub main
   # merge config-file options over defaults
   while ( my ( $k, $v ) = each %$config_file_opts )
   {
+    # allow multi-value options to be specified by YAML arrays or comma
+    # -delimited values
+    if ( $array_opts{ $k } and defined $v and ! ref $v ) {
+      $v = [ split /,/, $v ];
+    }
     $opts->{$k} = $v if defined $v;
   }
 

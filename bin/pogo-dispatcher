@@ -60,6 +60,9 @@ sub main
     peers           => [],
   };
 
+  # opts that are arrays, specified as comma-delimited lists (my_option=foo,bar,baz)
+  my %array_opts = map { $_ => 1 } qw( peers );
+
   my $log_conf;
   my $log_level;
   my $cmdline_opts     = {};
@@ -78,7 +81,7 @@ sub main
     'r|rpc-port=i'       => \$cmdline_opts->{rpc_port},
     'w|worker-port=i'    => \$cmdline_opts->{worker_port},
     'a|authstore-port=i' => \$cmdline_opts->{authstore_port},
-    'peers=s@'           => \$cmdline_opts->{peers},
+    'peers=s@'           => sub { push @{ $cmdline_opts->{peers} }, split /,/, $_[1] },
     'debug'              => sub { $log_level = 'DEBUG' },
   );
 
@@ -107,6 +110,11 @@ sub main
   # merge config-file options over defaults
   while ( my ( $k, $v ) = each %$config_file_opts )
   {
+    # allow multi-value options to be specified by YAML arrays or comma
+    # -delimited values
+    if ( $array_opts{ $k } and defined $v and ! ref $v ) {
+      $v = [ split /,/, $v ];
+    }
     $opts->{$k} = $v if defined $v;
   }
 
