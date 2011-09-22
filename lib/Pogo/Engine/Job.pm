@@ -91,15 +91,15 @@ sub new
 
   bless $self, $class;
 
-  $args->{target_keyring} = $self->{ns}->get_conf->{globals}->{target_keyring};
-  $args->{target_keyring} = Pogo::Dispatcher->target_keyring
-    unless defined $args->{target_keyring};
+  my $target_keyring = $self->{ns}->get_conf->{globals}->{target_keyring};
+  $target_keyring = Pogo::Dispatcher->target_keyring
+    unless defined $target_keyring;
   LOGDIE "The job needs to be signed"
-    if ( ( defined $args->{target_keyring} ) && ( !defined $args->{signature} ) );
+    if ( $target_keyring && ( !defined $args->{signature} ) );
 
   $args->{target}         = encode_json( $args->{target} );
-  $args->{target_keyring} = encode_json( $args->{target_keyring} )
-    if ( defined $args->{target_keyring} );
+  $args->{target_keyring} = encode_json( $target_keyring )
+    if ( defined $target_keyring );
   $args->{signature_fields} = encode_json( $args->{signature_fields} )
     if ( defined $args->{signature_fields} );
   $args->{signature} = encode_json( $args->{signature} )
