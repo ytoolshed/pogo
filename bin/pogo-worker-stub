@@ -74,7 +74,7 @@ sub main
     die "Required data for verifying signatures not present"
       unless ( $opts->{signature}
       && $opts->{target_keyring}
-      && ( ref( $opts->{target_keyring} ) ne 'ARRAY' ) );
+      && ( ref( $opts->{target_keyring} ) eq 'ARRAY' ) );
 
     my %keyring_dir_hash = map { $_ => 0 } @{ $opts->{target_keyring} };
 
