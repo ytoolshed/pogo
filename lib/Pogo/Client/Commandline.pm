@@ -241,7 +241,7 @@ $key,                  $value
 
   }
 
-  if ( $opts->{'use-password'} )
+  if ( !$opts->{sshagent} || $opts->{'use-password'} )
   {
 
     my $password = get_password();
@@ -266,7 +266,7 @@ $key,                  $value
 
   }
 
-  die "Need atleast one authentication mechanism with --password or --sshagent\n"
+  die "Need at least one authentication mechanism with --password or --sshagent\n"
     unless ( $opts->{sshagent} || $opts->{password} );
 
   $opts->{user} = $self->{userid};
