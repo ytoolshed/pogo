@@ -249,7 +249,7 @@ sub main
     $pkfile = "$opts->{tempdir}/" . sha1_hex( sprintf "%0.5f-%d-%d", rand(), $$, time );
     while ( -p $pkfile )
     {
-      $pkfile = "$opts->{tempdir}/" . sha1_hex( printf "%0.5f-%d-%d", rand(), $$, time );
+      $pkfile = "$opts->{tempdir}/" . sha1_hex( sprintf "%0.5f-%d-%d", rand(), $$, time );
     }
 
     # the named pipe blocks till some one reads and ssh-add also blocks till its completed,
