@@ -1,0 +1,8 @@
+.licensizer.yml
+Changes
+lib/Pogo.pm
+Makefile.PL
+MANIFEST			This list of files
+MANIFEST.SKIP
+README
+t/001Basic.t
