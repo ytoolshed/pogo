@@ -1,0 +1,11 @@
+[color]
+        ui = auto
+        status = auto
+        branch = auto
+        diff   = auto
+[user]
+        name = mschilli
+        email = github@perlmeister.com
+[pager]
+        status = true
+        diff   = true
