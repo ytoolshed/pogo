@@ -4,6 +4,8 @@ package Pogo::Worker;
 use strict;
 use warnings;
 use Log::Log4perl qw(:easy);
+use AnyEvent;
+use AnyEvent::Strict;
 
 our $VERSION = "0.01";
 
@@ -25,6 +27,9 @@ sub start {
     my( $self ) = @_;
 
     DEBUG "Worker: Starting";
+
+      # start event loop
+    AnyEvent->condvar->recv();
 }
 
 1;
