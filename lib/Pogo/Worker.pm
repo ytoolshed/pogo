@@ -40,10 +40,37 @@ __END__
 
 Pogo::Worker - Pogo Worker Daemon
 
+=head1 SYNOPSIS
+
+    use Pogo::Worker;
+
+    my $worker = Pogo::Worker->new(
+      dispatchers => [ "localhost:9979" ]
+    );
+
+    Pogo::Worker->start();
+
 =head1 DESCRIPTION
 
-Main code for the Pogo worker daemon. Upon start(), it tries
-to connect to one or more configured dispatchers.
+Main code for the Pogo worker daemon. The worker executes tasks handed
+down from the dispatcher. Tasks typically consist of connecting to a 
+target host and running a command there.
+
+=head1 METHODS
+
+=over 4
+
+=item C<new()>
+
+Constructor.
+
+=item C<start()>
+
+Tries to connect to one or more configured dispatchers, and keeps trying
+indefinitely until it succeeds. If the connection is lost, it will 
+try to reconnect. Never returns unless there's a catastrophic error.
+
+=back
 
 It receives tasks from the dispatcher and acknowledges receiving them.
 
