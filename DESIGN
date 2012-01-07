@@ -76,6 +76,10 @@ the AnyEvent::Intro page for details.
 It takes some time to get the hang of it, but it's a good framework, 
 I think.
 
+=======
+CLASSES
+=======
+
 Here's the components I've mapped out so far, some already 
 checked into github (but I've hardly written any code yet):
 
@@ -95,4 +99,19 @@ Pogo::Worker::Task::Command - Run local command (not used, just a base class)
 
 Pogo::Worker::Task::Command::Remote - Run command on target host
 
+=======
+TOOLS
+=======
+
+To make it easier to create new modules (or scripts), I've checked in
+adm/pogo-tmpl which you can use like
+
+    ..../adm/pogo-tmpl Frobnicator.pm
+
+or 
+
+   ..../adm/pogo-tmpl pogo-frobnicate
+
+and which will create the newly requested files from pogo-compliant 
+templates.
 
