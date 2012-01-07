@@ -88,3 +88,14 @@ imitations under the License.
 Mike Schilli <m@perlmeister.com>
 Ian Bettinger <ibettinger@yahoo.com>
 
+Many thanks to the following folks for implementing the
+original version of Pogo: 
+
+Andrew Sloane <andy@a1k0n.net>, 
+Michael Fischer <michael+pogo@dynamine.net>,
+Nicholas Harteau <nrh@hep.cat>,
+Nick Purvis <nep@noisetu.be>,
+Robert Phan <robert.phan@gmail.com>,
+Srini Singanallur <ssingan@yahoo.com>,
+Yogesh Natarajan <yogesh_ny@yahoo.co.in>
+
