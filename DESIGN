@@ -108,6 +108,27 @@ via inheritance.
 Pogo::Worker::Task::Command::Remote - Run command on target host,
 just tacks on ssh magic onto base class's executor.
 
+Pogo::Dispatcher - Main dispatcher daemon
+
+Pogo::Dispatcher::Connection - Dispatcher connection handler
+
+Pogo::Dispatcher::ConstraintsEngine - Calculates constraints
+Pogo::Dispatcher::ConstraintsEngine::Concurrent - No constraints
+Pogo::Dispatcher::ConstraintsEngine::Yahoo - Calculates rolesdb constraints
+Pogo::Dispatcher::ConstraintsEngine::Flatfile - For OSS constraints defs
+
+Pogo::Dispatcher::Job - create/run jobs
+
+Pogo::Datastore::ZooKeeper - Dispatcher communication mechanism
+
+Pogo::Datastore::VDS - Vespa engine to store finished jobs data
+
+Pogo::Web::API - yapache mod_perl API (should no longer talk to ZK directly,
+but talk to the dispatcher).
+
+Pogo::Web::UI - Pogo web UI (talks to API)
+
+Pogo::Util::Crypto - Password encryption/decryption
 
 =======
 TOOLS
