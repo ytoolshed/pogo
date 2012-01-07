@@ -6,6 +6,7 @@ use warnings;
 use Log::Log4perl qw(:easy);
 use AnyEvent;
 use AnyEvent::Strict;
+use base 'Object::Event';
 
 ###########################################
 sub new {

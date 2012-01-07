@@ -62,8 +62,6 @@ target host and running a command there.
 
 =item C<new()>
 
-Constructor.
-
 =item C<start()>
 
 Tries to connect to one or more configured dispatchers, and keeps trying
