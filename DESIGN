@@ -1,0 +1,67 @@
+
+This week, I took a look at the current code base, both OSS pogo and YPogo, and
+thought about how we can better structure OSS Pogo to arrive at a more robust
+code base than what we have now.
+
+I think the architecture as a whole (dispatcher/zookeeper/workers) is
+solid, but what we need to easier understand/debug the internal workings
+of OSS Pogo is to break up the unstructured code into reusable components
+that are unit-testable.
+
+Also, we need to stick to a programming paradign. The AnyEvent framework
+Pogo uses has a good reputation with some leading Perl folks, it's just
+that Pogo isn't using it in a easily readable manner.
+
+So, my goal is to split up Pogo functionality into easily testable 
+AnyEvent components. Components are classes and are all defined and
+used in the same way. Take the class for the new worker's task executor,
+for example:
+
+    package use Pogo::Worker::Task::Command;
+    use AnyEvent;
+    use base qw(Object::Event);
+
+    my $cmd = Pogo::Worker::Task::Command->new(
+      cmd  => [ 'ls', '-l' ],
+    };
+
+    $cmd->reg_cb(
+      on_stdout => sub {
+        my($c, $stdout) = @_;
+      },
+      on_stderr => sub {
+        my($c, $stderr) = @_;
+      }
+      on_eof => sub {
+        my($c) = @_;
+      }
+    );
+          
+    $cmd->run();
+
+After constructing the object with parameters, the reg_cb() method
+(coming via Object::Event) is used to register callback on significant
+events. The component has a run() method which starts it.
+
+In the case of the worker task executor, the callbacks are for the events
+on_stdout (process writes to stdout), on_stdout (process writes to stderr),
+and on_eof (process ended). Every callback gets as its first argument
+a reference to the object itself and optional parameters, for example
+the stdout string in case of the on_stdout event.
+
+Events differ from component class to 
+component class, but it's important to stick to this format.
+
+If you want to unit-test the component, you just wrap
+
+    my $cv = AnyEvent->condvar;
+
+    ...
+
+    $cv->recv;
+
+around the code and use $cv->send from somewhere within a callback
+(e.g. "eof") to terminate the implicitly started event loop.
+
+It takes some time to get the hang of it, but it's a good framework, 
+I think.
