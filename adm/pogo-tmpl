@@ -1,0 +1,66 @@
+#!/usr/local/bin/perl
+use strict;
+use warnings;
+use FindBin qw($Bin);
+use File::Copy;
+use Pod::Usage;
+
+my($name) = @ARGV;
+
+if( !defined $name ) {
+    pod2usage("argument missing");
+}
+
+my $template = "template";
+
+if( $name =~ /\.pm$/ ) {
+    $template = "Template.pm";
+}
+
+if( -e $name ) {
+    pod2usage "$name already exists. Cowardly refusing to move on.";
+}
+
+my($src) = <$Bin/$template>;
+
+copy $src, $name or die "copy failed: $!";
+
+__END__
+
+=head1 NAME
+
+pogo-tmpl - Create new pogo modules/scripts from templates
+
+=head1 SYNOPSIS
+
+      # creates "pogo-frobnicator" from script template
+    pogo-tmpl pogo-frobnicator
+
+      # creates "Frobnicate.pm" from module template
+    pogo-tmpl Frobnicate.pm
+
+=head1 DESCRIPTION
+
+Use this script to create new scripts/modules for Pogo development.
+
+=head1 LICENSE
+
+Copyright (c) 2010-2012 Yahoo! Inc. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+imitations under the License.
+
+=head1 AUTHORS
+
+Mike Schilli <m@perlmeister.com>
+Ian Bettinger <ibettinger@yahoo.com>
+
