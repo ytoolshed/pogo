@@ -87,17 +87,27 @@ Pogo::Worker - Main worker daemon
 
 Pogo::Worker::Connection - Connection/Reconnection Logic with Dispatcher,
 supports both regular sockets (testing) and SSL sockets (production).
-Maintains a message send queue to the dispatcher. The dispatcher needs
-to ACK every message, if it doesn't, the worker will keep it in its
-message queue.
+Tries to connect to one or more configured dispatchers, and reconnects
+if it gets severed.
+Maintains a send queue with message to be sent to the dispatcher (e.g.
+about finished tasks). The dispatcher needs to *ACK* every message, 
+if it doesn't, the component will keep it in its message queue and
+retry later.
 
 Pogo::Worker::Task - Gets events for and executes worker tasks like: 
 running commands, querying status, killing job tasks currently 
-running/hanging on the worker.
+running/hanging on the worker. Updates the task logfiles with output
+from the task. Also (in a directory near the logfiles), stores the pids
+of the launched tasks, so if a worker dies, the restarted process can
+clean up lingering pids.
 
-Pogo::Worker::Task::Command - Run local command (not used, just a base class)
+Pogo::Worker::Task::Command - Run local command (not used directly, 
+just a virtual base class). Uses Pogo::Worker::Task's log/pid handler 
+via inheritance. 
 
-Pogo::Worker::Task::Command::Remote - Run command on target host
+Pogo::Worker::Task::Command::Remote - Run command on target host,
+just tacks on ssh magic onto base class's executor.
+
 
 =======
 TOOLS
@@ -114,4 +124,15 @@ or
 
 and which will create the newly requested files from pogo-compliant 
 templates.
+
+==============
+DEV GUIDELINES
+==============
+
+* Every component needs to have a unit test associated with it in the 
+  test suite. This makes it easy to add new functionality without introducing
+  regressions.
+
+* Add documentation to the component, as outlined in the template generated
+  by pogo-tmpl
 
