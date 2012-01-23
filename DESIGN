@@ -157,3 +157,89 @@ DEV GUIDELINES
 * Add documentation to the component, as outlined in the template generated
   by pogo-tmpl
 
+==========================
+Dispatcher/Worker Protocol
+==========================
+
+The new protocol is asynchronous and full-duplex, meaning that although the
+worker initiates a TCP connection, both dispatcher and worker can initiate a
+command requiring a response from the other party.
+
+To distinguish the different directions and therefore required protocol
+behavior, each message defines a channel it is transmitted over (somewhat
+inspired by http://tools.ietf.org/html/rfc3117):
+
+Channels
+
+    * Channel missing: Fall back to legacy protocol
+    * Channel 0: Channel Negotiation (currently unused)
+    * Channel 1: Worker->Dispatcher communciation
+    * Channel 2: Dispatcher->Worker communication
+
+Channel 1 (Worker->Dispatcher)
+
+    * Report task start
+          o Worker: msgid "start" jobid (started job)
+          o Dispatcher: "ack" msgid
+    * Report task finished
+          o Worker: msgid "finish" jobid status (finished job)
+          o Dispatcher: "ack" msgid
+    * Report idleness
+          o Worker: msgid "idle" 
+          o Dispatcher: "ack" msgid
+
+Channel 2 (Dispatcher->Worker)
+
+    * Submit Task:
+          o Dispatcher: msgid "task" jobdata
+          o Worker: 
+                + success: "ack" msgid
+                + busy: "busy" msgid (dispatcher will pause this worker)
+                + no answer: (dispatcher will pause this worker)
+    * Query Task status:
+          o Dispatcher: msgid "taskstatus" host
+          o Worker:msgid "taskstatus" host
+                + still running: msgid "running"
+                + unknown: msgid "unknown"
+    * Query Worker status:
+          o Dispatcher: msgid "status"
+          o Worker:
+                + msgid "{status: ok, tasks: xx}"
+                + msgid "{status: busy, tasks: xx }"
+    * Kill Task:
+          o Dispatcher: msgid "taskkill" host
+    *
+          o Worker:
+                + still running: msgid "ack"
+                + unknown: msgid "unknown"
+    * Kill All Tasks:
+          o Dispatcher: msgid "taskkillall"
+          o Worker: msgid "ack"
+
+Legacy Protocol
+
+    * Initial handshake (worker/lib/Pogo/Worker/Connection.pm)
+          o Worker: sleep(rand5); connect to random dispatcher
+            If connection fails, retries in sleep(rand 30)
+          o Dispatcher: (nothing)
+    * Request by Dispatcher (server/lib/Pogo/Dispatcher/WorkerConnection.pm)
+          o Dispatcher: [ execute, { job_id ... command ... } ]
+          o Worker:
+            * acknowledges job and
+                + accepts more: { idle }
+                + wants no more: (nothing)
+            * starts task { start }
+            * finishes task { finish }
+
+Drawbacks of legacy protocol
+
+     * Unreliable. Protocol assumes that a message has been
+       received if the connection is up. Fails in cases where
+       connection is up but component overloaded and can't respond
+       or process the request. This leads to inconsistent views of
+       a task between worker and dispatcher if the worker doesn't
+       respond because it's too busy to take the task. Or in case a
+       worker reports a finished task to the dispatcher who's too
+       busy to process the report.
+
+     * Limited in functionality and can't be extended to full duplex.
