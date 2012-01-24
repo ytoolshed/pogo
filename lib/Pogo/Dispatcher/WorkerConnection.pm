@@ -52,6 +52,7 @@ sub _prepare_handler {
     return sub {
         my( $fh, $host, $port ) = @_;
 
+        $self->event( "server_prepare", $host, $port );
         DEBUG "Listening to $self->{host}:$self->{port} for workers.";
     };
 }
@@ -66,6 +67,8 @@ sub _accept_handler {
 
         DEBUG "$self->{ host }:$self->{ port } accepting ",
               "connection from $peer_host:$peer_port";
+
+        $self->event( "worker_connect", $peer_host );
     };
 }
 
@@ -92,6 +95,21 @@ Pogo::Dispatcher::WorkerConnection - Pogo worker connection abstraction
 =item C<new()>
 
 Constructor.
+
+=back
+
+=head1 EVENTS
+
+=over 4
+
+=item C<worker_connect>
+
+Fired if a worker connects. Arguments: C<$worker_host>.
+
+=item C<server_prepare>
+
+Fired when the server is about to bind a socket. Arguments:
+C<$host>, $C<$port>.
 
 =back
 

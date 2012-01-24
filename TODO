@@ -1,2 +1,14 @@
 
 * add tls sockets and cert checks to WorkerConnection.pm
+* Pogo::Object::Event extends Object::Event and adds
+
+      $self->event_relay( "name" )
+
+  which simply calls
+
+      $w->reg_cb( "name" => sub {
+          my( $self, @args ) = @_;
+          $self->event( "name", @args );
+      });
+
+  (but watch for the '$self' closure)

@@ -7,6 +7,7 @@ use Log::Log4perl qw(:easy);
 use AnyEvent;
 use AnyEvent::Strict;
 use Pogo::Dispatcher::WorkerConnection;
+use base qw(Object::Event);
 
 our $VERSION = "0.01";
 
@@ -20,6 +21,8 @@ sub new {
     };
 
     bless $self, $class;
+
+    return $self;
 }
 
 ###########################################
@@ -27,9 +30,26 @@ sub start {
 ###########################################
     my( $self ) = @_;
 
-    $self->{ worker_conn } = 
-      Pogo::Dispatcher::WorkerConnection->new(
-    )->start();
+    my $w = Pogo::Dispatcher::WorkerConnection->new();
+
+      # In case we get a worker_connect from the Connection
+      # class, we propagate it to our callers.
+    $w->reg_cb( worker_connect => sub {
+        my( $c, @args ) = @_;
+
+        $self->event( "worker_connect", @args );
+    });
+    
+    $w->reg_cb( server_prepare => sub {
+        my( $c, @args ) = @_;
+
+        $self->event( "server_prepare", @args );
+    });
+    
+    $w->start();
+
+      # Guard it
+    $self->{ worker_conn } = $w;
 
     DEBUG "Dispatcher Starting";
 }
@@ -47,7 +67,7 @@ Pogo::Dispatcher - Pogo Dispatcher Daemon
     use Pogo::Dispatcher;
 
     my $worker = Pogo::Dispatcher->new(
-      on_worker_connect  => sub {
+      worker_connect  => sub {
           print "Worker $_[0] connected\n";
       },
     );
