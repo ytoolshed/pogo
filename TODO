@@ -1,0 +1,2 @@
+
+* add tls sockets and cert checks to WorkerConnection.pm

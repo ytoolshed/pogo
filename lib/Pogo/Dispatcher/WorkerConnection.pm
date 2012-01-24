@@ -35,7 +35,38 @@ sub start {
 ###########################################
     my( $self ) = @_;
 
-    DEBUG "Worker: Listening to $self->{host}:$self->{port}";
+      # Start server taking workers connections
+    $self->{worker_server} =
+        tcp_server( $self->{ host },
+                    $self->{ port }, 
+                    $self->_accept_handler(),
+                    $self->_prepare_handler(),
+        );
+}
+
+###########################################
+sub _prepare_handler {
+###########################################
+    my( $self ) = @_;
+
+    return sub {
+        my( $fh, $host, $port ) = @_;
+
+        DEBUG "Listening to $self->{host}:$self->{port} for workers.";
+    };
+}
+
+###########################################
+sub _accept_handler {
+###########################################
+    my( $self ) = @_;
+
+    return sub {
+        my( $sock, $peer_host, $peer_port ) = @_;
+
+        DEBUG "$self->{ host }:$self->{ port } accepting ",
+              "connection from $peer_host:$peer_port";
+    };
 }
 
 1;
