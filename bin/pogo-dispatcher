@@ -4,18 +4,18 @@ use warnings;
 
 use Getopt::Std;
 use Pod::Usage;
-use Pogo::Worker;
+use Pogo::Dispatcher;
 
 getopts("hv", \my %opts);
 
 pod2usage() if $opts{h};
 
 if($opts{v}) {
-    my $version = $Pogo::Worker::VERSION;
+    my $version = $Pogo::Dispatcher::VERSION;
     die "$0 $version\n";
 }
 
-Pogo::Worker->start();
+Pogo::Dispatcher->start();
 
   # start event loop
 AnyEvent->condvar->recv();
@@ -24,11 +24,11 @@ __END__
 
 =head1 NAME
 
-pogo-worker - Pogo Worker Daemon
+pogo-worker - Pogo Dispatcher Daemon
 
 =head1 DESCRIPTION
 
-See Pogo::Worker.
+See Pogo::Dispatcher.
 
 =head1 LICENSE
 

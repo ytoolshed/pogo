@@ -1,5 +1,5 @@
 ###########################################
-package Pogo::Worker;
+package Pogo::Dispatcher;
 ###########################################
 use strict;
 use warnings;
@@ -26,7 +26,7 @@ sub start {
 ###########################################
     my( $self ) = @_;
 
-    DEBUG "Worker: Starting";
+    DEBUG "Dispatcher Starting";
 }
 
 1;
@@ -35,26 +35,25 @@ __END__
 
 =head1 NAME
 
-Pogo::Worker - Pogo Worker Daemon
+Pogo::Dispatcher - Pogo Dispatcher Daemon
 
 =head1 SYNOPSIS
 
-    use Pogo::Worker;
+    use Pogo::Dispatcher;
 
-    my $worker = Pogo::Worker->new(
-      dispatchers => [ "localhost:9979" ]
-      on_connect  => sub {
-          print "Connected to dispatcher $_[0]\n";
+    my $worker = Pogo::Dispatcher->new(
+      on_worker_connect  => sub {
+          print "Worker $_[0] connected\n";
       },
     );
 
-    Pogo::Worker->start();
+    Pogo::Dispatcher->start();
 
 =head1 DESCRIPTION
 
-Main code for the Pogo worker daemon. The worker executes tasks handed
-down from the dispatcher. Tasks typically consist of connecting to a 
-target host and running a command there.
+Main code for the Pogo dispatcher daemon. 
+
+Waits for workers to connect.
 
 =head1 METHODS
 
@@ -62,24 +61,13 @@ target host and running a command there.
 
 =item C<new()>
 
+Constructor.
+
 =item C<start()>
 
-Tries to connect to one or more configured dispatchers, and keeps trying
-indefinitely until it succeeds. If the connection is lost, it will 
-try to reconnect. Never returns unless there's a catastrophic error.
+Starts up the daemon.
 
 =back
-
-It receives tasks from the dispatcher and acknowledges receiving them.
-
-For every task received, it sends back an ACK to the dispatcher.
-It then creates a child process and executes the task command.
-
-If the task command runs longer than the task timeout value, the
-worker terminates the child.
-
-Upon completion of the task (or a timeout), the worker sends a
-message to the dispatcher, which sends back and ACK.
 
 =head1 LICENSE
 

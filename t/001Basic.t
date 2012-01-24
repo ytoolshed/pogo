@@ -1,8 +1,30 @@
 use warnings;
 use strict;
 
-use Test::More qw(no_plan);
-BEGIN { use_ok('Pogo') };
+use Test::More;
 
-ok(1);
-like("123", qr/^\d+$/);
+plan tests => 1;
+
+use Pogo::Dispatcher;
+use Pogo::Worker;
+
+my $guard = AnyEvent->condvar;
+
+my $worker = Pogo::Worker->new(
+    on_connect => sub {
+    },
+);
+
+my $dispatcher = Pogo::Dispatcher->new(
+    on_worker => sub {
+    },
+);
+
+$worker->start();
+$dispatcher->start();
+
+ok(1, "started up");
+
+  # start event loop
+#$guard->recv();
+
