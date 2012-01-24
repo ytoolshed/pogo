@@ -1,12 +1,18 @@
 ###########################################
-package Pogo::Dispatcher;
+package Pogo::Dispatcher::WorkerConnection;
 ###########################################
 use strict;
 use warnings;
 use Log::Log4perl qw(:easy);
 use AnyEvent;
 use AnyEvent::Strict;
-use Pogo::Dispatcher::WorkerConnection;
+use AnyEvent::Handle;
+use AnyEvent::Socket;
+use Pogo::Defaults qw(
+  $POGO_DISPATCHER_WORKERCONN_HOST
+  $POGO_DISPATCHER_WORKERCONN_PORT
+);
+use base "Object::Event";
 
 our $VERSION = "0.01";
 
@@ -16,6 +22,8 @@ sub new {
     my($class, %options) = @_;
 
     my $self = {
+        host => $POGO_DISPATCHER_WORKERCONN_HOST,
+        port => $POGO_DISPATCHER_WORKERCONN_PORT,
         %options,
     };
 
@@ -27,11 +35,7 @@ sub start {
 ###########################################
     my( $self ) = @_;
 
-    $self->{ worker_conn } = 
-      Pogo::Dispatcher::WorkerConnection->new(
-    )->start();
-
-    DEBUG "Dispatcher Starting";
+    DEBUG "Worker: Listening to $self->{host}:$self->{port}";
 }
 
 1;
@@ -40,25 +44,15 @@ __END__
 
 =head1 NAME
 
-Pogo::Dispatcher - Pogo Dispatcher Daemon
+Pogo::Dispatcher::WorkerConnection - Pogo worker connection abstraction
 
 =head1 SYNOPSIS
 
-    use Pogo::Dispatcher;
+    use Pogo::Dispatcher::WorkerConnection;
 
-    my $worker = Pogo::Dispatcher->new(
-      on_worker_connect  => sub {
-          print "Worker $_[0] connected\n";
-      },
-    );
-
-    Pogo::Dispatcher->start();
+    my $guard = Pogo::Dispatcher::WorkerConnection->new();
 
 =head1 DESCRIPTION
-
-Main code for the Pogo dispatcher daemon. 
-
-Waits for workers to connect.
 
 =head1 METHODS
 
@@ -67,10 +61,6 @@ Waits for workers to connect.
 =item C<new()>
 
 Constructor.
-
-=item C<start()>
-
-Starts up the daemon.
 
 =back
 

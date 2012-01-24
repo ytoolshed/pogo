@@ -2,6 +2,9 @@ use warnings;
 use strict;
 
 use Test::More;
+use Log::Log4perl qw(:easy);
+
+Log::Log4perl->easy_init($DEBUG);
 
 plan tests => 1;
 

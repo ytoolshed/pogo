@@ -1,3 +1,6 @@
+========================================
+Pogo Design Guidelines
+========================================
 
 This week, I took a look at the current code base, both OSS pogo and YPogo, and
 thought about how we can better structure OSS Pogo to arrive at a more robust
@@ -243,3 +246,27 @@ Drawbacks of legacy protocol
        busy to process the report.
 
      * Limited in functionality and can't be extended to full duplex.
+
+============================
+Variables and Default Values
+============================
+
+    use Pogo::Defaults qw(
+      $POGO_DISPATCHER_WORKERCONN_HOST
+      $POGO_DISPATCHER_WORKERCONN_PORT
+    );
+
+    ###########################################
+    sub new {
+    ###########################################
+        my($class, %options) = @_;
+    
+        my $self = {
+            host => $POGO_DISPATCHER_WORKERCONN_HOST,
+            port => $POGO_DISPATCHER_WORKERCONN_PORT,
+            %options,
+        };
+    
+        bless $self, $class;
+    }
+

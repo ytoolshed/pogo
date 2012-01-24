@@ -1,38 +1,18 @@
 ###########################################
-package Pogo::Dispatcher;
+package Pogo::Defaults;
 ###########################################
 use strict;
 use warnings;
-use Log::Log4perl qw(:easy);
-use AnyEvent;
-use AnyEvent::Strict;
-use Pogo::Dispatcher::WorkerConnection;
+require Exporter;
+our @ISA = qw(Exporter);
 
-our $VERSION = "0.01";
+our @EXPORT_OK = qw(
+  $POGO_DISPATCHER_WORKERCONN_HOST
+  $POGO_DISPATCHER_WORKERCONN_PORT
+);
 
-###########################################
-sub new {
-###########################################
-    my($class, %options) = @_;
-
-    my $self = {
-        %options,
-    };
-
-    bless $self, $class;
-}
-
-###########################################
-sub start {
-###########################################
-    my( $self ) = @_;
-
-    $self->{ worker_conn } = 
-      Pogo::Dispatcher::WorkerConnection->new(
-    )->start();
-
-    DEBUG "Dispatcher Starting";
-}
+our $POGO_DISPATCHER_WORKERCONN_HOST = "localhost";
+our $POGO_DISPATCHER_WORKERCONN_PORT = 3771;
 
 1;
 
@@ -40,39 +20,34 @@ __END__
 
 =head1 NAME
 
-Pogo::Dispatcher - Pogo Dispatcher Daemon
+Pogo::Defaults - Pogo Variable Defaults
 
 =head1 SYNOPSIS
 
-    use Pogo::Dispatcher;
+    package Pogo::SomethingOrAnother;
 
-    my $worker = Pogo::Dispatcher->new(
-      on_worker_connect  => sub {
-          print "Worker $_[0] connected\n";
-      },
+    use Pogo::Defaults qw(
+      $POGO_DISPATCHER_WORKERCONN_HOST
+      $POGO_DISPATCHER_WORKERCONN_PORT
     );
 
-    Pogo::Dispatcher->start();
+    ###########################################
+    sub new {
+    ###########################################
+        my($class, %options) = @_;
+    
+        my $self = {
+            host => $POGO_DISPATCHER_WORKERCONN_HOST,
+            port => $POGO_DISPATCHER_WORKERCONN_PORT,
+            %options,
+        };
+    
+        bless $self, $class;
+    }
 
 =head1 DESCRIPTION
 
-Main code for the Pogo dispatcher daemon. 
-
-Waits for workers to connect.
-
-=head1 METHODS
-
-=over 4
-
-=item C<new()>
-
-Constructor.
-
-=item C<start()>
-
-Starts up the daemon.
-
-=back
+This is the location for all default values.
 
 =head1 LICENSE
 
