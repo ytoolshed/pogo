@@ -10,6 +10,8 @@ use AnyEvent::Socket;
 use Pogo::Defaults qw(
   $POGO_DISPATCHER_RPC_HOST
   $POGO_DISPATCHER_RPC_PORT
+  $POGO_WORKER_DELAY_CONNECT
+  $POGO_WORKER_DELAY_RECONNECT
 );
 use base "Object::Event";
 
@@ -20,8 +22,8 @@ sub new {
 
     my $self = {
         dispatchers => [],
-        delay_connect   => sub { 1 },
-        delay_reconnect => sub { rand(5) },
+        delay_connect   => $POGO_WORKER_DELAY_CONNECT->(),
+        delay_reconnect => $POGO_WORKER_DELAY_RECONNECT->(),
         %options,
     };
 
@@ -33,12 +35,14 @@ sub start {
 ###########################################
     my( $self ) = @_;
 
-    DEBUG "Connecting to all dispatchers after ",
-          $self->{ delay_connect }->(), "s delay";
+    my $delay_connect = $self->{ delay_connect };
+    $delay_connect = $delay_connect->() if ref $delay_connect eq "CODE";
+
+    DEBUG "Connecting to all dispatchers after ${delay_connect}s delay";
 
     my $timer;
     $timer = AnyEvent->timer(
-        after => $self->{ delay_connect }->(),
+        after => $delay_connect,
         cb    => sub {
             undef $timer;
             $self->start_delayed();

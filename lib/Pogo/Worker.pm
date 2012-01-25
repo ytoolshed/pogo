@@ -10,6 +10,8 @@ use Pogo::Worker::Connection;
 use Pogo::Defaults qw(
   $POGO_DISPATCHER_RPC_HOST
   $POGO_DISPATCHER_RPC_PORT
+  $POGO_WORKER_DELAY_CONNECT
+  $POGO_WORKER_DELAY_RECONNECT
 );
 
 our $VERSION = "0.01";
@@ -20,13 +22,15 @@ sub new {
     my($class, %options) = @_;
 
     my $self = {
+        delay_connect   => $POGO_WORKER_DELAY_CONNECT->(),
+        delay_reconnect => $POGO_WORKER_DELAY_RECONNECT->(),
         dispatchers =>
           [ "$POGO_DISPATCHER_RPC_HOST:$POGO_DISPATCHER_RPC_PORT" ],
         %options,
     };
 
     $self->{ conn } = Pogo::Worker::Connection->new(
-        dispatchers => $self->{ dispatchers },
+        %$self,
     );
 
     bless $self, $class;
