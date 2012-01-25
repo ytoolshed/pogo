@@ -35,8 +35,10 @@ sub start {
 ###########################################
     my( $self ) = @_;
 
+    DEBUG "Starting RPC server on $self->{ host }:$self->{ port }";
+
       # Start server taking workers connections
-    $self->{worker_server} =
+    $self->{worker_server_guard} =
         tcp_server( $self->{ host },
                     $self->{ port }, 
                     $self->_accept_handler(),
@@ -52,8 +54,8 @@ sub _prepare_handler {
     return sub {
         my( $fh, $host, $port ) = @_;
 
-        $self->event( "server_prepare", $host, $port );
         DEBUG "Listening to $self->{host}:$self->{port} for workers.";
+        $self->event( "server_prepare", $host, $port );
     };
 }
 

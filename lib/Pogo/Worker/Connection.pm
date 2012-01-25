@@ -6,9 +6,12 @@ use warnings;
 use Log::Log4perl qw(:easy);
 use AnyEvent;
 use AnyEvent::Strict;
+use AnyEvent::Socket;
+use Pogo::Defaults qw(
+  $POGO_DISPATCHER_RPC_HOST
+  $POGO_DISPATCHER_RPC_PORT
+);
 use base "Object::Event";
-
-our $VERSION = "0.01";
 
 ###########################################
 sub new {
@@ -16,6 +19,9 @@ sub new {
     my($class, %options) = @_;
 
     my $self = {
+        dispatchers => [],
+        delay_connect   => sub { 1 },
+        delay_reconnect => sub { rand(5) },
         %options,
     };
 
@@ -23,11 +29,66 @@ sub new {
 }
 
 ###########################################
-sub connect {
+sub start {
 ###########################################
     my( $self ) = @_;
 
-    DEBUG "Worker: Connecting";
+    DEBUG "Connecting to all dispatchers after ",
+          $self->{ delay_connect }->(), "s delay";
+
+    my $timer;
+    $timer = AnyEvent->timer(
+        after => $self->{ delay_connect }->(),
+        cb    => sub {
+            undef $timer;
+            $self->start_delayed();
+        }
+    );
+}
+
+###########################################
+sub start_delayed {
+###########################################
+    my( $self ) = @_;
+
+    DEBUG "Connecting to all dispatchers";
+
+    for my $dispatcher ( @{ $self->{ dispatchers } } ) {
+
+        my( $host, $port ) = split /:/, $dispatcher;
+
+        DEBUG "Connecting to dispatcher $host:$port";
+
+        tcp_connect( $host, $port, 
+                     $self->_connect_handler( $host, $port ) );
+    }
+}
+
+###########################################
+sub _connect_handler {
+###########################################
+    my( $self, $host, $port ) = @_;
+
+    return sub {
+        my ( $fh, $_host, $_port, $retry ) = @_;
+
+        if( !defined $fh ) {
+            ERROR "Connect to $host:$port failed: $!";
+            return;
+        }
+
+        $self->{dispatcher_handle} = AnyEvent::Handle->new(
+            fh       => $fh,
+            on_error => sub { 
+                my ( $hdl, $fatal, $msg ) = @_;
+
+                ERROR "Cannot connect to $host:$port: $msg";
+            },
+            on_eof   => sub { 
+                my ( $hdl ) = @_;
+            },
+        );
+    };
 }
 
 1;

@@ -6,6 +6,11 @@ use warnings;
 use Log::Log4perl qw(:easy);
 use AnyEvent;
 use AnyEvent::Strict;
+use Pogo::Worker::Connection;
+use Pogo::Defaults qw(
+  $POGO_DISPATCHER_RPC_HOST
+  $POGO_DISPATCHER_RPC_PORT
+);
 
 our $VERSION = "0.01";
 
@@ -15,8 +20,14 @@ sub new {
     my($class, %options) = @_;
 
     my $self = {
+        dispatchers =>
+          [ "$POGO_DISPATCHER_RPC_HOST:$POGO_DISPATCHER_RPC_PORT" ],
         %options,
     };
+
+    $self->{ conn } = Pogo::Worker::Connection->new(
+        dispatchers => $self->{ dispatchers },
+    );
 
     bless $self, $class;
 }
@@ -27,6 +38,8 @@ sub start {
     my( $self ) = @_;
 
     DEBUG "Worker: Starting";
+
+    $self->{ conn }->start();
 }
 
 1;
