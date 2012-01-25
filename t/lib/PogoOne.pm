@@ -61,6 +61,24 @@ sub start {
 
     $dispatcher->start();
 
+    $self->{ tmr } = AnyEvent->timer(
+        after    => 0,
+        interval => 1,
+        cb       => sub {
+            my $tb = Test::More->builder();
+
+              # This is evil, but there doesn't seem to be a better
+              # way to peek under Test::More's hood
+            my $cur = $tb->{Curr_Test};
+            my $exp = $tb->{Expected_Tests};
+
+            TRACE "Is it done yet ($cur/$exp)?";
+            if( $tb->{Curr_Test} == $tb->{Expected_Tests} ) {
+                $self->quit();
+            }
+        }
+    );
+
       # start event loop
     $self->{ main }->recv();
 }
