@@ -270,3 +270,71 @@ Variables and Default Values
         bless $self, $class;
     }
 
+Also note the syntax in 
+
+        my($class, %options) = @_;
+    
+        my $self = {
+            # ... default settings ...
+            %options,
+
+which takes option settings as method parameters, and overrides the 
+defaults in "default settings" if they're present.
+
+============================
+Test Suite
+============================
+
+Testing event-based components is slightly different from testing
+linear program flows. In Pogo, there's a helper library in
+
+    t/lib/PogoOne.pm
+
+defining a single component starting both dispatcher and worker which
+lets you subscribe to events bubbling up from these two components.
+Check the PogoOne docs on what events have been implemented thus far.
+
+To find PogoOne, add
+
+    use FindBin qw($Bin);
+    use lib "$Bin/../lib";
+    use lib "$Bin/lib";
+
+to the top of the test suite. Then comes the tests:
+
+    use PogoOne;
+    use Test::More;
+
+    my $pogo = PogoOne->new();
+
+    $pogo->reg_cb( worker_connect  => sub {
+        my( $c, $worker ) = @_;
+    
+        ok( 1, "worker connected" );
+    });
+
+    plan tests => 1;
+
+    $pogo->start();
+
+This test suite subscribes to the "worker_connect" event, bubbling up
+from the worker and being refired by PogoOne for any test suite.
+
+For more tests, just register more callbacks and run one or more
+tests within them:
+
+    $pogo->reg_cb( dispatcher_prepare  => sub {
+        my( $c, $host, $port ) = @_;
+    
+        is( 7654, $port, "dispatcher listening to port 7654" );
+    });
+
+IMPORTANT: Note that the C<start> method at the end starts an 
+I<infinite> event loop, which only terminates if all planned tests have
+run. This is accomplished by dark magic within PogoOne, which polls the
+test harness every second if all planned tests have been executed and
+calls $pogo->quit() if that's the case. 
+
+If you run into a hanging test suite, it's probably because you've planned
+for more tests that were actually run thus far.
+
