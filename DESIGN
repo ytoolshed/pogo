@@ -338,3 +338,11 @@ calls $pogo->quit() if that's the case.
 If you run into a hanging test suite, it's probably because you've planned
 for more tests that were actually run thus far.
 
+If you need more information on what's going on, turn on debugging via
+
+   Log::Log4perl->easy_init({ level => $DEBUG, 
+                              layout => "%F{1}-%L: %m%n" });
+
+and both the Pogo components and the test suite helpers will start
+talking.
+    
