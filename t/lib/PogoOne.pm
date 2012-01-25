@@ -26,13 +26,11 @@ sub new {
 
     bless $self, $class;
 
-    $self->init();
-
     return $self;
 }
 
 ###########################################
-sub init {
+sub start {
 ###########################################
     my( $self ) = @_;
 
@@ -47,8 +45,8 @@ sub init {
     $dispatcher->reg_cb( "server_prepare", sub {
             my( $c, @args ) = @_;
 
-            DEBUG "got server_prepare from dispatcher, ",
-                  "firing dispatcher_prepare";
+            DEBUG "Got server_prepare from dispatcher";
+            DEBUG "Firing dispatcher_prepare ($self)";
             $self->event( "dispatcher_prepare", @args );
 
               # start worker when dispatcher is ready
@@ -62,12 +60,6 @@ sub init {
     });
 
     $dispatcher->start();
-}
-
-###########################################
-sub loop {
-###########################################
-    my( $self ) = @_;
 
       # start event loop
     $self->{ main }->recv();
@@ -103,7 +95,7 @@ PogoOne - Pogo in a Single Process for Testing
       },
     );
 
-    $pogo->loop();
+    $pogo->start();
 
 =head1 DESCRIPTION
 

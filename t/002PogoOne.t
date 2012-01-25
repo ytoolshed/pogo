@@ -13,7 +13,7 @@ use Pogo::Defaults qw(
   $POGO_DISPATCHER_RPC_PORT
 );
 
-Log::Log4perl->easy_init($DEBUG);
+# Log::Log4perl->easy_init({ level => $DEBUG, layout => "%F{1}-%L: %m%n" });
 
 my $pogo;
 
@@ -24,21 +24,20 @@ $pogo->reg_cb( worker_connect  => sub {
 
     ok( 1, "worker connected" );
     is( $worker, $POGO_DISPATCHER_WORKERCONN_HOST, "worker host" );
+
     $pogo->quit();
 });
 
-# $pogo->reg_cb( dispatcher_prepare => sub {
-#    my( $c, $host, $port ) = @_;
-#
-#    DEBUG "received dispatcher_prepare";
-#
-#    is( "$host:$port",
-#       "$POGO_DISPATCHER_WORKERCONN_HOST:$POGO_DISPATCHER_WORKERCONN_PORT",
-#       "dispatcher server_prepare cb" );
-#
-#    $pogo->quit();
-#});
+$pogo->reg_cb( dispatcher_prepare => sub {
+   my( $c, $host, $port ) = @_;
 
-plan tests => 2;
+   DEBUG "received dispatcher_prepare";
 
-$pogo->loop();
+   is( "$host:$port",
+      "$POGO_DISPATCHER_WORKERCONN_HOST:$POGO_DISPATCHER_WORKERCONN_PORT",
+      "dispatcher server_prepare cb" );
+});
+
+plan tests => 3;
+
+$pogo->start();
