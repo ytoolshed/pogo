@@ -51,7 +51,7 @@ sub start {
       # Guard it
     $self->{ worker_conn } = $w;
 
-    DEBUG "Dispatcher Starting";
+    DEBUG "Dispatcher starting";
 }
 
 1;
