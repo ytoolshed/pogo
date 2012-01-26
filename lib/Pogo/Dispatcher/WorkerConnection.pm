@@ -22,6 +22,7 @@ sub new {
     my($class, %options) = @_;
 
     my $self = {
+        protocol => "2.0",
         host => $POGO_DISPATCHER_WORKERCONN_HOST,
         port => $POGO_DISPATCHER_WORKERCONN_PORT,
         %options,
@@ -44,6 +45,8 @@ sub start {
                     $self->_accept_handler(),
                     $self->_prepare_handler(),
         );
+
+    $self->reg_cb( "worker_connect", $self->_hello_handler() );
 }
 
 ###########################################
@@ -70,8 +73,58 @@ sub _accept_handler {
         DEBUG "$self->{ host }:$self->{ port } accepting ",
               "connection from $peer_host:$peer_port";
 
+        $self->{ handle } = AnyEvent::Handle->new(
+            fh       => $sock,
+            on_error => sub {
+                ERROR "Worker $peer_host:$peer_port can't connect: $_[2]";
+                $_[0]->destroy;
+            },
+            on_eof   => sub {
+                INFO "Worker $peer_host:$peer_port disconnected.";
+                $self->{ handle }->destroy;
+            }
+        );
+
         $self->event( "worker_connect", $peer_host );
     };
+}
+
+###########################################
+sub _hello_handler {
+###########################################
+    my( $self ) = @_;
+
+    return sub {
+          # Send greeting
+        $self->{ handle }->push_write( 
+            json => { protocol => $self->{ protocol } } );
+
+          # Handle communication
+        $self->{ handle }->push_read( json => $self->_protocol_handler() );
+    };
+}
+
+###########################################
+sub _protocol_handler {
+###########################################
+    my( $self ) = @_;
+
+      # (We'll put this into a separate module (per protocol) later)
+    return sub {
+        my( $hdl, $data ) = @_;
+
+        my $channel = $data->{ channel };
+
+        if( !defined $channel ) {
+            $self->{ handle }->push_write( json => {
+                ok  => 0,
+                msg => "No channel given",
+            });
+            return;
+        }
+
+        INFO "Received command: $data";
+    }
 }
 
 1;
@@ -110,8 +163,8 @@ Fired if a worker connects. Arguments: C<$worker_host>.
 
 =item C<server_prepare>
 
-Fired when the server is about to bind a socket. Arguments:
-C<$host>, $C<$port>.
+Fired when the dispatcher is about to bind the worker socket to listen
+to incoming workers. Arguments: C<$host>, $C<$port>.
 
 =back
 

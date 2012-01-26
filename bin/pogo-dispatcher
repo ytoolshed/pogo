@@ -5,17 +5,23 @@ use warnings;
 use Getopt::Std;
 use Pod::Usage;
 use Pogo::Dispatcher;
+use Log::Log4perl qw(:easy);
 
-getopts("hv", \my %opts);
+getopts("hvV", \my %opts);
 
-pod2usage() if $opts{h};
+pod2usage() if $opts{hv};
 
-if($opts{v}) {
+if($opts{V}) {
     my $version = $Pogo::Dispatcher::VERSION;
     die "$0 $version\n";
 }
 
-Pogo::Dispatcher->start();
+if($opts{v}) {
+    Log::Log4perl->easy_init($DEBUG);
+}
+
+my $dispatcher = Pogo::Dispatcher->new();
+$dispatcher->start();
 
   # start event loop
 AnyEvent->condvar->recv();

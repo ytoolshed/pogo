@@ -1,0 +1,2 @@
+
+perl -Ilib bin/pogo-dispatcher  -v
