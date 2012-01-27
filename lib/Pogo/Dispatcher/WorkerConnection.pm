@@ -140,7 +140,7 @@ sub _protocol_handler {
 
         $self->$method( $data );
 
-          # Handle communication
+          # Keep the ball rolling
         $self->{ handle }->push_read( json => $self->_protocol_handler() );
     }
 }
@@ -151,6 +151,13 @@ sub channel_worker_dispatcher {
     my( $self, $data ) = @_;
 
     DEBUG "Got worker command: $data->{cmd}";
+
+    $self->event( "worker_command", $data );
+
+    $self->{ handle }->push_write( json => {
+            ok  => 0,
+            msg => "OK",
+    });
 }
 
 ###########################################
@@ -159,6 +166,8 @@ sub channel_dispatcher_worker {
     my( $self, $data ) = @_;
 
     DEBUG "Got worker reply: $data->{ok}";
+
+    $self->event( "worker_reply", $data );
 }
 
 1;

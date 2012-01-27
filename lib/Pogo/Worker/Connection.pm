@@ -48,6 +48,8 @@ sub start {
             $self->start_delayed();
         }
     );
+
+    $self->reg_cb( "send_command", $self->_send_command_handler() );
 }
 
 ###########################################
@@ -92,6 +94,18 @@ sub _connect_handler {
                 my ( $hdl ) = @_;
             },
         );
+
+        $self->event( "worker_connected" );
+    };
+}
+
+###########################################
+sub _send_command_handler {
+###########################################
+    my( $self, $data ) = @_;
+
+    return sub {
+        $self->{ dispatcher_handle }->push_write( $data );
     };
 }
 

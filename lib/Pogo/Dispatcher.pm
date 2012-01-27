@@ -34,17 +34,16 @@ sub start {
 
       # In case we get a worker_connect from the Connection
       # class, we propagate it to our callers.
-    $w->reg_cb( worker_connect => sub {
-        my( $c, @args ) = @_;
-
-        $self->event( "worker_connect", @args );
-    });
+    for my $event ( qw( worker_connect server_prepare
+                        worker_command worker_reply ) ) {
+        $w->reg_cb( $event => sub {
+            my( $c, @args ) = @_;
     
-    $w->reg_cb( server_prepare => sub {
-        my( $c, @args ) = @_;
+            DEBUG "Relaying event $event";
 
-        $self->event( "server_prepare", @args );
-    });
+            $self->event( $event, @args );
+        });
+    }
     
     $w->start();
 

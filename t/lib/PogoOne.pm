@@ -53,11 +53,29 @@ sub start {
             $worker->start();
     });
 
-    $dispatcher->reg_cb( "worker_connect", sub {
+    for my $event ( qw( worker_connect
+                        worker_command worker_reply ) ) {
+        DEBUG "Registering callback for $event";
+        $dispatcher->reg_cb( $event => sub {
             my( $c, @args ) = @_;
     
-            $self->event( "worker_connect", @args );
-    });
+            DEBUG "Relaying event $event";
+
+            $self->event( $event, @args );
+        });
+    }
+
+    for my $event ( qw( worker_connected
+                      ) ) {
+        DEBUG "Registering callback for $event";
+        $worker->reg_cb( $event => sub {
+            my( $c, @args ) = @_;
+    
+            DEBUG "Relaying event $event";
+
+            $self->event( $event, @args );
+        });
+    }
 
     $dispatcher->start();
 
