@@ -23,8 +23,12 @@ sub new {
 
     my $self = {
         protocol => "2.0",
-        host => $POGO_DISPATCHER_WORKERCONN_HOST,
-        port => $POGO_DISPATCHER_WORKERCONN_PORT,
+        host     => $POGO_DISPATCHER_WORKERCONN_HOST,
+        port     => $POGO_DISPATCHER_WORKERCONN_PORT,
+        channels => {
+            1 => "worker_dispatcher",
+            2 => "dispatcher_worker",
+        },
         %options,
     };
 
@@ -123,8 +127,38 @@ sub _protocol_handler {
             return;
         }
 
-        INFO "Received command: $data";
+        if( !exists $self->{ channels }->{ $channel } ) {
+            $self->{ handle }->push_write( json => {
+                ok  => 0,
+                msg => "Unsupported channel",
+            });
+            return;
+        }
+
+        INFO "Switching channel to $channel";
+        my $method = "channel_$self->{channels}->{$channel}";
+
+        $self->$method( $data );
+
+          # Handle communication
+        $self->{ handle }->push_read( json => $self->_protocol_handler() );
     }
+}
+
+###########################################
+sub channel_worker_dispatcher {
+###########################################
+    my( $self, $data ) = @_;
+
+    DEBUG "Got worker command: $data->{cmd}";
+}
+
+###########################################
+sub channel_dispatcher_worker {
+###########################################
+    my( $self, $data ) = @_;
+
+    DEBUG "Got worker reply: $data->{ok}";
 }
 
 1;
