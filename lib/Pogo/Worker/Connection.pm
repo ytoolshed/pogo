@@ -13,7 +13,7 @@ use Pogo::Defaults qw(
   $POGO_WORKER_DELAY_CONNECT
   $POGO_WORKER_DELAY_RECONNECT
 );
-use base "Object::Event";
+use base "Pogo::Object::Event";
 
 ###########################################
 sub new {
@@ -49,7 +49,7 @@ sub start {
         }
     );
 
-    $self->reg_cb( "send_command", $self->_send_command_handler() );
+    $self->reg_cb( "worker_send_command", $self->_send_command_handler() );
 }
 
 ###########################################

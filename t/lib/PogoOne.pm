@@ -13,7 +13,7 @@ use Pogo::Defaults qw(
 
 use Pogo::Dispatcher;
 use Pogo::Worker;
-use base qw(Object::Event);
+use base qw(Pogo::Object::Event);
 
 ###########################################
 sub new {
@@ -42,40 +42,21 @@ sub start {
 
     my $dispatcher = $self->{ dispatcher } = Pogo::Dispatcher->new();
 
-    $dispatcher->reg_cb( "server_prepare", sub {
+    $dispatcher->reg_cb( "dispatcher_wconn_prepare", sub {
             my( $c, @args ) = @_;
-
-            DEBUG "Got server_prepare from dispatcher";
-            DEBUG "Firing dispatcher_prepare ($self)";
-            $self->event( "dispatcher_prepare", @args );
 
               # start worker when dispatcher is ready
             $worker->start();
     });
 
-    for my $event ( qw( worker_connect
-                        worker_command worker_reply ) ) {
-        DEBUG "Registering callback for $event";
-        $dispatcher->reg_cb( $event => sub {
-            my( $c, @args ) = @_;
-    
-            DEBUG "Relaying event $event";
+    $self->event_forward( $dispatcher, qw(
+        dispatcher_wconn_worker_connect 
+        dispatcher_wconn_prepare 
+        dispatcher_wconn_worker_cmd_recv 
+        dispatcher_wconn_worker_reply_recv ) );
 
-            $self->event( $event, @args );
-        });
-    }
-
-    for my $event ( qw( worker_connected
-                      ) ) {
-        DEBUG "Registering callback for $event";
-        $worker->reg_cb( $event => sub {
-            my( $c, @args ) = @_;
-    
-            DEBUG "Relaying event $event";
-
-            $self->event( $event, @args );
-        });
-    }
+    $self->event_forward( $worker, qw(
+        worker_connected ) );
 
     $dispatcher->start();
 

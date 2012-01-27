@@ -13,7 +13,7 @@ use Pogo::Defaults qw(
   $POGO_WORKER_DELAY_CONNECT
   $POGO_WORKER_DELAY_RECONNECT
 );
-use base qw(Object::Event);
+use base qw(Pogo::Object::Event);
 
 our $VERSION = "0.01";
 
@@ -44,22 +44,11 @@ sub start {
 
     DEBUG "Worker: Starting";
 
-    for my $event ( qw( worker_connected ) ) {
-        $self->{ conn }->reg_cb( $event => sub {
-            my( $c, @args ) = @_;
-    
-            DEBUG "Relaying event $event";
+    $self->event_forward( $self->{ conn }, qw(
+      worker_connected
+      worker_cmd_send
+    ) );
 
-            $self->event( $event, @args );
-        });
-    } 
-    
-    $self->reg_cb( "send_command" => sub {
-            my( $c, @args ) = @_;
-
-            $self->{ conn }->event( "send_command", @args );
-    });
-    
     $self->{ conn }->start();
 }
 

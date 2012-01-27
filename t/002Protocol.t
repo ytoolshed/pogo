@@ -26,7 +26,8 @@ plan tests => 1;
 $pogo->reg_cb( worker_connected => sub {
       
     DEBUG "Worker connected, triggering worker command";
-    $pogo->{ worker }->event( "send_command", '{"channel":1,"cmd":"whoa"}' );
+    $pogo->{ worker }->event( "worker_send_command", 
+        '{"channel":1,"cmd":"whoa"}' );
 });
 
 $pogo->start();

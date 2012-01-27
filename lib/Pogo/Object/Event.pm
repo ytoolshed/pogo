@@ -1,15 +1,12 @@
 ###########################################
-package Pogo::Dispatcher;
+package Pogo::Object::Event;
 ###########################################
 use strict;
 use warnings;
 use Log::Log4perl qw(:easy);
 use AnyEvent;
 use AnyEvent::Strict;
-use Pogo::Dispatcher::WorkerConnection;
-use base qw(Pogo::Object::Event);
-
-our $VERSION = "0.01";
+use base qw( Object::Event );
 
 ###########################################
 sub new {
@@ -21,29 +18,23 @@ sub new {
     };
 
     bless $self, $class;
-
-    return $self;
 }
 
 ###########################################
-sub start {
+sub event_forward {
 ###########################################
-    my( $self ) = @_;
+    my( $self, $forward_from, @events ) = @_;
 
-    my $w = Pogo::Dispatcher::WorkerConnection->new();
+    for my $event ( @events ) {
+        $forward_from->reg_cb( $event => sub {
+            my( $c, @args ) = @_;
+    
+            DEBUG "Forwarding event $event from ", 
+                  ref( $forward_from ), " to ", ref( $self );
 
-    $self->event_forward( $w, qw( 
-        dispatcher_wconn_worker_connect 
-        dispatcher_wconn_prepare 
-        dispatcher_wconn_worker_cmd_recv 
-        dispatcher_wconn_worker_reply_recv ) );
-
-    $w->start();
-
-      # Guard it
-    $self->{ worker_conn } = $w;
-
-    DEBUG "Dispatcher starting";
+            $self->event( $event, @args );
+        });
+    }
 }
 
 1;
@@ -52,45 +43,37 @@ __END__
 
 =head1 NAME
 
-Pogo::Dispatcher - Pogo Dispatcher Daemon
+Pogo::Object::Event - Additional Object::Event functions
 
 =head1 SYNOPSIS
 
-    use Pogo::Dispatcher;
+    package Pogo::Foo;
+    use base qw(Pogo::Object::Event);
 
-    my $worker = Pogo::Dispatcher->new(
-      worker_connect  => sub {
-          print "Worker $_[0] connected\n";
-      },
-    );
+    sub foo {
+        my( $self ) = @_;
 
-    Pogo::Dispatcher->start();
+        my $w = Pogo::Foo::Bar->new();
+        $self->event_forward( $w, qw( foo_bar_this foo_bar_that ) );
+    }
 
 =head1 DESCRIPTION
 
-Main code for the Pogo dispatcher daemon. 
-
-Waits for workers to connect.
+Pogo::Object::Event is a helper class derived from Object::Event
+which offers the following additional methods.
 
 =head1 METHODS
 
 =over 4
 
-=item C<new()>
+=item C<event_forward( $forward_from, $event_name, ... )>
 
-Constructor.
-
-=item C<start()>
-
-Starts up the daemon.
+Registers a callback in the specified C<$forward_from> object that captures 
+the specified events and re-emits by the current object. 
+Used in components that forward events originating in sub components. 
+Passes on all arguments reaching the callback.
 
 =back
-
-=head1 EVENTS
-
-See Pogo::Dispatcher::WorkerConnection for
-C<dispatcher_wconn_connect>, C<dispatcher_prepare>,
-C<dispatcher_wconn_worker_cmd_recv>, C<dispatcher_wconn_worker_ack_recv>.
 
 =head1 LICENSE
 

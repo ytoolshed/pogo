@@ -12,7 +12,7 @@ use Pogo::Defaults qw(
   $POGO_DISPATCHER_WORKERCONN_HOST
   $POGO_DISPATCHER_WORKERCONN_PORT
 );
-use base "Object::Event";
+use base qw(Pogo::Object::Event);
 
 our $VERSION = "0.01";
 
@@ -26,8 +26,8 @@ sub new {
         host     => $POGO_DISPATCHER_WORKERCONN_HOST,
         port     => $POGO_DISPATCHER_WORKERCONN_PORT,
         channels => {
-            1 => "worker_dispatcher",
-            2 => "dispatcher_worker",
+            1 => "worker_to_dispatcher",
+            2 => "dispatcher_to_worker",
         },
         %options,
     };
@@ -62,7 +62,7 @@ sub _prepare_handler {
         my( $fh, $host, $port ) = @_;
 
         DEBUG "Listening to $self->{host}:$self->{port} for workers.";
-        $self->event( "server_prepare", $host, $port );
+        $self->event( "dispatcher_wconn_prepare", $host, $port );
     };
 }
 
@@ -89,7 +89,7 @@ sub _accept_handler {
             }
         );
 
-        $self->event( "worker_connect", $peer_host );
+        $self->event( "dispatcher_wconn_worker_connect", $peer_host );
     };
 }
 
@@ -101,7 +101,8 @@ sub _hello_handler {
     return sub {
           # Send greeting
         $self->{ handle }->push_write( 
-            json => { protocol => $self->{ protocol } } );
+            json => { msg => "Hello, worker.",
+                      protocol => $self->{ protocol } } );
 
           # Handle communication
         $self->{ handle }->push_read( json => $self->_protocol_handler() );
@@ -138,6 +139,7 @@ sub _protocol_handler {
         INFO "Switching channel to $channel";
         my $method = "channel_$self->{channels}->{$channel}";
 
+          # Call the channel-specific handler
         $self->$method( $data );
 
           # Keep the ball rolling
@@ -146,28 +148,29 @@ sub _protocol_handler {
 }
 
 ###########################################
-sub channel_worker_dispatcher {
+sub channel_worker_to_dispatcher {
 ###########################################
     my( $self, $data ) = @_;
 
-    DEBUG "Got worker command: $data->{cmd}";
+    DEBUG "Received worker command: $data->{cmd}";
 
-    $self->event( "worker_command", $data );
+    $self->event( "dispatcher_wconn_worker_cmd_recv", $data );
 
     $self->{ handle }->push_write( json => {
-            ok  => 0,
-            msg => "OK",
+            type => "reply",
+            ok   => 0,
+            msg  => "OK",
     });
 }
 
 ###########################################
-sub channel_dispatcher_worker {
+sub channel_dispatcher_to_worker {
 ###########################################
     my( $self, $data ) = @_;
 
-    DEBUG "Got worker reply: $data->{ok}";
+    DEBUG "Received worker ACK";
 
-    $self->event( "worker_reply", $data );
+    $self->event( "dispatcher_wconn_worker_reply_recv", $data );
 }
 
 1;
@@ -200,16 +203,32 @@ Constructor.
 
 =over 4
 
-=item C<worker_connect>
+=item C<dispatcher_wconn_connect>
 
 Fired if a worker connects. Arguments: C<$worker_host>.
 
-=item C<server_prepare>
+=item C<dispatcher_wconn_prepare>
 
 Fired when the dispatcher is about to bind the worker socket to listen
 to incoming workers. Arguments: C<$host>, $C<$port>.
 
+=item C<dispatcher_wconn_worker_cmd_recv>
+
+Fired if the dispatcher receives a command by the worker.
+
+=item C<dispatcher_wconn_worker_reply_recv>
+
+Fired if the dispatcher receives a reply to a command sent to the worker
+earlier.
+
 =back
+
+The communication between dispatcher and worker happens on two 
+channels on the same connection, the following channel numbers map
+to different communication directions:
+
+            1 => "worker_to_dispatcher",
+            2 => "dispatcher_to_worker",
 
 =head1 LICENSE
 
