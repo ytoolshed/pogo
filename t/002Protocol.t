@@ -7,7 +7,7 @@ use PogoOne;
 use Test::More;
 use Log::Log4perl qw(:easy);
 
-Log::Log4perl->easy_init({ level => $DEBUG, layout => "%F{1}-%L: %m%n" });
+# Log::Log4perl->easy_init({ level => $DEBUG, layout => "%F{1}-%L: %m%n" });
 
 my $pogo;
 
@@ -23,10 +23,19 @@ $pogo->reg_cb( worker_command  => sub {
 
 plan tests => 1;
 
-$pogo->reg_cb( worker_connected => sub {
+$pogo->reg_cb( worker_dispatcher_listening => sub {
       
-    DEBUG "Worker connected, triggering worker command";
-    # $pogo->{ worker }->cmd_send( '{"channel":1,"cmd":"whoa"}' );
+    DEBUG "Dispatcher listening, triggering worker command";
+    $pogo->{ worker }->cmd_send( { channel => 1, cmd => "whoa" } );
 });
+
+$pogo->reg_cb( worker_dispatcher_control_message => sub {
+    my( $c, $data ) = @_;
+
+    if( exists $data->{ ok } ) {
+        is $data->{ msg }, "OK", "ok confirmation";
+        $pogo->quit();
+    }
+} );
 
 $pogo->start();

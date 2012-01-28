@@ -18,3 +18,7 @@
 * rename worker_connect(ed)
 
 * resilient to JSON errors (eval)
+
+* $self->{ worker_handle } = AnyEvent::Handle->new(
+  needs to handle a list of workers
+

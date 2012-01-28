@@ -8,6 +8,7 @@ use AnyEvent;
 use AnyEvent::Strict;
 use AnyEvent::Socket;
 use Data::Dumper;
+use JSON qw(to_json);
 use Pogo::Defaults qw(
   $POGO_DISPATCHER_RPC_HOST
   $POGO_DISPATCHER_RPC_PORT
@@ -30,6 +31,7 @@ sub new {
             1 => "worker_to_dispatcher",
             2 => "dispatcher_to_worker",
         },
+        dispatcher_listening => 0,
         %options,
     };
 
@@ -115,11 +117,14 @@ sub _connect_handler {
 ###########################################
 sub _send_cmd_handler {
 ###########################################
-    my( $self, $data ) = @_;
+    my( $self ) = @_;
 
     return sub {
-        DEBUG "Sending worker command";
-        $self->{ dispatcher_handle }->push_write( $data );
+        my( $c, $data ) = @_;
+
+        DEBUG "Sending worker command: ", Dumper( $data );
+        $self->{ dispatcher_handle }->push_write( 
+            to_json( $data ) . "\n" );
     };
 }
 
@@ -165,6 +170,14 @@ sub channel_control {
     my( $self, $data ) = @_;
 
     DEBUG "Received control message: ", Dumper( $data );
+
+    if( ! $self->{ dispatcher_listening } ) {
+        $self->{ dispatcher_listening } = 1;
+
+        $self->event( "worker_dispatcher_listening" );
+    }
+
+    $self->event( "worker_dispatcher_control_message", $data );
 }
 
 ###########################################

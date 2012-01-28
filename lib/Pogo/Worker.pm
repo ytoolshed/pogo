@@ -46,6 +46,8 @@ sub start {
 
     $self->event_forward( $self->{ conn }, qw(
       worker_connected
+      worker_dispatcher_listening
+      worker_dispatcher_control_message
     ) );
 
     $self->{ conn }->start();
