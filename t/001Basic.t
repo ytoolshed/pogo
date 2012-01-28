@@ -19,14 +19,14 @@ my $pogo;
 
 $pogo = PogoOne->new();
 
-$pogo->reg_cb( worker_connect  => sub {
+$pogo->reg_cb( dispatcher_wconn_worker_connect  => sub {
     my( $c, $worker ) = @_;
 
     ok( 1, "worker connected" );
     is( $worker, $POGO_DISPATCHER_WORKERCONN_HOST, "worker host" );
 });
 
-$pogo->reg_cb( dispatcher_prepare => sub {
+$pogo->reg_cb( dispatcher_wconn_prepare => sub {
    my( $c, $host, $port ) = @_;
 
    DEBUG "received dispatcher_prepare";
