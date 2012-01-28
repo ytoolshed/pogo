@@ -7,6 +7,7 @@ use Log::Log4perl qw(:easy);
 use AnyEvent;
 use AnyEvent::Strict;
 use AnyEvent::Socket;
+use Data::Dumper;
 use Pogo::Defaults qw(
   $POGO_DISPATCHER_RPC_HOST
   $POGO_DISPATCHER_RPC_PORT
@@ -24,6 +25,11 @@ sub new {
         dispatchers => [],
         delay_connect   => $POGO_WORKER_DELAY_CONNECT->(),
         delay_reconnect => $POGO_WORKER_DELAY_RECONNECT->(),
+        channels => {
+            0 => "control",
+            1 => "worker_to_dispatcher",
+            2 => "dispatcher_to_worker",
+        },
         %options,
     };
 
@@ -49,7 +55,7 @@ sub start {
         }
     );
 
-    $self->reg_cb( "worker_send_command", $self->_send_command_handler() );
+    $self->reg_cb( "worker_send_cmd", $self->_send_cmd_handler() );
 }
 
 ###########################################
@@ -85,6 +91,7 @@ sub _connect_handler {
 
         $self->{dispatcher_handle} = AnyEvent::Handle->new(
             fh       => $fh,
+            no_delay => 1,
             on_error => sub { 
                 my ( $hdl, $fatal, $msg ) = @_;
 
@@ -92,21 +99,99 @@ sub _connect_handler {
             },
             on_eof   => sub { 
                 my ( $hdl ) = @_;
+
+                INFO "Dispatcher hung up.";
             },
         );
 
+        DEBUG "Sending event 'worker_connected'";
         $self->event( "worker_connected" );
+
+        $self->{ dispatcher_handle }->push_read( 
+            json => $self->_protocol_handler() );
     };
 }
 
 ###########################################
-sub _send_command_handler {
+sub _send_cmd_handler {
 ###########################################
     my( $self, $data ) = @_;
 
     return sub {
+        DEBUG "Sending worker command";
         $self->{ dispatcher_handle }->push_write( $data );
     };
+}
+
+###########################################
+sub _protocol_handler {
+###########################################
+    my( $self ) = @_;
+
+    DEBUG "Worker protocol handler";
+
+      # (We'll put this into a separate module (per protocol) later)
+    return sub {
+        my( $hdl, $data ) = @_;
+
+        my $channel = $data->{ channel };
+
+        if( !defined $channel ) {
+            $channel = 0; # control channel
+            return;
+        }
+
+        DEBUG "*** Received message on channel $channel";
+
+        if( !exists $self->{ channels }->{ $channel } ) {
+              # ignore traffic on unsupported channels
+            return;
+        }
+
+        INFO "Switching channel to $channel";
+        my $method = "channel_$self->{channels}->{$channel}";
+
+          # Call the channel-specific handler
+        $self->$method( $data );
+
+          # Keep the ball rolling
+        $self->{ dispatcher_handle }->push_read( 
+            json => $self->_protocol_handler() );
+    }
+}
+
+###########################################
+sub channel_control {
+###########################################
+    my( $self, $data ) = @_;
+
+    DEBUG "Received control message: ", Dumper( $data );
+}
+
+###########################################
+sub channel_worker_to_dispatcher {
+###########################################
+    my( $self, $data ) = @_;
+
+    DEBUG "Received dispatcher reply";
+
+    $self->event( "worker_dispatcher_reply_recv", $data );
+}
+
+###########################################
+sub channel_dispatcher_to_worker {
+###########################################
+    my( $self, $data ) = @_;
+
+    DEBUG "Received dispatcher command: $data->{cmd}";
+
+    $self->event( "worker_dispatcher_cmd_recv", $data );
+
+    $self->{ dispatcher_handle }->push_write( json => {
+            type => "reply",
+            ok   => 0,
+            msg  => "OK",
+    });
 }
 
 1;

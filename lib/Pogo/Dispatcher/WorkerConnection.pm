@@ -26,6 +26,7 @@ sub new {
         host     => $POGO_DISPATCHER_WORKERCONN_HOST,
         port     => $POGO_DISPATCHER_WORKERCONN_PORT,
         channels => {
+            0 => "control",
             1 => "worker_to_dispatcher",
             2 => "dispatcher_to_worker",
         },
@@ -50,7 +51,8 @@ sub start {
                     $self->_prepare_handler(),
         );
 
-    $self->reg_cb( "worker_connect", $self->_hello_handler() );
+    $self->reg_cb( "dispatcher_wconn_worker_connect", 
+                   $self->_hello_handler() );
 }
 
 ###########################################
@@ -77,18 +79,20 @@ sub _accept_handler {
         DEBUG "$self->{ host }:$self->{ port } accepting ",
               "connection from $peer_host:$peer_port";
 
-        $self->{ handle } = AnyEvent::Handle->new(
+        $self->{ worker_handle } = AnyEvent::Handle->new(
             fh       => $sock,
+            no_delay => 1,
             on_error => sub {
                 ERROR "Worker $peer_host:$peer_port can't connect: $_[2]";
                 $_[0]->destroy;
             },
             on_eof   => sub {
                 INFO "Worker $peer_host:$peer_port disconnected.";
-                $self->{ handle }->destroy;
+                $self->{ worker_handle }->destroy;
             }
         );
 
+        DEBUG "Firing dispatcher_wconn_worker_connect";
         $self->event( "dispatcher_wconn_worker_connect", $peer_host );
     };
 }
@@ -99,13 +103,16 @@ sub _hello_handler {
     my( $self ) = @_;
 
     return sub {
+        DEBUG "Sending greeting";
+
           # Send greeting
-        $self->{ handle }->push_write( 
+        $self->{ worker_handle }->push_write( 
             json => { msg => "Hello, worker.",
                       protocol => $self->{ protocol } } );
 
           # Handle communication
-        $self->{ handle }->push_read( json => $self->_protocol_handler() );
+        $self->{ worker_handle }->push_read( 
+            json => $self->_protocol_handler() );
     };
 }
 
@@ -114,6 +121,8 @@ sub _protocol_handler {
 ###########################################
     my( $self ) = @_;
 
+    DEBUG "Dispatcher protocol handler";
+
       # (We'll put this into a separate module (per protocol) later)
     return sub {
         my( $hdl, $data ) = @_;
@@ -121,18 +130,14 @@ sub _protocol_handler {
         my $channel = $data->{ channel };
 
         if( !defined $channel ) {
-            $self->{ handle }->push_write( json => {
-                ok  => 0,
-                msg => "No channel given",
-            });
+            $channel = 0; # control channel
             return;
         }
 
+        DEBUG "Received message on channel $channel";
+
         if( !exists $self->{ channels }->{ $channel } ) {
-            $self->{ handle }->push_write( json => {
-                ok  => 0,
-                msg => "Unsupported channel",
-            });
+              # ignore traffic on unsupported channels
             return;
         }
 
@@ -143,8 +148,17 @@ sub _protocol_handler {
         $self->$method( $data );
 
           # Keep the ball rolling
-        $self->{ handle }->push_read( json => $self->_protocol_handler() );
+        $self->{ worker_handle }->push_read( 
+            json => $self->_protocol_handler() );
     }
+}
+
+###########################################
+sub channel_control {
+###########################################
+    my( $self, $data ) = @_;
+
+    DEBUG "Received control message: ", Dumper( $data );
 }
 
 ###########################################
@@ -156,7 +170,7 @@ sub channel_worker_to_dispatcher {
 
     $self->event( "dispatcher_wconn_worker_cmd_recv", $data );
 
-    $self->{ handle }->push_write( json => {
+    $self->{ worker_handle }->push_write( json => {
             type => "reply",
             ok   => 0,
             msg  => "OK",

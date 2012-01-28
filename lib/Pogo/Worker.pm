@@ -46,10 +46,17 @@ sub start {
 
     $self->event_forward( $self->{ conn }, qw(
       worker_connected
-      worker_cmd_send
     ) );
 
     $self->{ conn }->start();
+}
+
+###########################################
+sub cmd_send {
+###########################################
+    my( $self, $data ) = @_;
+
+    $self->{ conn }->event( "worker_send_cmd", $data );
 }
 
 1;

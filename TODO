@@ -16,3 +16,5 @@
 * AnyEvent server vs. mod_perl
 
 * rename worker_connect(ed)
+
+* resilient to JSON errors (eval)
