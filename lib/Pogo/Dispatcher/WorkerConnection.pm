@@ -8,6 +8,8 @@ use AnyEvent;
 use AnyEvent::Strict;
 use AnyEvent::Handle;
 use AnyEvent::Socket;
+use JSON qw(from_json);
+use Data::Dumper;
 use Pogo::Defaults qw(
   $POGO_DISPATCHER_WORKERCONN_HOST
   $POGO_DISPATCHER_WORKERCONN_PORT
@@ -112,7 +114,7 @@ sub _hello_handler {
 
           # Handle communication
         $self->{ worker_handle }->push_read( 
-            json => $self->_protocol_handler() );
+            line => $self->_protocol_handler() );
     };
 }
 
@@ -127,29 +129,36 @@ sub _protocol_handler {
     return sub {
         my( $hdl, $data ) = @_;
 
-        my $channel = $data->{ channel };
+        DEBUG "Dispatcher received: $data";
 
-        if( !defined $channel ) {
-            $channel = 0; # control channel
-            return;
+        eval { $data = from_json( $data ); };
+
+        if( $@ ) {
+            ERROR "Got non-json";
+        } else {
+            my $channel = $data->{ channel };
+
+            if( !defined $channel ) {
+                $channel = 0; # control channel
+            }
+
+            DEBUG "Received message on channel $channel";
+
+            if( !exists $self->{ channels }->{ $channel } ) {
+                  # ignore traffic on unsupported channels
+                return;
+            }
+    
+            INFO "Switching channel to $channel";
+            my $method = "channel_$self->{channels}->{$channel}";
+    
+              # Call the channel-specific handler
+            $self->$method( $data );
         }
-
-        DEBUG "Received message on channel $channel";
-
-        if( !exists $self->{ channels }->{ $channel } ) {
-              # ignore traffic on unsupported channels
-            return;
-        }
-
-        INFO "Switching channel to $channel";
-        my $method = "channel_$self->{channels}->{$channel}";
-
-          # Call the channel-specific handler
-        $self->$method( $data );
-
+    
           # Keep the ball rolling
         $self->{ worker_handle }->push_read( 
-            json => $self->_protocol_handler() );
+            line => $self->_protocol_handler() );
     }
 }
 

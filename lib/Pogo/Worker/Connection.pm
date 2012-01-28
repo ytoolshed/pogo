@@ -138,7 +138,6 @@ sub _protocol_handler {
 
         if( !defined $channel ) {
             $channel = 0; # control channel
-            return;
         }
 
         DEBUG "*** Received message on channel $channel";
