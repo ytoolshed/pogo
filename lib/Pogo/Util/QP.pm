@@ -100,6 +100,9 @@ sub process {
                 DEBUG "re-issuing $item";
                 --$self->{ cur_retries };
                 $self->event( "next", $item );
+            } elsif( $self->{ cur_retries } < 0 ) {
+                DEBUG "re-issuing $item";
+                $self->event( "next", $item );
             } else {
                   # throw item out
                 DEBUG "throwing out $item";
@@ -109,7 +112,7 @@ sub process {
 
 
         }
-    );
+    ) if $self->{ timeout } >= 0;
 
     $self->event( "next", $item);
 }
@@ -148,20 +151,73 @@ Pogo::Util::QP - Queue Processor
 
 =head1 DESCRIPTION
 
-Pogo::Util::QP is a generic in-memory queue processor, somewhat
-inspired by Amazon's SQS. 
+Pogo::Util::QP is a generic in-memory queue manager, somewhat
+inspired by Amazon's SQS.
 
-Items get pushed via the C<"push"> event, and are offered for processing
-in a C<"next"> event, which a user of the queue subscribes to.
+Items get pushed onto the internal queue
+via a C<"push"> event, and are offered for processing
+in an outgoing C<"next"> event, which a user of the queue manager
+subscribes to.
 
 If an item could be processed successfully, the user sends back an
 C<"ack"> event, which causes the queue to issue the next "next" event
 with the next item if there is one.
 
-If there is no C<"ack"> within the configurable C<timeout> timeframe, 
-the queue will retry the same item by issuing another C<"next"> event.
-This continues, until the number of C<retries> is reached, then the
-item is thrown away.
+If C<Pogo::Util::QP> receives no C<"ack"> within the 
+configurable C<timeout> timeframe, the queue will re-emit a C<next>
+event for the same item in the hope that this time the user will
+process it. This continues, until an C<ack> from the user is received, 
+or the number of C<retries> is reached, which is when the item gets 
+thrown away.
+
+=head1 METHODS
+
+=over 4
+
+=item C<new>
+
+Constructor. Takes two parameters, C<timeout> and C<retries>:
+
+    my $qp = Pogo::Util::QP->new(
+        timeout => 3,
+        retries => 2,
+    );
+
+If C<retries> is set to C<0>, the manager won't retry an item and will
+just throw it out after the time window expires. If C<retries> is set
+to a negative value, it will retry indefinitely.
+
+If C<timeout> is set to a positive value, items will be re-tried after
+after the configured number of seconds. If C<timeout> is set to C<-1>,
+items won't time out and the manager will wait indefinitely for an C<ack>
+before offering new items.
+
+=back
+
+=head1 EVENTS (INCOMING)
+
+=over 4
+
+=item C<push [$item]>
+
+User submits item.
+
+=item C<ack>
+
+User signals that item has been processed and should be removed from
+the queue.
+
+=back
+
+=head1 EVENTS (OUTGOING)
+
+=over 4
+
+=item C<next [$item]>
+
+New item available for processing.
+
+=back
 
 =head1 AUTHOR
 
