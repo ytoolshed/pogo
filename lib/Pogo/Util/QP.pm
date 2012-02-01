@@ -65,10 +65,12 @@ sub end_current {
     $self->{ pending } = 0;
     $self->{ timer }   = undef;
 
-    # take item off queue
+      # take item off queue
+    DEBUG "Taking off $self->{ queue }->[0]";
     shift @{ $self->{ queue } };
 
     if( !scalar @{ $self->{ queue } } ) {
+        DEBUG "Issuing idle";
         $self->event( "idle" );
     }
 }

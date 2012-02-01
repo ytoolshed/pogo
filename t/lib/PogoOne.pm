@@ -49,17 +49,18 @@ sub start {
             $worker->start();
     });
 
-    $self->event_forward( $dispatcher, qw(
+    $self->event_forward( { forward_from => $dispatcher }, qw(
         dispatcher_wconn_worker_connect 
         dispatcher_wconn_prepare 
         dispatcher_wconn_worker_cmd_recv 
         dispatcher_wconn_worker_reply_recv 
     ) );
 
-    $self->event_forward( $worker, qw(
+    $self->event_forward( { forward_from => $worker }, qw(
         worker_connected
         worker_dispatcher_listening
-        worker_dispatcher_control_message
+        worker_dispatcher_ack
+        worker_dispatcher_qp_idle
      ) );
 
     $dispatcher->start();

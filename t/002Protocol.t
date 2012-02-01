@@ -21,7 +21,7 @@ $pogo->reg_cb( worker_command  => sub {
     is( $data->{ cmd }, "whoa", "received worker command" );
 });
 
-plan tests => 1;
+plan tests => 2;
 
 $pogo->reg_cb( worker_dispatcher_listening => sub {
       
@@ -29,13 +29,18 @@ $pogo->reg_cb( worker_dispatcher_listening => sub {
     $pogo->{ worker }->cmd_send( { channel => 1, cmd => "whoa" } );
 });
 
-$pogo->reg_cb( worker_dispatcher_control_message => sub {
-    my( $c, $data ) = @_;
+$pogo->reg_cb( worker_dispatcher_ack => sub {
+    my( $c ) = @_;
 
-    if( exists $data->{ ok } ) {
-        is $data->{ msg }, "OK", "ok confirmation";
-        $pogo->quit();
-    }
+    ok 1, "ok ack";
+} );
+
+$pogo->reg_cb( worker_dispatcher_qp_idle => sub {
+    my( $c ) = @_;
+
+    ok 1, "qp idle";
+
+    $pogo->quit();
 } );
 
 $pogo->start();

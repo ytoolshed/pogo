@@ -180,9 +180,10 @@ sub channel_worker_to_dispatcher {
     $self->event( "dispatcher_wconn_worker_cmd_recv", $data );
 
     $self->{ worker_handle }->push_write( json => {
-            type => "reply",
-            ok   => 0,
-            msg  => "OK",
+            channel => 1,
+            type    => "reply",
+            ok      => 0,
+            msg     => "OK",
     });
 }
 
