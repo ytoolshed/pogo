@@ -67,6 +67,10 @@ sub end_current {
 
     # take item off queue
     shift @{ $self->{ queue } };
+
+    if( !scalar @{ $self->{ queue } } ) {
+        $self->event( "idle" );
+    }
 }
 
 ###########################################
