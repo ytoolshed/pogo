@@ -23,16 +23,26 @@ sub new {
 ###########################################
 sub event_forward {
 ###########################################
-    my( $self, $forward_from, @events ) = @_;
+    my( $self, $opts, @events ) = @_;
+
+    if( !exists $opts->{ forward_from } ) {
+        LOGDIE "Missing mandatory param 'forward_from'";
+    }
 
     for my $event ( @events ) {
-        $forward_from->reg_cb( $event => sub {
+        $opts->{ forward_from }->reg_cb( $event => sub {
             my( $c, @args ) = @_;
     
             DEBUG "Forwarding event $event from ", 
-                  ref( $forward_from ), " to ", ref( $self );
+                  ref( $opts->{ forward_from } ), " to ", ref( $self );
 
-            $self->event( $event, @args );
+            my $target_event = $event;
+
+            if( $opts->{ prefix } ) {
+                $target_event = $opts->{ prefix } . $event;;
+            }
+
+            $self->event( $target_event, @args );
         });
     }
 }

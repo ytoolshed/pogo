@@ -44,10 +44,11 @@ sub start {
 
     DEBUG "Worker: Starting";
 
-    $self->event_forward( $self->{ conn }, qw(
+    $self->event_forward( { forward_from => $self->{ conn } }, qw(
       worker_connected
       worker_dispatcher_listening
-      worker_dispatcher_control_message
+      worker_dispatcher_ack
+      worker_dispatcher_qp_idle
     ) );
 
     $self->{ conn }->start();

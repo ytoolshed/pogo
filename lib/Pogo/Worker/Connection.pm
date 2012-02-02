@@ -15,6 +15,7 @@ use Pogo::Defaults qw(
   $POGO_WORKER_DELAY_CONNECT
   $POGO_WORKER_DELAY_RECONNECT
 );
+use Pogo::Util::QP;
 use base "Pogo::Object::Event";
 
 ###########################################
@@ -31,9 +32,17 @@ sub new {
             1 => "worker_to_dispatcher",
             2 => "dispatcher_to_worker",
         },
+        qp_retries           => 3,
+        qp_timeout           => 5,
         dispatcher_listening => 0,
+
         %options,
     };
+
+    $self->{ qp } = Pogo::Util::QP->new(
+         retries => $self->{ qp_retries },
+         timeout => $self->{ qp_timeout },
+    );
 
     bless $self, $class;
 }
@@ -58,6 +67,19 @@ sub start {
     );
 
     $self->reg_cb( "worker_send_cmd", $self->_send_cmd_handler() );
+
+    $self->{ qp }->reg_cb( "next", sub {
+        my( $c, $data ) = @_;
+
+          # select a random dispatcher here
+        $self->{ dispatcher_handle }->push_write( 
+            to_json( $data ) . "\n" );
+    } );
+
+    $self->event_forward( { forward_from => $self->{ qp }, 
+                            prefix       => "worker_dispatcher_qp_",
+                          },
+                          qw(idle) );
 }
 
 ###########################################
@@ -123,8 +145,8 @@ sub _send_cmd_handler {
         my( $c, $data ) = @_;
 
         DEBUG "Sending worker command: ", Dumper( $data );
-        $self->{ dispatcher_handle }->push_write( 
-            to_json( $data ) . "\n" );
+
+        $self->{ qp }->event( "push", $data );
     };
 }
 
@@ -190,7 +212,8 @@ sub channel_worker_to_dispatcher {
 
     DEBUG "Received dispatcher reply";
 
-    $self->event( "worker_dispatcher_reply_recv", $data );
+    $self->event( "worker_dispatcher_ack", $data );
+    $self->{ qp }->event( "ack" );
 }
 
 ###########################################
