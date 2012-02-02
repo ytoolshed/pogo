@@ -1,6 +1,6 @@
 
+use strict; 
 use warnings;
-use strict;
 use FindBin qw($Bin);
 use lib "$Bin/../lib";
 use lib "$Bin/lib";
@@ -21,23 +21,21 @@ my $pogo;
 
 $pogo = PogoOne->new();
 
+  # second worker
+my $worker2 = Pogo::Worker->new(
+    delay_connect => 0,
+    dispatchers => [
+    "$POGO_DISPATCHER_WORKERCONN_HOST:$POGO_DISPATCHER_WORKERCONN_PORT" ]
+);
+
 $pogo->reg_cb( dispatcher_wconn_worker_connect  => sub {
     my( $c, $worker ) = @_;
 
     ok( 1, "worker connected" );
-    is( $worker, $POGO_DISPATCHER_WORKERCONN_HOST, "worker host" );
 });
 
-$pogo->reg_cb( dispatcher_wconn_prepare => sub {
-   my( $c, $host, $port ) = @_;
+$worker2->start();
 
-   DEBUG "received dispatcher_prepare";
-
-   is( "$host:$port",
-      "$POGO_DISPATCHER_WORKERCONN_HOST:$POGO_DISPATCHER_WORKERCONN_PORT",
-      "dispatcher server_prepare cb" );
-});
-
-plan tests => 3;
+plan tests => 2;
 
 $pogo->start();
