@@ -137,6 +137,7 @@ sub _protocol_handler {
 
       # (We'll put this into a separate module (per protocol) later)
     return sub {
+        local *__ANON__ = 'AE:cb:_protocol_handler';
         my( $hdl, $data ) = @_;
 
         my $channel = $data->{ channel };
@@ -161,6 +162,8 @@ sub _protocol_handler {
           # Keep the ball rolling
         $self->{ dispatcher_handle }->push_read( 
             json => $self->_protocol_handler() );
+
+        1;
     }
 }
 

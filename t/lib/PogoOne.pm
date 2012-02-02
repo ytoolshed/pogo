@@ -43,6 +43,7 @@ sub start {
     my $dispatcher = $self->{ dispatcher } = Pogo::Dispatcher->new();
 
     $dispatcher->reg_cb( "dispatcher_wconn_prepare", sub {
+            local *__ANON__ = 'AE:cb:dispatcher_wconn_prepare';
             my( $c, @args ) = @_;
 
               # start worker when dispatcher is ready
@@ -68,6 +69,7 @@ sub start {
         after    => 0,
         interval => 1,
         cb       => sub {
+            local *__ANON__ = 'AE:cb:timer';
             my $tb = Test::More->builder();
 
               # This is evil, but there doesn't seem to be a better
