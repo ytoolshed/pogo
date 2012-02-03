@@ -144,9 +144,9 @@ sub _send_cmd_handler {
     return sub {
         my( $c, $data ) = @_;
 
-        DEBUG "Sending worker command: ", Dumper( $data );
+        DEBUG "Worker sending command: ", Dumper( $data );
 
-        $self->{ qp }->event( "push", $data );
+        $self->{ qp }->event( "push", { channel => 1, %$data } );
     };
 }
 

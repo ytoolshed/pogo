@@ -28,7 +28,7 @@ plan tests => 2;
 $pogo->reg_cb( worker_dispatcher_listening => sub {
       
     DEBUG "Dispatcher listening, triggering worker command";
-    $pogo->{ worker }->cmd_send( { channel => 1, cmd => "whoa" } );
+    $pogo->{ worker }->to_dispatcher( { cmd => "whoa" } );
 });
 
 $pogo->reg_cb( worker_dispatcher_ack => sub {
