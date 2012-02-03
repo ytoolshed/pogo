@@ -30,11 +30,26 @@ sub new {
         %options,
     };
 
-    $self->{ conn } = Pogo::Worker::Connection->new(
-        %$self,
-    );
+    for my $dispatcher ( @{ $self->{ dispatchers } } ) {
+
+          # create a connection object for every dispatcher
+        $self->{ conns }->{ $dispatcher } = 
+          Pogo::Worker::Connection->new(
+            map { $_, $self->{ $_ } }
+                qw(delay_connect delay_reconnect) );
+    }
 
     bless $self, $class;
+}
+
+###########################################
+sub random_dispatcher {
+###########################################
+    my( $self ) = @_;
+
+      # pick a random dispatcher
+    my $nof_dispatchers = scalar keys %{ $self->{ dispatchers } };
+    return $self->{ dispatchers }->[ rand $nof_dispatchers ];
 }
 
 ###########################################
@@ -44,14 +59,22 @@ sub start {
 
     DEBUG "Worker: Starting";
 
-    $self->event_forward( { forward_from => $self->{ conn } }, qw(
-      worker_connected
-      worker_dispatcher_listening
-      worker_dispatcher_ack
-      worker_dispatcher_qp_idle
-    ) );
+    for my $dispatcher ( @{ $self->{ dispatchers } } ) {
+        $self->event_forward( 
+          { forward_from => $self->{ conns }->{ $dispatcher } 
+          }, 
+          qw(
+            worker_connected
+            worker_dispatcher_listening
+            worker_dispatcher_ack
+            worker_dispatcher_qp_idle
+        ) );
+    }
 
-    $self->{ conn }->start();
+      # launch connector components for all defined dispatchers
+    for my $dispatcher ( @{ $self->{ dispatchers } } ) {
+        $self->{ conns }->{ $dispatcher }->start();
+    }
 }
 
 ###########################################
@@ -59,7 +82,9 @@ sub cmd_send {
 ###########################################
     my( $self, $data ) = @_;
 
-    $self->{ conn }->event( "worker_send_cmd", $data );
+      # send a command to a random dispatcher
+    $self->{ conns }->{ $self->random_dispatcher() }
+         ->event( "worker_send_cmd", $data );
 }
 
 1;
