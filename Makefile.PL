@@ -10,7 +10,7 @@ WriteMakefile(
     'NAME'         => 'Pogo',
     'VERSION_FROM' => 'lib/Pogo.pm', # finds $VERSION
     'PREREQ_PM'    => {
-        JSON => 2.53,
+        JSON => 2.26,
     }, # e.g., Module::Name => 1.1
     $ExtUtils::MakeMaker::VERSION >= 6.50 ? (%$meta_merge) : (),
     ($] >= 5.005 ?    ## Add these new keywords supported since 5.005
