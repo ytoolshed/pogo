@@ -8,6 +8,7 @@ use lib "$Bin/lib";
 use PogoOne;
 use Test::More;
 use Log::Log4perl qw(:easy);
+use Getopt::Std;
 use Pogo::Defaults qw(
   $POGO_DISPATCHER_WORKERCONN_HOST
   $POGO_DISPATCHER_WORKERCONN_PORT
@@ -15,7 +16,12 @@ use Pogo::Defaults qw(
   $POGO_DISPATCHER_RPC_PORT
 );
 
-# Log::Log4perl->easy_init({ level => $DEBUG, layout => "%F{1}-%L: %m%n" });
+getopts( "v", \my %opts );
+
+if( $opts{ v } ) {
+    Log::Log4perl->easy_init({ level => $DEBUG, layout => "%F{2}-%L: %m%n" });
+    DEBUG "Verbose mode";
+}
 
 my $pogo;
 

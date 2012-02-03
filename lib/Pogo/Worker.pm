@@ -34,9 +34,7 @@ sub new {
 
           # create a connection object for every dispatcher
         $self->{ conns }->{ $dispatcher } = 
-          Pogo::Worker::Connection->new(
-            map { $_, $self->{ $_ } }
-                qw(delay_connect delay_reconnect) );
+          Pogo::Worker::Connection->new( %$self );
     }
 
     bless $self, $class;
@@ -48,7 +46,7 @@ sub random_dispatcher {
     my( $self ) = @_;
 
       # pick a random dispatcher
-    my $nof_dispatchers = scalar keys %{ $self->{ dispatchers } };
+    my $nof_dispatchers = scalar @{ $self->{ dispatchers } };
     return $self->{ dispatchers }->[ rand $nof_dispatchers ];
 }
 
