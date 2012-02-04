@@ -206,13 +206,17 @@ sub channel_worker_to_dispatcher {
 
     $self->event( "dispatcher_wconn_cmd_recv", $data );
 
+    DEBUG "Sending ack to worker";
+
+    my $out_data = {
+        channel => 1,
+        type    => "reply",
+        ok      => 0,
+        msg     => "OK",
+    };
+
       # ACK the command
-    $self->{ worker_handle }->push_write( json => {
-            channel => 1,
-            type    => "reply",
-            ok      => 0,
-            msg     => "OK",
-    });
+    $self->{ worker_handle }->push_write( to_json( $out_data ) . "\n" );
 }
 
 ###########################################
@@ -222,7 +226,7 @@ sub channel_dispatcher_to_worker {
 
     DEBUG "Received worker ACK";
 
-    $self->event( "dispatcher_wconn_worker_reply_recv", $data );
+    $self->event( "dispatcher_wconn_ack", $data );
 
     $self->{ qp }->event( "ack" );
 }

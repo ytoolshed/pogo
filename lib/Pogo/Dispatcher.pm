@@ -36,7 +36,7 @@ sub start {
         dispatcher_wconn_worker_connect 
         dispatcher_wconn_prepare 
         dispatcher_wconn_cmd_recv 
-        dispatcher_wconn_worker_reply_recv ) );
+        dispatcher_wconn_ack ) );
 
     $w->start();
 

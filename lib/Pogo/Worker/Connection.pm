@@ -233,12 +233,14 @@ sub channel_dispatcher_to_worker {
 
     $self->event( "worker_dconn_cmd_recv", $data );
 
-    $self->{ dispatcher_handle }->push_write( json => {
-            channel => 2,
-            type    => "reply",
-            ok      => 0,
-            msg     => "OK",
-    });
+    my $ack = {
+        channel => 2,
+        type    => "reply",
+        ok      => 0,
+        msg     => "OK",
+    };
+
+    $self->{ dispatcher_handle }->push_write( to_json( $ack ) . "\n" );
 }
 
 1;

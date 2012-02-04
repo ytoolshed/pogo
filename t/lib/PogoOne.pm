@@ -53,8 +53,8 @@ sub start {
     $self->event_forward( { forward_from => $dispatcher }, qw(
         dispatcher_wconn_worker_connect 
         dispatcher_wconn_prepare 
-        dispatcher_wconn_worker_cmd_recv 
-        dispatcher_wconn_worker_reply_recv 
+        dispatcher_wconn_cmd_recv
+        dispatcher_wconn_ack
     ) );
 
     $self->event_forward( { forward_from => $worker }, qw(

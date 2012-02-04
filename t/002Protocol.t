@@ -26,43 +26,48 @@ $pogo->reg_cb( worker_dconn_cmd_recv  => sub {
 
     DEBUG "Worker received command";
 
-    is( $data->{ cmd }, "dispatcher-command", "received dispatcher command" );
+    is( $data->{ cmd }, "command-by-dispatcher", 
+        "received dispatcher command #1" );
 });
 
-$pogo->reg_cb( dispatcher_wconn_worker_cmd_recv  => sub {
+$pogo->reg_cb( dispatcher_wconn_cmd_recv  => sub {
     my( $c, $data ) = @_;
 
     DEBUG "Dispatcher received command";
 
-    is( $data->{ cmd }, "worker-command", "received worker command" );
+    is( $data->{ cmd }, "command-by-worker", "received worker command #2" );
 });
 
-plan tests => 4;
+plan tests => 5;
 
 $pogo->reg_cb( worker_dconn_listening => sub {
       
     DEBUG "Dispatcher listening, triggering worker command";
-    $pogo->{ worker }->to_dispatcher( { cmd => "worker-command" } );
+    $pogo->{ worker }->to_dispatcher( { cmd => "command-by-worker" } );
 });
 
 $pogo->reg_cb( worker_dconn_ack => sub {
     my( $c ) = @_;
 
-    ok 1, "ok ack";
+    ok 1, "worker got dispatcher ack #3";
+} );
+
+$pogo->reg_cb( dispatcher_wconn_ack => sub {
+    my( $c ) = @_;
+
+    ok 1, "dispatcher got worker ack #4";
 } );
 
 $pogo->reg_cb( worker_dconn_qp_idle => sub {
     my( $c ) = @_;
 
-    ok 1, "qp idle";
-
-#    $pogo->quit();
+    ok 1, "qp idle #5";
 } );
 
 $pogo->reg_cb( dispatcher_wconn_worker_connect => sub {
       
     DEBUG "Connection up, dispatcher sending command to worker";
-    $pogo->{ dispatcher }->to_worker( { cmd => "dispatcher-command" } );
+    $pogo->{ dispatcher }->to_worker( { cmd => "command-by-dispatcher" } );
 });
 
 $pogo->start();
