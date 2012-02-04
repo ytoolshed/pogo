@@ -8,7 +8,7 @@ use AnyEvent;
 use AnyEvent::Strict;
 use AnyEvent::Socket;
 use Data::Dumper;
-use JSON qw(to_json);
+use JSON qw(to_json from_json);
 use Pogo::Defaults qw(
   $POGO_DISPATCHER_RPC_HOST
   $POGO_DISPATCHER_RPC_PORT
@@ -131,7 +131,7 @@ sub _connect_handler {
         $self->event( "worker_connected" );
 
         $self->{ dispatcher_handle }->push_read( 
-            json => $self->_protocol_handler() );
+            line => $self->_protocol_handler() );
     };
 }
 
@@ -158,31 +158,40 @@ sub _protocol_handler {
 
       # (We'll put this into a separate module (per protocol) later)
     return sub {
-        local *__ANON__ = 'AE:cb:_protocol_handler';
         my( $hdl, $data ) = @_;
 
-        my $channel = $data->{ channel };
+        local *__ANON__ = 'AE:cb:_protocol_handler';
 
-        if( !defined $channel ) {
-            $channel = 0; # control channel
+        DEBUG "Worker received: $data";
+
+        eval { $data = from_json( $data ); };
+
+        if( $@ ) {
+            ERROR "Got non-json ($@)";
+        } else {
+            my $channel = $data->{ channel };
+
+            if( !defined $channel ) {
+                $channel = 0; # control channel
+            }
+
+            DEBUG "*** Received message on channel $channel";
+    
+            if( !exists $self->{ channels }->{ $channel } ) {
+                  # ignore traffic on unsupported channels
+                return;
+            }
+    
+            INFO "Switching channel to $channel";
+            my $method = "channel_$self->{channels}->{$channel}";
+    
+              # Call the channel-specific handler
+            $self->$method( $data );
         }
-
-        DEBUG "*** Received message on channel $channel";
-
-        if( !exists $self->{ channels }->{ $channel } ) {
-              # ignore traffic on unsupported channels
-            return;
-        }
-
-        INFO "Switching channel to $channel";
-        my $method = "channel_$self->{channels}->{$channel}";
-
-          # Call the channel-specific handler
-        $self->$method( $data );
 
           # Keep the ball rolling
         $self->{ dispatcher_handle }->push_read( 
-            json => $self->_protocol_handler() );
+            line => $self->_protocol_handler() );
 
         1;
     }
@@ -225,9 +234,10 @@ sub channel_dispatcher_to_worker {
     $self->event( "worker_dconn_cmd_recv", $data );
 
     $self->{ dispatcher_handle }->push_write( json => {
-            type => "reply",
-            ok   => 0,
-            msg  => "OK",
+            channel => 2,
+            type    => "reply",
+            ok      => 0,
+            msg     => "OK",
     });
 }
 

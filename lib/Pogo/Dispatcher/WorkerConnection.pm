@@ -8,7 +8,7 @@ use AnyEvent;
 use AnyEvent::Strict;
 use AnyEvent::Handle;
 use AnyEvent::Socket;
-use JSON qw(from_json);
+use JSON qw(from_json to_json);
 use Data::Dumper;
 use Pogo::Defaults qw(
   $POGO_DISPATCHER_WORKERCONN_HOST
@@ -52,7 +52,7 @@ sub start {
 
     DEBUG "Starting RPC server on $self->{ host }:$self->{ port }";
 
-      # Start server taking workers connections
+      # Start server, accepting workers connections
     $self->{worker_server_guard} =
         tcp_server( $self->{ host },
                     $self->{ port }, 
@@ -63,7 +63,22 @@ sub start {
     $self->reg_cb( "dispatcher_wconn_worker_connect", 
                    $self->_hello_handler() );
 
-    $self->reg_cb( "dispatcher_send_cmd", $self->_send_cmd_handler() );
+    $self->reg_cb( "dispatcher_wconn_send_cmd", $self->_send_cmd_handler() );
+
+    $self->{ qp }->reg_cb( "next", sub {
+        my( $c, $data ) = @_;
+
+        my $json = to_json( $data );
+
+        DEBUG "Dispatcher wconn sending $json";
+
+        $self->{ worker_handle }->push_write( $json . "\n" );
+    } );
+
+    $self->event_forward( { forward_from => $self->{ qp }, 
+                            prefix       => "dispatcher_wconn_qp_",
+                          },
+                          qw(idle) );
 }
 
 ###########################################
@@ -116,10 +131,12 @@ sub _hello_handler {
     return sub {
         DEBUG "Sending greeting";
 
+        my $data = { msg => "Hello, worker.",
+                     protocol => $self->{ protocol } };
+
           # Send greeting
         $self->{ worker_handle }->push_write( 
-            json => { msg => "Hello, worker.",
-                      protocol => $self->{ protocol } } );
+            to_json( $data ) . "\n" );
 
           # Handle communication
         $self->{ worker_handle }->push_read( 
@@ -144,7 +161,7 @@ sub _protocol_handler {
         eval { $data = from_json( $data ); };
 
         if( $@ ) {
-            ERROR "Got non-json";
+            ERROR "Got non-json ($@)";
         } else {
             my $channel = $data->{ channel };
 
@@ -187,7 +204,7 @@ sub channel_worker_to_dispatcher {
 
     DEBUG "Received worker command: $data->{cmd}";
 
-    $self->event( "dispatcher_wconn_worker_cmd_recv", $data );
+    $self->event( "dispatcher_wconn_cmd_recv", $data );
 
       # ACK the command
     $self->{ worker_handle }->push_write( json => {
@@ -206,6 +223,8 @@ sub channel_dispatcher_to_worker {
     DEBUG "Received worker ACK";
 
     $self->event( "dispatcher_wconn_worker_reply_recv", $data );
+
+    $self->{ qp }->event( "ack" );
 }
 
 ###########################################
@@ -261,7 +280,7 @@ Fired if a worker connects. Arguments: C<$worker_host>.
 Fired when the dispatcher is about to bind the worker socket to listen
 to incoming workers. Arguments: C<$host>, $C<$port>.
 
-=item C<dispatcher_wconn_worker_cmd_recv>
+=item C<dispatcher_wconn_cmd_recv>
 
 Fired if the dispatcher receives a command by the worker.
 

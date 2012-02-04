@@ -24,9 +24,9 @@ $pogo = PogoOne->new();
 $pogo->reg_cb( worker_dconn_cmd_recv  => sub {
     my( $c, $data ) = @_;
 
-    DEBUG "Dispatcher received command";
+    DEBUG "Worker received command";
 
-    is( $data->{ cmd }, "my-command", "received worker command" );
+    is( $data->{ cmd }, "dispatcher-command", "received dispatcher command" );
 });
 
 $pogo->reg_cb( dispatcher_wconn_worker_cmd_recv  => sub {
@@ -34,15 +34,15 @@ $pogo->reg_cb( dispatcher_wconn_worker_cmd_recv  => sub {
 
     DEBUG "Dispatcher received command";
 
-    is( $data->{ cmd }, "my-command", "received worker command" );
+    is( $data->{ cmd }, "worker-command", "received worker command" );
 });
 
-plan tests => 3;
+plan tests => 4;
 
 $pogo->reg_cb( worker_dconn_listening => sub {
       
     DEBUG "Dispatcher listening, triggering worker command";
-    $pogo->{ worker }->to_dispatcher( { cmd => "my-command" } );
+    $pogo->{ worker }->to_dispatcher( { cmd => "worker-command" } );
 });
 
 $pogo->reg_cb( worker_dconn_ack => sub {
@@ -56,7 +56,13 @@ $pogo->reg_cb( worker_dconn_qp_idle => sub {
 
     ok 1, "qp idle";
 
-    $pogo->quit();
+#    $pogo->quit();
 } );
+
+$pogo->reg_cb( dispatcher_wconn_worker_connect => sub {
+      
+    DEBUG "Connection up, dispatcher sending command to worker";
+    $pogo->{ dispatcher }->to_worker( { cmd => "dispatcher-command" } );
+});
 
 $pogo->start();
