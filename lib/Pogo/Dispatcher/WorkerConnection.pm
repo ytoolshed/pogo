@@ -32,8 +32,15 @@ sub new {
             1 => "worker_to_dispatcher",
             2 => "dispatcher_to_worker",
         },
+        qp_retries           => 3,
+        qp_timeout           => 5,
         %options,
     };
+
+    $self->{ qp } = Pogo::Util::QP->new(
+         retries => $self->{ qp_retries },
+         timeout => $self->{ qp_timeout },
+    );
 
     bless $self, $class;
 }
@@ -55,6 +62,8 @@ sub start {
 
     $self->reg_cb( "dispatcher_wconn_worker_connect", 
                    $self->_hello_handler() );
+
+    $self->reg_cb( "dispatcher_send_cmd", $self->_send_cmd_handler() );
 }
 
 ###########################################
@@ -125,7 +134,8 @@ sub _protocol_handler {
 
     DEBUG "Dispatcher protocol handler";
 
-      # (We'll put this into a separate module (per protocol) later)
+    # Figure out which channel the message came in on and call the
+    # appropriate handler.
     return sub {
         my( $hdl, $data ) = @_;
 
@@ -179,6 +189,7 @@ sub channel_worker_to_dispatcher {
 
     $self->event( "dispatcher_wconn_worker_cmd_recv", $data );
 
+      # ACK the command
     $self->{ worker_handle }->push_write( json => {
             channel => 1,
             type    => "reply",
@@ -195,6 +206,20 @@ sub channel_dispatcher_to_worker {
     DEBUG "Received worker ACK";
 
     $self->event( "dispatcher_wconn_worker_reply_recv", $data );
+}
+
+###########################################
+sub _send_cmd_handler {
+###########################################
+    my( $self ) = @_;
+
+    return sub {
+        my( $c, $data ) = @_;
+
+        DEBUG "Dispatcher sending worker command: ", Dumper( $data );
+
+        $self->{ qp }->event( "push", { channel => 2, %$data } );
+    };
 }
 
 1;

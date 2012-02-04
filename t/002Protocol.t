@@ -7,28 +7,34 @@ use lib "$Bin/lib";
 
 use PogoOne;
 use Test::More;
+use Getopt::Std;
 use Log::Log4perl qw(:easy);
 
-# Log::Log4perl->easy_init({ level => $DEBUG, layout => "%F{1}-%L: %m%n" });
+getopts( "v", \my %opts );
+
+if( $opts{ v } ) {
+    Log::Log4perl->easy_init({ level => $DEBUG, layout => "%F{2}-%L: %m%n" });
+    DEBUG "Verbose mode";
+}
 
 my $pogo;
 
 $pogo = PogoOne->new();
 
-$pogo->reg_cb( worker_command  => sub {
+$pogo->reg_cb( dispatcher_wconn_worker_cmd_recv  => sub {
     my( $c, $data ) = @_;
 
-    DEBUG "Test suite received worker command";
+    DEBUG "Dispatcher received command";
 
-    is( $data->{ cmd }, "whoa", "received worker command" );
+    is( $data->{ cmd }, "my-command", "received worker command" );
 });
 
-plan tests => 2;
+plan tests => 3;
 
 $pogo->reg_cb( worker_dispatcher_listening => sub {
       
     DEBUG "Dispatcher listening, triggering worker command";
-    $pogo->{ worker }->to_dispatcher( { cmd => "whoa" } );
+    $pogo->{ worker }->to_dispatcher( { cmd => "my-command" } );
 });
 
 $pogo->reg_cb( worker_dispatcher_ack => sub {

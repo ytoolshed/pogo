@@ -71,7 +71,6 @@ sub start {
     $self->{ qp }->reg_cb( "next", sub {
         my( $c, $data ) = @_;
 
-          # select a random dispatcher here
         $self->{ dispatcher_handle }->push_write( 
             to_json( $data ) . "\n" );
     } );

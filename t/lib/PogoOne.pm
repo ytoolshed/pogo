@@ -62,6 +62,7 @@ sub start {
         worker_dispatcher_listening
         worker_dispatcher_ack
         worker_dispatcher_qp_idle
+        worker_dispatcher_cmd_recv
      ) );
 
     $dispatcher->start();
