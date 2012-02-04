@@ -76,7 +76,7 @@ sub start {
     } );
 
     $self->event_forward( { forward_from => $self->{ qp }, 
-                            prefix       => "worker_dispatcher_qp_",
+                            prefix       => "worker_dconn_qp_",
                           },
                           qw(idle) );
 }
@@ -198,10 +198,10 @@ sub channel_control {
     if( ! $self->{ dispatcher_listening } ) {
         $self->{ dispatcher_listening } = 1;
 
-        $self->event( "worker_dispatcher_listening" );
+        $self->event( "worker_dconn_listening" );
     }
 
-    $self->event( "worker_dispatcher_control_message", $data );
+    $self->event( "worker_dconn_control_message", $data );
 }
 
 ###########################################
@@ -211,7 +211,7 @@ sub channel_worker_to_dispatcher {
 
     DEBUG "Received dispatcher reply";
 
-    $self->event( "worker_dispatcher_ack", $data );
+    $self->event( "worker_dconn_ack", $data );
     $self->{ qp }->event( "ack" );
 }
 
@@ -222,7 +222,7 @@ sub channel_dispatcher_to_worker {
 
     DEBUG "Received dispatcher command: $data->{cmd}";
 
-    $self->event( "worker_dispatcher_cmd_recv", $data );
+    $self->event( "worker_dconn_cmd_recv", $data );
 
     $self->{ dispatcher_handle }->push_write( json => {
             type => "reply",

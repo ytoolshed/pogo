@@ -21,6 +21,14 @@ my $pogo;
 
 $pogo = PogoOne->new();
 
+$pogo->reg_cb( worker_dconn_cmd_recv  => sub {
+    my( $c, $data ) = @_;
+
+    DEBUG "Dispatcher received command";
+
+    is( $data->{ cmd }, "my-command", "received worker command" );
+});
+
 $pogo->reg_cb( dispatcher_wconn_worker_cmd_recv  => sub {
     my( $c, $data ) = @_;
 
@@ -31,19 +39,19 @@ $pogo->reg_cb( dispatcher_wconn_worker_cmd_recv  => sub {
 
 plan tests => 3;
 
-$pogo->reg_cb( worker_dispatcher_listening => sub {
+$pogo->reg_cb( worker_dconn_listening => sub {
       
     DEBUG "Dispatcher listening, triggering worker command";
     $pogo->{ worker }->to_dispatcher( { cmd => "my-command" } );
 });
 
-$pogo->reg_cb( worker_dispatcher_ack => sub {
+$pogo->reg_cb( worker_dconn_ack => sub {
     my( $c ) = @_;
 
     ok 1, "ok ack";
 } );
 
-$pogo->reg_cb( worker_dispatcher_qp_idle => sub {
+$pogo->reg_cb( worker_dconn_qp_idle => sub {
     my( $c ) = @_;
 
     ok 1, "qp idle";

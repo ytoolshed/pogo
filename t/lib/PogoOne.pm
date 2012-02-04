@@ -59,10 +59,10 @@ sub start {
 
     $self->event_forward( { forward_from => $worker }, qw(
         worker_connected
-        worker_dispatcher_listening
-        worker_dispatcher_ack
-        worker_dispatcher_qp_idle
-        worker_dispatcher_cmd_recv
+        worker_dconn_listening
+        worker_dconn_ack
+        worker_dconn_qp_idle
+        worker_dconn_cmd_recv
      ) );
 
     $dispatcher->start();
