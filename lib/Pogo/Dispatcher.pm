@@ -17,6 +17,7 @@ sub new {
     my($class, %options) = @_;
 
     my $self = {
+        workers => [],
         %options,
     };
 
@@ -26,11 +27,27 @@ sub new {
 }
 
 ###########################################
+sub random_worker {
+###########################################
+    my( $self ) = @_;
+
+      # pick a connected worker at random
+    my $nof_workers = scalar @{ $self->{ workers } };
+    return $self->{ workers }->[ rand $nof_workers ];
+}
+
+###########################################
 sub start {
 ###########################################
     my( $self ) = @_;
 
     my $w = Pogo::Dispatcher::WorkerConnection->new();
+
+    $w->reg_cb( "dispatcher_wconn_worker_connect", sub {
+       my( $c, $worker_host, $conn ) = @_;
+
+       $self->{ workers }->{ $worker_host } = $conn;
+    } );
 
     $self->event_forward( { forward_from => $w }, qw( 
         dispatcher_wconn_worker_connect 

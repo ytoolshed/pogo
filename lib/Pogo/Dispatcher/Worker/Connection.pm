@@ -1,5 +1,5 @@
 ###########################################
-package Pogo::Dispatcher::WorkerConnection;
+package Pogo::Dispatcher::Worker::Connection
 ###########################################
 use strict;
 use warnings;
@@ -105,7 +105,8 @@ sub _accept_handler {
         DEBUG "$self->{ host }:$self->{ port } accepting ",
               "connection from $peer_host:$peer_port";
 
-        $self->{ worker_handle } = AnyEvent::Handle->new(
+        $self->{ workers }->{ $peer_host }->{ worker_handle } = 
+          AnyEvent::Handle->new(
             fh       => $sock,
             no_delay => 1,
             on_error => sub {
@@ -114,7 +115,8 @@ sub _accept_handler {
             },
             on_eof   => sub {
                 INFO "Worker $peer_host:$peer_port disconnected.";
-                $self->{ worker_handle }->destroy;
+                  # do we need to call ->destroy() on the handle?
+                delete $self->{ workers }->{ $peer_host };
             }
         );
 
@@ -251,13 +253,13 @@ __END__
 
 =head1 NAME
 
-Pogo::Dispatcher::WorkerConnection - Pogo worker connection abstraction
+Pogo::Dispatcher::Worker::Connection - Pogo worker connection abstraction
 
 =head1 SYNOPSIS
 
-    use Pogo::Dispatcher::WorkerConnection;
+    use Pogo::Dispatcher::Worker::Connection;
 
-    my $guard = Pogo::Dispatcher::WorkerConnection->new();
+    my $guard = Pogo::Dispatcher::Worker::Connection->new();
 
 =head1 DESCRIPTION
 
@@ -275,15 +277,6 @@ Constructor.
 
 =over 4
 
-=item C<dispatcher_wconn_connect>
-
-Fired if a worker connects. Arguments: C<$worker_host>.
-
-=item C<dispatcher_wconn_prepare>
-
-Fired when the dispatcher is about to bind the worker socket to listen
-to incoming workers. Arguments: C<$host>, $C<$port>.
-
 =item C<dispatcher_wconn_cmd_recv>
 
 Fired if the dispatcher receives a command by the worker.
@@ -296,11 +289,7 @@ earlier.
 =back
 
 The communication between dispatcher and worker happens on two 
-channels on the same connection, the following channel numbers map
-to different communication directions:
-
-            1 => "worker_to_dispatcher",
-            2 => "dispatcher_to_worker",
+channels on the same connection. Read the worker's documentation for details.
 
 =head1 LICENSE
 
