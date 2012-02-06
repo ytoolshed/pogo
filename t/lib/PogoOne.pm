@@ -22,6 +22,7 @@ sub new {
 
     my $self = {
         main => AnyEvent->condvar,
+        tests_done => {},
     };
 
     bless $self, $class;
@@ -79,9 +80,15 @@ sub start {
             my $cur = $tb->{Curr_Test};
             my $exp = $tb->{Expected_Tests};
 
-            TRACE "Is it done yet ($cur/$exp)?";
+            DEBUG "Is it done yet ($cur/$exp)?";
             if( $tb->{Curr_Test} == $tb->{Expected_Tests} ) {
                 $self->quit();
+            } else {
+                my $logger = Log::Log4perl->get_logger();
+                if( $logger->is_debug() ) {
+                    DEBUG "Tests remaining: ", 
+                          join('-', $self->tests_remaining() );
+                }
             }
         }
     );
@@ -97,6 +104,31 @@ sub quit {
 
       # quit event loop
     $self->{ main }->send();
+}
+
+###########################################
+sub test_done {
+###########################################
+    my( $self, $test_name ) = @_;
+
+    $self->{ tests_done }->{ $test_name }++;
+}
+
+###########################################
+sub tests_remaining {
+###########################################
+    my( $self ) = @_;
+
+    my $tb = Test::More->builder();
+    my %remaining = map { $_ => 1 } ( 1 .. $tb->{Expected_Tests} );
+
+    for my $result ( @{ $tb->{Test_Results} } ) {
+        if( $result->{ name } =~ /(\d+)$/ ) {
+            delete $remaining{ $1 };
+        }
+    }
+
+    return keys %remaining;
 }
 
 1;

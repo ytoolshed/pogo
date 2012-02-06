@@ -1,6 +1,4 @@
-========================================
-Pogo Design Guidelines
-========================================
+=head1 Pogo Design Guidelines
 
 This week, I took a look at the current code base, both OSS pogo and YPogo, and
 thought about how we can better structure OSS Pogo to arrive at a more robust
@@ -79,9 +77,7 @@ the AnyEvent::Intro page for details.
 It takes some time to get the hang of it, but it's a good framework, 
 I think.
 
-=======
-CLASSES
-=======
+=head1 Pogo Class Design
 
 Here's the components I've mapped out so far, some already 
 checked into github (but I've hardly written any code yet):
@@ -133,9 +129,7 @@ Pogo::Web::UI - Pogo web UI (talks to API)
 
 Pogo::Util::Crypto - Password encryption/decryption
 
-=======
-TOOLS
-=======
+=head1 Development Tools
 
 To make it easier to create new modules (or scripts), I've checked in
 adm/pogo-tmpl which you can use like
@@ -149,9 +143,7 @@ or
 and which will create the newly requested files from pogo-compliant 
 templates.
 
-==============
-DEV GUIDELINES
-==============
+=head1 Development Guidelines
 
 * Every component needs to have a unit test associated with it in the 
   test suite. This makes it easy to add new functionality without introducing
@@ -160,9 +152,9 @@ DEV GUIDELINES
 * Add documentation to the component, as outlined in the template generated
   by pogo-tmpl
 
-==========================
-Dispatcher/Worker Protocol
-==========================
+=head1 Design Details
+
+=head2 Dispatcher/Worker Protocol
 
 The new protocol is asynchronous and full-duplex, meaning that although the
 worker initiates a TCP connection, both dispatcher and worker can initiate a
@@ -219,7 +211,7 @@ Channel 2 (Dispatcher->Worker)
           o Dispatcher: msgid "taskkillall"
           o Worker: msgid "ack"
 
-Legacy Protocol
+=head2 Legacy Protocol
 
     * Initial handshake (worker/lib/Pogo/Worker/Connection.pm)
           o Worker: sleep(rand5); connect to random dispatcher
@@ -234,7 +226,7 @@ Legacy Protocol
             * starts task { start }
             * finishes task { finish }
 
-Drawbacks of legacy protocol
+=head3 Drawbacks of legacy protocol
 
      * Unreliable. Protocol assumes that a message has been
        received if the connection is up. Fails in cases where
@@ -247,9 +239,7 @@ Drawbacks of legacy protocol
 
      * Limited in functionality and can't be extended to full duplex.
 
-============================
-Variables and Default Values
-============================
+=head2 Variables and Default Values
 
     use Pogo::Defaults qw(
       $POGO_DISPATCHER_WORKERCONN_HOST
@@ -281,9 +271,7 @@ Also note the syntax in
 which takes option settings as method parameters, and overrides the 
 defaults in "default settings" if they're present.
 
-============================
-Test Suite
-============================
+=head2 Test Suite
 
 Testing event-based components is slightly different from testing
 linear program flows. In Pogo, there's a helper library in
@@ -346,3 +334,54 @@ If you need more information on what's going on, turn on debugging via
 and both the Pogo components and the test suite helpers will start
 talking.
     
+=head3 Keep track of test cases
+
+With many test cases being executed within callbacks in non-predictable
+order, it's sometimes hard to track down which of dozens of test cases
+have been executed and which ones the test suite is still waiting for.
+
+For example, if you have 
+
+    plan tests => 3;
+
+    $pogo->reg_cb( event1 => sub {
+        ok 1;
+    });
+
+    $pogo->reg_cb( event1 => sub {
+        ok 1;
+    });
+
+then the test suite will wait around forever and with many callbacks
+it's not easy to figure out which ones have been executed. To help
+keeping track, include C<use PogoTest> and 
+add test case numbers in the test comments:
+
+
+    use PogoTest;
+    use PogoOne;
+
+    my $pogo = PogoOne->new();
+
+    plan tests => 3;
+
+    $pogo->reg_cb( event1 => sub {
+        ok 1, "some test #2';
+    });
+
+    $pogo->reg_cb( event1 => sub {
+        ok 1;
+        ok 1, "another test #1';
+    });
+
+Numbers don't need to be in a particular order, it's just important that
+they run from 1 to the total number of tests. In the case above, where
+the test suite plans three tests but only two are executed, if you call the
+test suite in verbose mode like
+
+    perl t/001Basic.t -v
+
+the output will indicate which one is missing:
+
+    lib/PogoOne.pm-83: Is it done yet (2/3)?
+    lib/PogoOne.pm-88: Tests remaining: 2

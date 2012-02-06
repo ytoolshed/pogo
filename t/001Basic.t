@@ -6,6 +6,7 @@ use lib "$Bin/../lib";
 use lib "$Bin/lib";
 
 use PogoOne;
+use PogoTest;
 use Test::More;
 use Log::Log4perl qw(:easy);
 use Getopt::Std;
@@ -16,13 +17,6 @@ use Pogo::Defaults qw(
   $POGO_DISPATCHER_RPC_PORT
 );
 
-getopts( "v", \my %opts );
-
-if( $opts{ v } ) {
-    Log::Log4perl->easy_init({ level => $DEBUG, layout => "%F{2}-%L: %m%n" });
-    DEBUG "Verbose mode";
-}
-
 my $pogo;
 
 $pogo = PogoOne->new();
@@ -30,8 +24,8 @@ $pogo = PogoOne->new();
 $pogo->reg_cb( dispatcher_wconn_worker_connect  => sub {
     my( $c, $worker ) = @_;
 
-    ok( 1, "worker connected" );
-    is( $worker, $POGO_DISPATCHER_WORKERCONN_HOST, "worker host" );
+    ok( 1, "worker connected #1" );
+    is( $worker, $POGO_DISPATCHER_WORKERCONN_HOST, "worker host #3" );
 });
 
 $pogo->reg_cb( dispatcher_wconn_prepare => sub {
@@ -41,7 +35,7 @@ $pogo->reg_cb( dispatcher_wconn_prepare => sub {
 
    is( "$host:$port",
       "$POGO_DISPATCHER_WORKERCONN_HOST:$POGO_DISPATCHER_WORKERCONN_PORT",
-      "dispatcher server_prepare cb" );
+      "dispatcher server_prepare cb #2" );
 });
 
 plan tests => 3;
