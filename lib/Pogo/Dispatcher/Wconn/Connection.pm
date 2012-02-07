@@ -1,5 +1,5 @@
 ###########################################
-package Pogo::Dispatcher::Worker::Connection;
+package Pogo::Dispatcher::Wconn::Connection;
 ###########################################
 use strict;
 use warnings;
@@ -200,13 +200,13 @@ __END__
 
 =head1 NAME
 
-Pogo::Dispatcher::Worker::Connection - Pogo worker connection abstraction
+Pogo::Dispatcher::Wconn::Connection - Pogo worker connection abstraction
 
 =head1 SYNOPSIS
 
-    use Pogo::Dispatcher::Worker::Connection;
+    use Pogo::Dispatcher::Wconn::Connection;
 
-    my $guard = Pogo::Dispatcher::Worker::Connection->new();
+    my $guard = Pogo::Dispatcher::Wconn::Connection->new();
 
 =head1 DESCRIPTION
 

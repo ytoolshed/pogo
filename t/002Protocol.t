@@ -6,16 +6,10 @@ use lib "$Bin/../lib";
 use lib "$Bin/lib";
 
 use PogoOne;
+use PogoTest;
 use Test::More;
 use Getopt::Std;
 use Log::Log4perl qw(:easy);
-
-getopts( "v", \my %opts );
-
-if( $opts{ v } ) {
-    Log::Log4perl->easy_init({ level => $DEBUG, layout => "%F{2}-%L: %m%n" });
-    DEBUG "Verbose mode";
-}
 
 my $pogo;
 

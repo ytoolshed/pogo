@@ -1,5 +1,5 @@
 ###########################################
-package Pogo::Dispatcher::Worker::Pool;
+package Pogo::Dispatcher::Wconn::Pool;
 ###########################################
 use strict;
 use warnings;
@@ -10,7 +10,7 @@ use AnyEvent::Handle;
 use AnyEvent::Socket;
 use JSON qw(from_json to_json);
 use Data::Dumper;
-use Pogo::Dispatcher::Worker::Connection;
+use Pogo::Dispatcher::Wconn::Connection;
 use Pogo::Defaults qw(
   $POGO_DISPATCHER_WORKERCONN_HOST
   $POGO_DISPATCHER_WORKERCONN_PORT
@@ -91,7 +91,7 @@ sub _accept_handler {
             }
         );
 
-        my $conn = Pogo::Dispatcher::Worker::Connection->new(
+        my $conn = Pogo::Dispatcher::Wconn::Connection->new(
             worker_handle => $worker_handle
         );
 
@@ -149,13 +149,13 @@ __END__
 
 =head1 NAME
 
-Pogo::Dispatcher::WorkerConnection - Pogo worker connection abstraction
+Pogo::Dispatcher::Wconn::Connection - Pogo worker connection abstraction
 
 =head1 SYNOPSIS
 
-    use Pogo::Dispatcher::WorkerConnection;
+    use Pogo::Dispatcher::Wconn::Pool;
 
-    my $guard = Pogo::Dispatcher::WorkerConnection->new();
+    my $guard = Pogo::Dispatcher::Wconn::Pool->new();
 
 =head1 DESCRIPTION
 

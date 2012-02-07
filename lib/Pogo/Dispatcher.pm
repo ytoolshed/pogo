@@ -7,7 +7,7 @@ use Log::Log4perl qw(:easy);
 use AnyEvent;
 use AnyEvent::Strict;
 use Pogo::Dispatcher;
-use Pogo::Dispatcher::Worker::Pool;
+use Pogo::Dispatcher::Wconn::Pool;
 use base qw(Pogo::Object::Event);
 
 our $VERSION = "0.01";
@@ -31,7 +31,7 @@ sub start {
 ###########################################
     my( $self ) = @_;
 
-    my $w = Pogo::Dispatcher::Worker::Pool->new();
+    my $w = Pogo::Dispatcher::Wconn::Pool->new();
 
     $self->event_forward( { forward_from => $w }, qw( 
         dispatcher_wconn_worker_connect 
@@ -96,10 +96,6 @@ Starts up the daemon.
 =back
 
 =head1 EVENTS
-
-See Pogo::Dispatcher::WorkerConnection for
-C<dispatcher_wconn_connect>, C<dispatcher_prepare>,
-C<dispatcher_wconn_cmd_recv>, C<dispatcher_wconn_worker_ack_recv>.
 
 =head1 LICENSE
 
