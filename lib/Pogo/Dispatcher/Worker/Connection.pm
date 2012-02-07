@@ -1,5 +1,5 @@
 ###########################################
-package Pogo::Dispatcher::Worker::Connection
+package Pogo::Dispatcher::Worker::Connection;
 ###########################################
 use strict;
 use warnings;

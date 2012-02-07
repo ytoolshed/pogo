@@ -46,13 +46,6 @@ sub start {
                     $self->_accept_handler(),
                     $self->_prepare_handler(),
         );
-
-    $self->reg_cb( "dispatcher_wconn_worker_connect", sub {
-        my( $c ) = @_;
-
-        my $conn = Pogo::Dispatcher::Worker::Connection->new();
-        $conn-TODO
-    } );
 }
 
 ###########################################
@@ -92,13 +85,22 @@ sub _accept_handler {
             on_eof   => sub {
                 INFO "Worker $peer_host:$peer_port disconnected.";
                 $worker_handle->destroy();
+                  # remove dead worker from pool
+                delete $self->{ workers }->{ $peer_host };
             }
         );
 
         my $conn = Pogo::Dispatcher::Worker::Connection->new(
             handle => $worker_handle
         );
+
+        $self->event_forward( { forward_from => $conn }, qw( 
+            dispatcher_wconn_cmd_recv 
+            dispatcher_wconn_ack ) );
+
         $conn->start();
+         
+          # add worker to the pool
         $self->{ workers }->{ $peer_host } = $conn;
 
         DEBUG "Firing dispatcher_wconn_worker_connect";
@@ -112,8 +114,32 @@ sub random_worker {
     my( $self ) = @_;
 
       # pick a random worker
-    my $nof_workers = scalar keys %{ $self->{ workers } };
-    return $self->{ dispatchers }->[ rand $nof_dispatchers ];
+    my @workers = keys %{ $self->{ workers } };
+
+    if( !@workers ) {
+        return undef;
+    }
+
+    my $nof_workers = scalar @workers;
+    return $workers[ rand $nof_workers ];
+}
+
+###########################################
+sub to_random_worker {
+###########################################
+    my( $self, $data ) = @_;
+
+    my $random_worker = $self->random_worker();
+
+    if( !defined $random_worker ) {
+        ERROR "No workers";
+        $self->event( "dispatcher_wconn_send_cmd_failed" );
+    }
+
+    DEBUG "Picked random worker $random_worker";
+
+    $self->{ workers }->{ $random_worker }->event(
+      "dispatcher_wconn_send_cmd", $data );
 }
 
 1;
