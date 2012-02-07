@@ -32,6 +32,9 @@ sub event_forward {
     for my $event ( @events ) {
         $opts->{ forward_from }->reg_cb( $event => sub {
             my( $c, @args ) = @_;
+
+            local $Log::Log4perl::caller_depth =
+                  $Log::Log4perl::caller_depth + 3;
     
             DEBUG "Forwarding event $event from ", 
                   ref( $opts->{ forward_from } ), " to ", ref( $self );
