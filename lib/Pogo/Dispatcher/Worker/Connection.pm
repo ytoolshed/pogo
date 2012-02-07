@@ -34,6 +34,7 @@ sub new {
         },
         qp_retries           => 3,
         qp_timeout           => 5,
+        worker_handle => undef,
         %options,
     };
 
@@ -49,16 +50,6 @@ sub new {
 sub start {
 ###########################################
     my( $self ) = @_;
-
-    DEBUG "Starting RPC server on $self->{ host }:$self->{ port }";
-
-      # Start server, accepting workers connections
-    $self->{worker_server_guard} =
-        tcp_server( $self->{ host },
-                    $self->{ port }, 
-                    $self->_accept_handler(),
-                    $self->_prepare_handler(),
-        );
 
     $self->reg_cb( "dispatcher_wconn_worker_connect", 
                    $self->_hello_handler() );
@@ -79,50 +70,6 @@ sub start {
                             prefix       => "dispatcher_wconn_qp_",
                           },
                           qw(idle) );
-}
-
-###########################################
-sub _prepare_handler {
-###########################################
-    my( $self ) = @_;
-
-    return sub {
-        my( $fh, $host, $port ) = @_;
-
-        DEBUG "Listening to $self->{host}:$self->{port} for workers.";
-        $self->event( "dispatcher_wconn_prepare", $host, $port );
-    };
-}
-
-###########################################
-sub _accept_handler {
-###########################################
-    my( $self ) = @_;
-
-    return sub {
-        my( $sock, $peer_host, $peer_port ) = @_;
-
-        DEBUG "$self->{ host }:$self->{ port } accepting ",
-              "connection from $peer_host:$peer_port";
-
-        $self->{ workers }->{ $peer_host }->{ worker_handle } = 
-          AnyEvent::Handle->new(
-            fh       => $sock,
-            no_delay => 1,
-            on_error => sub {
-                ERROR "Worker $peer_host:$peer_port can't connect: $_[2]";
-                $_[0]->destroy;
-            },
-            on_eof   => sub {
-                INFO "Worker $peer_host:$peer_port disconnected.";
-                  # do we need to call ->destroy() on the handle?
-                delete $self->{ workers }->{ $peer_host };
-            }
-        );
-
-        DEBUG "Firing dispatcher_wconn_worker_connect";
-        $self->event( "dispatcher_wconn_worker_connect", $peer_host );
-    };
 }
 
 ###########################################

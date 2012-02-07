@@ -10,6 +10,7 @@ use AnyEvent::Handle;
 use AnyEvent::Socket;
 use JSON qw(from_json to_json);
 use Data::Dumper;
+use Pogo::Dispatcher::Worker::Connection;
 use Pogo::Defaults qw(
   $POGO_DISPATCHER_WORKERCONN_HOST
   $POGO_DISPATCHER_WORKERCONN_PORT
@@ -91,7 +92,7 @@ sub _accept_handler {
         );
 
         my $conn = Pogo::Dispatcher::Worker::Connection->new(
-            handle => $worker_handle
+            worker_handle => $worker_handle
         );
 
         $self->event_forward( { forward_from => $conn }, qw( 

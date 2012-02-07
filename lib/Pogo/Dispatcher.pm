@@ -6,7 +6,8 @@ use warnings;
 use Log::Log4perl qw(:easy);
 use AnyEvent;
 use AnyEvent::Strict;
-use Pogo::Dispatcher::WorkerConnection;
+use Pogo::Dispatcher;
+use Pogo::Dispatcher::Worker::Pool;
 use base qw(Pogo::Object::Event);
 
 our $VERSION = "0.01";
