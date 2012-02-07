@@ -11,8 +11,6 @@ use Log::Log4perl qw(:easy);
 use Pogo::Defaults qw(
   $POGO_DISPATCHER_WORKERCONN_HOST
   $POGO_DISPATCHER_WORKERCONN_PORT
-  $POGO_DISPATCHER_RPC_HOST
-  $POGO_DISPATCHER_RPC_PORT
 );
 
 # Log::Log4perl->easy_init({ level => $DEBUG, layout => "%F{1}-%L: %m%n" });

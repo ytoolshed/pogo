@@ -47,6 +47,11 @@ sub start {
                     $self->_accept_handler(),
                     $self->_prepare_handler(),
         );
+
+    $self->reg_cb( "dispatcher_wconn_send_cmd", sub {
+        my( $cmd, $data ) = @_;
+        $self->to_random_worker( $data );
+    } );
 }
 
 ###########################################

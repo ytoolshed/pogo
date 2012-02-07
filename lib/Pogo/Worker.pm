@@ -8,8 +8,8 @@ use AnyEvent;
 use AnyEvent::Strict;
 use Pogo::Worker::Connection;
 use Pogo::Defaults qw(
-  $POGO_DISPATCHER_RPC_HOST
-  $POGO_DISPATCHER_RPC_PORT
+  $POGO_DISPATCHER_WORKERCONN_HOST
+  $POGO_DISPATCHER_WORKERCONN_PORT
   $POGO_WORKER_DELAY_CONNECT
   $POGO_WORKER_DELAY_RECONNECT
 );
@@ -25,8 +25,8 @@ sub new {
     my $self = {
         delay_connect   => $POGO_WORKER_DELAY_CONNECT->(),
         delay_reconnect => $POGO_WORKER_DELAY_RECONNECT->(),
-        dispatchers =>
-          [ "$POGO_DISPATCHER_RPC_HOST:$POGO_DISPATCHER_RPC_PORT" ],
+        dispatchers => [ 
+         "$POGO_DISPATCHER_WORKERCONN_HOST:$POGO_DISPATCHER_WORKERCONN_PORT" ],
         %options,
     };
 

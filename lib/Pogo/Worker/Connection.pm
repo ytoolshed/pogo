@@ -10,8 +10,8 @@ use AnyEvent::Socket;
 use Data::Dumper;
 use JSON qw(to_json from_json);
 use Pogo::Defaults qw(
-  $POGO_DISPATCHER_RPC_HOST
-  $POGO_DISPATCHER_RPC_PORT
+  $POGO_DISPATCHER_WORKERCONN_HOST
+  $POGO_DISPATCHER_WORKERCONN_PORT
   $POGO_WORKER_DELAY_CONNECT
   $POGO_WORKER_DELAY_RECONNECT
 );
@@ -24,7 +24,8 @@ sub new {
     my($class, %options) = @_;
 
     my $self = {
-        dispatchers => [],
+        dispatcher_host => $POGO_DISPATCHER_WORKERCONN_HOST,
+        dispatcher_port => $POGO_DISPATCHER_WORKERCONN_PORT,
         delay_connect   => $POGO_WORKER_DELAY_CONNECT->(),
         delay_reconnect => $POGO_WORKER_DELAY_RECONNECT->(),
         channels => {
@@ -55,7 +56,9 @@ sub start {
     my $delay_connect = $self->{ delay_connect };
     $delay_connect = $delay_connect->() if ref $delay_connect eq "CODE";
 
-    DEBUG "Connecting to all dispatchers after ${delay_connect}s delay";
+    DEBUG "Connecting to dispatcher ",
+          "$self->{dispatcher_host}:$self->{dispatcher_port} ",
+          "after ${delay_connect}s delay";
 
     my $timer;
     $timer = AnyEvent->timer(
@@ -66,6 +69,7 @@ sub start {
         }
     );
 
+      # we take commands this way, to send them to the dispatcher
     $self->reg_cb( "worker_send_cmd", $self->_send_cmd_handler() );
 
     $self->{ qp }->reg_cb( "next", sub {
@@ -86,17 +90,13 @@ sub start_delayed {
 ###########################################
     my( $self ) = @_;
 
-    DEBUG "Connecting to all dispatchers";
+    my $host = $self->{ dispatcher_host };
+    my $port = $self->{ dispatcher_port };
 
-    for my $dispatcher ( @{ $self->{ dispatchers } } ) {
+    DEBUG "Connecting to dispatcher $host:$port";
 
-        my( $host, $port ) = split /:/, $dispatcher;
-
-        DEBUG "Connecting to dispatcher $host:$port";
-
-        tcp_connect( $host, $port, 
-                     $self->_connect_handler( $host, $port ) );
-    }
+    tcp_connect( $host, $port,
+                 $self->_connect_handler( $host, $port ) );
 }
 
 ###########################################
@@ -127,7 +127,7 @@ sub _connect_handler {
             },
         );
 
-        DEBUG "Sending event 'worker_connected'";
+        DEBUG "Sending event worker_connected";
         $self->event( "worker_connected" );
 
         $self->{ dispatcher_handle }->push_read( 
@@ -240,6 +240,7 @@ sub channel_dispatcher_to_worker {
         msg     => "OK",
     };
 
+    DEBUG "Sending ACK back ";
     $self->{ dispatcher_handle }->push_write( to_json( $ack ) . "\n" );
 }
 
@@ -249,24 +250,23 @@ __END__
 
 =head1 NAME
 
-Pogo::Worker::Connection - Pogo worker connection abstraction
+Pogo::Worker::Connection - Pogo worker/dispatcher connection abstraction
 
 =head1 SYNOPSIS
 
     use Pogo::Worker::Connection;
 
-    my $con = Pogo::Worker::Connection->new();
+    my $con = Pogo::Worker::Connection->new(
+    );
 
     $con->enable_ssl();
 
-    $con->reg_cb(
-      on_connect => sub {},
-      on_request => sub {},
-    );
-
-    $con->connect( "localhost", 9997 );
+    $con->start();
 
 =head1 DESCRIPTION
+
+Maintains a connection to a single dispatcher. A worker typically maintains
+several of these objects.
 
 =head1 METHODS
 
@@ -277,6 +277,16 @@ Pogo::Worker::Connection - Pogo worker connection abstraction
 Constructor.
 
     my $worker = Pogo::Worker::Connection->new();
+
+=back
+
+=head1 EVENTS
+
+=over 4
+
+=item C<worker_send_cmd [$data]>
+
+Incoming: Send the given data structure to the dispatcher.
 
 =back
 

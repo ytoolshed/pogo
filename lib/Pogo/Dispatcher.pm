@@ -42,7 +42,7 @@ sub start {
     $w->start();
 
       # Guard it
-    $self->{ worker_conn } = $w;
+    $self->{ wconn_pool } = $w;
 
     DEBUG "Dispatcher starting";
 }
@@ -52,7 +52,7 @@ sub to_worker {
 ###########################################
     my( $self, $data ) = @_;
 
-    $self->{ worker_conn }->event( "dispatcher_wconn_send_cmd", $data );
+    $self->{ wconn_pool }->event( "dispatcher_wconn_send_cmd", $data );
 }
 
 1;

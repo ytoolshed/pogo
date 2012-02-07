@@ -8,12 +8,9 @@ use AnyEvent;
 use AnyEvent::Strict;
 use AnyEvent::Handle;
 use AnyEvent::Socket;
+use Pogo::Util::QP;
 use JSON qw(from_json to_json);
 use Data::Dumper;
-use Pogo::Defaults qw(
-  $POGO_DISPATCHER_WORKERCONN_HOST
-  $POGO_DISPATCHER_WORKERCONN_PORT
-);
 use base qw(Pogo::Object::Event);
 
 our $VERSION = "0.01";
@@ -25,8 +22,6 @@ sub new {
 
     my $self = {
         protocol => "2.0",
-        host     => $POGO_DISPATCHER_WORKERCONN_HOST,
-        port     => $POGO_DISPATCHER_WORKERCONN_PORT,
         channels => {
             0 => "control",
             1 => "worker_to_dispatcher",
