@@ -38,7 +38,7 @@ sub start {
 ###########################################
     my( $self ) = @_;
 
-    DEBUG "Starting RPC server on $self->{ host }:$self->{ port }";
+    DEBUG "Starting worker server on $self->{ host }:$self->{ port }";
 
       # Start server, accepting workers connections
     $self->{worker_server_guard} =

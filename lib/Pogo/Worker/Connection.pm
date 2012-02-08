@@ -33,8 +33,8 @@ sub new {
             1 => "worker_to_dispatcher",
             2 => "dispatcher_to_worker",
         },
-        qp_retries           => 3,
-        qp_timeout           => 5,
+        qp_retries           => 1,
+        qp_timeout           => 10,
         dispatcher_listening => 0,
 
         %options,
@@ -127,6 +127,7 @@ sub _connect_handler {
             },
         );
 
+        DEBUG "dispatcher_handle: $self->{dispatcher_handle}";
         DEBUG "Sending event worker_connected";
         $self->event( "worker_connected" );
 
@@ -182,7 +183,6 @@ sub _protocol_handler {
                 return;
             }
     
-            INFO "Switching channel to $channel";
             my $method = "channel_$self->{channels}->{$channel}";
     
               # Call the channel-specific handler
@@ -240,7 +240,8 @@ sub channel_dispatcher_to_worker {
         msg     => "OK",
     };
 
-    DEBUG "Sending ACK back ";
+    DEBUG "Sending ACK back to handle ", 
+          $self->{dispatcher_handle}, ": ", Dumper( $ack );
     $self->{ dispatcher_handle }->push_write( to_json( $ack ) . "\n" );
 }
 

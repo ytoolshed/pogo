@@ -46,8 +46,9 @@ sub start {
 ###########################################
     my( $self ) = @_;
 
-    $self->reg_cb( "dispatcher_wconn_worker_connect", 
-                   $self->_hello_handler() );
+    DEBUG "Dispatcher starting wconn connection";
+
+    $self->_hello_handler();
 
     $self->reg_cb( "dispatcher_wconn_send_cmd", $self->_send_cmd_handler() );
 
@@ -72,20 +73,18 @@ sub _hello_handler {
 ###########################################
     my( $self ) = @_;
 
-    return sub {
-        DEBUG "Sending greeting";
+    DEBUG "Sending greeting";
 
-        my $data = { msg => "Hello, worker.",
-                     protocol => $self->{ protocol } };
+    my $data = { msg => "Hello, worker.",
+        protocol => $self->{ protocol } };
 
-          # Send greeting
-        $self->{ worker_handle }->push_write( 
-            to_json( $data ) . "\n" );
+    # Send greeting
+    $self->{ worker_handle }->push_write( 
+        to_json( $data ) . "\n" );
 
-          # Handle communication
-        $self->{ worker_handle }->push_read( 
-            line => $self->_protocol_handler() );
-    };
+    # Handle communication
+    $self->{ worker_handle }->push_read( 
+        line => $self->_protocol_handler() );
 }
 
 ###########################################
