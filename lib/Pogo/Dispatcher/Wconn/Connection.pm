@@ -227,6 +227,14 @@ Fired if the dispatcher receives a command by the worker.
 Fired if the dispatcher receives a reply to a command sent to the worker
 earlier.
 
+=item C<dispatcher_wconn_ack>
+
+Dispatcher received a worker's ACK on a command sent to it earlier.
+
+=item C<dispatcher_wconn_qp_idle>
+
+The queue processor has accomplished all pending requests.
+
 =back
 
 The communication between dispatcher and worker happens on two 

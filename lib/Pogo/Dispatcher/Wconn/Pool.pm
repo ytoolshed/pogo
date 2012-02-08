@@ -139,7 +139,7 @@ sub to_random_worker {
 
     if( !defined $random_worker ) {
         ERROR "No workers";
-        $self->event( "dispatcher_wconn_send_cmd_failed" );
+        $self->event( "dispatcher_no_workers" );
     }
 
     DEBUG "Picked random worker $random_worker";
@@ -178,7 +178,7 @@ Constructor.
 
 =over 4
 
-=item C<dispatcher_wconn_connect>
+=item C<dispatcher_wconn_worker_connect>
 
 Fired if a worker connects. Arguments: C<$worker_host>.
 
@@ -191,10 +191,13 @@ to incoming workers. Arguments: C<$host>, $C<$port>.
 
 Fired if the dispatcher receives a command by the worker.
 
-=item C<dispatcher_wconn_worker_reply_recv>
+=item C<dispatcher_wconn_ack>
 
-Fired if the dispatcher receives a reply to a command sent to the worker
-earlier.
+Dispatcher received a worker's ACK on a command sent to it earlier.
+
+=item C<dispatcher_no_workers>
+
+Fired if a command has been submitted but there are no workers connected.
 
 =back
 
