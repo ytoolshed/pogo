@@ -106,8 +106,10 @@ sub _accept_handler {
 
         $conn->start();
          
+        my $worker_id = "$peer_host:$peer_port";
+
           # add worker to the pool
-        $self->{ workers }->{ $peer_host } = $conn;
+        $self->{ workers }->{ $worker_id } = $conn;
 
         DEBUG "Firing dispatcher_wconn_worker_connect";
         $self->event( "dispatcher_wconn_worker_connect", $peer_host );
@@ -121,6 +123,8 @@ sub random_worker {
 
       # pick a random worker
     my @workers = keys %{ $self->{ workers } };
+
+    DEBUG "Picking from ", scalar @workers, " workers";
 
     if( !@workers ) {
         return undef;

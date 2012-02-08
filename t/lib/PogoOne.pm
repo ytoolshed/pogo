@@ -25,6 +25,14 @@ sub new {
 
     bless $self, $class;
 
+    $self->{ worker } = Pogo::Worker->new(
+        delay_connect => 0,
+        dispatchers => [ 
+          "$POGO_DISPATCHER_WORKERCONN_HOST:$POGO_DISPATCHER_WORKERCONN_PORT" ]
+    );
+
+    $self->{ dispatcher } = Pogo::Dispatcher->new();
+
     return $self;
 }
 
@@ -33,13 +41,9 @@ sub start {
 ###########################################
     my( $self ) = @_;
 
-    my $worker = $self->{ worker } = Pogo::Worker->new(
-        delay_connect => 0,
-        dispatchers => [ 
-          "$POGO_DISPATCHER_WORKERCONN_HOST:$POGO_DISPATCHER_WORKERCONN_PORT" ]
-    );
+    my $worker = $self->{ worker };
 
-    my $dispatcher = $self->{ dispatcher } = Pogo::Dispatcher->new();
+    my $dispatcher = $self->{ dispatcher };
 
     $dispatcher->reg_cb( "dispatcher_wconn_prepare", sub {
             local *__ANON__ = 'AE:cb:dispatcher_wconn_prepare';

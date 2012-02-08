@@ -6,14 +6,14 @@ use lib "$Bin/../lib";
 use lib "$Bin/lib";
 
 use PogoOne;
+use PogoTest;
 use Test::More;
+use Data::Dumper;
 use Log::Log4perl qw(:easy);
 use Pogo::Defaults qw(
   $POGO_DISPATCHER_WORKERCONN_HOST
   $POGO_DISPATCHER_WORKERCONN_PORT
 );
-
-# Log::Log4perl->easy_init({ level => $DEBUG, layout => "%F{1}-%L: %m%n" });
 
 my $pogo;
 
@@ -26,14 +26,38 @@ my $worker2 = Pogo::Worker->new(
     "$POGO_DISPATCHER_WORKERCONN_HOST:$POGO_DISPATCHER_WORKERCONN_PORT" ]
 );
 
+my $workers_connected = 0;
+
 $pogo->reg_cb( dispatcher_wconn_worker_connect  => sub {
     my( $c, $worker ) = @_;
 
-    ok( 1, "worker connected" );
+    $workers_connected++;
+
+    ok( 1, "worker $workers_connected connected" );
+
+    if( $workers_connected == 2 ) {
+        $pogo->{ dispatcher }->to_worker( { cmd => "command-by-dispatcher" } );
+    }
 });
 
 $worker2->start();
 
-plan tests => 2;
+my $cmds_received = 0;
+
+$pogo->{ worker }->reg_cb( "worker_dconn_cmd_recv", sub {
+    my( $c, $cmd ) = @_;
+
+    DEBUG "First worker received: ", Dumper( $cmd );
+    is ++$cmds_received, 1, "command received by *one* worker";
+} );
+
+$worker2->reg_cb( "worker_dconn_cmd_recv", sub {
+    my( $c, $cmd ) = @_;
+
+    DEBUG "Second worker received: ", Dumper( $cmd );
+    is ++$cmds_received, 1, "command received by *one* worker";
+} );
+
+plan tests => 3;
 
 $pogo->start();
