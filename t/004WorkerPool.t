@@ -21,7 +21,7 @@ $pogo = PogoOne->new();
 
   # second worker
 my $worker2 = Pogo::Worker->new(
-    delay_connect => 0,
+    delay_connect => sub { 0 },
     dispatchers => [
     "$POGO_DISPATCHER_WORKERCONN_HOST:$POGO_DISPATCHER_WORKERCONN_PORT" ]
 );

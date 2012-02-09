@@ -7,13 +7,13 @@ use Log::Log4perl qw(:easy);
 use AnyEvent;
 use AnyEvent::Strict;
 use AnyEvent::Socket;
+use AnyEvent::Handle;
 use Data::Dumper;
 use JSON qw(to_json from_json);
 use Pogo::Defaults qw(
   $POGO_DISPATCHER_WORKERCONN_HOST
   $POGO_DISPATCHER_WORKERCONN_PORT
   $POGO_WORKER_DELAY_CONNECT
-  $POGO_WORKER_DELAY_RECONNECT
 );
 use Pogo::Util::QP;
 use base "Pogo::Object::Event";
@@ -26,8 +26,7 @@ sub new {
     my $self = {
         dispatcher_host => $POGO_DISPATCHER_WORKERCONN_HOST,
         dispatcher_port => $POGO_DISPATCHER_WORKERCONN_PORT,
-        delay_connect   => $POGO_WORKER_DELAY_CONNECT->(),
-        delay_reconnect => $POGO_WORKER_DELAY_RECONNECT->(),
+        delay_connect   => $POGO_WORKER_DELAY_CONNECT,
         channels => {
             0 => "control",
             1 => "worker_to_dispatcher",
@@ -53,24 +52,12 @@ sub start {
 ###########################################
     my( $self ) = @_;
 
-    my $delay_connect = $self->{ delay_connect };
-    $delay_connect = $delay_connect->() if ref $delay_connect eq "CODE";
-
-    DEBUG "Connecting to dispatcher ",
-          "$self->{dispatcher_host}:$self->{dispatcher_port} ",
-          "after ${delay_connect}s delay";
-
-    my $timer;
-    $timer = AnyEvent->timer(
-        after => $delay_connect,
-        cb    => sub {
-            undef $timer;
-            $self->start_delayed();
-        }
-    );
-
       # we take commands this way, to send them to the dispatcher
     $self->reg_cb( "worker_send_cmd", $self->_send_cmd_handler() );
+
+      # on receiving this event, (re)start the worker after a delay
+    $self->reg_cb( "start_delayed", $self->start_delayed() );
+    $self->event( "start_delayed" );
 
     $self->{ qp }->reg_cb( "next", sub {
         my( $c, $data ) = @_;
@@ -87,6 +74,29 @@ sub start {
 
 ###########################################
 sub start_delayed {
+###########################################
+    my( $self ) = @_;
+
+    return sub {
+        my $delay_connect = $self->{ delay_connect }->();
+
+        DEBUG "Connecting to dispatcher ",
+              "$self->{dispatcher_host}:$self->{dispatcher_port} ",
+              "after ${delay_connect}s delay";
+
+        my $timer;
+        $timer = AnyEvent->timer(
+            after => $delay_connect,
+            cb    => sub {
+                undef $timer;
+                $self->start_now();
+            }
+        );
+    };
+}
+
+###########################################
+sub start_now {
 ###########################################
     my( $self ) = @_;
 
@@ -109,6 +119,7 @@ sub _connect_handler {
 
         if( !defined $fh ) {
             ERROR "Connect to $host:$port failed: $!";
+            $self->event( "start_delayed" );
             return;
         }
 
@@ -118,12 +129,14 @@ sub _connect_handler {
             on_error => sub { 
                 my ( $hdl, $fatal, $msg ) = @_;
 
-                ERROR "Cannot connect to $host:$port: $msg";
+                ERROR "Error on connection to $host:$port: $msg";
+            $self->event( "start_delayed" );
             },
             on_eof   => sub { 
                 my ( $hdl ) = @_;
 
                 INFO "Dispatcher hung up.";
+                $self->event( "start_delayed" );
             },
         );
 

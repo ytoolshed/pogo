@@ -20,8 +20,8 @@ our $POGO_DISPATCHER_RPC_PORT        = 7654;
 our $POGO_DISPATCHER_WORKERCONN_HOST = "127.0.0.1";
 our $POGO_DISPATCHER_WORKERCONN_PORT = 7655;
 
-our $POGO_WORKER_DELAY_CONNECT       = sub { rand(10) };
-our $POGO_WORKER_DELAY_RECONNECT     = sub { rand(10) };
+our $POGO_WORKER_DELAY_CONNECT       = sub { int rand(10) };
+our $POGO_WORKER_DELAY_RECONNECT     = sub { int rand(10) };
 
 1;
 

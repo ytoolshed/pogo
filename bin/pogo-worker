@@ -5,17 +5,18 @@ use warnings;
 use Getopt::Std;
 use Pod::Usage;
 use Pogo::Worker;
+use Log::Log4perl qw(:easy);
 
 getopts("hv", \my %opts);
 
-pod2usage() if $opts{h};
-
 if($opts{v}) {
-    my $version = $Pogo::Worker::VERSION;
-    die "$0 $version\n";
+    Log::Log4perl->easy_init({ level => $DEBUG, layout => "%F{1}-%L %m%n" });
 }
 
-Pogo::Worker->start();
+pod2usage() if $opts{h};
+
+my $pw = Pogo::Worker->new();
+$pw->start();
 
   # start event loop
 AnyEvent->condvar->recv();

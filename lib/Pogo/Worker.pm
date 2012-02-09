@@ -23,8 +23,7 @@ sub new {
     my($class, %options) = @_;
 
     my $self = {
-        delay_connect   => $POGO_WORKER_DELAY_CONNECT->(),
-        delay_reconnect => $POGO_WORKER_DELAY_RECONNECT->(),
+        delay_connect   => $POGO_WORKER_DELAY_CONNECT,
         dispatchers => [ 
          "$POGO_DISPATCHER_WORKERCONN_HOST:$POGO_DISPATCHER_WORKERCONN_PORT" ],
         %options,
