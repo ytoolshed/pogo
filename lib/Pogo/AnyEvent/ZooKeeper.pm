@@ -8,6 +8,7 @@ use AnyEvent;
 use AnyEvent::Strict;
 use Net::ZooKeeper qw(:errors);
 use Data::Dumper;
+use base qw(Pogo::Object::Event);
 
 ###########################################
 sub new {
@@ -22,32 +23,20 @@ sub new {
 
     bless $self, $class;
 
-    $self->reconnect();
+    $self->reg_cb( "connect", sub {
+        $self->reconnect();
+    } );
 
     return $self;
 }
 
 ###########################################
-sub data_read_len {
-###########################################
-    my( $self, $value ) = @_;
-
-    if( defined $value ) {
-        $self->{ settings }->{ data_read_len } = $value;
-        $self->_settings_apply();
-    }
-
-    return $self->{ settings }->{ data_read_len };
-}
-
-###########################################
-sub _settings_apply {
+sub start {
 ###########################################
     my( $self ) = @_;
 
-    for my $key ( keys %{ $self->{ settings } } ) {
-        $self->{zk}->{ $key } = $self->{ settings }->{ $key };
-    }
+      # Initial connect
+    $self->event( "connect" );
 }
 
 ###########################################
@@ -71,6 +60,8 @@ sub reconnect {
     $self->{ zk } = Net::ZooKeeper->new( @{ $self->{ args } } );
     $self->_settings_apply();
     DEBUG "Got new ZooKeeper handle: ", Dumper( $self->{zk} );
+
+    $self->event( "connected", $self->{zk} );
 }
 
 ###########################################
@@ -89,32 +80,6 @@ sub array2str {
     join ', ', map { scalar2str $_ } @array;
 }
 
-  # Avoid filling the log with repetitive data (especially the 
-  # call to get_children(/pogo/taskq)
-our $LOG_TASKQ_INTERVAL = 60;
-our $LOG_TASKQ_LAST;
-
-sub logresult {
-    my( $method, $argstring, $result ) = @_;
-
-    if( $method eq "get_children" and
-        $argstring eq "/pogo/taskq" ) {
-
-        if( !defined $LOG_TASKQ_LAST or
-            $LOG_TASKQ_LAST + $LOG_TASKQ_INTERVAL < time() ) {
-
-            $LOG_TASKQ_LAST = time();
-            return "($result)";
-        }
-
-        return "(suppressed for " . 
-               ($LOG_TASKQ_INTERVAL + $LOG_TASKQ_LAST - time()) .
-               "s)";
-    }
-
-    return "($result)";
-}
-
   # This logs the ZK method calls and all the arguments we pass
   # to get a better idea what goes in and out of ZooKeeper
 for my $method (qw(
@@ -123,7 +88,7 @@ for my $method (qw(
 )) {
     no strict 'refs';
 
-    *{"Pogo::ZooKeeper::$method"} = sub {
+    *{"Pogo::AnyEvent::ZooKeeper::$method"} = sub {
         my($self, @args) = @_;
 
         my $wantarray = wantarray;
@@ -235,6 +200,29 @@ sub get_error {
     my( $self, @args ) = @_;
 
     return $self->{zk}->get_error( @args );
+}
+
+###########################################
+sub data_read_len {
+###########################################
+    my( $self, $value ) = @_;
+
+    if( defined $value ) {
+        $self->{ settings }->{ data_read_len } = $value;
+        $self->_settings_apply();
+    }
+
+    return $self->{ settings }->{ data_read_len };
+}
+
+###########################################
+sub _settings_apply {
+###########################################
+    my( $self ) = @_;
+
+    for my $key ( keys %{ $self->{ settings } } ) {
+        $self->{zk}->{ $key } = $self->{ settings }->{ $key };
+    }
 }
 
 1;
