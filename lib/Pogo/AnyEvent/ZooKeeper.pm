@@ -8,6 +8,7 @@ use AnyEvent;
 use AnyEvent::Strict;
 use Net::ZooKeeper qw(:errors);
 use Data::Dumper;
+use Pogo::Util::QP;
 use base qw(Pogo::Object::Event);
 
 ###########################################
@@ -16,15 +17,24 @@ sub new {
     my($class, @opts) = @_;
 
     my $self = {
-        zk       => undef,
-        args     => \@opts,
-        settings => {},
+        zk                        => undef,
+        zk_host                   => "localhost",
+        zk_port                   => 2181,
+        zk_connect_retry_interval => 5,
+        connected                 => 0,
+        args                      => \@opts,
+        settings                  => {},
     };
 
     bless $self, $class;
 
+    $self->{ qp } = Pogo::Util::QP->new( timeout => 5 );
+    $self->{ qp }->reg_cb( "next", $self->connect_handler() );
+
     $self->reg_cb( "connect", sub {
-        $self->reconnect();
+        DEBUG "Received request to connect to ZK";
+        $self->{ connected } = 0;
+        $self->{ qp }->push( $self->{ zk_host }, $self->{ zk_port } );
     } );
 
     return $self;
@@ -37,6 +47,34 @@ sub start {
 
       # Initial connect
     $self->event( "connect" );
+}
+
+###########################################
+sub connect_handler {
+###########################################
+    my( $self ) = @_;
+
+    return sub { 
+        my( $c ) = @_;
+
+        my $host = $self->{ zk_host };
+        my $port = $self->{ zk_port };
+
+        DEBUG "Connecting to ZK on $host:$port";
+        $self->{ zk } = Net::ZooKeeper->new( "$host:$port" );
+
+        DEBUG "Testing ZK connection";
+        my $rc = $self->{ zk }->get( "/" );
+
+        if( defined $rc ) {
+            INFO "Connected to ZK on $host:$port";
+            $self->{ connected } = 1;
+            $self->{ qp }->ack();
+        } else {
+            ERROR "Cannot connect to ZK on $host:$port (", 
+                  $self->{ zk }->get_error(), "). Will retry.";
+        }
+    };
 }
 
 ###########################################
@@ -237,21 +275,19 @@ Pogo::AnyEvent::ZooKeeper - Event-based ZooKeeper Interface
 
     use Pogo::AnyEvent::ZooKeeper;
 
+    my $cv = AnyEvent->condvar();
+
     my $zk = Pogo::AnyEvent::ZooKeeper->new();
 
     $zk->create( "/some/node", sub {
         my( $key, $value ) = @_;
-        print "Done\n";
+
+        $cv->send();
     });
 
-    $zk->set( "/some/node", "another_value", sub {
-        print "Done\n";
-    });
+    # ... other asynchronous stuff happening meanwhile ...
 
-    $zk->get( "/some/node", sub {
-        my( $key, $value ) = @_;
-        ...
-    });
+    $cv->recv();
 
 =head1 DESCRIPTION
 
