@@ -5,7 +5,7 @@ package Pogo;
 use strict;
 use warnings;
 
-our $VERSION = "0.01";
+our $VERSION = "5.00";
 
 ###########################################
 sub new {
