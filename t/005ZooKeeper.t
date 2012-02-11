@@ -10,11 +10,14 @@ use Data::Dumper;
 use Log::Log4perl qw(:easy);
 use PogoTest;
 use Pogo::AnyEvent::ZooKeeper;
+use Net::ZooKeeper qw(:errors :node_flags :acls);
 
-my $nof_tests = 1;
+my $nof_tests = 2;
 plan tests => $nof_tests;
 
 my $zk = Pogo::AnyEvent::ZooKeeper->new();
+
+my $testpath = "/test-123";
 
 SKIP: {
 
@@ -27,8 +30,22 @@ SKIP: {
   $cv->recv();
 
   if( ! $zk->ping() ) {
-      skip "No ZooKeeper running", $nof_tests;
+      skip "No ZooKeeper running on " . $zk->netloc(), $nof_tests;
   }
   
   ok 1, "ZooKeeper up on " . $zk->netloc();
+
+  my $del = AnyEvent->condvar();
+  $zk->delete( $testpath, sub {
+      $del->send();
+  } );
+  $del->recv();
+
+  $zk->create( $testpath, "blech-value", 
+               'flags' => ZOO_EPHEMERAL,
+               'acl'   => ZOO_OPEN_ACL_UNSAFE,
+                sub {
+                    my( $c, $rc ) = @_;
+                    is $rc, $testpath, "create";
+                } );
 }

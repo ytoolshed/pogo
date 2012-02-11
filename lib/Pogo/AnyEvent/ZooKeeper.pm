@@ -189,7 +189,14 @@ sub cmd_handler {
             $rc[0] = $self->{zk}->$method( @args );
         }
 
-        if ( $self->is_hosed() ) {
+        if ( $self->is_ok() or ! $self->is_hosed() ) {
+            # Success.
+            $self->{ cmd_queue }->ack();
+            if( $logger->is_debug() ) {
+                $self->cmd_log( $method, \@args, $self->get_error(), \@rc );
+            }
+            $callback->( $self, @rc );
+        } else {
             ERROR "ZK connection error: ", $self->get_error();
 
             # ZooKeeper.pm says:
@@ -203,13 +210,6 @@ sub cmd_handler {
             $self->event( "connect" );
 
             # Not sending ACK, current operation will be retried
-        } else {
-            # Success.
-            $self->{ cmd_queue }->ack();
-            if( $logger->is_debug() ) {
-                $self->cmd_log( $method, \@args, \@rc );
-            }
-            $callback->( $self, @rc );
         }
     };
 }
@@ -217,9 +217,10 @@ sub cmd_handler {
 ###########################################
 sub cmd_log {
 ###########################################
-    my( $self, $method, $args, $rc ) = @_;
+    my( $self, $method, $args, $err, $rc ) = @_;
 
-    DEBUG "ZK: $method args=", Dumper( $args ), " rc=", Dumper( $rc );
+    DEBUG "ZK: $method args=", Dumper( $args ), " err=$err",
+          " rc=", Dumper( $rc );
 }
 
 ###########################################
@@ -233,6 +234,20 @@ sub mk_methods {
     )) {
         $self->mk_method( $method );
     }
+}
+
+###########################################
+sub is_ok {
+###########################################
+    my( $self ) = @_;
+
+    my $err =  $self->{zk}->get_error();
+
+    if( $err == ZOK ) {
+        return 1;
+    }
+
+    return 0;
 }
 
 ###########################################
