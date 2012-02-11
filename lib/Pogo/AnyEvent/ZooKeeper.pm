@@ -41,6 +41,22 @@ sub new {
 }
 
 ###########################################
+sub ping {
+###########################################
+    my( $self ) = @_;
+
+    DEBUG "Testing ZK connection";
+
+    my $rc = $self->{ zk }->get( "/" );
+
+    if( defined $rc ) {
+        return 1;
+    }
+
+    return 0;
+}
+
+###########################################
 sub start {
 ###########################################
     my( $self ) = @_;
@@ -63,19 +79,30 @@ sub connect_handler {
         DEBUG "Connecting to ZK on $host:$port";
         $self->{ zk } = Net::ZooKeeper->new( "$host:$port" );
 
-        DEBUG "Testing ZK connection";
-        my $rc = $self->{ zk }->get( "/" );
+        my $rc = $self->ping();
 
         if( defined $rc ) {
             INFO "Connected to ZK on $host:$port";
             $self->{ connected } = 1;
             $self->{ qp }->ack();
+            $self->event( "zk_connect_ok" );
         } else {
+            $self->event( "zk_connect_error", $self->{ zk }->get_error() );
             ERROR "Cannot connect to ZK on $host:$port (", 
                   $self->{ zk }->get_error(), "). Will retry.";
         }
     };
 }
+
+###########################################
+sub netloc {
+###########################################
+    my( $self ) = @_;
+
+    return "$self->{ zk_host }:$self->{ zk_port }";
+}
+
+# TODO
 
 ###########################################
 sub reconnect {
@@ -327,6 +354,10 @@ Set a lock.
 =item C<unlock( $path )>
 
 Release a lock.
+
+=item C< probe() >
+
+Test if we can connect to a ZooKeeper instance.
 
 =back
 
