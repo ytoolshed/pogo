@@ -8,6 +8,7 @@ use lib "$Bin/lib";
 use Test::More;
 use Data::Dumper;
 use Log::Log4perl qw(:easy);
+use PogoTest;
 use Pogo::AnyEvent::ZooKeeper;
 
 my $nof_tests = 1;

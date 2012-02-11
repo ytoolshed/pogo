@@ -145,7 +145,7 @@ sub mk_method {
 
     my $pkg = __PACKAGE__;
 
-    *{"$pkg::$method"} = sub {
+    *{"${pkg}::$method"} = sub {
         my($self, @args) = @_;
 
         my $wantarray = wantarray;
@@ -166,46 +166,52 @@ sub mk_method {
 ###########################################
 sub cmd_handler {
 ###########################################
-    my( $self, $data ) = @_;
+    my( $self ) = @_;
 
-    my $method    = $data->{ method };
-    my $callback  = $data->{ callback };
-    my @args      = @{ $data->{ args } };
-    my $wantarray = $data->{ wantarray };
-    my $logger    = get_logger();
+    return sub {
+        my( $c, $data ) = @_;
 
-    my @rc;
+        DEBUG "cmd_handler: ", Dumper( $data );
+     
+        my $method    = $data->{ method };
+        my $callback  = $data->{ callback };
+        my @args      = @{ $data->{ args } };
+        my $wantarray = $data->{ wantarray };
+        my $logger    = get_logger();
 
-    no strict 'refs';
+        my @rc;
 
-    if( $wantarray ) {
-        @rc = $self->{zk}->$method( @args );
-    } else {
-        $rc[0] = $self->{zk}->$method( @args );
-    }
+        no strict 'refs';
 
-    if ( $self->is_hosed() ) {
-        ERROR "ZK connection error: ", $self->get_error();
-
-        # ZooKeeper.pm says:
-        # "If the error code is greater than ZAPIERROR, then a 
-        # connection error or server error has occurred and the 
-        # client should probably close the connection by undefining 
-        # the Net::ZooKeeper handle object and, if necessary, attempt 
-        # to create a new connection to the ZooKeeper cluster."
-
-        # try to re-establish a lost ZK connection
-        $self->event( "connect" );
-
-        # Not sending ACK, current operation will be retried
-    } else {
-        # Success.
-        $self->{ cmd_queue }->ack();
-        if( $logger->is_debug() ) {
-            $self->cmd_log( $method, \@args, \@rc );
+        if( $wantarray ) {
+            @rc = $self->{zk}->$method( @args );
+        } else {
+            $rc[0] = $self->{zk}->$method( @args );
         }
-        $callback->( $self, @rc );
-    }
+
+        if ( $self->is_hosed() ) {
+            ERROR "ZK connection error: ", $self->get_error();
+
+            # ZooKeeper.pm says:
+            # "If the error code is greater than ZAPIERROR, then a 
+            # connection error or server error has occurred and the 
+            # client should probably close the connection by undefining 
+            # the Net::ZooKeeper handle object and, if necessary, attempt 
+            # to create a new connection to the ZooKeeper cluster."
+
+            # try to re-establish a lost ZK connection
+            $self->event( "connect" );
+
+            # Not sending ACK, current operation will be retried
+        } else {
+            # Success.
+            $self->{ cmd_queue }->ack();
+            if( $logger->is_debug() ) {
+                $self->cmd_log( $method, \@args, \@rc );
+            }
+            $callback->( $self, @rc );
+        }
+    };
 }
 
 ###########################################
