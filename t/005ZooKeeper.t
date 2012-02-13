@@ -9,11 +9,21 @@ use Test::More;
 use Data::Dumper;
 use Log::Log4perl qw(:easy);
 use PogoTest;
-use Pogo::AnyEvent::ZooKeeper;
-use Net::ZooKeeper qw(:errors :node_flags :acls);
 
-my $nof_tests = 2;
-plan tests => $nof_tests;
+
+BEGIN {
+    eval q{use Net::ZooKeeper};
+
+    if( $@ ) {
+        plan skip_all => "Net::ZooKeeper not installed";
+    } else {
+        our $nof_tests = 2;
+        plan tests => $nof_tests;
+    }
+}
+
+use Pogo::AnyEvent::ZooKeeper; 
+use Net::ZooKeeper qw(:errors :node_flags :acls);
 
 my $zk = Pogo::AnyEvent::ZooKeeper->new();
 
