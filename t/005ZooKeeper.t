@@ -10,6 +10,7 @@ use Data::Dumper;
 use Log::Log4perl qw(:easy);
 use PogoTest;
 
+our $nof_tests;
 
 BEGIN {
     eval q{use Net::ZooKeeper};
