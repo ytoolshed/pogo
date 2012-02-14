@@ -43,9 +43,9 @@ sub start {
     $self->{ wconn_pool } = $w; # guard it or it'll vanish
 
       # Listen to requests from the API
-#    my $api = Pogo::Dispatcher::API->new();
-#    $api->start();
-#    $self->{ api } = $api; # guard it or it'll vanish
+    my $api = Pogo::Dispatcher::API->new();
+    $api->start();
+    $self->{ api } = $api; # guard it or it'll vanish
 
     DEBUG "Dispatcher starting";
 }

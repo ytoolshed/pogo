@@ -60,7 +60,7 @@ sub start {
       },
     );
 
-    $httpd->run;
+    $self->{ httpd } = $httpd; # guard
 
     $self->reg_cb( "dispatcher_api_send_cmd", sub {
         my( $cmd, $data ) = @_;
