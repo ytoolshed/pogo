@@ -46,12 +46,15 @@ sub start {
       '/' => sub {
         my( $httpd, $req ) = @_;
 
+        DEBUG "Received HTTP request on /";
+
         my $index_page;
         my $error_page = "Whoops. Fail Whale";
 
         my $rc = $self->{ tmpl }->process( "index.tmpl", {}, $index_page );
 
         if( $rc ) {
+            DEBUG "Template rendered ok";
             $req->respond( { content => ['text/html', $index_page ] } );
         } else {
             ERROR "Template error: ", $self->{ tmpl }->error();
