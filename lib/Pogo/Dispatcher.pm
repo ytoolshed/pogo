@@ -44,6 +44,8 @@ sub start {
 
       # Listen to requests from the API
     my $api = Pogo::Dispatcher::API->new();
+    $self->event_forward( { forward_from => $api }, qw( 
+        dispatcher_api_up ) );
     $api->start();
     $self->{ api } = $api; # guard it or it'll vanish
 

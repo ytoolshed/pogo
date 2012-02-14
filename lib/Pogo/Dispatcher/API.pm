@@ -22,7 +22,7 @@ sub new {
 
     my $self = {
         port          => $POGO_DISPATCHER_API_PORT,
-        tmpl_inc_path => ".",
+        tmpl_inc_path => "./tmpl",
         %options,
     };
 
@@ -51,7 +51,7 @@ sub start {
         my $index_page;
         my $error_page = "Whoops. Fail Whale";
 
-        my $rc = $self->{ tmpl }->process( "index.tmpl", {}, $index_page );
+        my $rc = $self->{ tmpl }->process( "index.tmpl", {}, \$index_page );
 
         if( $rc ) {
             DEBUG "Template rendered ok";
@@ -64,6 +64,11 @@ sub start {
     );
 
     $self->{ httpd } = $httpd; # guard
+
+      # TODO: Probably not 100% correct, but AnyEvent::HTTPD::HTTPServer
+      # doesn't provide an event indicating that he server has bound
+      # the socket.
+    $self->event( "dispatcher_api_up" );
 
     $self->reg_cb( "dispatcher_api_send_cmd", sub {
         my( $cmd, $data ) = @_;
