@@ -1,17 +1,19 @@
 ###########################################
-package Pogo::Dispatcher;
+package Pogo::Dispatcher::API;
 ###########################################
 use strict;
 use warnings;
 use Log::Log4perl qw(:easy);
 use AnyEvent;
 use AnyEvent::Strict;
-use Pogo::Dispatcher;
-use Pogo::Dispatcher::API;
-use Pogo::Dispatcher::Wconn::Pool;
+use AnyEvent::HTTPD;
+use JSON qw(from_json to_json);
+use Data::Dumper;
+use Template;
+use Pogo::Defaults qw(
+  $POGO_DISPATCHER_API_PORT
+);
 use base qw(Pogo::Object::Event);
-
-our $VERSION = "0.01";
 
 ###########################################
 sub new {
@@ -19,12 +21,16 @@ sub new {
     my($class, %options) = @_;
 
     my $self = {
+        port          => $POGO_DISPATCHER_API_PORT,
+        tmpl_inc_path => ".",
         %options,
     };
 
-    bless $self, $class;
+    $self->{ tmpl } = Template->new( {
+        INCLUDE_PATH => $self->{ tmpl_inc_path },
+    } );
 
-    return $self;
+    bless $self, $class;
 }
 
 ###########################################
@@ -32,30 +38,34 @@ sub start {
 ###########################################
     my( $self ) = @_;
 
-      # Handle a pool of workers, as they connect
-    my $w = Pogo::Dispatcher::Wconn::Pool->new();
-    $self->event_forward( { forward_from => $w }, qw( 
-        dispatcher_wconn_worker_connect 
-        dispatcher_wconn_prepare 
-        dispatcher_wconn_cmd_recv 
-        dispatcher_wconn_ack ) );
-    $w->start();
-    $self->{ wconn_pool } = $w; # guard it or it'll vanish
+    DEBUG "Starting API HTTP server on port $self->{ port }";
 
-      # Listen to requests from the API
-#    my $api = Pogo::Dispatcher::API->new();
-#    $api->start();
-#    $self->{ api } = $api; # guard it or it'll vanish
+    my $httpd = AnyEvent::HTTPD->new( port => $self->{ port });
+    
+    $httpd->reg_cb(
+      '/' => sub {
+        my( $httpd, $req ) = @_;
 
-    DEBUG "Dispatcher starting";
-}
+        my $index_page;
+        my $error_page = "Whoops. Fail Whale";
 
-###########################################
-sub to_worker {
-###########################################
-    my( $self, $data ) = @_;
+        my $rc = $self->{ tmpl }->process( "index.tmpl", {}, $index_page );
 
-    $self->{ wconn_pool }->event( "dispatcher_wconn_send_cmd", $data );
+        if( $rc ) {
+            $req->respond( { content => ['text/html', $index_page ] } );
+        } else {
+            ERROR "Template error: ", $self->{ tmpl }->error();
+            $req->respond( { content => ['text/html', $error_page ] } );
+        }
+      },
+    );
+
+    $httpd->run;
+
+    $self->reg_cb( "dispatcher_api_send_cmd", sub {
+        my( $cmd, $data ) = @_;
+        DEBUG "Received API command: $cmd";
+    } );
 }
 
 1;
@@ -64,25 +74,18 @@ __END__
 
 =head1 NAME
 
-Pogo::Dispatcher - Pogo Dispatcher Daemon
+Pogo::Dispatcher::API - Standalone API server for Pogo Clients
 
 =head1 SYNOPSIS
 
-    use Pogo::Dispatcher;
+    use Pogo::Dispatcher::API;
 
-    my $worker = Pogo::Dispatcher->new(
-      worker_connect  => sub {
-          print "Worker $_[0] connected\n";
-      },
-    );
-
-    Pogo::Dispatcher->start();
+    my $api = Pogo::Dispatcher::API->new();
+    $api->start();
 
 =head1 DESCRIPTION
 
-Main code for the Pogo dispatcher daemon. 
-
-Waits for workers to connect.
+Standalone HTTPD server to responde to Pogo API client requests.
 
 =head1 METHODS
 
@@ -94,11 +97,19 @@ Constructor.
 
 =item C<start()>
 
-Starts up the daemon.
+Start the server.
 
 =back
 
 =head1 EVENTS
+
+=over 4
+
+=item C<dispatcher_api_up>
+
+Fired as soon as the HTTPD server is up.
+
+=back
 
 =head1 LICENSE
 
