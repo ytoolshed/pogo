@@ -10,7 +10,9 @@ use AnyEvent::HTTPD;
 use JSON qw(from_json to_json);
 use Data::Dumper;
 use Template;
+use Plack::Handler::AnyEvent::HTTPD;
 use Pogo::Defaults qw(
+  $POGO_DISPATCHER_API_HOST
   $POGO_DISPATCHER_API_PORT
 );
 use base qw(Pogo::Object::Event);
@@ -21,14 +23,10 @@ sub new {
     my($class, %options) = @_;
 
     my $self = {
+        host          => $POGO_DISPATCHER_API_HOST,
         port          => $POGO_DISPATCHER_API_PORT,
-        tmpl_inc_path => "./tmpl",
         %options,
     };
-
-    $self->{ tmpl } = Template->new( {
-        INCLUDE_PATH => $self->{ tmpl_inc_path },
-    } );
 
     bless $self, $class;
 }
@@ -40,40 +38,33 @@ sub start {
 
     DEBUG "Starting API HTTP server on port $self->{ port }";
 
-    my $httpd = AnyEvent::HTTPD->new( port => $self->{ port });
-    
-    $httpd->reg_cb(
-      '/' => sub {
-        my( $httpd, $req ) = @_;
-
-        DEBUG "Received HTTP request on /";
-
-        my $index_page;
-        my $error_page = "Whoops. Fail Whale";
-
-        my $rc = $self->{ tmpl }->process( "index.tmpl", {}, \$index_page );
-
-        if( $rc ) {
-            DEBUG "Template rendered ok";
-            $req->respond( { content => ['text/html', $index_page ] } );
-        } else {
-            ERROR "Template error: ", $self->{ tmpl }->error();
-            $req->respond( { content => ['text/html', $error_page ] } );
+    my $httpd = Plack::Handler::AnyEvent::HTTPD->new(
+        host => $self->{ host },
+        port => $self->{ port },
+        server_ready => sub {
+            $self->event( "dispatcher_api_up" );
         }
-      },
     );
 
-    $self->{ httpd } = $httpd; # guard
+    $httpd->register_service( $self->app() );
 
-      # TODO: Probably not 100% correct, but AnyEvent::HTTPD::HTTPServer
-      # doesn't provide an event indicating that he server has bound
-      # the socket.
-    $self->event( "dispatcher_api_up" );
+    $self->{ httpd } = $httpd; # guard
 
     $self->reg_cb( "dispatcher_api_send_cmd", sub {
         my( $cmd, $data ) = @_;
         DEBUG "Received API command: $cmd";
     } );
+}
+
+###########################################
+sub app {
+###########################################
+    my( $self ) = @_;
+
+    no strict 'refs';
+    my $app_pkg = __PACKAGE__ . "::PSGI";
+    eval "require $app_pkg";
+    return $app_pkg->app();
 }
 
 1;
@@ -82,7 +73,7 @@ __END__
 
 =head1 NAME
 
-Pogo::Dispatcher::API - Standalone API server for Pogo Clients
+Pogo::Dispatcher::API - Dispatcher's API interface
 
 =head1 SYNOPSIS
 
@@ -93,7 +84,7 @@ Pogo::Dispatcher::API - Standalone API server for Pogo Clients
 
 =head1 DESCRIPTION
 
-Standalone HTTPD server to responde to Pogo API client requests.
+Dispatcher internal API to allow querying its internal status.
 
 =head1 METHODS
 
