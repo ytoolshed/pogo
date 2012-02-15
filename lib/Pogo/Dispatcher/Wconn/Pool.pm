@@ -27,6 +27,7 @@ sub new {
     my $self = {
         host     => $POGO_DISPATCHER_WORKERCONN_HOST,
         port     => $POGO_DISPATCHER_WORKERCONN_PORT,
+        workers  => {},
         %options,
     };
 
@@ -150,6 +151,14 @@ sub to_random_worker {
 
     $self->{ workers }->{ $random_worker }->event(
       "dispatcher_wconn_send_cmd", $data );
+}
+
+###########################################
+sub workers_connected {
+###########################################
+    my( $self ) = @_;
+
+    return keys %{ $self->{ workers } };
 }
 
 1;

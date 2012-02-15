@@ -43,7 +43,9 @@ sub start {
     $self->{ wconn_pool } = $w; # guard it or it'll vanish
 
       # Listen to requests from the API
-    my $api = Pogo::Dispatcher::API->new();
+    my $api = Pogo::Dispatcher::API->new(
+        dispatcher => $self
+    );
     $self->event_forward( { forward_from => $api }, qw( 
         dispatcher_api_up ) );
     $api->start();

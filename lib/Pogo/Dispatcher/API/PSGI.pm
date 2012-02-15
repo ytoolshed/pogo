@@ -3,17 +3,27 @@ package Pogo::Dispatcher::API::PSGI;
 ###########################################
 use strict;
 use warnings;
+use JSON qw(from_json to_json);
 
 ###########################################
 sub app {
 ###########################################
-    my( $class ) = @_;
+    my( $class, $dispatcher ) = @_;
 
       # Plack app handler
     return sub {
         my( $env ) = @_;
 
-        return [ 200, [ 'Content-Type' => 'text/plain' ], [ 'Hello there' ] ];
+        if( $env->{PATH_INFO} eq '/status' ) {
+            return [ 200, [ 'Content-Type' => 'application/json' ], 
+                          [ to_json( { workers => [
+                              $dispatcher->{ wconn_pool }->workers_connected ] 
+                            } )
+                          ] ];
+        } else {
+            return [ 200, [ 'Content-Type' => 'text/plain' ], 
+                          [ 'unknown request' ] ];
+        }
     };
 }
 

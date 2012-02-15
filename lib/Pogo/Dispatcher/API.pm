@@ -25,6 +25,7 @@ sub new {
     my $self = {
         host          => $POGO_DISPATCHER_API_HOST,
         port          => $POGO_DISPATCHER_API_PORT,
+        dispatcher    => undef,
         %options,
     };
 
@@ -64,7 +65,7 @@ sub app {
     no strict 'refs';
     my $app_pkg = __PACKAGE__ . "::PSGI";
     eval "require $app_pkg";
-    return $app_pkg->app();
+    return $app_pkg->app( $self->{ dispatcher });
 }
 
 1;
