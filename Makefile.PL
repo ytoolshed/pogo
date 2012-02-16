@@ -66,6 +66,8 @@ requires 'URI';
 requires 'YAML::XS';
 requires 'common::sense';
 requires 'constant';
+requires 'Plack';
+requires 'Plack::Handler::AnyEvent::HTTPD';
 
 test_requires 'FindBin';
 test_requires 'Net::SSLeay';
