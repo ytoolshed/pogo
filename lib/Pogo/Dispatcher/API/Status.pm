@@ -1,50 +1,50 @@
 ###########################################
-package Pogo::Dispatcher::API::PSGI;
+package Pogo::Dispatcher::API::Status;
 ###########################################
 use strict;
 use warnings;
-use JSON qw(from_json to_json);
-use Plack::App::URLMap;
+use Log::Log4perl qw(:easy);
+use AnyEvent;
+use AnyEvent::Strict;
 
 ###########################################
 sub app {
 ###########################################
     my( $class, $dispatcher ) = @_;
 
-      # Plack app handler
     return sub {
         my( $env ) = @_;
 
-        my $app = Plack::App::URLMap->new;
-
-          # map URLs to modules, like /status => API/Status.pm etc.
-        for my $api ( qw( status v1 ) ) {
-            my $module = __PACKAGE__;
-            $module =~ s/::[^:]*$//;
-            $module .= "::" . ucfirst( $api );
-            eval "require $module";
-            if( $@ ) {
-                die "Failed to load module $module ($@)";
-            }
-            $app->mount( "/$api" => $module->app( $dispatcher ) );
+        if( $env->{PATH_INFO} eq '/status' ) {
+            return [ 200, [ 'Content-Type' => 'application/json' ], 
+                          [ to_json( { workers => [
+                              $dispatcher->{ wconn_pool }->workers_connected ] 
+                            } )
+                          ] ];
+        } else {
+            return [ 200, [ 'Content-Type' => 'text/plain' ], 
+                          [ "unknown request: $env->{PATH_INFO}" ] ];
         }
     };
 }
+
+1;
 
 __END__
 
 =head1 NAME
 
-Pogo::Dispatcher::API::PSGI - Pogo Dispatcher Internal API PSGI interface
+Pogo::Dispatcher::API::Status - Pogo Dispatcher PSGI API
 
 =head1 SYNOPSIS
 
-    use Pogo::Dispatcher::API::PSGI;
-    my $app = Pogo::Dispatcher::API::PSGI->app();
+    use Pogo::Dispatcher::API;
+
+    my $app = Pogo::Dispatcher::API->app();
 
 =head1 DESCRIPTION
 
-App handler for the Pogo dispatcher's internal API.
+PSGI app for Pogo Dispatcher.
 
 =head1 LICENSE
 
