@@ -40,6 +40,8 @@ $pogo->reg_cb( dispatcher_wconn_worker_connect  => sub {
      sub { 
             my( $html ) = @_;
  
+            DEBUG "Response from server: [$html]";
+
             my $data = from_json( $html );
 
             my @workers = @{ $data->{ workers } };

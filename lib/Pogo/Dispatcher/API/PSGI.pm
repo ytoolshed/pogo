@@ -5,6 +5,7 @@ use strict;
 use warnings;
 use JSON qw(from_json to_json);
 use Plack::App::URLMap;
+use Log::Log4perl qw(:easy);
 
 ###########################################
 sub app {
@@ -22,10 +23,14 @@ sub app {
             my $module = __PACKAGE__;
             $module =~ s/::[^:]*$//;
             $module .= "::" . ucfirst( $api );
+
             eval "require $module";
             if( $@ ) {
                 die "Failed to load module $module ($@)";
             }
+
+            DEBUG "Mounting /$api to module $module";
+
             $app->mount( "/$api" => $module->app( $dispatcher ) );
         }
     };

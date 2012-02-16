@@ -15,6 +15,8 @@ sub app {
     return sub {
         my( $env ) = @_;
 
+        DEBUG "Got v1 request";
+
         return [ 200, [ 'Content-Type' => 'text/plain' ], 
                       [ "v1 API request: $env->{PATH_INFO}" ] ];
     };
