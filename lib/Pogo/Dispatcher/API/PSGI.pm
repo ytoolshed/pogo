@@ -12,28 +12,26 @@ sub app {
 ###########################################
     my( $class, $dispatcher ) = @_;
 
-      # Plack app handler
-    return sub {
-        my( $env ) = @_;
+    my $app = Plack::App::URLMap->new;
 
-        my $app = Plack::App::URLMap->new;
+      # map URLs to modules, like /status => API/Status.pm etc.
+    for my $api ( qw( status v1 ) ) {
 
-          # map URLs to modules, like /status => API/Status.pm etc.
-        for my $api ( qw( status v1 ) ) {
-            my $module = __PACKAGE__;
-            $module =~ s/::[^:]*$//;
-            $module .= "::" . ucfirst( $api );
+        my $module = __PACKAGE__;
+        $module =~ s/::[^:]*$//;
+        $module .= "::" . ucfirst( $api );
 
-            eval "require $module";
-            if( $@ ) {
-                die "Failed to load module $module ($@)";
-            }
-
-            DEBUG "Mounting /$api to module $module";
-
-            $app->mount( "/$api" => $module->app( $dispatcher ) );
+        eval "require $module";
+        if( $@ ) {
+            die "Failed to load module $module ($@)";
         }
-    };
+
+        DEBUG "Mounting /$api to module $module";
+
+        $app->mount( "/$api" => $module->app( $dispatcher ) );
+    }
+
+    return $app;
 }
 
 __END__

@@ -6,6 +6,7 @@ use warnings;
 use Log::Log4perl qw(:easy);
 use AnyEvent;
 use AnyEvent::Strict;
+use JSON qw( to_json );
 
 ###########################################
 sub app {
@@ -24,8 +25,11 @@ sub app {
                             } )
                           ] ];
         } else {
-            return [ 200, [ 'Content-Type' => 'text/plain' ], 
-                          [ "unknown request: $env->{PATH_INFO}" ] ];
+            return [ 200, [ 'Content-Type' => 'application/json' ], 
+                          [ to_json( { error => 
+                                  [ "unknown request: $env->{PATH_INFO}" ] 
+                            } )
+                          ] ];
         }
     };
 }

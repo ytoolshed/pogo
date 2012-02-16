@@ -6,6 +6,7 @@ use warnings;
 use Log::Log4perl qw(:easy);
 use AnyEvent;
 use AnyEvent::Strict;
+use JSON qw( to_json );
 
 ###########################################
 sub app {
@@ -17,8 +18,11 @@ sub app {
 
         DEBUG "Got v1 request";
 
-        return [ 200, [ 'Content-Type' => 'text/plain' ], 
-                      [ "v1 API request: $env->{PATH_INFO}" ] ];
+        return [ 200, [ 'Content-Type' => 'application/json' ], 
+                      [ to_json( { error => 
+                              [ "unknown request: $env->{PATH_INFO}" ] 
+                        } )
+                      ] ];
     };
 }
 
