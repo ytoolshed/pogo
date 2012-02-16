@@ -27,7 +27,8 @@ sub app {
     };
 }
 
-1;
+  # so you can use it like 'plackup lib/Pogo/Dispatcher/API/PSGI.pm'
+my $app = __PACKAGE__->app();
 
 __END__
 
