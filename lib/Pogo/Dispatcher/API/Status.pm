@@ -16,21 +16,11 @@ sub app {
     return sub {
         my( $env ) = @_;
 
-        DEBUG "Got status request";
-
-        if( $env->{PATH_INFO} eq '/status' ) {
-            return [ 200, [ 'Content-Type' => 'application/json' ], 
-                          [ to_json( { workers => [
-                              $dispatcher->{ wconn_pool }->workers_connected ] 
-                            } )
-                          ] ];
-        } else {
-            return [ 200, [ 'Content-Type' => 'application/json' ], 
-                          [ to_json( { error => 
-                                  [ "unknown request: $env->{PATH_INFO}" ] 
-                            } )
-                          ] ];
-        }
+        return [ 200, [ 'Content-Type' => 'application/json' ], 
+                      [ to_json( { workers => [
+                          $dispatcher->{ wconn_pool }->workers_connected ] 
+                        } )
+                      ] ];
     };
 }
 
