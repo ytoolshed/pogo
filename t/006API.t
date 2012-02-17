@@ -5,6 +5,7 @@ use FindBin qw($Bin);
 use lib "$Bin/../lib";
 use lib "$Bin/lib";
 use JSON qw( from_json );
+use Pogo::API;
 
 BEGIN {
       # to find the templates in t/tmpl
@@ -20,6 +21,8 @@ use Getopt::Std;
 use Pogo::Defaults qw(
   $POGO_DISPATCHER_CONTROLPORT_PORT
   $POGO_DISPATCHER_CONTROLPORT_HOST
+  $POGO_API_TEST_PORT
+  $POGO_API_TEST_HOST
 );
 
 my $pogo;
@@ -51,10 +54,27 @@ $pogo->reg_cb( dispatcher_wconn_worker_connect  => sub {
             like $workers[0], 
               qr/$POGO_DISPATCHER_CONTROLPORT_HOST:\d+$/, "worker details \#3";
  
-            is $data->{ pogo_version }, $Pogo::VERSION, "pogo version";
+            is $data->{ pogo_version }, $Pogo::VERSION, "pogo version \#4";
      };
 });
 
-plan tests => 4;
+  # Start up test API server
+my $api = Plack::Handler::AnyEvent::HTTPD->new(
+    host => $POGO_API_TEST_HOST,
+    port => $POGO_API_TEST_PORT,
+    server_ready => sub {
+      http_get 
+       "http://$POGO_API_TEST_HOST:$POGO_API_TEST_PORT/status", 
+        sub { 
+           my( $html ) = @_;
+           my $data = from_json( $html );
+           is $data->{ pogo_version }, $Pogo::VERSION, "pogo version \#5";
+        }
+    }
+);
+
+$api->register_service( Pogo::API->app() );
+
+plan tests => 5;
 
 $pogo->start();

@@ -17,7 +17,6 @@ sub app {
     for my $api ( qw( status v1 ) ) {
 
         my $module = __PACKAGE__;
-        $module =~ s/::[^:]*$//;
         $module .= "::" . ucfirst( $api );
 
         eval "require $module";
