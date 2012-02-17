@@ -7,6 +7,8 @@ use Log::Log4perl qw(:easy);
 use AnyEvent;
 use AnyEvent::Strict;
 use JSON qw( to_json );
+use Pogo::Util qw( http_response_json );
+use HTTP::Status qw( :constants );
 
 ###########################################
 sub app {
@@ -18,12 +20,41 @@ sub app {
 
         DEBUG "Got v1 request";
 
-        return [ 200, [ 'Content-Type' => 'application/json' ], 
-                      [ to_json( { error => 
-                              [ "unknown request: $env->{PATH_INFO}" ] 
-                        } )
-                      ] ];
+        my $path = $env->{ PATH_INFO };
+        ( my $command = $path ) =~ s#^/##;
+
+        my %commands = map { $_ => 1} qw( jobinfo jobsubmit );
+
+        if( exists $commands{ $command } ) {
+            no strict 'refs';
+            return $command->( $env );
+        }
+
+        return http_response_json(
+            { error => [ "unknown request: '$path'" ] }, 
+            HTTP_BAD_REQUEST,
+        );
     };
+}
+
+###########################################
+sub jobinfo {
+###########################################
+    my( $env ) = @_;
+
+    return http_response_json(
+        { message => [ "jobinfo ok" ] }
+    );
+}
+
+###########################################
+sub jobsubmit {
+###########################################
+    my( $env ) = @_;
+
+    return http_response_json(
+        { message => [ "jobsubmit ok" ] }
+    );
 }
 
 1;
