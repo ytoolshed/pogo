@@ -49,9 +49,11 @@ $pogo->reg_cb( dispatcher_wconn_worker_connect  => sub {
             is scalar @workers, 1, "One worker connected \#2";
             like $workers[0], 
               qr/$POGO_DISPATCHER_API_HOST:\d+$/, "worker details \#3";
+ 
+            is $data->{ pogo_version }, $Pogo::VERSION, "pogo version";
      };
 });
 
-plan tests => 3;
+plan tests => 4;
 
 $pogo->start();
