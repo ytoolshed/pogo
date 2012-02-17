@@ -9,6 +9,8 @@ use AnyEvent::Strict;
 use JSON qw( to_json );
 use Pogo::Util qw( http_response_json );
 use HTTP::Status qw( :constants );
+use Plack::Request;
+use Data::Dumper;
 
 ###########################################
 sub app {
@@ -42,8 +44,23 @@ sub jobinfo {
 ###########################################
     my( $env ) = @_;
 
+    my $req = Plack::Request->new( $env );
+
+    my $params = $req->parameters();
+
+    if( exists $params->{ jobid } ) {
+
+        return http_response_json(
+            { rc      => "ok",
+              message => "jobid $params->{ jobid }", 
+            }
+        );
+    }
+
     return http_response_json(
-        { message => [ "jobinfo ok" ] }
+        { rc      => "error",
+          message => "jobid missing", 
+        }
     );
 }
 
