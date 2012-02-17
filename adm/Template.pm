@@ -29,7 +29,7 @@ Pogo::XXX - Pogo XXX
 
 =head1 SYNOPSIS
 
-    use Pogo::XX;
+    use Pogo::XXX;
 
     my $xxx = Pogo::XXX->new();
 
