@@ -1,29 +1,25 @@
 ###########################################
-package Pogo::Dispatcher::API::Status;
+package Pogo::Util;
 ###########################################
 use strict;
 use warnings;
 use Log::Log4perl qw(:easy);
-use AnyEvent;
-use AnyEvent::Strict;
 use JSON qw( to_json );
-use Pogo;
-use Pogo::Util qw( http_response_json );
+
+require Exporter;
+our @EXPORT_OK = qw( http_response_json );
+our @ISA = qw( Exporter );
 
 ###########################################
-sub app {
+sub http_response_json {
 ###########################################
-    my( $class, $dispatcher ) = @_;
+    my( $data, $code ) = @_;
 
-    return sub {
-        my( $env ) = @_;
+    $code = 200 if !defined $code;
 
-        return http_response_json( { 
-              pogo_version => $Pogo::VERSION,
-              workers      => 
-                [ $dispatcher->{ wconn_pool }->workers_connected ],
-            } );
-    };
+    return [ $code, [ 'Content-Type' => 'application/json' ], 
+             [ to_json( $data ) ],
+           ];
 }
 
 1;
@@ -32,17 +28,31 @@ __END__
 
 =head1 NAME
 
-Pogo::Dispatcher::API::Status - Pogo Dispatcher PSGI API
+Pogo::Util - Pogo Utilities
 
 =head1 SYNOPSIS
 
-    use Pogo::Dispatcher::API;
+    use Pogo::Util qw( http_response_json );
 
-    my $app = Pogo::Dispatcher::API->app();
+    sub {
+       # ... 
+       return http_response_json( { message => "yay!" } );
+    }
 
 =head1 DESCRIPTION
 
-PSGI app for Pogo Dispatcher.
+Some useful utilities.
+
+=head1 FUNCTIONS
+
+=over 4
+
+=item C<http_response_json( $data, [$code] )> 
+
+Take a data structure and turn it into JSON, take an optional HTTP response 
+code (defaults to OK 200) and return a PSGI-compatible structure for apps.
+
+=back
 
 =head1 LICENSE
 
