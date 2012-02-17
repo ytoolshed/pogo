@@ -1,5 +1,5 @@
 ###########################################
-package Pogo::Dispatcher::API::V1;
+package Pogo::Dispatcher::ControlPort::V1;
 ###########################################
 use strict;
 use warnings;
@@ -64,29 +64,19 @@ sub jobinfo {
     );
 }
 
-###########################################
-sub jobsubmit {
-###########################################
-    my( $env ) = @_;
-
-    return http_response_json(
-        { message => [ "jobsubmit ok" ] }
-    );
-}
-
 1;
 
 __END__
 
 =head1 NAME
 
-Pogo::Dispatcher::API::V1 - Pogo Dispatcher PSGI API
+Pogo::Dispatcher::ControlPort::V1 - Pogo Dispatcher PSGI ControlPort
 
 =head1 SYNOPSIS
 
-    use Pogo::Dispatcher::API::V1;
+    use Pogo::Dispatcher::ControlPort::V1;
 
-    my $app = Pogo::Dispatcher::API::V1->app();
+    my $app = Pogo::Dispatcher::ControlPort::V1->app();
 
 =head1 DESCRIPTION
 

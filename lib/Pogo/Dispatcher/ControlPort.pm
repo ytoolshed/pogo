@@ -1,5 +1,5 @@
 ###########################################
-package Pogo::Dispatcher::API;
+package Pogo::Dispatcher::ControlPort;
 ###########################################
 use strict;
 use warnings;
@@ -12,8 +12,8 @@ use Data::Dumper;
 use Template;
 use Plack::Handler::AnyEvent::HTTPD;
 use Pogo::Defaults qw(
-  $POGO_DISPATCHER_API_HOST
-  $POGO_DISPATCHER_API_PORT
+  $POGO_DISPATCHER_CONTROLPORT_HOST
+  $POGO_DISPATCHER_CONTROLPORT_PORT
 );
 use base qw(Pogo::Object::Event);
 
@@ -23,8 +23,8 @@ sub new {
     my($class, %options) = @_;
 
     my $self = {
-        host          => $POGO_DISPATCHER_API_HOST,
-        port          => $POGO_DISPATCHER_API_PORT,
+        host          => $POGO_DISPATCHER_CONTROLPORT_HOST,
+        port          => $POGO_DISPATCHER_CONTROLPORT_PORT,
         dispatcher    => undef,
         %options,
     };
@@ -37,13 +37,13 @@ sub start {
 ###########################################
     my( $self ) = @_;
 
-    DEBUG "Starting API HTTP server on port $self->{ port }";
+    DEBUG "Starting ControlPort HTTP server on port $self->{ port }";
 
     my $httpd = Plack::Handler::AnyEvent::HTTPD->new(
         host => $self->{ host },
         port => $self->{ port },
         server_ready => sub {
-            $self->event( "dispatcher_api_up" );
+            $self->event( "dispatcher_controlport_up" );
         }
     );
 
@@ -51,9 +51,9 @@ sub start {
 
     $self->{ httpd } = $httpd; # guard
 
-    $self->reg_cb( "dispatcher_api_send_cmd", sub {
+    $self->reg_cb( "dispatcher_controlport_send_cmd", sub {
         my( $cmd, $data ) = @_;
-        DEBUG "Received API command: $cmd";
+        DEBUG "Received ControlPort command: $cmd";
     } );
 }
 
@@ -74,18 +74,19 @@ __END__
 
 =head1 NAME
 
-Pogo::Dispatcher::API - Dispatcher's API interface
+Pogo::Dispatcher::ControlPort - Dispatcher's ControlPort interface
 
 =head1 SYNOPSIS
 
-    use Pogo::Dispatcher::API;
+    use Pogo::Dispatcher::ControlPort;
 
-    my $api = Pogo::Dispatcher::API->new();
-    $api->start();
+    my $cp = Pogo::Dispatcher::ControlPort->new();
+    $cp->start();
 
 =head1 DESCRIPTION
 
-Dispatcher internal API to allow querying its internal status.
+Dispatcher internal ControlPort to allow querying its internal status
+and submitting commands.
 
 =head1 METHODS
 
@@ -105,7 +106,7 @@ Start the server.
 
 =over 4
 
-=item C<dispatcher_api_up>
+=item C<dispatcher_controlport_up>
 
 Fired as soon as the HTTPD server is up.
 

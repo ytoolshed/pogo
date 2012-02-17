@@ -1,53 +1,48 @@
 ###########################################
-package Pogo::Dispatcher::API::PSGI;
+package Pogo::Dispatcher::ControlPort::Status;
 ###########################################
 use strict;
 use warnings;
-use JSON qw(from_json to_json);
-use Plack::App::URLMap;
 use Log::Log4perl qw(:easy);
+use AnyEvent;
+use AnyEvent::Strict;
+use JSON qw( to_json );
+use Pogo;
+use Pogo::Util qw( http_response_json );
 
 ###########################################
 sub app {
 ###########################################
     my( $class, $dispatcher ) = @_;
 
-    my $app = Plack::App::URLMap->new;
+    return sub {
+        my( $env ) = @_;
 
-      # map URLs to modules, like /status => API/Status.pm etc.
-    for my $api ( qw( status v1 ) ) {
-
-        my $module = __PACKAGE__;
-        $module =~ s/::[^:]*$//;
-        $module .= "::" . ucfirst( $api );
-
-        eval "require $module";
-        if( $@ ) {
-            die "Failed to load module $module ($@)";
-        }
-
-        DEBUG "Mounting /$api to module $module";
-
-        $app->mount( "/$api" => $module->app( $dispatcher ) );
-    }
-
-    return $app;
+        return http_response_json( { 
+              pogo_version => $Pogo::VERSION,
+              workers      => 
+                [ $dispatcher->{ wconn_pool }->workers_connected ],
+            } );
+    };
 }
+
+1;
 
 __END__
 
 =head1 NAME
 
-Pogo::Dispatcher::API::PSGI - Pogo Dispatcher Internal API PSGI interface
+Pogo::Dispatcher::ControlPort::Status - Pogo Dispatcher PSGI ControlPort
 
 =head1 SYNOPSIS
 
-    use Pogo::Dispatcher::API::PSGI;
-    my $app = Pogo::Dispatcher::API::PSGI->app();
+    use Pogo::Dispatcher::ControlPort;
+
+    my $app = Pogo::Dispatcher::ControlPort->app();
 
 =head1 DESCRIPTION
 
-App handler for the Pogo dispatcher's internal API.
+PSGI app for Pogo Dispatcher.
 
 =head1 LICENSE
 

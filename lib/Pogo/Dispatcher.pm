@@ -7,7 +7,7 @@ use Log::Log4perl qw(:easy);
 use AnyEvent;
 use AnyEvent::Strict;
 use Pogo::Dispatcher;
-use Pogo::Dispatcher::API;
+use Pogo::Dispatcher::ControlPort;
 use Pogo::Dispatcher::Wconn::Pool;
 use base qw(Pogo::Object::Event);
 
@@ -42,12 +42,12 @@ sub start {
     $w->start();
     $self->{ wconn_pool } = $w; # guard it or it'll vanish
 
-      # Listen to requests from the API
-    my $api = Pogo::Dispatcher::API->new(
+      # Listen to requests from the ControlPort
+    my $api = Pogo::Dispatcher::ControlPort->new(
         dispatcher => $self
     );
     $self->event_forward( { forward_from => $api }, qw( 
-        dispatcher_api_up ) );
+        dispatcher_controlport_up ) );
     $api->start();
     $self->{ api } = $api; # guard it or it'll vanish
 

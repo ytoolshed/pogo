@@ -18,25 +18,26 @@ use Test::More;
 use Log::Log4perl qw(:easy);
 use Getopt::Std;
 use Pogo::Defaults qw(
-  $POGO_DISPATCHER_API_PORT
-  $POGO_DISPATCHER_API_HOST
+  $POGO_DISPATCHER_CONTROLPORT_PORT
+  $POGO_DISPATCHER_CONTROLPORT_HOST
 );
 
 my $pogo;
 
 $pogo = PogoOne->new();
 
-$pogo->reg_cb( dispatcher_api_up  => sub {
+$pogo->reg_cb( dispatcher_controlport_up  => sub {
     my( $c ) = @_;
 
-    ok( 1, "dispatcher api up #1" );
+    ok( 1, "dispatcher controlport up #1" );
 });
 
 $pogo->reg_cb( dispatcher_wconn_worker_connect  => sub {
     my( $c ) = @_;
 
     http_get 
-     "http://$POGO_DISPATCHER_API_HOST:$POGO_DISPATCHER_API_PORT/status", 
+     "http://$POGO_DISPATCHER_CONTROLPORT_HOST:" .
+     "$POGO_DISPATCHER_CONTROLPORT_PORT/status", 
      sub { 
             my( $html ) = @_;
  
@@ -48,7 +49,7 @@ $pogo->reg_cb( dispatcher_wconn_worker_connect  => sub {
 
             is scalar @workers, 1, "One worker connected \#2";
             like $workers[0], 
-              qr/$POGO_DISPATCHER_API_HOST:\d+$/, "worker details \#3";
+              qr/$POGO_DISPATCHER_CONTROLPORT_HOST:\d+$/, "worker details \#3";
  
             is $data->{ pogo_version }, $Pogo::VERSION, "pogo version";
      };
