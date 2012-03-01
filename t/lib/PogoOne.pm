@@ -32,6 +32,7 @@ sub new {
         @ssl = map { $_ => $self->{ $_ } }
             qw( worker_key worker_cert 
                 dispatcher_key dispatcher_cert
+                ca_cert
                 ssl );
     }
 

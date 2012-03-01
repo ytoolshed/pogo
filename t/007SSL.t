@@ -23,7 +23,7 @@ $pogo = PogoOne->new(
     ssl              => 1,
     worker_key       => "$cdir/worker.key",
     worker_cert      => "$cdir/worker.crt",
-    dispatcherr_key  => "$cdir/dispatcher.key",
+    dispatcher_key   => "$cdir/dispatcher.key",
     dispatcher_cert  => "$cdir/dispatcher.crt",
     ca_cert          => "$cdir/ca.crt",
 );

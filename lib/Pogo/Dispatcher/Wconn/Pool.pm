@@ -28,8 +28,17 @@ sub new {
         host     => $POGO_DISPATCHER_WORKERCONN_HOST,
         port     => $POGO_DISPATCHER_WORKERCONN_PORT,
         workers  => {},
-        %options,
+
+        ssl             => undef,
+        dispatcher_cert => undef,
+        dispatcher_key  => undef,
+        ca_cert         => undef,
     };
+
+      # actual values overwrite defaults
+    for my $key ( keys %$self ) {
+        $self->{ $key } = $options{ $key } if exists $options{ $key };
+    }
 
     bless $self, $class;
 }
@@ -169,6 +178,14 @@ sub ssl {
 
     if( ! $self->{ ssl } ) {
         return ();
+    }
+
+    for my $name ( qw(ca_cert dispatcher_cert dispatcher_key ) ) {
+        if( defined $self->{ $name } ) {
+            DEBUG "Picking up $name from $self->{ $name }";
+        } else {
+            LOGDIE "Defined 'ssl' but no value for '$name' given";
+        }
     }
 
     return (

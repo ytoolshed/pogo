@@ -36,8 +36,16 @@ sub new {
         qp_timeout           => 10,
         dispatcher_listening => 0,
 
-        %options,
+        ssl         => undef,
+        worker_cert => undef,
+        worker_key  => undef,
+        ca_cert     => undef,
     };
+
+      # actual values overwrite defaults
+    for my $key ( keys %$self ) {
+        $self->{ $key } = $options{ $key } if exists $options{ $key };
+    }
 
     $self->{ qp } = Pogo::Util::QP->new(
          retries => $self->{ qp_retries },
