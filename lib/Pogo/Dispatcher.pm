@@ -33,7 +33,10 @@ sub start {
     my( $self ) = @_;
 
       # Handle a pool of workers, as they connect
-    my $w = Pogo::Dispatcher::Wconn::Pool->new();
+    my $w = Pogo::Dispatcher::Wconn::Pool->new(
+        %$self
+    );
+
     $self->event_forward( { forward_from => $w }, qw( 
         dispatcher_wconn_worker_connect 
         dispatcher_wconn_prepare 

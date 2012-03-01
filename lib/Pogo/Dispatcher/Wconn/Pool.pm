@@ -94,7 +94,8 @@ sub _accept_handler {
                 $worker_handle->destroy();
                   # remove dead worker from pool
                 delete $self->{ workers }->{ $peer_host };
-            }
+            },
+            $self->ssl(),
         );
 
         my $conn = Pogo::Dispatcher::Wconn::Connection->new(
@@ -159,6 +160,32 @@ sub workers_connected {
     my( $self ) = @_;
 
     return keys %{ $self->{ workers } };
+}
+
+###########################################
+sub ssl {
+###########################################
+    my( $self ) = @_;
+
+    if( ! $self->{ ssl } ) {
+        return ();
+    }
+
+    return (
+        tls      => "accept",
+        tls_ctx  => { 
+              # server
+
+              # dispatcher provides server cert for the worker
+            cert_file => $self->{ dispatcher_cert },
+            key_file  => $self->{ dispatcher_key },
+            
+              # dispatcher requests/verifies client cert
+           verify                     => 1,
+           verify_require_client_cert => 1,
+           ca_file                    => $self->{ ca_cert },
+       },
+    );
 }
 
 1;

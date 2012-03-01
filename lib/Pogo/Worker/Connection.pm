@@ -138,6 +138,7 @@ sub _connect_handler {
                 INFO "Dispatcher hung up.";
                 $self->event( "start_delayed" );
             },
+            $self->ssl(),
         );
 
         DEBUG "dispatcher_handle: $self->{dispatcher_handle}";
@@ -258,6 +259,31 @@ sub channel_dispatcher_to_worker {
     $self->{ dispatcher_handle }->push_write( to_json( $ack ) . "\n" );
 }
 
+###########################################
+sub ssl {
+###########################################
+    my( $self ) = @_;
+
+    if( ! $self->{ ssl } ) {
+        return ();
+    }
+
+    return (
+       tls => "connect",
+       tls_ctx => {
+             # worker
+
+             # worker validates server's cert
+           verify  => 1,
+           ca_file => $self->{ ca_cert },
+
+             # worker provides client cert to server
+           cert_file => $self->{ worker_cert },
+           key_file  => $self->{ worker_key },
+       },
+    );
+}
+
 1;
 
 __END__
@@ -272,8 +298,6 @@ Pogo::Worker::Connection - Pogo worker/dispatcher connection abstraction
 
     my $con = Pogo::Worker::Connection->new(
     );
-
-    $con->enable_ssl();
 
     $con->start();
 
