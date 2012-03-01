@@ -16,22 +16,35 @@ use base qw(Pogo::Object::Event);
 ###########################################
 sub new {
 ###########################################
-    my( $class ) = @_;
+    my( $class, %opts ) = @_;
 
     my $self = {
         main => AnyEvent->condvar,
         tests_done => {},
+        %opts,
     };
 
     bless $self, $class;
 
+    my @ssl = ();
+
+    if( $self->{ ssl } ) {
+        @ssl = map { $_ => $self->{ $_ } }
+            qw( worker_key worker_cert 
+                dispatcher_key dispatcher_cert
+                ssl );
+    }
+
     $self->{ worker } = Pogo::Worker->new(
         delay_connect => sub { 0 },
         dispatchers => [ 
-          "$POGO_DISPATCHER_WORKERCONN_HOST:$POGO_DISPATCHER_WORKERCONN_PORT" ]
+          "$POGO_DISPATCHER_WORKERCONN_HOST:$POGO_DISPATCHER_WORKERCONN_PORT" ],
+        @ssl,
     );
 
-    $self->{ dispatcher } = Pogo::Dispatcher->new();
+    $self->{ dispatcher } = Pogo::Dispatcher->new( 
+        @ssl 
+    );
 
     return $self;
 }
