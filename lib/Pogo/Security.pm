@@ -33,11 +33,13 @@ It retrieves a server certificate from the dispatcher and verifies it. It
 also provides a client certificate that the server verifies to see if the
 worker is legit.
 
-Both server and client certificates are signed by the same CA, and both
+Both server and client certificates are signed by the same CA ("Certificate
+Authority", a clearing house for server/client certs), and both
 client and server have that CA cert installed to verify the server/client
 certs they receive from the other side.
 
-Instead of paying an established CA for the certs, you can whip up 
+Instead of paying an established CA (like Verisign) for the certs, you can 
+whip up 
 your own CA cert, which is then used in turn to sign the worker and 
 dispatcher certs. First, create a secret key for the CA and make sure
 this key is always kept secret:
@@ -129,7 +131,8 @@ them by our own CA. First the server (dispatcher) cert:
     EOT
 
       # CA signs the dispatcher cert
-    openssl ca -batch -days 365 -config ca.conf -in dispatcher.csr -keyfile ca.key -out dispatcher.crt
+    openssl ca -batch -days 365 -config ca.conf -in dispatcher.csr \
+      -keyfile ca.key -out dispatcher.crt
     
 Then the client (worker) cert:
 
@@ -150,7 +153,10 @@ Then the client (worker) cert:
     EOT
 
       # CA signs the dispatcher cert
-    openssl ca -batch -days 365 -config ca.conf -in worker.csr -keyfile ca.key -out worker.crt
+    openssl ca -batch -days 365 -config ca.conf -in worker.csr \
+      -keyfile ca.key -out worker.crt
+
+=head2 SSL Cert Installation
 
 That's it, now in order to install those certs/keys on the 
 respective hosts, we need the following files on the dispatcher:
