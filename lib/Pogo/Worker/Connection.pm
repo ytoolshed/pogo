@@ -35,6 +35,7 @@ sub new {
         qp_retries           => 1,
         qp_timeout           => 10,
         dispatcher_listening => 0,
+        auto_reconnect       => 1,
 
         ssl         => undef,
         worker_cert => undef,
@@ -62,6 +63,19 @@ sub start {
 
       # we take commands this way, to send them to the dispatcher
     $self->reg_cb( "worker_send_cmd", $self->_send_cmd_handler() );
+
+    $self->reg_cb( "worker_dconn_error", sub {
+        my( $c, $msg ) = @_;
+
+        local $Log::Log4perl::caller_depth =
+              $Log::Log4perl::caller_depth + 1;
+
+        ERROR "$msg";
+
+        if( $self->{ auto_reconnect } ) {
+            $self->event( "start_delayed" );
+        }
+    } );
 
       # on receiving this event, (re)start the worker after a delay
     $self->reg_cb( "start_delayed", $self->start_delayed() );
@@ -126,8 +140,10 @@ sub _connect_handler {
         my ( $fh, $_host, $_port, $retry ) = @_;
 
         if( !defined $fh ) {
-            ERROR "Connect to $host:$port failed: $!";
-            $self->event( "start_delayed" );
+
+            $self->event( "worker_dconn_error",
+                "Connect to $host:$port failed: $!" );
+
             return;
         }
 
@@ -137,21 +153,21 @@ sub _connect_handler {
             on_error => sub { 
                 my ( $hdl, $fatal, $msg ) = @_;
 
-                ERROR "Error on connection to $host:$port: $msg";
-            $self->event( "start_delayed" );
+                $self->event( "worker_dconn_error", 
+                  "Error on connection to $host:$port: $msg" );
             },
             on_eof   => sub { 
                 my ( $hdl ) = @_;
 
-                INFO "Dispatcher hung up.";
-                $self->event( "start_delayed" );
+                $self->event( "worker_dconn_error", 
+                  "Dispatcher hung up" );
             },
             $self->ssl(),
         );
 
         DEBUG "dispatcher_handle: $self->{dispatcher_handle}";
-        DEBUG "Sending event worker_connected";
-        $self->event( "worker_connected" );
+        DEBUG "Sending event worker_dconn_connected";
+        $self->event( "worker_dconn_connected", $host );
 
         $self->{ dispatcher_handle }->push_read( 
             line => $self->_protocol_handler() );

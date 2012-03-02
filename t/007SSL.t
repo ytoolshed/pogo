@@ -19,6 +19,8 @@ my $pogo;
 
 my $cdir = "$Bin/certs";
 
+# $Object::Event::DEBUG = 2;
+
 $pogo = PogoOne->new(
     ssl              => 1,
     worker_key       => "$cdir/worker.key",
@@ -28,10 +30,21 @@ $pogo = PogoOne->new(
     ca_cert          => "$cdir/ca.crt",
 );
 
+#$pogo->reg_cb( worker_dconn_error  => sub {
+#    LOGDIE @_;
+#} );
+
+$pogo->reg_cb( worker_dconn_connected  => sub {
+    my( $c, $worker ) = @_;
+
+    ok( 1, "worker connected #4" );
+    is( $worker, $POGO_DISPATCHER_WORKERCONN_HOST, "worker host #5" );
+});
+
 $pogo->reg_cb( dispatcher_wconn_worker_connect  => sub {
     my( $c, $worker ) = @_;
 
-    ok( 1, "worker connected #1" );
+    ok( 1, "dispatcher: worker connected #1" );
     is( $worker, $POGO_DISPATCHER_WORKERCONN_HOST, "worker host #3" );
 });
 
@@ -45,6 +58,6 @@ $pogo->reg_cb( dispatcher_wconn_prepare => sub {
       "dispatcher server_prepare cb #2" );
 });
 
-plan tests => 3;
+plan tests => 5;
 
 $pogo->start();

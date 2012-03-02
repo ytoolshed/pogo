@@ -37,15 +37,18 @@ sub new {
     }
 
     $self->{ worker } = Pogo::Worker->new(
-        delay_connect => sub { 0 },
-        dispatchers => [ 
+        delay_connect  => sub { 0 },
+        dispatchers    => [ 
           "$POGO_DISPATCHER_WORKERCONN_HOST:$POGO_DISPATCHER_WORKERCONN_PORT" ],
+        auto_reconnect => 0,
         @ssl,
     );
+    $self->{ worker }->set_exception_cb ( sub { exit 1; } );
 
     $self->{ dispatcher } = Pogo::Dispatcher->new( 
         @ssl 
     );
+    $self->{ dispatcher }->set_exception_cb ( sub { exit 1; } );
 
     return $self;
 }
@@ -76,7 +79,7 @@ sub start {
     ) );
 
     $self->event_forward( { forward_from => $worker }, qw(
-        worker_connected
+        worker_dconn_connected
         worker_dconn_listening
         worker_dconn_ack
         worker_dconn_qp_idle

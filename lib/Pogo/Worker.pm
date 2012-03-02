@@ -26,6 +26,7 @@ sub new {
         delay_connect   => $POGO_WORKER_DELAY_CONNECT,
         dispatchers => [ 
          "$POGO_DISPATCHER_WORKERCONN_HOST:$POGO_DISPATCHER_WORKERCONN_PORT" ],
+        auto_reconnect => 1,
         %options,
     };
 
@@ -61,7 +62,7 @@ sub start {
           { forward_from => $self->{ conns }->{ $dispatcher } 
           }, 
           qw(
-            worker_connected
+            worker_dconn_connected
             worker_dconn_listening
             worker_dconn_ack
             worker_dconn_qp_idle
