@@ -24,7 +24,7 @@ choices made in Pogo and how to enable them.
 Information sent from the dispatchers to the workers can contain 
 sensitive information like passwords. For that reason, Pogo uses
 the SSL implementation in C<AnyEvent::TLS> (which in turn uses C<Net::SSLeay>,
-which uses openssl).
+which uses C<openssl>).
 
 =head2 SSL Certificates
 
@@ -171,6 +171,15 @@ CA cert (C<ca.crt>)
 
 =back
 
+To start a dispatcher in SSL mode, use
+
+    my $dispatcher = Pogo::Dispatcher->new(
+        ssl             => 1,
+        dispatcher_key  => '/path/to/dispatcher_key',
+        dispatcher_cert => '/path/to/dispatcher_cert',
+        ca_cert         => '/path/to/ca_cert',
+    );
+
 Conversely, the worker needs:
 
 =over 4
@@ -189,6 +198,16 @@ CA cert (C<ca.crt>)
 
 =back
 
+To start a worker in SSL mode, use
+
+    my $worker = Pogo::Worker->new(
+        dispatchers => [ "localhost:xxxx" ],
+        ssl         => 1,
+        worker_key  => '/path/to/worker_key',
+        worker_cert => '/path/to/worker_cert',
+        ca_cert     => '/path/to/ca_cert',
+    );
+
 =head2 Debugging SSL
 
 Debugging SSL can be a frustrating experience because the 
@@ -200,6 +219,54 @@ C<s_server> implementations. These standalone programs are
 quite verbose and will tell what exactly is going on during
 the different SSL steps and what kind of certs or keys are 
 used.
+
+You can use both C<s_server> and C<s_client> to test your certs. For
+details, check the C<man s_server> and C<man s_client> manual pages.
+
+Here's an example. First, start the server:
+
+   $ openssl s_server -accept 1234 \
+       -cert dispatcher.crt \
+       -key dispatcher.key \
+       -CAfile ca.crt
+   Using default temp DH parameters
+   Using default temp ECDH parameters
+   ACCEPT
+
+While this is running, use another terminal to start the client, and
+you'll see the handshake complete if all certs/keys are correct:
+
+   $ openssl s_client -connect localhost:1234 \
+       -cert worker.crt \
+       -key worker.key \
+       -CAfile ca.crt
+   CONNECTED(00000003)
+   depth=1 /C=US/ST=California/L=San Francisco/O=Sloppy CA Inc. - 
+   We approve Anything without checking!/OU=IT/CN=somewhere.com/
+   emailAddress=a@b.com
+   verify return:1
+   ...
+   Certificate chain
+   ...
+   SSL-Session:
+   Protocol  : TLSv1
+   ...
+   Verify return code: 0 (ok)
+
+This technique is especially helpful if you use your application's own
+client or server in combination with openssl's C<s_client> or C<s_server>.
+
+For example, to test if the Pogo worker can connect to a SSL server,
+start C<s_server> and then fire up a Pogo worker:
+
+    my $worker = Pogo::Worker->new(
+        dispatchers => [ "localhost:xxxx" ],
+        ssl         => 1,
+        ...
+    );
+
+which should succeed immediately or print verbose output in case something
+goes wrong.
 
 =head1 LICENSE
 
