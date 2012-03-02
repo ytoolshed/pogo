@@ -36,6 +36,46 @@ It is mostly used for quick mass software deployments on server farms while
 making sure only an allowed number of nodes are upgraded in parallel to
 ensure business continuity.
 
+=head2 Architecture
+
+Pogo consists of several components, which can be all running on the same
+system, or, in order to scale it, be replicated and even be installed on 
+many distributed hosts. Those components are
+
+=over 4
+
+=item Client
+
+Users submit jobs to pogo using the client, which in turn 
+contacts the API.
+
+=item API
+
+Takes requests via HTTP from the client and forwards them to a dispatcher.
+
+=item Dispatcher
+
+Takes job requests from the API, figures out constraints, and determines
+single tasks the job consists of. It then assigns tasks to workers, 
+watches their individual completion and keeps track of overall job 
+completion. Dispatchers can be queried by the API to determine the status 
+of a given job.
+
+=item Worker
+
+Takes a task (like "ssh to a host and run this command") from the dispatcher,
+executes it and reports back the result. Can handle many tasks concurrently.
+
+=back
+
+=head2 Security
+
+To make sure dispatchers and workers communicate over secure channels,
+and enable them to authenticate each other (is a connecting worker really
+an authorized worker, or is the dispatcher it's connecting to really an
+authorized dispatcher?), Pogo uses SSL server and client certs. 
+See L<Pogo::Security> for details.
+
 =head1 LICENSE
 
 Copyright (c) 2010-2012 Yahoo! Inc. All rights reserved.
