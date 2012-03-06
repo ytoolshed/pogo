@@ -6,6 +6,7 @@ use warnings;
 use Log::Log4perl qw(:easy);
 use AnyEvent;
 use AnyEvent::Strict;
+use AnyEvent::Util qw( run_cmd );
 use base qw(Pogo::Worker::Task);
 
 ###########################################
@@ -14,10 +15,65 @@ sub new {
     my($class, %options) = @_;
 
     my $self = {
+        cmd => undef,
         %options,
     };
 
+    if( ! defined $self->{ cmd } ) {
+        LOGDIE "parameter 'cmd' missing";
+    }
+
     bless $self, $class;
+}
+
+###########################################
+sub start {
+###########################################
+    my( $self ) = @_;
+
+    DEBUG "Starting command $self->{ cmd }";
+
+    $self->{ guard } = run_cmd $self->{ cmd },
+      "<", "/dev/null",
+      ">", $self->on_stdout(),
+      "2>", $self->on_stderr(),
+    ;
+}
+
+###########################################
+sub on_stdout {
+###########################################
+    my( $self ) = @_;
+
+    return sub {
+        my( $data ) = @_;
+
+        if( !defined $data ) {
+            DEBUG "Eof event";
+            $self->event( "on_eof" );
+            return 1;
+        }
+
+        DEBUG "Stdout event: [$data]";
+        $self->event( "on_stdout", $data );
+    };
+}
+
+###########################################
+sub on_stderr {
+###########################################
+    my( $self ) = @_;
+
+    return sub {
+        my( $data ) = @_;
+
+        if( !defined $data ) {
+            return 1;
+        }
+
+        DEBUG "Stderr event: [$data]";
+        $self->event( "on_stderr", $data );
+    };
 }
 
 1;
@@ -48,21 +104,12 @@ Pogo::Worker::Task::Command - Pogo Command Executor
       }
     );
           
-    $cmd->run();
-
-      # Send data to the process's STDIN
-    $cmd->stdin( $data );
+    $cmd->start();
 
 =head1 DESCRIPTION
 
 Pogo::Worker::Task::Command is an AnyEvent component for 
-running commands on remote hosts.
-
-It extends C<Pogo::Worker::Task::Command> and takes an extra argument
-C<host> to run the given command on the target host.
-
-See the base class C<Pogo::Worker::Task::Command> documentation for how to 
-register callbacks.
+running commands.
 
 =back
 
