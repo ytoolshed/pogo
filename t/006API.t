@@ -62,15 +62,8 @@ $pogo->reg_cb( dispatcher_wconn_worker_connect  => sub {
 my $api = Plack::Handler::AnyEvent::HTTPD->new(
     host => $POGO_API_TEST_HOST,
     port => $POGO_API_TEST_PORT,
-    server_ready => sub {
-      http_get 
-       "http://$POGO_API_TEST_HOST:$POGO_API_TEST_PORT/status", 
-        sub { 
-           my( $html ) = @_;
-           my $data = from_json( $html );
-           is $data->{ pogo_version }, $Pogo::VERSION, "pogo version \#5";
-        }
-    }
+    server_ready => 
+      tests( "http://$POGO_API_TEST_HOST:$POGO_API_TEST_PORT/status" ),
 );
 
 $api->register_service( Pogo::API->app() );
@@ -78,3 +71,16 @@ $api->register_service( Pogo::API->app() );
 plan tests => 5;
 
 $pogo->start();
+
+  # This gets called once the API server is up
+sub tests {
+    my( $base_url ) = @_;
+
+    return sub {
+        http_get $base_url, sub {
+           my( $html ) = @_;
+           my $data = from_json( $html );
+           is $data->{ pogo_version }, $Pogo::VERSION, "pogo version \#5";
+        };
+    };
+}
