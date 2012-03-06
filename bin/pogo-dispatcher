@@ -7,7 +7,7 @@ use Pod::Usage;
 use Pogo::Dispatcher;
 use Log::Log4perl qw(:easy);
 
-getopts("hvV", \my %opts);
+getopts("ahvV", \my %opts);
 
 pod2usage() if $opts{hv};
 
@@ -22,6 +22,12 @@ if($opts{v}) {
 
 my $dispatcher = Pogo::Dispatcher->new();
 $dispatcher->start();
+
+  # API standalone server just for testing
+if( $opts{ a } ) {
+    use Pogo::API;
+    Pogo::API->standalone();
+}
 
   # start event loop
 AnyEvent->condvar->recv();
