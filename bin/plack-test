@@ -1,9 +1,7 @@
 #!/usr/local/bin/perl -w
 use strict;
-use Log::Log4perl qw(:easy);
 use Plack::Handler::AnyEvent::HTTPD;
-
-Log::Log4perl->easy_init($DEBUG);
+use AnyEvent::HTTP;
 
 use AnyEvent::HTTPD;
 use AnyEvent::HTTP;
@@ -18,13 +16,21 @@ $server->register_service( appref() );
 
 my $cv = AnyEvent->condvar();
 
-DEBUG "Starting up on port $port";
+  # main loop
 $cv->recv();
 
 sub appref {
     return sub {
         my( $env ) = @_;
 
-        return ['200', [ content => 'text/plain' ], [ "bonk\n" ]];
+        my $cv = AnyEvent->condvar();
+
+        http_get "http://google.com", sub {
+            my( $body, $hdr ) = @_;
+
+            $cv->send( $body );
+        };
+
+        return ['200', [ content => 'text/html' ], [ $cv->recv() ]];
     };
 }
