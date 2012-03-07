@@ -32,6 +32,7 @@ sub app {
 
         if( exists $commands{ $command } ) {
             no strict 'refs';
+            DEBUG "Calling $command";
             return $command->( $env );
         }
 
@@ -72,6 +73,8 @@ sub jobsubmit {
 ###########################################
     my( $env ) = @_;
 
+    DEBUG "Handling jobsubmit request";
+
     my $req = Plack::Request->new( $env );
 
     my $params = $req->parameters();
@@ -83,9 +86,9 @@ sub jobsubmit {
         my $cp_base_url = "http://" . $POGO_DISPATCHER_CONTROLPORT_HOST .
          ":$POGO_DISPATCHER_CONTROLPORT_PORT";
 
-        my $cv = AnyEvent->condvar();
-
         DEBUG "Submitting job to $cp_base_url";
+
+        my $cv = AnyEvent->condvar();
 
         http_post "$cp_base_url/jobsubmit", "",
           cmd => $params->{ cmd }, 
@@ -105,6 +108,8 @@ sub jobsubmit {
 
         return http_response_json( $cv->recv() );
     }
+
+    ERROR "No cmd defined";
 
     return http_response_json(
         { rc      => "error",

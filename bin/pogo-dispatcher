@@ -17,16 +17,19 @@ if($opts{V}) {
 }
 
 if($opts{v}) {
-    Log::Log4perl->easy_init($DEBUG);
+    Log::Log4perl->easy_init({ level => $DEBUG, layout => "%F{1}-%L> %m%n" });
 }
 
 my $dispatcher = Pogo::Dispatcher->new();
 $dispatcher->start();
 
   # API standalone server just for testing
+my $api_server;
+
 if( $opts{ a } ) {
     use Pogo::API;
-    Pogo::API->standalone();
+    $api_server = Pogo::API->new();
+    $api_server->standalone();
 }
 
   # start event loop

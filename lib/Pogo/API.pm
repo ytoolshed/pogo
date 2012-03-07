@@ -11,18 +11,31 @@ use Pogo::Defaults qw(
 use Log::Log4perl qw(:easy);
 
 ###########################################
+sub new {
+###########################################
+    my( $class ) = @_;
+
+    my $self = {};
+
+    bless $self, $class;
+
+    return $self;
+}
+
+###########################################
 sub standalone {
 ###########################################
+  my( $self ) = @_;
 
   DEBUG "Starting standalone API server on ",
         "$POGO_API_TEST_HOST:$POGO_API_TEST_PORT";
 
-  my $api = Plack::Handler::AnyEvent::HTTPD->new(
+  $self->{ api_server } = Plack::Handler::AnyEvent::HTTPD->new(
       host => $POGO_API_TEST_HOST,
       port => $POGO_API_TEST_PORT,
   );
 
-  $api->register_service( Pogo::API->app() );
+  $self->{ api_server }->register_service( Pogo::API->app() );
 }
 
 ###########################################
