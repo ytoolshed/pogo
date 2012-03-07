@@ -3,21 +3,17 @@ use strict;
 use Plack::Handler::AnyEvent::HTTPD;
 use AnyEvent::HTTP;
 
-use AnyEvent::HTTPD;
-use AnyEvent::HTTP;
-
 my $port = 9090;
-
 my $server = Plack::Handler::AnyEvent::HTTPD->new(
     port => $port,
 );
 
 $server->register_service( appref() );
 
-my $cv = AnyEvent->condvar();
+my $main = AnyEvent->condvar();
 
   # main loop
-$cv->recv();
+$main->recv();
 
 sub appref {
     return sub {
