@@ -1,0 +1,30 @@
+#!/usr/local/bin/perl -w
+use strict;
+use Log::Log4perl qw(:easy);
+use Plack::Handler::AnyEvent::HTTPD;
+
+Log::Log4perl->easy_init($DEBUG);
+
+use AnyEvent::HTTPD;
+use AnyEvent::HTTP;
+
+my $port = 9090;
+
+my $server = Plack::Handler::AnyEvent::HTTPD->new(
+    port => $port,
+);
+
+$server->register_service( appref() );
+
+my $cv = AnyEvent->condvar();
+
+DEBUG "Starting up on port $port";
+$cv->recv();
+
+sub appref {
+    return sub {
+        my( $env ) = @_;
+
+        return ['200', [ content => 'text/plain' ], [ "bonk\n" ]];
+    };
+}
