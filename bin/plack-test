@@ -1,0 +1,36 @@
+#!/usr/local/bin/perl -w
+use strict;
+use Plack::Handler::AnyEvent::HTTPD;
+use AnyEvent::HTTP;
+
+use AnyEvent::HTTPD;
+use AnyEvent::HTTP;
+
+my $port = 9090;
+
+my $server = Plack::Handler::AnyEvent::HTTPD->new(
+    port => $port,
+);
+
+$server->register_service( appref() );
+
+my $cv = AnyEvent->condvar();
+
+  # main loop
+$cv->recv();
+
+sub appref {
+    return sub {
+        my( $env ) = @_;
+
+        my $cv = AnyEvent->condvar();
+
+        http_get "http://google.com", sub {
+            my( $body, $hdr ) = @_;
+
+            $cv->send( $body );
+        };
+
+        return ['200', [ content => 'text/html' ], [ $cv->recv() ]];
+    };
+}

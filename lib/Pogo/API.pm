@@ -4,7 +4,39 @@ package Pogo::API;
 use strict;
 use warnings;
 use Plack::App::URLMap;
+use Pogo::Defaults qw(
+  $POGO_API_TEST_PORT
+  $POGO_API_TEST_HOST
+);
 use Log::Log4perl qw(:easy);
+
+###########################################
+sub new {
+###########################################
+    my( $class ) = @_;
+
+    my $self = {};
+
+    bless $self, $class;
+
+    return $self;
+}
+
+###########################################
+sub standalone {
+###########################################
+  my( $self ) = @_;
+
+  DEBUG "Starting standalone API server on ",
+        "$POGO_API_TEST_HOST:$POGO_API_TEST_PORT";
+
+  $self->{ api_server } = Plack::Handler::AnyEvent::HTTPD->new(
+      host => $POGO_API_TEST_HOST,
+      port => $POGO_API_TEST_PORT,
+  );
+
+  $self->{ api_server }->register_service( Pogo::API->app() );
+}
 
 ###########################################
 sub app {
