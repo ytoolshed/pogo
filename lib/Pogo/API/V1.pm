@@ -80,33 +80,12 @@ sub jobsubmit {
     my $params = $req->parameters();
 
     if( exists $params->{ cmd } ) {
+        return sub {
+            my( $response ) = @_;
 
-        # Tell the dispatcher about it (just testing)
-
-        my $cp_base_url = "http://" . $POGO_DISPATCHER_CONTROLPORT_HOST .
-         ":$POGO_DISPATCHER_CONTROLPORT_PORT";
-
-        DEBUG "Submitting job to $cp_base_url";
-
-        my $cv = AnyEvent->condvar();
-
-        http_post "$cp_base_url/jobsubmit", "",
-          cmd => $params->{ cmd }, 
-          sub {
-              my( $data, $hdr ) = @_;
-
-              DEBUG "Received $hdr->{ Status } response from $cp_base_url";
-
-              $cv->send(
-                { rc       => "ok",
-                  message  => "command submitted", 
-                  status   => $hdr->{ Status },
-                  response => $data,
-                }
-              );
-          };
-
-        return http_response_json( $cv->recv() );
+                # Tell the dispatcher about it (just testing)
+            job_post_to_dispatcher( $params->{ cmd }, $response );
+        };
     }
 
     ERROR "No cmd defined";
@@ -116,6 +95,35 @@ sub jobsubmit {
           message => "cmd missing", 
         }
     );
+}
+
+###########################################
+sub job_post_to_dispatcher {
+###########################################
+    my( $cmd, $response_cb ) = @_;
+
+    my $cp_base_url = "http://" . $POGO_DISPATCHER_CONTROLPORT_HOST .
+      ":$POGO_DISPATCHER_CONTROLPORT_PORT";
+
+    DEBUG "Submitting job to $cp_base_url";
+
+    http_post "$cp_base_url/jobsubmit", "",
+        cmd => $cmd,
+        sub {
+            my( $data, $hdr ) = @_;
+
+            DEBUG "Received $hdr->{ Status } response from $cp_base_url";
+
+            $response_cb->(
+              http_response_json(
+                { rc       => "ok",
+                  message  => "command submitted", 
+                  status   => $hdr->{ Status },
+                  response => $data,
+                }
+              )
+            );
+        };
 }
 
 1;
