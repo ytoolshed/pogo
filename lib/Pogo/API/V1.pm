@@ -105,21 +105,35 @@ sub job_post_to_dispatcher {
     my $cp_base_url = "http://" . $POGO_DISPATCHER_CONTROLPORT_HOST .
       ":$POGO_DISPATCHER_CONTROLPORT_PORT";
 
-    DEBUG "Submitting job to $cp_base_url";
+    DEBUG "Submitting job to $cp_base_url (cmd=$cmd)";
 
-    http_post "$cp_base_url/jobsubmit", "",
+    http_post "$cp_base_url/v1/jobsubmit", "",
         cmd => $cmd,
         sub {
             my( $data, $hdr ) = @_;
 
             DEBUG "Received $hdr->{ Status } response from $cp_base_url";
 
+            my $rc;
+            my $message;
+
+            eval {
+                $data = from_json( $data );
+            };
+
+            if( $@ ) {
+                $rc       = "fail";
+                $message = "invalid json";
+            } else {
+                $rc = $data->{ rc };
+                $message = $data->{ message };
+            }
+
             $response_cb->(
               http_response_json(
-                { rc       => "ok",
-                  message  => "command submitted", 
+                { rc       => $rc,
+                  message  => $message,
                   status   => $hdr->{ Status },
-                  response => $data,
                 }
               )
             );

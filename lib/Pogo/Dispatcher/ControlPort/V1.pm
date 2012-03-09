@@ -29,7 +29,7 @@ sub app {
 
         if( exists $commands{ $command } ) {
             no strict 'refs';
-            return $command->( $env );
+            return $command->( $env, $dispatcher );
         }
 
         return http_response_json(
@@ -42,7 +42,7 @@ sub app {
 ###########################################
 sub jobinfo {
 ###########################################
-    my( $env ) = @_;
+    my( $env, $dispatcher ) = @_;
 
     my $req = Plack::Request->new( $env );
 
@@ -60,6 +60,35 @@ sub jobinfo {
     return http_response_json(
         { rc      => "error",
           message => "jobid missing", 
+        }
+    );
+}
+
+###########################################
+sub jobsubmit {
+###########################################
+    my( $env, $dispatcher ) = @_;
+
+    my $req = Plack::Request->new( $env );
+
+    my $params = $req->parameters();
+
+    if( !exists $params->{ cmd } ) {
+        INFO "No cmd found";
+        return http_response_json(
+            { rc      => "fail",
+              message => "No cmd given", 
+            }
+        );
+    }
+
+    INFO "Dispatcher received job cmd: $params->{ cmd }";
+
+    $dispatcher->event( "dispatcher_job_received", $params->{ cmd } );
+
+    return http_response_json(
+        { rc      => "ok",
+          message => "job received", 
         }
     );
 }
