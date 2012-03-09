@@ -39,7 +39,7 @@ sub event_forward {
             my $target_event = $event;
 
             if( $opts->{ prefix } ) {
-                $target_event = $opts->{ prefix } . $event;;
+                $target_event = $opts->{ prefix } . $event;
             }
 
             $self->event( $target_event, @args );

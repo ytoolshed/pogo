@@ -7,7 +7,7 @@ use Log::Log4perl qw(:easy);
 use JSON qw( to_json );
 
 require Exporter;
-our @EXPORT_OK = qw( http_response_json );
+our @EXPORT_OK = qw( http_response_json make_accessor);
 our @ISA = qw( Exporter );
 
 ###########################################
@@ -20,6 +20,33 @@ sub http_response_json {
     return [ $code, [ 'Content-Type' => 'application/json' ], 
              [ to_json( $data ) ],
            ];
+}
+
+##################################################
+sub make_accessor {
+##################################################
+    my($package, $name) = @_;
+
+      # Lifted from Net::Amazon
+    no strict qw(refs);
+
+    my $code = <<EOT;
+        *{"$package\\::$name"} = sub {
+            my(\$self, \$value) = \@_;
+
+            if(defined \$value) {
+                \$self->{$name} = \$value;
+            }
+            if(exists \$self->{$name}) {
+                return (\$self->{$name});
+            } else {
+                return "";
+            }
+        }
+EOT
+    if(! defined *{"$package\::$name"}) {
+        eval $code or die "$@";
+    }
 }
 
 1;

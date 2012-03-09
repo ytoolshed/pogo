@@ -26,7 +26,9 @@ sub new {
         delay_connect   => $POGO_WORKER_DELAY_CONNECT,
         dispatchers => [ 
          "$POGO_DISPATCHER_WORKERCONN_HOST:$POGO_DISPATCHER_WORKERCONN_PORT" ],
-        auto_reconnect => 1,
+        auto_reconnect  => 1,
+        tasks           => {},
+        next_task_id    => 1,
         %options,
     };
 
@@ -57,6 +59,9 @@ sub start {
 
     DEBUG "Worker: Starting";
 
+      # we re-emit events we get from any of the dispatcher 
+      # connections, so consumers don't know/care which
+      # dispatcher they came from
     for my $dispatcher ( @{ $self->{ dispatchers } } ) {
         $self->event_forward( 
           { forward_from => $self->{ conns }->{ $dispatcher } 
@@ -74,6 +79,13 @@ sub start {
     for my $dispatcher ( @{ $self->{ dispatchers } } ) {
         $self->{ conns }->{ $dispatcher }->start();
     }
+
+    $self->reg_cb( "worker_dconn_cmd_recv", sub {
+        my( $c, $cmd ) = @_;
+
+          # start the task
+        my $task = $self->task_run( $cmd );
+    } );
 }
 
 ###########################################
@@ -84,6 +96,57 @@ sub to_dispatcher {
       # send a command to a random dispatcher
     $self->{ conns }->{ $self->random_dispatcher() }
          ->event( "worker_send_cmd", $data );
+}
+
+###########################################
+sub task_run {
+###########################################
+    my( $self, $cmd ) = @_;
+
+    if( !ref $cmd ) {
+        $cmd = [ $cmd ];
+    }
+
+    $self->event( "worker_running_cmd", @$cmd );
+
+    DEBUG "Worker running cmd @$cmd";
+
+    my $task = Pogo::Worker::Task::Command->new(
+      cmd  => $cmd,
+    );
+    $task->id( $self->{ next_task_id }++ );
+
+    my $stdout = "";
+    my $stderr = "";
+
+    $task->reg_cb(
+      on_stdout => sub {
+        my($c, $stdout_chunk) = @_;
+
+        $stdout .= $stdout_chunk;
+      },
+      on_stderr => sub {
+        my($c, $stderr_chunk) = @_;
+
+        $stderr .= $stderr_chunk;
+      },
+      on_finish => sub {
+        my($c, $rc) = @_;
+
+        DEBUG "Task ", $task->id(), " ended (rc=$rc)";
+        $self->event( "worker_running_cmd_done", 
+                      $task->id(), $rc, $stdout, $stderr, $cmd );
+
+          # remove task from tracker hash
+        delete $self->{ tasks }->{ $task->id() };
+      },
+    );
+          
+    DEBUG "Starting task ", $task->id(), " (cmd=@$cmd)";
+    $task->start();
+
+      # save it in the task tracker by its unique id to keep it running
+    $self->{ tasks }->{ $task->id() } = $task;
 }
 
 1;

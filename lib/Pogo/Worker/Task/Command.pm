@@ -38,6 +38,11 @@ sub start {
       ">", $self->on_stdout(),
       "2>", $self->on_stderr(),
     ;
+
+    $self->{ guard }->cb( sub {
+        my $rc = shift->recv;
+        $self->event( "on_finish", $rc );
+    } );
 }
 
 ###########################################
@@ -50,7 +55,7 @@ sub on_stdout {
 
         if( !defined $data ) {
             DEBUG "Eof event";
-            $self->event( "on_eof" );
+            $self->event( "on_finish" );
             return 1;
         }
 
@@ -99,7 +104,7 @@ Pogo::Worker::Task::Command - Pogo Command Executor
       on_stderr => sub {
         my($c, $stderr) = @_;
       }
-      on_eof => sub {
+      on_finish => sub {
         my($c) = @_;
       }
     );

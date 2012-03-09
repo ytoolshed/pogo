@@ -6,7 +6,10 @@ use warnings;
 use Log::Log4perl qw(:easy);
 use AnyEvent;
 use AnyEvent::Strict;
+use Pogo::Util qw( make_accessor );
 use base 'Object::Event';
+
+__PACKAGE__->make_accessor( $_ ) for qw( id );
 
 ###########################################
 sub new {
@@ -14,6 +17,7 @@ sub new {
     my($class, %options) = @_;
 
     my $self = {
+        id => undef,
         %options,
     };
 

@@ -46,15 +46,24 @@ sub start {
     $self->{ wconn_pool } = $w; # guard it or it'll vanish
 
       # Listen to requests from the ControlPort
-    my $api = Pogo::Dispatcher::ControlPort->new(
+    my $cp = Pogo::Dispatcher::ControlPort->new(
         dispatcher => $self
     );
-    $self->event_forward( { forward_from => $api }, qw( 
+    $self->event_forward( { forward_from => $cp }, qw( 
         dispatcher_controlport_up ) );
-    $api->start();
-    $self->{ api } = $api; # guard it or it'll vanish
+    $cp->start();
+    $self->{ cp } = $cp; # guard it or it'll vanish
 
-    DEBUG "Dispatcher starting";
+      # if a job comes in ...
+    $self->reg_cb( "dispatcher_job_received", sub {
+      my( $c, $cmd ) = @_;
+
+        # ... send it to a worker
+      DEBUG "Sending cmd $cmd to a worker";
+      $self->to_worker( { cmd => $cmd } );
+    } );
+
+    DEBUG "Dispatcher started";
 }
 
 ###########################################
