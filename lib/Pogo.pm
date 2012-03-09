@@ -5,6 +5,7 @@ package Pogo;
 use strict;
 use warnings;
 
+use 5.008;
 our $VERSION = "5.00";
 
 ###########################################
