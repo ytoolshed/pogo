@@ -7,6 +7,7 @@ use Log::Log4perl qw(:easy);
 use AnyEvent;
 use AnyEvent::Strict;
 use Pogo::Worker::Connection;
+use Pogo::Worker::Task::Command;
 use Pogo::Defaults qw(
   $POGO_DISPATCHER_WORKERCONN_HOST
   $POGO_DISPATCHER_WORKERCONN_PORT
@@ -80,13 +81,12 @@ sub start {
         $self->{ conns }->{ $dispatcher }->start();
     }
 
-#    $self->reg_cb( "worker_dconn_cmd_recv", sub {
-#        my( $c, $cmd ) = @_;
-#
-#          # start the task
-#        my $task = $self->task_run( $cmd );
-#    } );
+    $self->reg_cb( "worker_dconn_cmd_recv", sub {
+        my( $c, $cmd ) = @_;
 
+          # start the task
+        my $task = $self->task_start( $cmd );
+    } );
 }
 
 ###########################################
@@ -100,17 +100,13 @@ sub to_dispatcher {
 }
 
 ###########################################
-sub task_run {
+sub task_start {
 ###########################################
     my( $self, $cmd ) = @_;
 
-    if( !ref $cmd ) {
-        $cmd = [ $cmd ];
-    }
+    DEBUG "Worker running cmd $cmd";
 
-    $self->event( "worker_running_cmd", @$cmd );
-
-    DEBUG "Worker running cmd @$cmd";
+    $self->event( "worker_running_cmd", $cmd );
 
     my $task = Pogo::Worker::Task::Command->new(
       cmd  => $cmd,
@@ -135,6 +131,7 @@ sub task_run {
         my($c, $rc) = @_;
 
         DEBUG "Task ", $task->id(), " ended (rc=$rc)";
+
         $self->event( "worker_running_cmd_done", 
                       $task->id(), $rc, $stdout, $stderr, $cmd );
 
@@ -143,7 +140,7 @@ sub task_run {
       },
     );
           
-    DEBUG "Starting task ", $task->id(), " (cmd=@$cmd)";
+    DEBUG "Starting task ", $task->id(), " (cmd=$cmd)";
     $task->start();
 
       # save it in the task tracker by its unique id to keep it running

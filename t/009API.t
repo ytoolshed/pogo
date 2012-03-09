@@ -15,7 +15,7 @@ use JSON qw(from_json);
 
 #$Object::Event::DEBUG = 2;
 
-plan tests => 3;
+plan tests => 5;
 
   # dispatcher/worker
 my $pogo = PogoOne->new();
@@ -56,14 +56,28 @@ sub run_tests {
 ####################################
     ok 1, "all components required for test are up #1";
 
+    my $cmdline = "sleep 1";
+
     $pogo->reg_cb( dispatcher_job_received => sub {
         my( $c, $cmd ) = @_;
-        is $cmd, "ls", "dispatcher job received event #3";
+        is $cmd, $cmdline, "dispatcher job received event #3";
+    });
+
+    $pogo->reg_cb( worker_running_cmd_done => sub {
+        my( $c, $task_id, $rc, $stdout, $stderr, $cmd ) = @_;
+        is $task_id, 1, "worker task 1 done #4";
+        is $rc, 0, "worker command succeeded #5";
     });
 
     use AnyEvent::HTTP;
     my $base_url = $api_server->base_url();
-    http_get "$base_url/jobsubmit?cmd=ls", sub { 
+    use URI;
+    my $uri = URI->new( "$base_url/jobsubmit" );
+    $uri->query_form( cmd => $cmdline );
+
+    DEBUG "uri=$uri";
+
+    http_get $uri, sub { 
         my( $body, $hdr ) = @_;
 
         my $data = from_json( $body );

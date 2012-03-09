@@ -54,8 +54,8 @@ sub on_stdout {
         my( $data ) = @_;
 
         if( !defined $data ) {
-            DEBUG "Eof event";
-            $self->event( "on_finish" );
+            # DEBUG "Eof event";
+            # $self->event( "on_finish" );
             return 1;
         }
 

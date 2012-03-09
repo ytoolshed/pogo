@@ -85,6 +85,7 @@ sub start {
         worker_dconn_ack
         worker_dconn_qp_idle
         worker_dconn_cmd_recv
+        worker_running_cmd_done
      ) );
 
     $dispatcher->start();
