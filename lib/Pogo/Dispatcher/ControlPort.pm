@@ -23,13 +23,22 @@ sub new {
     my($class, %options) = @_;
 
     my $self = {
-        host          => $POGO_DISPATCHER_CONTROLPORT_HOST,
-        port          => $POGO_DISPATCHER_CONTROLPORT_PORT,
-        dispatcher    => undef,
+        host             => $POGO_DISPATCHER_CONTROLPORT_HOST,
+        port             => $POGO_DISPATCHER_CONTROLPORT_PORT,
+        dispatcher       => undef,
+        protocol_version => "v1",
         %options,
     };
 
     bless $self, $class;
+}
+
+###########################################
+sub base_url {
+###########################################
+  my( $self ) = @_;
+
+  return "http://$self->{ host }:$self->{ port }/$self->{ protocol_version }";
 }
 
 ###########################################

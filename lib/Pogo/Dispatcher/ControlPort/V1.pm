@@ -88,7 +88,7 @@ sub jobsubmit {
 
     return http_response_json(
         { rc      => "ok",
-          message => "job received", 
+          message => "dispatcher CP: job received", 
         }
     );
 }

@@ -11,8 +11,9 @@ use Test::More;
 use Log::Log4perl qw(:easy);
 use Getopt::Std;
 use Pogo::API;
+use JSON qw(from_json);
 
-plan tests => 1;
+plan tests => 2;
 
   # dispatcher/worker
 my $pogo = PogoOne->new();
@@ -48,6 +49,20 @@ $pogo->reg_cb( dispatcher_wconn_worker_connect  => sub {
 
 $pogo->start();
 
+####################################
 sub run_tests {
-    ok 1, "all is up";
+####################################
+    ok 1, "all components required for test are up #1";
+
+    use AnyEvent::HTTP;
+
+    my $base_url = $api_server->base_url();
+
+    http_get "$base_url/jobsubmit?cmd=ls", sub { 
+        my( $body, $hdr ) = @_;
+
+        my $data = from_json( $body );
+        is $data->{ message }, "dispatcher CP: job received", 
+            "received ack from dispatcher CP #2";
+    };
 }

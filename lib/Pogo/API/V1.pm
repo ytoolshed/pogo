@@ -4,7 +4,7 @@ package Pogo::API::V1;
 use strict;
 use warnings;
 use Log::Log4perl qw(:easy);
-use JSON qw( to_json );
+use JSON qw( from_json to_json );
 use Pogo::Util qw( http_response_json );
 use Pogo::Defaults qw(
   $POGO_DISPATCHER_CONTROLPORT_HOST
@@ -14,6 +14,7 @@ use AnyEvent::HTTP;
 use HTTP::Status qw( :constants );
 use Plack::Request;
 use Data::Dumper;
+use HTTP::Request::Common;
 
 ###########################################
 sub app {
@@ -80,6 +81,7 @@ sub jobsubmit {
     my $params = $req->parameters();
 
     if( exists $params->{ cmd } ) {
+        DEBUG "cmd is $params->{ cmd }";
         return sub {
             my( $response ) = @_;
 
@@ -102,17 +104,20 @@ sub job_post_to_dispatcher {
 ###########################################
     my( $cmd, $response_cb ) = @_;
 
-    my $cp_base_url = "http://" . $POGO_DISPATCHER_CONTROLPORT_HOST .
-      ":$POGO_DISPATCHER_CONTROLPORT_PORT";
+    my $cp = Pogo::Dispatcher::ControlPort->new();
+    my $cp_base_url = $cp->base_url();
 
     DEBUG "Submitting job to $cp_base_url (cmd=$cmd)";
 
-    http_post "$cp_base_url/v1/jobsubmit", "",
-        cmd => $cmd,
+    my $req = POST "$cp_base_url/jobsubmit", [ cmd => $cmd ];
+
+    http_post $req->url(), $req->content(),
+        headers => $req->headers(),
         sub {
             my( $data, $hdr ) = @_;
 
-            DEBUG "Received $hdr->{ Status } response from $cp_base_url";
+            DEBUG "Received $hdr->{ Status } response from $cp_base_url: ",
+                  "[$data]";
 
             my $rc;
             my $message;
@@ -123,7 +128,7 @@ sub job_post_to_dispatcher {
 
             if( $@ ) {
                 $rc       = "fail";
-                $message = "invalid json";
+                $message  = "invalid json: $@";
             } else {
                 $rc = $data->{ rc };
                 $message = $data->{ message };

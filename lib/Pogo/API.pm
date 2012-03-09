@@ -16,11 +16,22 @@ sub new {
 ###########################################
     my( $class ) = @_;
 
-    my $self = {};
+    my $self = {
+        netloc           => "[no netloc]",
+        protocol_version => "v1",
+    };
 
     bless $self, $class;
 
     return $self;
+}
+
+###########################################
+sub base_url {
+###########################################
+  my( $self ) = @_;
+
+  return "$self->{ netloc }/$self->{ protocol_version }";
 }
 
 ###########################################
@@ -35,6 +46,8 @@ sub standalone {
       host => $POGO_API_TEST_HOST,
       port => $POGO_API_TEST_PORT,
   );
+
+  $self->{ netloc } = "http://$POGO_API_TEST_HOST:$POGO_API_TEST_PORT";
 
   $self->{ api_server }->register_service( Pogo::API->app() );
 
