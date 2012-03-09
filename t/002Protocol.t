@@ -16,11 +16,11 @@ my $pogo;
 $pogo = PogoOne->new();
 
 $pogo->reg_cb( worker_dconn_cmd_recv  => sub {
-    my( $c, $data ) = @_;
+    my( $c, $cmd ) = @_;
 
     DEBUG "Worker received command";
 
-    is( $data->{ cmd }, "command-by-dispatcher", 
+    is( $cmd, "command-by-dispatcher", 
         "received dispatcher command #1" );
 });
 
