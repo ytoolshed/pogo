@@ -13,6 +13,8 @@ use Getopt::Std;
 use Pogo::API;
 use JSON qw(from_json);
 
+#$Object::Event::DEBUG = 2;
+
 plan tests => 3;
 
   # dispatcher/worker

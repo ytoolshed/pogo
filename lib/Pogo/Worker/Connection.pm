@@ -269,7 +269,7 @@ sub channel_dispatcher_to_worker {
 
     DEBUG "Received dispatcher command: $data->{cmd}";
 
-#    $self->event( "worker_dconn_cmd_recv", $data );
+    $self->event( "worker_dconn_cmd_recv", $data );
 
     my $ack = {
         channel => 2,

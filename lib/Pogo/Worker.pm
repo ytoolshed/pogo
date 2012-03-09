@@ -80,12 +80,13 @@ sub start {
         $self->{ conns }->{ $dispatcher }->start();
     }
 
-    $self->reg_cb( "worker_dconn_cmd_recv", sub {
-        my( $c, $cmd ) = @_;
+#    $self->reg_cb( "worker_dconn_cmd_recv", sub {
+#        my( $c, $cmd ) = @_;
+#
+#          # start the task
+#        my $task = $self->task_run( $cmd );
+#    } );
 
-          # start the task
-        my $task = $self->task_run( $cmd );
-    } );
 }
 
 ###########################################

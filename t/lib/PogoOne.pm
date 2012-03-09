@@ -103,6 +103,7 @@ sub start {
 
             DEBUG "Is it done yet ($cur/$exp)?";
             if( $tb->{Curr_Test} == $tb->{Expected_Tests} ) {
+                INFO "It is done!";
                 $self->quit();
             } else {
                 my $logger = Log::Log4perl->get_logger();
@@ -124,6 +125,7 @@ sub quit {
     my( $self ) = @_;
 
       # quit event loop
+    DEBUG "Quitting event loop by request";
     $self->{ main }->send();
 }
 
