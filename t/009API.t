@@ -13,7 +13,7 @@ use Getopt::Std;
 use Pogo::API;
 use JSON qw(from_json);
 
-plan tests => 2;
+plan tests => 3;
 
   # dispatcher/worker
 my $pogo = PogoOne->new();
@@ -54,10 +54,13 @@ sub run_tests {
 ####################################
     ok 1, "all components required for test are up #1";
 
+    $pogo->reg_cb( dispatcher_job_received => sub {
+        my( $c, $cmd ) = @_;
+        is $cmd, "ls", "dispatcher job received event #3";
+    });
+
     use AnyEvent::HTTP;
-
     my $base_url = $api_server->base_url();
-
     http_get "$base_url/jobsubmit?cmd=ls", sub { 
         my( $body, $hdr ) = @_;
 
