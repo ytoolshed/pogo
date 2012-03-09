@@ -9,6 +9,7 @@ use Pogo::Defaults qw(
   $POGO_API_TEST_HOST
 );
 use Log::Log4perl qw(:easy);
+use base qw(Pogo::Object::Event);
 
 ###########################################
 sub new {
@@ -36,6 +37,10 @@ sub standalone {
   );
 
   $self->{ api_server }->register_service( Pogo::API->app() );
+
+  DEBUG "Standalone server ready";
+  $self->event( "api_server_up", 
+                $POGO_API_TEST_HOST, $POGO_API_TEST_PORT );
 }
 
 ###########################################
