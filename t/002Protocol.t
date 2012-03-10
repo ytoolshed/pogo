@@ -16,7 +16,7 @@ my $pogo;
 $pogo = PogoOne->new();
 
 $pogo->reg_cb( worker_dconn_cmd_recv  => sub {
-    my( $c, $cmd ) = @_;
+    my( $c, $task_id, $cmd ) = @_;
 
     DEBUG "Worker received command";
 
@@ -37,7 +37,8 @@ plan tests => 5;
 $pogo->reg_cb( worker_dconn_listening => sub {
       
     DEBUG "Dispatcher listening, triggering worker command";
-    $pogo->{ worker }->to_dispatcher( { cmd => "command-by-worker" } );
+    $pogo->{ worker }->to_dispatcher( { cmd     => "command-by-worker",
+                                        task_id => "123" } );
 });
 
 $pogo->reg_cb( worker_dconn_ack => sub {
@@ -61,7 +62,8 @@ $pogo->reg_cb( worker_dconn_qp_idle => sub {
 $pogo->reg_cb( dispatcher_wconn_worker_connect => sub {
       
     DEBUG "Connection up, dispatcher sending command to worker";
-    $pogo->{ dispatcher }->to_worker( { cmd => "command-by-dispatcher" } );
+    $pogo->{ dispatcher }->to_worker( { cmd => "command-by-dispatcher",
+                                        task_id => "123" } );
 });
 
 $pogo->start();
