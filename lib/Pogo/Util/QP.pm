@@ -58,6 +58,18 @@ sub init {
 }
 
 ###########################################
+sub current {
+###########################################
+    my( $self ) = @_;
+
+    if( scalar @{ $self->{ queue } } ) {
+        return $self->{ queue }->[0];
+    }
+
+    return undef;
+}
+
+###########################################
 sub end_current {
 ###########################################
     my( $self ) = @_;
@@ -192,7 +204,7 @@ thrown away.
 
 =over 4
 
-=item C<new>
+=item C<new()>
 
 Constructor. Takes two parameters, C<timeout> and C<retries>:
 
@@ -209,6 +221,10 @@ If C<timeout> is set to a positive value, items will be re-tried after
 after the configured number of seconds. If C<timeout> is set to C<-1>,
 items won't time out and the manager will wait indefinitely for an C<ack>
 before offering new items.
+
+=item C<current()>
+
+Peek at the currently processed element.
 
 =back
 

@@ -37,6 +37,9 @@ sub new {
         dispatcher_listening => 0,
         auto_reconnect       => 1,
 
+          # reference back to the worker
+        worker      => undef,
+
         ssl         => undef,
         worker_cert => undef,
         worker_key  => undef,
@@ -269,12 +272,17 @@ sub channel_dispatcher_to_worker {
 
     DEBUG "Received dispatcher command: $data->{cmd}";
 
-    $self->event( "worker_dconn_cmd_recv", $data->{cmd} );
+      # Get a unique task id and send it back to the client,
+      # to refer to this job later
+    my $task_id = $self->{ worker }->next_task_id();
+
+    $self->event( "worker_dconn_cmd_recv", $task_id, $data->{cmd} );
 
     my $ack = {
         channel => 2,
         type    => "reply",
         ok      => 0,
+        task_id => $task_id,
         msg     => "OK",
     };
 

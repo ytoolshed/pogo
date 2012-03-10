@@ -169,6 +169,12 @@ sub channel_dispatcher_to_worker {
 
     DEBUG "Received worker ACK";
 
+    #      'msg' => 'OK',
+    #      'ok' => 0,
+    #      'type' => 'reply',
+    #      'channel' => 2,
+    #      'task_id' => 1
+
     $self->event( "dispatcher_wconn_ack", $data );
 
     $self->{ qp }->event( "ack" );

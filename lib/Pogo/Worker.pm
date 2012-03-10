@@ -37,7 +37,7 @@ sub new {
 
           # create a connection object for every dispatcher
         $self->{ conns }->{ $dispatcher } = 
-          Pogo::Worker::Connection->new( %$self );
+          Pogo::Worker::Connection->new( %$self, worker => $self );
     }
 
     bless $self, $class;
@@ -82,16 +82,16 @@ sub start {
     }
 
     $self->reg_cb( "worker_task_start", sub {
-        my( $c, $cmd ) = @_;
+        my( $c, $task_id, $cmd ) = @_;
 
-        my $task = $self->task_start( $cmd );
+        my $task = $self->task_start( $task_id, $cmd );
         $self->event( "worker_task_active", $task );
     } );
 
     $self->reg_cb( "worker_dconn_cmd_recv", sub {
-        my( $c, $cmd ) = @_;
+        my( $c, $task_id, $cmd ) = @_;
 
-        $self->event( "worker_task_start", $cmd );
+        $self->event( "worker_task_start", $task_id, $cmd );
     } );
 }
 
@@ -108,14 +108,14 @@ sub to_dispatcher {
 ###########################################
 sub task_start {
 ###########################################
-    my( $self, $cmd ) = @_;
+    my( $self, $task_id, $cmd ) = @_;
 
     DEBUG "Worker running cmd $cmd";
 
     my $task = Pogo::Worker::Task::Command->new(
       cmd  => $cmd,
     );
-    $task->id( $self->{ next_task_id }++ );
+    $task->id( $task_id );
 
     my $stdout = "";
     my $stderr = "";
@@ -149,6 +149,14 @@ sub task_start {
 
       # save it in the task tracker by its unique id to keep it running
     $self->{ tasks }->{ $task->id() } = $task;
+}
+
+###########################################
+sub next_task_id {
+###########################################
+    my( $self ) = @_;
+
+    return $self->{ next_task_id }++;
 }
 
 1;
