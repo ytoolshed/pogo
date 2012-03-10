@@ -59,16 +59,12 @@ Pogo::Util - Pogo Utilities
 
 =head1 SYNOPSIS
 
-    use Pogo::Util qw( http_response_json );
-
-    sub {
-       # ... 
-       return http_response_json( { message => "yay!" } );
-    }
+    use Pogo::Util qw( some_util_function );
+    some_util_function();
 
 =head1 DESCRIPTION
 
-Some useful utilities.
+Some useful utilities, used throughout Pogo.
 
 =head1 FUNCTIONS
 
@@ -77,7 +73,31 @@ Some useful utilities.
 =item C<http_response_json( $data, [$code] )> 
 
 Take a data structure and turn it into JSON, take an optional HTTP response 
-code (defaults to OK 200) and return a PSGI-compatible structure for apps.
+code (defaults to OK 200) and return a PSGI-compatible structure for apps:
+
+    use Pogo::Util qw( http_response_json );
+
+    my $callback = sub {
+       # ... 
+       return http_response_json( { message => "yay!" } );
+    }
+
+=item C<__PACKAGE__-E<gt>make_accessor( $name )> 
+
+Poor man's Class::Struct. For example, to add an accessor for an instance 
+variable C<color> to your class, use
+
+    package Foobar;
+    use Pogo::Util qw( make_accessor );
+    __PACKAGE__->make_accessor( "color" );
+
+    sub new { bless {}, shift; }
+
+    package main;
+
+    my $foobar = Foobar->new();
+    $foobar->color( "orange" );
+    print "Foobar's color is ", $foobar->color(), "\n";
 
 =back
 
