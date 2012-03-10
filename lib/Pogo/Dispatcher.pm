@@ -10,6 +10,10 @@ use Pogo::Dispatcher;
 use Pogo::Dispatcher::ControlPort;
 use Pogo::Dispatcher::Wconn::Pool;
 use base qw(Pogo::Object::Event);
+use Pogo::Defaults qw(
+  $POGO_DISPATCHER_WORKERCONN_HOST
+  $POGO_DISPATCHER_WORKERCONN_PORT
+);
 
 our $VERSION = "0.01";
 
@@ -58,12 +62,33 @@ sub start {
     $self->reg_cb( "dispatcher_job_received", sub {
       my( $c, $cmd ) = @_;
 
+        # Assign it an ID
+    my $id = $self->next_task_id();
+
         # ... send it to a worker
       DEBUG "Sending cmd $cmd to a worker";
       $self->to_worker( { cmd => $cmd } );
     } );
 
     DEBUG "Dispatcher started";
+}
+
+###########################################
+sub next_task_id_base {
+###########################################
+    my( $self ) = @_;
+
+    return "$POGO_DISPATCHER_WORKERCONN_HOST:$POGO_DISPATCHER_WORKERCONN_PORT";
+}
+
+###########################################
+sub next_task_id {
+###########################################
+    my( $self ) = @_;
+
+    my $id = $self->{ next_task_id }++;
+
+    return $self->next_task_id_base() . "-$id";
 }
 
 ###########################################

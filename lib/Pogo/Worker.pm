@@ -14,6 +14,7 @@ use Pogo::Defaults qw(
   $POGO_WORKER_DELAY_CONNECT
   $POGO_WORKER_DELAY_RECONNECT
 );
+use Sys::Hostname;
 use base qw(Pogo::Object::Event);
 
 our $VERSION = "0.01";
@@ -152,11 +153,21 @@ sub task_start {
 }
 
 ###########################################
+sub next_task_id_base {
+###########################################
+    my( $self ) = @_;
+
+    return hostname();
+}
+
+###########################################
 sub next_task_id {
 ###########################################
     my( $self ) = @_;
 
-    return $self->{ next_task_id }++;
+    my $id = $self->{ next_task_id }++;
+
+    return $self->next_task_id_base() . "-$id";
 }
 
 1;
