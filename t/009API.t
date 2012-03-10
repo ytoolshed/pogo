@@ -15,7 +15,7 @@ use JSON qw(from_json);
 
 #$Object::Event::DEBUG = 2;
 
-plan tests => 5;
+plan tests => 6;
 
   # dispatcher/worker
 my $pogo = PogoOne->new();
@@ -63,10 +63,15 @@ sub run_tests {
         is $cmd, $cmdline, "dispatcher job received event #3";
     });
 
-    $pogo->reg_cb( worker_running_cmd_done => sub {
+    $pogo->reg_cb( worker_task_active => sub {
+        my( $c, $task ) = @_;
+        is $task->id(), 1, "worker task 1 active #4";
+    });
+
+    $pogo->reg_cb( worker_task_done => sub {
         my( $c, $task_id, $rc, $stdout, $stderr, $cmd ) = @_;
-        is $task_id, 1, "worker task 1 done #4";
-        is $rc, 0, "worker command succeeded #5";
+        is $task_id, 1, "worker task 1 done #5";
+        is $rc, 0, "worker command succeeded #6";
     });
 
     use AnyEvent::HTTP;

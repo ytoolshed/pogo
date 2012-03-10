@@ -81,11 +81,17 @@ sub start {
         $self->{ conns }->{ $dispatcher }->start();
     }
 
+    $self->reg_cb( "worker_task_start", sub {
+        my( $c, $cmd ) = @_;
+
+        my $task = $self->task_start( $cmd );
+        $self->event( "worker_task_active", $task );
+    } );
+
     $self->reg_cb( "worker_dconn_cmd_recv", sub {
         my( $c, $cmd ) = @_;
 
-          # start the task
-        my $task = $self->task_start( $cmd );
+        $self->event( "worker_task_start", $cmd );
     } );
 }
 
@@ -105,8 +111,6 @@ sub task_start {
     my( $self, $cmd ) = @_;
 
     DEBUG "Worker running cmd $cmd";
-
-    $self->event( "worker_running_cmd", $cmd );
 
     my $task = Pogo::Worker::Task::Command->new(
       cmd  => $cmd,
@@ -132,7 +136,7 @@ sub task_start {
 
         DEBUG "Task ", $task->id(), " ended (rc=$rc)";
 
-        $self->event( "worker_running_cmd_done", 
+        $self->event( "worker_task_done", 
                       $task->id(), $rc, $stdout, $stderr, $cmd );
 
           # remove task from tracker hash
@@ -198,6 +202,16 @@ worker terminates the child.
 
 Upon completion of the task (or a timeout), the worker sends a
 message to the dispatcher, which sends back and ACK.
+
+=head1 EVENTS
+
+=head2 Emitted
+
+=over 4
+
+=item C<worker_running_cmd_done( $task_id, $rc, $stdout, $stderr, $cmd >>
+
+=back
 
 =head1 LICENSE
 
