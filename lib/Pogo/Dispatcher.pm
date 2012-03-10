@@ -23,6 +23,7 @@ sub new {
     my($class, %options) = @_;
 
     my $self = {
+        next_task_id => 1,
         %options,
     };
 
@@ -62,12 +63,19 @@ sub start {
     $self->reg_cb( "dispatcher_job_received", sub {
       my( $c, $cmd ) = @_;
 
-        # Assign it an ID
-    my $id = $self->next_task_id();
+        # Assign it a dispatcher task ID
+      my $id = $self->next_task_id();
+
+      my $task = {
+          cmd     => $cmd,
+          task_id => $id,
+      };
+
+      $self->{ tasks_in_progress }->{ $id } = $task;
 
         # ... send it to a worker
       DEBUG "Sending cmd $cmd to a worker";
-      $self->to_worker( { cmd => $cmd } );
+      $self->to_worker( $task );
     } );
 
     DEBUG "Dispatcher started";

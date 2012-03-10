@@ -270,19 +270,16 @@ sub channel_dispatcher_to_worker {
 ###########################################
     my( $self, $data ) = @_;
 
-    DEBUG "Received dispatcher command: $data->{cmd}";
+    DEBUG "Received dispatcher command: $data->{ cmd }";
 
-      # Get a unique task id and send it back to the client,
-      # to refer to this job later
-    my $task_id = $self->{ worker }->next_task_id();
-
-    $self->event( "worker_dconn_cmd_recv", $task_id, $data->{cmd} );
+    $self->event( "worker_dconn_cmd_recv", 
+                  $data->{ task_id }, $data->{ cmd } );
 
     my $ack = {
         channel => 2,
         type    => "reply",
         ok      => 0,
-        task_id => $task_id,
+        task_id => $data->{ task_id },
         msg     => "OK",
     };
 

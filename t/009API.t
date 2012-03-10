@@ -65,14 +65,14 @@ sub run_tests {
 
     $pogo->reg_cb( worker_task_active => sub {
         my( $c, $task ) = @_;
-        (my $id_num) = ( $task->id() =~ /-(\d+)/ );
-        is $id_num, 1, "worker task 1 active #4";
+        is $task->id(), $pogo->{ dispatcher }->next_task_id_base() . "-1", 
+           "worker task 1 active #4";
     });
 
     $pogo->reg_cb( worker_task_done => sub {
         my( $c, $task_id, $rc, $stdout, $stderr, $cmd ) = @_;
-        (my $id_num) = ( $task_id =~ /-(\d+)/ );
-        is $id_num, 1, "worker task 1 done #5";
+        is $task_id, $pogo->{ dispatcher }->next_task_id_base() . "-1", 
+           "worker task 1 done #5";
         is $rc, 0, "worker command succeeded #6";
     });
 
