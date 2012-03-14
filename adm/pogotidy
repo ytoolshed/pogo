@@ -6,14 +6,40 @@
 use strict;
 use Sysadm::Install qw(:all);
 use Perl::Tidy;
+use File::Find;
+use File::Compare;
+use Log::Log4perl qw(:easy);
 
-my $source = "lib/Pogo.pm";
-my $destination = "lib/Pogo.pm.123";
+Log::Log4perl->easy_init($DEBUG);
 
-Perl::Tidy::perltidy(
-    source            => $source,
-    destination       => $destination,
-    perltidyrc        => "adm/perltidyrc",
-);
+my $perltidyrc = File::Spec->rel2abs( "adm/perltidyrc" ) ;
+
+find sub {
+
+    my $source      = $_;
+    my $name        = $File::Find::name;
+    my $destination = $source . ".tdy";
+
+    return if ! -f $source;
+    return if $source !~ /\.pm$/;
+
+    DEBUG "pogotidy: $name";
+
+    my $rc = Perl::Tidy::perltidy(
+        source            => $source,
+        destination       => $destination,
+        perltidyrc        => $perltidyrc,
+    );
+
+    LOGDIE "Tidy failed on $source" unless $rc;
+
+    if( compare( $source, $destination ) == 0) {
+        # no change
+    } else {
+        DEBUG "Fixed up $name";
+        # mv $destination, $source;
+    }
+
+}, "lib";
 
 # perltidy -pro=adm/perltidyrc lib/Pogo/Dispatcher.pm
