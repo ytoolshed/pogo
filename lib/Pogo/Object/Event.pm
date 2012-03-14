@@ -11,11 +11,9 @@ use base qw( Object::Event );
 ###########################################
 sub new {
 ###########################################
-    my($class, %options) = @_;
+    my ( $class, %options ) = @_;
 
-    my $self = {
-        %options,
-    };
+    my $self = { %options, };
 
     bless $self, $class;
 }
@@ -23,27 +21,29 @@ sub new {
 ###########################################
 sub event_forward {
 ###########################################
-    my( $self, $opts, @events ) = @_;
+    my ( $self, $opts, @events ) = @_;
 
-    if( !exists $opts->{ forward_from } ) {
+    if ( !exists $opts->{ forward_from } ) {
         LOGDIE "Missing mandatory param 'forward_from'";
     }
 
     for my $event ( @events ) {
-        $opts->{ forward_from }->reg_cb( $event => sub {
-            my( $c, @args ) = @_;
+        $opts->{ forward_from }->reg_cb(
+            $event => sub {
+                my ( $c, @args ) = @_;
 
-            DEBUG "Forwarding event $event from ", 
-                  ref( $opts->{ forward_from } ), " to ", ref( $self );
+                DEBUG "Forwarding event $event from ",
+                    ref( $opts->{ forward_from } ), " to ", ref( $self );
 
-            my $target_event = $event;
+                my $target_event = $event;
 
-            if( $opts->{ prefix } ) {
-                $target_event = $opts->{ prefix } . $event;
+                if ( $opts->{ prefix } ) {
+                    $target_event = $opts->{ prefix } . $event;
+                }
+
+                $self->event( $target_event, @args );
             }
-
-            $self->event( $target_event, @args );
-        });
+        );
     }
 }
 

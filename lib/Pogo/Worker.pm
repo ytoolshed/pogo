@@ -9,10 +9,10 @@ use AnyEvent::Strict;
 use Pogo::Worker::Connection;
 use Pogo::Worker::Task::Command;
 use Pogo::Defaults qw(
-  $POGO_DISPATCHER_WORKERCONN_HOST
-  $POGO_DISPATCHER_WORKERCONN_PORT
-  $POGO_WORKER_DELAY_CONNECT
-  $POGO_WORKER_DELAY_RECONNECT
+    $POGO_DISPATCHER_WORKERCONN_HOST
+    $POGO_DISPATCHER_WORKERCONN_PORT
+    $POGO_WORKER_DELAY_CONNECT
+    $POGO_WORKER_DELAY_RECONNECT
 );
 use Sys::Hostname;
 use base qw(Pogo::Object::Event);
@@ -22,23 +22,24 @@ our $VERSION = "0.01";
 ###########################################
 sub new {
 ###########################################
-    my($class, %options) = @_;
+    my ( $class, %options ) = @_;
 
     my $self = {
-        delay_connect   => $POGO_WORKER_DELAY_CONNECT,
-        dispatchers => [ 
-         "$POGO_DISPATCHER_WORKERCONN_HOST:$POGO_DISPATCHER_WORKERCONN_PORT" ],
-        auto_reconnect  => 1,
-        tasks           => {},
-        next_task_id    => 1,
+        delay_connect => $POGO_WORKER_DELAY_CONNECT,
+        dispatchers   => [
+            "$POGO_DISPATCHER_WORKERCONN_HOST:$POGO_DISPATCHER_WORKERCONN_PORT"
+        ],
+        auto_reconnect => 1,
+        tasks          => {},
+        next_task_id   => 1,
         %options,
     };
 
     for my $dispatcher ( @{ $self->{ dispatchers } } ) {
 
-          # create a connection object for every dispatcher
-        $self->{ conns }->{ $dispatcher } = 
-          Pogo::Worker::Connection->new( %$self, worker => $self );
+        # create a connection object for every dispatcher
+        $self->{ conns }->{ $dispatcher } =
+            Pogo::Worker::Connection->new( %$self, worker => $self );
     }
 
     bless $self, $class;
@@ -47,9 +48,9 @@ sub new {
 ###########################################
 sub random_dispatcher {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
-      # pick a random dispatcher
+    # pick a random dispatcher
     my $nof_dispatchers = scalar @{ $self->{ dispatchers } };
     return $self->{ dispatchers }->[ rand $nof_dispatchers ];
 }
@@ -57,105 +58,109 @@ sub random_dispatcher {
 ###########################################
 sub start {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     DEBUG "Worker: Starting";
 
-      # we re-emit events we get from any of the dispatcher 
-      # connections, so consumers don't know/care which
-      # dispatcher they came from
+    # we re-emit events we get from any of the dispatcher
+    # connections, so consumers don't know/care which
+    # dispatcher they came from
     for my $dispatcher ( @{ $self->{ dispatchers } } ) {
-        $self->event_forward( 
-          { forward_from => $self->{ conns }->{ $dispatcher } 
-          }, 
-          qw(
-            worker_dconn_connected
-            worker_dconn_listening
-            worker_dconn_ack
-            worker_dconn_qp_idle
-            worker_dconn_cmd_recv
-        ) );
+        $self->event_forward(
+            { forward_from => $self->{ conns }->{ $dispatcher } },
+            qw(
+                worker_dconn_connected
+                worker_dconn_listening
+                worker_dconn_ack
+                worker_dconn_qp_idle
+                worker_dconn_cmd_recv
+                )
+        );
     }
 
-      # launch connector components for all defined dispatchers
+    # launch connector components for all defined dispatchers
     for my $dispatcher ( @{ $self->{ dispatchers } } ) {
         $self->{ conns }->{ $dispatcher }->start();
     }
 
-    $self->reg_cb( "worker_task_start", sub {
-        my( $c, $task_id, $cmd ) = @_;
+    $self->reg_cb(
+        "worker_task_start",
+        sub {
+            my ( $c, $task_id, $cmd ) = @_;
 
-        my $task = $self->task_start( $task_id, $cmd );
-        $self->event( "worker_task_active", $task );
-    } );
+            my $task = $self->task_start( $task_id, $cmd );
+            $self->event( "worker_task_active", $task );
+        }
+    );
 
-    $self->reg_cb( "worker_dconn_cmd_recv", sub {
-        my( $c, $task_id, $cmd ) = @_;
+    $self->reg_cb(
+        "worker_dconn_cmd_recv",
+        sub {
+            my ( $c, $task_id, $cmd ) = @_;
 
-        $self->event( "worker_task_start", $task_id, $cmd );
-    } );
+            $self->event( "worker_task_start", $task_id, $cmd );
+        }
+    );
 }
 
 ###########################################
 sub to_dispatcher {
 ###########################################
-    my( $self, $data ) = @_;
+    my ( $self, $data ) = @_;
 
-      # send a command to a random dispatcher
+    # send a command to a random dispatcher
     $self->{ conns }->{ $self->random_dispatcher() }
-         ->event( "worker_send_cmd", $data );
+        ->event( "worker_send_cmd", $data );
 }
 
 ###########################################
 sub task_start {
 ###########################################
-    my( $self, $task_id, $cmd ) = @_;
+    my ( $self, $task_id, $cmd ) = @_;
 
     DEBUG "Worker running cmd $cmd";
 
-    my $task = Pogo::Worker::Task::Command->new(
-      cmd  => $cmd,
-    );
+    my $task = Pogo::Worker::Task::Command->new( cmd => $cmd, );
     $task->id( $task_id );
 
     my $stdout = "";
     my $stderr = "";
 
     $task->reg_cb(
-      on_stdout => sub {
-        my($c, $stdout_chunk) = @_;
+        on_stdout => sub {
+            my ( $c, $stdout_chunk ) = @_;
 
-        $stdout .= $stdout_chunk;
-      },
-      on_stderr => sub {
-        my($c, $stderr_chunk) = @_;
+            $stdout .= $stdout_chunk;
+        },
+        on_stderr => sub {
+            my ( $c, $stderr_chunk ) = @_;
 
-        $stderr .= $stderr_chunk;
-      },
-      on_finish => sub {
-        my($c, $rc) = @_;
+            $stderr .= $stderr_chunk;
+        },
+        on_finish => sub {
+            my ( $c, $rc ) = @_;
 
-        DEBUG "Task ", $task->id(), " ended (rc=$rc)";
+            DEBUG "Task ", $task->id(), " ended (rc=$rc)";
 
-        $self->event( "worker_task_done", 
-                      $task->id(), $rc, $stdout, $stderr, $cmd );
+            $self->event( "worker_task_done", $task->id(), $rc, $stdout,
+                $stderr, $cmd );
 
-          # remove task from tracker hash
-        delete $self->{ tasks }->{ $task->id() };
-      },
+            # remove task from tracker hash
+            delete $self->{ tasks }->{ $task->id() };
+        },
     );
-          
+
     DEBUG "Starting task ", $task->id(), " (cmd=$cmd)";
     $task->start();
 
-      # save it in the task tracker by its unique id to keep it running
+    # save it in the task tracker by its unique id to keep it running
     $self->{ tasks }->{ $task->id() } = $task;
 }
 
 ###########################################
 sub next_task_id_base {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     return hostname();
 }
@@ -163,7 +168,7 @@ sub next_task_id_base {
 ###########################################
 sub next_task_id {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     my $id = $self->{ next_task_id }++;
 

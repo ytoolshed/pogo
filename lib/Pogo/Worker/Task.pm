@@ -14,7 +14,7 @@ __PACKAGE__->make_accessor( $_ ) for qw( id );
 ###########################################
 sub new {
 ###########################################
-    my($class, %options) = @_;
+    my ( $class, %options ) = @_;
 
     my $self = {
         id => undef,

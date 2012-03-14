@@ -11,8 +11,8 @@ use Pogo::Dispatcher::ControlPort;
 use Pogo::Dispatcher::Wconn::Pool;
 use base qw(Pogo::Object::Event);
 use Pogo::Defaults qw(
-  $POGO_DISPATCHER_WORKERCONN_HOST
-  $POGO_DISPATCHER_WORKERCONN_PORT
+    $POGO_DISPATCHER_WORKERCONN_HOST
+    $POGO_DISPATCHER_WORKERCONN_PORT
 );
 
 our $VERSION = "0.01";
@@ -20,7 +20,7 @@ our $VERSION = "0.01";
 ###########################################
 sub new {
 ###########################################
-    my($class, %options) = @_;
+    my ( $class, %options ) = @_;
 
     my $self = {
         next_task_id => 1,
@@ -35,48 +35,51 @@ sub new {
 ###########################################
 sub start {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
-      # Handle a pool of workers, as they connect
-    my $w = Pogo::Dispatcher::Wconn::Pool->new(
-        %$self
+    # Handle a pool of workers, as they connect
+    my $w = Pogo::Dispatcher::Wconn::Pool->new( %$self );
+
+    $self->event_forward(
+        { forward_from => $w }, qw(
+            dispatcher_wconn_worker_connect
+            dispatcher_wconn_prepare
+            dispatcher_wconn_cmd_recv
+            dispatcher_wconn_ack )
     );
-
-    $self->event_forward( { forward_from => $w }, qw( 
-        dispatcher_wconn_worker_connect 
-        dispatcher_wconn_prepare 
-        dispatcher_wconn_cmd_recv 
-        dispatcher_wconn_ack ) );
     $w->start();
-    $self->{ wconn_pool } = $w; # guard it or it'll vanish
+    $self->{ wconn_pool } = $w;    # guard it or it'll vanish
 
-      # Listen to requests from the ControlPort
-    my $cp = Pogo::Dispatcher::ControlPort->new(
-        dispatcher => $self
+    # Listen to requests from the ControlPort
+    my $cp = Pogo::Dispatcher::ControlPort->new( dispatcher => $self );
+    $self->event_forward(
+        { forward_from => $cp }, qw(
+            dispatcher_controlport_up )
     );
-    $self->event_forward( { forward_from => $cp }, qw( 
-        dispatcher_controlport_up ) );
     $cp->start();
-    $self->{ cp } = $cp; # guard it or it'll vanish
+    $self->{ cp } = $cp;           # guard it or it'll vanish
 
-      # if a job comes in ...
-    $self->reg_cb( "dispatcher_job_received", sub {
-      my( $c, $cmd ) = @_;
+    # if a job comes in ...
+    $self->reg_cb(
+        "dispatcher_job_received",
+        sub {
+            my ( $c, $cmd ) = @_;
 
-        # Assign it a dispatcher task ID
-      my $id = $self->next_task_id();
+            # Assign it a dispatcher task ID
+            my $id = $self->next_task_id();
 
-      my $task = {
-          cmd     => $cmd,
-          task_id => $id,
-      };
+            my $task = {
+                cmd     => $cmd,
+                task_id => $id,
+            };
 
-      $self->{ tasks_in_progress }->{ $id } = $task;
+            $self->{ tasks_in_progress }->{ $id } = $task;
 
-        # ... send it to a worker
-      DEBUG "Sending cmd $cmd to a worker";
-      $self->to_worker( $task );
-    } );
+            # ... send it to a worker
+            DEBUG "Sending cmd $cmd to a worker";
+            $self->to_worker( $task );
+        }
+    );
 
     DEBUG "Dispatcher started";
 }
@@ -84,7 +87,7 @@ sub start {
 ###########################################
 sub next_task_id_base {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     return "$POGO_DISPATCHER_WORKERCONN_HOST:$POGO_DISPATCHER_WORKERCONN_PORT";
 }
@@ -92,7 +95,7 @@ sub next_task_id_base {
 ###########################################
 sub next_task_id {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     my $id = $self->{ next_task_id }++;
 
@@ -102,7 +105,7 @@ sub next_task_id {
 ###########################################
 sub to_worker {
 ###########################################
-    my( $self, $data ) = @_;
+    my ( $self, $data ) = @_;
 
     $self->{ wconn_pool }->event( "dispatcher_wconn_send_cmd", $data );
 }

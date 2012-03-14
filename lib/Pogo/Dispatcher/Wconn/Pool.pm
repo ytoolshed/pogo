@@ -12,8 +12,8 @@ use JSON qw(from_json to_json);
 use Data::Dumper;
 use Pogo::Dispatcher::Wconn::Connection;
 use Pogo::Defaults qw(
-  $POGO_DISPATCHER_WORKERCONN_HOST
-  $POGO_DISPATCHER_WORKERCONN_PORT
+    $POGO_DISPATCHER_WORKERCONN_HOST
+    $POGO_DISPATCHER_WORKERCONN_PORT
 );
 use base qw(Pogo::Object::Event);
 
@@ -22,12 +22,12 @@ our $VERSION = "0.01";
 ###########################################
 sub new {
 ###########################################
-    my($class, %options) = @_;
+    my ( $class, %options ) = @_;
 
     my $self = {
-        host     => $POGO_DISPATCHER_WORKERCONN_HOST,
-        port     => $POGO_DISPATCHER_WORKERCONN_PORT,
-        workers  => {},
+        host    => $POGO_DISPATCHER_WORKERCONN_HOST,
+        port    => $POGO_DISPATCHER_WORKERCONN_PORT,
+        workers => {},
 
         ssl             => undef,
         dispatcher_cert => undef,
@@ -35,7 +35,7 @@ sub new {
         ca_cert         => undef,
     };
 
-      # actual values overwrite defaults
+    # actual values overwrite defaults
     for my $key ( keys %$self ) {
         $self->{ $key } = $options{ $key } if exists $options{ $key };
     }
@@ -46,31 +46,34 @@ sub new {
 ###########################################
 sub start {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     DEBUG "Starting worker server on $self->{ host }:$self->{ port }";
 
-      # Start server, accepting workers connections
-    $self->{worker_server_guard} =
-        tcp_server( $self->{ host },
-                    $self->{ port }, 
-                    $self->_accept_handler(),
-                    $self->_prepare_handler(),
-        );
+    # Start server, accepting workers connections
+    $self->{ worker_server_guard } = tcp_server(
+        $self->{ host },
+        $self->{ port },
+        $self->_accept_handler(),
+        $self->_prepare_handler(),
+    );
 
-    $self->reg_cb( "dispatcher_wconn_send_cmd", sub {
-        my( $cmd, $data ) = @_;
-        $self->to_random_worker( $data );
-    } );
+    $self->reg_cb(
+        "dispatcher_wconn_send_cmd",
+        sub {
+            my ( $cmd, $data ) = @_;
+            $self->to_random_worker( $data );
+        }
+    );
 }
 
 ###########################################
 sub _prepare_handler {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     return sub {
-        my( $fh, $host, $port ) = @_;
+        my ( $fh, $host, $port ) = @_;
 
         DEBUG "Listening to $self->{host}:$self->{port} for workers.";
         $self->event( "dispatcher_wconn_prepare", $host, $port );
@@ -80,46 +83,47 @@ sub _prepare_handler {
 ###########################################
 sub _accept_handler {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     return sub {
-        my( $sock, $peer_host, $peer_port ) = @_;
+        my ( $sock, $peer_host, $peer_port ) = @_;
 
         DEBUG "$self->{ host }:$self->{ port } accepting ",
-              "connection from worker $peer_host:$peer_port";
+            "connection from worker $peer_host:$peer_port";
 
         my $worker_handle;
 
-        $worker_handle = 
-          AnyEvent::Handle->new(
+        $worker_handle = AnyEvent::Handle->new(
             fh       => $sock,
             no_delay => 1,
             on_error => sub {
                 ERROR "Worker $peer_host:$peer_port can't connect: $_[2]";
-                $_[0]->destroy();
+                $_[ 0 ]->destroy();
             },
-            on_eof   => sub {
+            on_eof => sub {
                 INFO "Worker $peer_host:$peer_port disconnected.";
                 $worker_handle->destroy();
-                  # remove dead worker from pool
+                # remove dead worker from pool
                 delete $self->{ workers }->{ $peer_host };
             },
             $self->ssl(),
         );
 
-        my $conn = Pogo::Dispatcher::Wconn::Connection->new(
-            worker_handle => $worker_handle
+        my $conn =
+            Pogo::Dispatcher::Wconn::Connection->new(
+            worker_handle => $worker_handle );
+
+        $self->event_forward(
+            { forward_from => $conn }, qw(
+                dispatcher_wconn_cmd_recv
+                dispatcher_wconn_ack )
         );
 
-        $self->event_forward( { forward_from => $conn }, qw( 
-            dispatcher_wconn_cmd_recv 
-            dispatcher_wconn_ack ) );
-
         $conn->start();
-         
+
         my $worker_id = "$peer_host:$peer_port";
 
-          # add worker to the pool
+        # add worker to the pool
         $self->{ workers }->{ $worker_id } = $conn;
 
         DEBUG "Firing dispatcher_wconn_worker_connect";
@@ -130,14 +134,14 @@ sub _accept_handler {
 ###########################################
 sub random_worker {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
-      # pick a random worker
+    # pick a random worker
     my @workers = keys %{ $self->{ workers } };
 
     DEBUG "Picking from ", scalar @workers, " workers";
 
-    if( !@workers ) {
+    if ( !@workers ) {
         return undef;
     }
 
@@ -148,25 +152,25 @@ sub random_worker {
 ###########################################
 sub to_random_worker {
 ###########################################
-    my( $self, $data ) = @_;
+    my ( $self, $data ) = @_;
 
     my $random_worker = $self->random_worker();
 
-    if( !defined $random_worker ) {
+    if ( !defined $random_worker ) {
         ERROR "No workers";
         $self->event( "dispatcher_no_workers" );
     }
 
     DEBUG "Picked random worker $random_worker";
 
-    $self->{ workers }->{ $random_worker }->event(
-      "dispatcher_wconn_send_cmd", $data );
+    $self->{ workers }->{ $random_worker }
+        ->event( "dispatcher_wconn_send_cmd", $data );
 }
 
 ###########################################
 sub workers_connected {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     return keys %{ $self->{ workers } };
 }
@@ -174,14 +178,14 @@ sub workers_connected {
 ###########################################
 sub ssl {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
-    if( ! $self->{ ssl } ) {
+    if ( !$self->{ ssl } ) {
         return ();
     }
 
     for my $name ( qw(ca_cert dispatcher_cert dispatcher_key ) ) {
-        if( defined $self->{ $name } ) {
+        if ( defined $self->{ $name } ) {
             DEBUG "Picking up $name from $self->{ $name }";
         } else {
             LOGDIE "Defined 'ssl' but no value for '$name' given";
@@ -189,19 +193,19 @@ sub ssl {
     }
 
     return (
-        tls      => "accept",
-        tls_ctx  => { 
-              # server
+        tls     => "accept",
+        tls_ctx => {
+            # server
 
-              # dispatcher provides server cert for the worker
+            # dispatcher provides server cert for the worker
             cert_file => $self->{ dispatcher_cert },
             key_file  => $self->{ dispatcher_key },
-            
-              # dispatcher requests/verifies client cert
-           verify                     => 1,
-           verify_require_client_cert => 1,
-           ca_file                    => $self->{ ca_cert },
-       },
+
+            # dispatcher requests/verifies client cert
+            verify                     => 1,
+            verify_require_client_cert => 1,
+            ca_file                    => $self->{ ca_cert },
+        },
     );
 }
 

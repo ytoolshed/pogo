@@ -9,14 +9,14 @@ use Log::Log4perl qw(:easy);
 ###########################################
 sub new {
 ###########################################
-    my( $class, %options ) = @_;
+    my ( $class, %options ) = @_;
 
     my $self = {
         retries   => -1,
-        timeout   =>  5,
+        timeout   => 5,
         queue     => [],
-        pending   =>  0,
-        cur_retry =>  0,
+        pending   => 0,
+        cur_retry => 0,
         %options,
     };
 
@@ -30,40 +30,46 @@ sub new {
 ###########################################
 sub init {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
-    $self->reg_cb( "push", sub {
-        my( $c, $item ) = @_;
+    $self->reg_cb(
+        "push",
+        sub {
+            my ( $c, $item ) = @_;
 
-        push @{ $self->{ queue } }, $item;
+            push @{ $self->{ queue } }, $item;
 
-        if( !$self->{ pending } ) {
+            if ( !$self->{ pending } ) {
+                $self->process();
+            }
+        }
+    );
+
+    $self->reg_cb(
+        "ack",
+        sub {
+            my ( $c ) = @_;
+
+            DEBUG "ack";
+
+            if ( !$self->{ pending } ) {
+                LOGWARN "Received out of sequence ACK";
+                return;
+            }
+
+            $self->end_current();
             $self->process();
         }
-    } );
-
-    $self->reg_cb( "ack", sub {
-        my( $c ) = @_;
-
-        DEBUG "ack";
-
-        if( !$self->{ pending } ) {
-            LOGWARN "Received out of sequence ACK";
-            return;
-        }
-
-        $self->end_current();
-        $self->process();
-    } );
+    );
 }
 
 ###########################################
 sub current {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
-    if( scalar @{ $self->{ queue } } ) {
-        return $self->{ queue }->[0];
+    if ( scalar @{ $self->{ queue } } ) {
+        return $self->{ queue }->[ 0 ];
     }
 
     return undef;
@@ -72,16 +78,16 @@ sub current {
 ###########################################
 sub end_current {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     $self->{ pending } = 0;
     $self->{ timer }   = undef;
 
-      # take item off queue
+    # take item off queue
     DEBUG "Taking off $self->{ queue }->[0]";
     shift @{ $self->{ queue } };
 
-    if( !scalar @{ $self->{ queue } } ) {
+    if ( !scalar @{ $self->{ queue } } ) {
         DEBUG "Issuing idle";
         $self->event( "idle" );
     }
@@ -90,10 +96,10 @@ sub end_current {
 ###########################################
 sub process {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
-    if( !scalar @{ $self->{ queue } } ) {
-        return; # no next item
+    if ( !scalar @{ $self->{ queue } } ) {
+        return;    # no next item
     }
 
     DEBUG "process $self->{ queue }->[0]";
@@ -101,7 +107,7 @@ sub process {
     $self->{ pending }     = 1;
     $self->{ cur_retries } = $self->{ retries };
 
-    my $item = $self->{ queue }->[0];
+    my $item = $self->{ queue }->[ 0 ];
 
     $self->{ timer } = AnyEvent->timer(
         after    => $self->{ timeout },
@@ -110,31 +116,30 @@ sub process {
             DEBUG "timeout for item $item";
             DEBUG "cur_retries for item $item: $self->{ cur_retries }";
 
-            if( $self->{ cur_retries } > 0 ) {
+            if ( $self->{ cur_retries } > 0 ) {
                 DEBUG "re-issuing $item";
                 --$self->{ cur_retries };
                 $self->event( "next", $item );
-            } elsif( $self->{ cur_retries } < 0 ) {
+            } elsif ( $self->{ cur_retries } < 0 ) {
                 DEBUG "re-issuing $item";
                 $self->event( "next", $item );
             } else {
-                  # throw item out
+                # throw item out
                 DEBUG "throwing out $item";
                 $self->end_current();
                 $self->process();
             }
 
-
         }
     ) if $self->{ timeout } >= 0;
 
-    $self->event( "next", $item);
+    $self->event( "next", $item );
 }
 
 ###########################################
 sub push {
 ###########################################
-    my( $self, @args ) = @_;
+    my ( $self, @args ) = @_;
 
     $self->event( "push", @args );
 }
@@ -142,7 +147,7 @@ sub push {
 ###########################################
 sub ack {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     $self->event( "ack" );
 }

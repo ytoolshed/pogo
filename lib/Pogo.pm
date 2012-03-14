@@ -11,11 +11,9 @@ our $VERSION = "5.00";
 ###########################################
 sub new {
 ###########################################
-    my($class, %options) = @_;
+    my ( $class, %options ) = @_;
 
-    my $self = {
-        %options,
-    };
+    my $self = { %options, };
 
     bless $self, $class;
 }

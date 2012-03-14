@@ -14,7 +14,7 @@ use base qw(Pogo::Object::Event);
 ###########################################
 sub new {
 ###########################################
-    my($class, @opts) = @_;
+    my ( $class, @opts ) = @_;
 
     my $self = {
         zk                        => undef,
@@ -25,28 +25,31 @@ sub new {
         zk_method_interval        => 10,
         connected                 => 0,
         args                      => \@opts,
-        zk_options                => { 
-            data_read_len => 1023
-        },
+        zk_options                => { data_read_len => 1023 },
     };
 
     bless $self, $class;
 
-      # connect/reconnect
-    $self->{ connector } = Pogo::Util::QP->new( 
-        timeout => $self->{ zk_connect_retry_interval } );
+    # connect/reconnect
+    $self->{ connector } =
+        Pogo::Util::QP->new( timeout => $self->{ zk_connect_retry_interval } );
     $self->{ connector }->reg_cb( "next", $self->connect_handler() );
-    $self->reg_cb( "connect", sub {
-        DEBUG "Received request to connect to ZK";
-        $self->{ connected } = 0;
-        $self->{ connector }->push( $self->{ zk_host }, $self->{ zk_port } );
-    } );
+    $self->reg_cb(
+        "connect",
+        sub {
+            DEBUG "Received request to connect to ZK";
+            $self->{ connected } = 0;
+            $self->{ connector }
+                ->push( $self->{ zk_host }, $self->{ zk_port } );
+        }
+    );
 
-      # command queuing
+    # command queuing
     $self->{ cmd_queue } = Pogo::Util::QP->new(
         timeout => $self->{ zk_method_interval },
-        retries => $self->{ zk_method_retries } );
-    $self->{ cmd_queue}->reg_cb( "next", $self->cmd_handler() );
+        retries => $self->{ zk_method_retries }
+    );
+    $self->{ cmd_queue }->reg_cb( "next", $self->cmd_handler() );
 
     $self->mk_methods();
 
@@ -56,15 +59,15 @@ sub new {
 ###########################################
 sub ping {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     DEBUG "Testing ZK connection";
 
-    return 0 if ! defined $self->{ zk };
+    return 0 if !defined $self->{ zk };
 
     my $rc = $self->{ zk }->get( "/" );
 
-    if( defined $rc ) {
+    if ( defined $rc ) {
         return 1;
     }
 
@@ -74,40 +77,38 @@ sub ping {
 ###########################################
 sub start {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
-      # Initial connect
+    # Initial connect
     $self->event( "connect" );
 }
 
 ###########################################
 sub connect_handler {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
-    return sub { 
-        my( $c ) = @_;
+    return sub {
+        my ( $c ) = @_;
 
         my $host = $self->{ zk_host };
         my $port = $self->{ zk_port };
 
         DEBUG "Connecting to ZK on $host:$port";
-        $self->{ zk } = Net::ZooKeeper->new( 
-            "$host:$port",
-            %{ $self->{ zk_options } },
-        );
+        $self->{ zk } =
+            Net::ZooKeeper->new( "$host:$port", %{ $self->{ zk_options } }, );
 
         my $rc = $self->ping();
 
-        if( defined $rc ) {
+        if ( defined $rc ) {
             INFO "Connected to ZK on $host:$port";
             $self->{ connected } = 1;
             $self->{ connector }->ack();
             $self->event( "zk_connect_ok" );
         } else {
             $self->event( "zk_connect_error", $self->{ zk }->get_error() );
-            ERROR "Cannot connect to ZK on $host:$port (", 
-                  $self->{ zk }->get_error(), "). Will retry.";
+            ERROR "Cannot connect to ZK on $host:$port (",
+                $self->{ zk }->get_error(), "). Will retry.";
         }
     };
 }
@@ -115,7 +116,7 @@ sub connect_handler {
 ###########################################
 sub netloc {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     return "$self->{ zk_host }:$self->{ zk_port }";
 }
@@ -123,42 +124,41 @@ sub netloc {
 ###########################################
 sub get_error {
 ###########################################
-    my( $self, @args ) = @_;
+    my ( $self, @args ) = @_;
 
-    if( !defined $self->{zk} ) {
+    if ( !defined $self->{ zk } ) {
         return "No connected to ZK yet.";
     }
 
-    return $self->{zk}->get_error( @args );
+    return $self->{ zk }->get_error( @args );
 }
 
 ###########################################
 sub mk_method {
 ###########################################
-    my( $self, $method ) = @_;
+    my ( $self, $method ) = @_;
 
     # Make a wrapper of a Net::ZooKeeper function, supporting logging,
     # reconnects, and retries.
 
     no strict 'refs';
 
-
     my $pkg = __PACKAGE__;
 
-    *{"${pkg}::$method"} = sub {
-        my($self, @args) = @_;
+    *{ "${pkg}::$method" } = sub {
+        my ( $self, @args ) = @_;
 
         my $wantarray = wantarray;
 
-          # last arg is callback by convention
+        # last arg is callback by convention
         my $callback = pop @args;
 
         $self->{ cmd_queue }->push(
-          { method    => $method,
-            callback  => $callback,
-            args      => \@args,
-            wantarray => $wantarray,
-          }
+            {   method    => $method,
+                callback  => $callback,
+                args      => \@args,
+                wantarray => $wantarray,
+            }
         );
     };
 }
@@ -166,13 +166,13 @@ sub mk_method {
 ###########################################
 sub cmd_handler {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     return sub {
-        my( $c, $data ) = @_;
+        my ( $c, $data ) = @_;
 
         DEBUG "cmd_handler: ", Dumper( $data );
-     
+
         my $method    = $data->{ method };
         my $callback  = $data->{ callback };
         my @args      = @{ $data->{ args } };
@@ -183,16 +183,16 @@ sub cmd_handler {
 
         no strict 'refs';
 
-        if( $wantarray ) {
-            @rc = $self->{zk}->$method( @args );
+        if ( $wantarray ) {
+            @rc = $self->{ zk }->$method( @args );
         } else {
-            $rc[0] = $self->{zk}->$method( @args );
+            $rc[ 0 ] = $self->{ zk }->$method( @args );
         }
 
-        if ( $self->is_ok() or ! $self->is_hosed() ) {
+        if ( $self->is_ok() or !$self->is_hosed() ) {
             # Success.
             $self->{ cmd_queue }->ack();
-            if( $logger->is_debug() ) {
+            if ( $logger->is_debug() ) {
                 $self->cmd_log( $method, \@args, $self->get_error(), \@rc );
             }
             $callback->( $self, @rc );
@@ -200,10 +200,10 @@ sub cmd_handler {
             ERROR "ZK connection error: ", $self->get_error();
 
             # ZooKeeper.pm says:
-            # "If the error code is greater than ZAPIERROR, then a 
-            # connection error or server error has occurred and the 
-            # client should probably close the connection by undefining 
-            # the Net::ZooKeeper handle object and, if necessary, attempt 
+            # "If the error code is greater than ZAPIERROR, then a
+            # connection error or server error has occurred and the
+            # client should probably close the connection by undefining
+            # the Net::ZooKeeper handle object and, if necessary, attempt
             # to create a new connection to the ZooKeeper cluster."
 
             # try to re-establish a lost ZK connection
@@ -217,21 +217,24 @@ sub cmd_handler {
 ###########################################
 sub cmd_log {
 ###########################################
-    my( $self, $method, $args, $err, $rc ) = @_;
+    my ( $self, $method, $args, $err, $rc ) = @_;
 
     DEBUG "ZK: $method args=", Dumper( $args ), " err=$err",
-          " rc=", Dumper( $rc );
+        " rc=", Dumper( $rc );
 }
 
 ###########################################
 sub mk_methods {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
-    for my $method (qw(
+    for my $method (
+        qw(
         create set exists get delete get_children
         add_auth get_acl set_acl stat watch
-    )) {
+        )
+        )
+    {
         $self->mk_method( $method );
     }
 }
@@ -239,11 +242,11 @@ sub mk_methods {
 ###########################################
 sub is_ok {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
-    my $err =  $self->{zk}->get_error();
+    my $err = $self->{ zk }->get_error();
 
-    if( $err == ZOK ) {
+    if ( $err == ZOK ) {
         return 1;
     }
 
@@ -253,19 +256,19 @@ sub is_ok {
 ###########################################
 sub is_hosed {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
-    my $err =  $self->{zk}->get_error();
+    my $err = $self->{ zk }->get_error();
 
-    if( $err != ZOK and 
-        ( $err eq ZINVALIDSTATE or
-          $err eq ZCONNECTIONLOSS
+    if ($err != ZOK
+        and (  $err eq ZINVALIDSTATE
+            or $err eq ZCONNECTIONLOSS )
         )
-      ) {
-          return 1;
-      }
+    {
+        return 1;
+    }
 
-      return 0;
+    return 0;
 }
 
 1;

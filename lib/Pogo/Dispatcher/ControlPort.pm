@@ -12,15 +12,15 @@ use Data::Dumper;
 use Template;
 use Plack::Handler::AnyEvent::HTTPD;
 use Pogo::Defaults qw(
-  $POGO_DISPATCHER_CONTROLPORT_HOST
-  $POGO_DISPATCHER_CONTROLPORT_PORT
+    $POGO_DISPATCHER_CONTROLPORT_HOST
+    $POGO_DISPATCHER_CONTROLPORT_PORT
 );
 use base qw(Pogo::Object::Event);
 
 ###########################################
 sub new {
 ###########################################
-    my($class, %options) = @_;
+    my ( $class, %options ) = @_;
 
     my $self = {
         host             => $POGO_DISPATCHER_CONTROLPORT_HOST,
@@ -36,21 +36,21 @@ sub new {
 ###########################################
 sub base_url {
 ###########################################
-  my( $self ) = @_;
+    my ( $self ) = @_;
 
-  return "http://$self->{ host }:$self->{ port }/$self->{ protocol_version }";
+    return "http://$self->{ host }:$self->{ port }/$self->{ protocol_version }";
 }
 
 ###########################################
 sub start {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     DEBUG "Starting ControlPort HTTP server on port $self->{ port }";
 
     my $httpd = Plack::Handler::AnyEvent::HTTPD->new(
-        host => $self->{ host },
-        port => $self->{ port },
+        host         => $self->{ host },
+        port         => $self->{ port },
         server_ready => sub {
             $self->event( "dispatcher_controlport_up" );
         }
@@ -58,23 +58,26 @@ sub start {
 
     $httpd->register_service( $self->app() );
 
-    $self->{ httpd } = $httpd; # guard
+    $self->{ httpd } = $httpd;    # guard
 
-    $self->reg_cb( "dispatcher_controlport_send_cmd", sub {
-        my( $cmd, $data ) = @_;
-        DEBUG "Received ControlPort command: $cmd";
-    } );
+    $self->reg_cb(
+        "dispatcher_controlport_send_cmd",
+        sub {
+            my ( $cmd, $data ) = @_;
+            DEBUG "Received ControlPort command: $cmd";
+        }
+    );
 }
 
 ###########################################
 sub app {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     no strict 'refs';
     my $app_pkg = __PACKAGE__ . "::PSGI";
     eval "require $app_pkg";
-    return $app_pkg->app( $self->{ dispatcher });
+    return $app_pkg->app( $self->{ dispatcher } );
 }
 
 1;

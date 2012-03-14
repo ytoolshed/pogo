@@ -8,26 +8,28 @@ use JSON qw( to_json );
 
 require Exporter;
 our @EXPORT_OK = qw( http_response_json make_accessor);
-our @ISA = qw( Exporter );
+our @ISA       = qw( Exporter );
 
 ###########################################
 sub http_response_json {
 ###########################################
-    my( $data, $code ) = @_;
+    my ( $data, $code ) = @_;
 
     $code = 200 if !defined $code;
 
-    return [ $code, [ 'Content-Type' => 'application/json' ], 
-             [ to_json( $data ) ],
-           ];
+    return [
+        $code,
+        [ 'Content-Type' => 'application/json' ],
+        [ to_json( $data ) ],
+    ];
 }
 
 ##################################################
 sub make_accessor {
 ##################################################
-    my($package, $name) = @_;
+    my ( $package, $name ) = @_;
 
-      # Lifted from Net::Amazon
+    # Lifted from Net::Amazon
     no strict qw(refs);
 
     my $code = <<EOT;
@@ -44,7 +46,7 @@ sub make_accessor {
             }
         }
 EOT
-    if(! defined *{"$package\::$name"}) {
+    if ( !defined *{ "$package\::$name" } ) {
         eval $code or die "$@";
     }
 }

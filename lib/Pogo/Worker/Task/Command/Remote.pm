@@ -11,11 +11,9 @@ use base qw(Pogo::Worker::Task::Command);
 ###########################################
 sub new {
 ###########################################
-    my($class, %options) = @_;
+    my ( $class, %options ) = @_;
 
-    my $self = {
-        %options,
-    };
+    my $self = { %options, };
 
     bless $self, $class;
 }

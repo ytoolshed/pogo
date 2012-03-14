@@ -15,51 +15,49 @@ use Data::Dumper;
 ###########################################
 sub app {
 ###########################################
-    my( $class, $dispatcher ) = @_;
+    my ( $class, $dispatcher ) = @_;
 
     return sub {
-        my( $env ) = @_;
+        my ( $env ) = @_;
 
         DEBUG "Got v1 request";
 
         my $path = $env->{ PATH_INFO };
         ( my $command = $path ) =~ s#^/##;
 
-        my %commands = map { $_ => 1} qw( jobinfo jobsubmit );
+        my %commands = map { $_ => 1 } qw( jobinfo jobsubmit );
 
-        if( exists $commands{ $command } ) {
+        if ( exists $commands{ $command } ) {
             no strict 'refs';
             return $command->( $env, $dispatcher );
         }
 
-        return http_response_json(
-            { error => [ "unknown request: '$path'" ] }, 
-            HTTP_BAD_REQUEST,
-        );
+        return http_response_json( { error => [ "unknown request: '$path'" ] },
+            HTTP_BAD_REQUEST, );
     };
 }
 
 ###########################################
 sub jobinfo {
 ###########################################
-    my( $env, $dispatcher ) = @_;
+    my ( $env, $dispatcher ) = @_;
 
     my $req = Plack::Request->new( $env );
 
     my $params = $req->parameters();
 
-    if( exists $params->{ jobid } ) {
+    if ( exists $params->{ jobid } ) {
 
         return http_response_json(
-            { rc      => "ok",
-              message => "jobid $params->{ jobid }", 
+            {   rc      => "ok",
+                message => "jobid $params->{ jobid }",
             }
         );
     }
 
     return http_response_json(
-        { rc      => "error",
-          message => "jobid missing", 
+        {   rc      => "error",
+            message => "jobid missing",
         }
     );
 }
@@ -67,17 +65,17 @@ sub jobinfo {
 ###########################################
 sub jobsubmit {
 ###########################################
-    my( $env, $dispatcher ) = @_;
+    my ( $env, $dispatcher ) = @_;
 
     my $req = Plack::Request->new( $env );
 
     my $params = $req->parameters();
 
-    if( !exists $params->{ cmd } ) {
+    if ( !exists $params->{ cmd } ) {
         INFO "No cmd found";
         return http_response_json(
-            { rc      => "fail",
-              message => "No cmd given", 
+            {   rc      => "fail",
+                message => "No cmd given",
             }
         );
     }
@@ -87,8 +85,8 @@ sub jobsubmit {
     $dispatcher->event( "dispatcher_job_received", $params->{ cmd } );
 
     return http_response_json(
-        { rc      => "ok",
-          message => "dispatcher CP: job received", 
+        {   rc      => "ok",
+            message => "dispatcher CP: job received",
         }
     );
 }

@@ -10,11 +10,11 @@ use Log::Log4perl qw(:easy);
 ###########################################
 sub app {
 ###########################################
-    my( $class, $dispatcher ) = @_;
+    my ( $class, $dispatcher ) = @_;
 
     my $app = Plack::App::URLMap->new;
 
-      # map URLs to modules, like /status => ControlPort/Status.pm etc.
+    # map URLs to modules, like /status => ControlPort/Status.pm etc.
     for my $api ( qw( status v1 ) ) {
 
         my $module = __PACKAGE__;
@@ -22,7 +22,7 @@ sub app {
         $module .= "::" . ucfirst( $api );
 
         eval "require $module";
-        if( $@ ) {
+        if ( $@ ) {
             die "Failed to load module $module ($@)";
         }
 

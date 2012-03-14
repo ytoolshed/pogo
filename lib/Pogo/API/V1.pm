@@ -7,8 +7,8 @@ use Log::Log4perl qw(:easy);
 use JSON qw( from_json to_json );
 use Pogo::Util qw( http_response_json );
 use Pogo::Defaults qw(
-  $POGO_DISPATCHER_CONTROLPORT_HOST
-  $POGO_DISPATCHER_CONTROLPORT_PORT
+    $POGO_DISPATCHER_CONTROLPORT_HOST
+    $POGO_DISPATCHER_CONTROLPORT_PORT
 );
 use AnyEvent::HTTP;
 use HTTP::Status qw( :constants );
@@ -19,52 +19,50 @@ use HTTP::Request::Common;
 ###########################################
 sub app {
 ###########################################
-    my( $class, $dispatcher ) = @_;
+    my ( $class, $dispatcher ) = @_;
 
     return sub {
-        my( $env ) = @_;
+        my ( $env ) = @_;
 
         DEBUG "Got v1 request";
 
         my $path = $env->{ PATH_INFO };
         ( my $command = $path ) =~ s#^/##;
 
-        my %commands = map { $_ => 1} qw( jobinfo jobsubmit );
+        my %commands = map { $_ => 1 } qw( jobinfo jobsubmit );
 
-        if( exists $commands{ $command } ) {
+        if ( exists $commands{ $command } ) {
             no strict 'refs';
             DEBUG "Calling $command";
             return $command->( $env );
         }
 
-        return http_response_json(
-            { error => [ "unknown request: '$path'" ] }, 
-            HTTP_BAD_REQUEST,
-        );
+        return http_response_json( { error => [ "unknown request: '$path'" ] },
+            HTTP_BAD_REQUEST, );
     };
 }
 
 ###########################################
 sub jobinfo {
 ###########################################
-    my( $env ) = @_;
+    my ( $env ) = @_;
 
     my $req = Plack::Request->new( $env );
 
     my $params = $req->parameters();
 
-    if( exists $params->{ jobid } ) {
+    if ( exists $params->{ jobid } ) {
 
         return http_response_json(
-            { rc      => "ok",
-              message => "jobid $params->{ jobid }", 
+            {   rc      => "ok",
+                message => "jobid $params->{ jobid }",
             }
         );
     }
 
     return http_response_json(
-        { rc      => "error",
-          message => "jobid missing", 
+        {   rc      => "error",
+            message => "jobid missing",
         }
     );
 }
@@ -72,7 +70,7 @@ sub jobinfo {
 ###########################################
 sub jobsubmit {
 ###########################################
-    my( $env ) = @_;
+    my ( $env ) = @_;
 
     DEBUG "Handling jobsubmit request";
 
@@ -80,12 +78,12 @@ sub jobsubmit {
 
     my $params = $req->parameters();
 
-    if( exists $params->{ cmd } ) {
+    if ( exists $params->{ cmd } ) {
         DEBUG "cmd is $params->{ cmd }";
         return sub {
-            my( $response ) = @_;
+            my ( $response ) = @_;
 
-                # Tell the dispatcher about it (just testing)
+            # Tell the dispatcher about it (just testing)
             job_post_to_dispatcher( $params->{ cmd }, $response );
         };
     }
@@ -93,8 +91,8 @@ sub jobsubmit {
     ERROR "No cmd defined";
 
     return http_response_json(
-        { rc      => "error",
-          message => "cmd missing", 
+        {   rc      => "error",
+            message => "cmd missing",
         }
     );
 }
@@ -102,9 +100,9 @@ sub jobsubmit {
 ###########################################
 sub job_post_to_dispatcher {
 ###########################################
-    my( $cmd, $response_cb ) = @_;
+    my ( $cmd, $response_cb ) = @_;
 
-    my $cp = Pogo::Dispatcher::ControlPort->new();
+    my $cp          = Pogo::Dispatcher::ControlPort->new();
     my $cp_base_url = $cp->base_url();
 
     DEBUG "Submitting job to $cp_base_url (cmd=$cmd)";
@@ -114,34 +112,32 @@ sub job_post_to_dispatcher {
     http_post $req->url(), $req->content(),
         headers => $req->headers(),
         sub {
-            my( $data, $hdr ) = @_;
+        my ( $data, $hdr ) = @_;
 
-            DEBUG "Received $hdr->{ Status } response from $cp_base_url: ",
-                  "[$data]";
+        DEBUG "Received $hdr->{ Status } response from $cp_base_url: ",
+            "[$data]";
 
-            my $rc;
-            my $message;
+        my $rc;
+        my $message;
 
-            eval {
-                $data = from_json( $data );
-            };
+        eval { $data = from_json( $data ); };
 
-            if( $@ ) {
-                $rc       = "fail";
-                $message  = "invalid json: $@";
-            } else {
-                $rc = $data->{ rc };
-                $message = $data->{ message };
-            }
+        if ( $@ ) {
+            $rc      = "fail";
+            $message = "invalid json: $@";
+        } else {
+            $rc      = $data->{ rc };
+            $message = $data->{ message };
+        }
 
-            $response_cb->(
-              http_response_json(
-                { rc       => $rc,
-                  message  => $message,
-                  status   => $hdr->{ Status },
+        $response_cb->(
+            http_response_json(
+                {   rc      => $rc,
+                    message => $message,
+                    status  => $hdr->{ Status },
                 }
-              )
-            );
+            )
+        );
         };
 }
 

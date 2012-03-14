@@ -11,9 +11,9 @@ use AnyEvent::Handle;
 use Data::Dumper;
 use JSON qw(to_json from_json);
 use Pogo::Defaults qw(
-  $POGO_DISPATCHER_WORKERCONN_HOST
-  $POGO_DISPATCHER_WORKERCONN_PORT
-  $POGO_WORKER_DELAY_CONNECT
+    $POGO_DISPATCHER_WORKERCONN_HOST
+    $POGO_DISPATCHER_WORKERCONN_PORT
+    $POGO_WORKER_DELAY_CONNECT
 );
 use Pogo::Util::QP;
 use base "Pogo::Object::Event";
@@ -21,13 +21,13 @@ use base "Pogo::Object::Event";
 ###########################################
 sub new {
 ###########################################
-    my($class, %options) = @_;
+    my ( $class, %options ) = @_;
 
     my $self = {
         dispatcher_host => $POGO_DISPATCHER_WORKERCONN_HOST,
         dispatcher_port => $POGO_DISPATCHER_WORKERCONN_PORT,
         delay_connect   => $POGO_WORKER_DELAY_CONNECT,
-        channels => {
+        channels        => {
             0 => "control",
             1 => "worker_to_dispatcher",
             2 => "dispatcher_to_worker",
@@ -37,8 +37,8 @@ sub new {
         dispatcher_listening => 0,
         auto_reconnect       => 1,
 
-          # reference back to the worker
-        worker      => undef,
+        # reference back to the worker
+        worker => undef,
 
         ssl         => undef,
         worker_cert => undef,
@@ -46,14 +46,14 @@ sub new {
         ca_cert     => undef,
     };
 
-      # actual values overwrite defaults
+    # actual values overwrite defaults
     for my $key ( keys %$self ) {
         $self->{ $key } = $options{ $key } if exists $options{ $key };
     }
 
     $self->{ qp } = Pogo::Util::QP->new(
-         retries => $self->{ qp_retries },
-         timeout => $self->{ qp_timeout },
+        retries => $self->{ qp_retries },
+        timeout => $self->{ qp_timeout },
     );
 
     bless $self, $class;
@@ -62,52 +62,59 @@ sub new {
 ###########################################
 sub start {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
-      # we take commands this way, to send them to the dispatcher
+    # we take commands this way, to send them to the dispatcher
     $self->reg_cb( "worker_send_cmd", $self->_send_cmd_handler() );
 
-    $self->reg_cb( "worker_dconn_error", sub {
-        my( $c, $msg ) = @_;
+    $self->reg_cb(
+        "worker_dconn_error",
+        sub {
+            my ( $c, $msg ) = @_;
 
-        local $Log::Log4perl::caller_depth =
-              $Log::Log4perl::caller_depth + 1;
+            local $Log::Log4perl::caller_depth =
+                $Log::Log4perl::caller_depth + 1;
 
-        ERROR "$msg";
+            ERROR "$msg";
 
-        if( $self->{ auto_reconnect } ) {
-            $self->event( "start_delayed" );
+            if ( $self->{ auto_reconnect } ) {
+                $self->event( "start_delayed" );
+            }
         }
-    } );
+    );
 
-      # on receiving this event, (re)start the worker after a delay
+    # on receiving this event, (re)start the worker after a delay
     $self->reg_cb( "start_delayed", $self->start_delayed() );
     $self->event( "start_delayed" );
 
-    $self->{ qp }->reg_cb( "next", sub {
-        my( $c, $data ) = @_;
+    $self->{ qp }->reg_cb(
+        "next",
+        sub {
+            my ( $c, $data ) = @_;
 
-        $self->{ dispatcher_handle }->push_write( 
-            to_json( $data ) . "\n" );
-    } );
+            $self->{ dispatcher_handle }->push_write( to_json( $data ) . "\n" );
+        }
+    );
 
-    $self->event_forward( { forward_from => $self->{ qp }, 
-                            prefix       => "worker_dconn_qp_",
-                          },
-                          qw(idle) );
+    $self->event_forward(
+        {   forward_from => $self->{ qp },
+            prefix       => "worker_dconn_qp_",
+        },
+        qw(idle)
+    );
 }
 
 ###########################################
 sub start_delayed {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     return sub {
         my $delay_connect = $self->{ delay_connect }->();
 
         DEBUG "Connecting to dispatcher ",
-              "$self->{dispatcher_host}:$self->{dispatcher_port} ",
-              "after ${delay_connect}s delay";
+            "$self->{dispatcher_host}:$self->{dispatcher_port} ",
+            "after ${delay_connect}s delay";
 
         my $timer;
         $timer = AnyEvent->timer(
@@ -123,26 +130,25 @@ sub start_delayed {
 ###########################################
 sub start_now {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     my $host = $self->{ dispatcher_host };
     my $port = $self->{ dispatcher_port };
 
     DEBUG "Connecting to dispatcher $host:$port";
 
-    tcp_connect( $host, $port,
-                 $self->_connect_handler( $host, $port ) );
+    tcp_connect( $host, $port, $self->_connect_handler( $host, $port ) );
 }
 
 ###########################################
 sub _connect_handler {
 ###########################################
-    my( $self, $host, $port ) = @_;
+    my ( $self, $host, $port ) = @_;
 
     return sub {
         my ( $fh, $_host, $_port, $retry ) = @_;
 
-        if( !defined $fh ) {
+        if ( !defined $fh ) {
 
             $self->event( "worker_dconn_error",
                 "Connect to $host:$port failed: $!" );
@@ -150,20 +156,19 @@ sub _connect_handler {
             return;
         }
 
-        $self->{dispatcher_handle} = AnyEvent::Handle->new(
+        $self->{ dispatcher_handle } = AnyEvent::Handle->new(
             fh       => $fh,
             no_delay => 1,
-            on_error => sub { 
+            on_error => sub {
                 my ( $hdl, $fatal, $msg ) = @_;
 
-                $self->event( "worker_dconn_error", 
-                  "Error on connection to $host:$port: $msg" );
+                $self->event( "worker_dconn_error",
+                    "Error on connection to $host:$port: $msg" );
             },
-            on_eof   => sub { 
+            on_eof => sub {
                 my ( $hdl ) = @_;
 
-                $self->event( "worker_dconn_error", 
-                  "Dispatcher hung up" );
+                $self->event( "worker_dconn_error", "Dispatcher hung up" );
             },
             $self->ssl(),
         );
@@ -172,18 +177,18 @@ sub _connect_handler {
         DEBUG "Sending event worker_dconn_connected";
         $self->event( "worker_dconn_connected", $host );
 
-        $self->{ dispatcher_handle }->push_read( 
-            line => $self->_protocol_handler() );
+        $self->{ dispatcher_handle }
+            ->push_read( line => $self->_protocol_handler() );
     };
 }
 
 ###########################################
 sub _send_cmd_handler {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     return sub {
-        my( $c, $data ) = @_;
+        my ( $c, $data ) = @_;
 
         DEBUG "Worker sending command: ", Dumper( $data );
 
@@ -194,13 +199,13 @@ sub _send_cmd_handler {
 ###########################################
 sub _protocol_handler {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     DEBUG "Worker protocol handler";
 
-      # (We'll put this into a separate module (per protocol) later)
+    # (We'll put this into a separate module (per protocol) later)
     return sub {
-        my( $hdl, $data ) = @_;
+        my ( $hdl, $data ) = @_;
 
         local *__ANON__ = 'AE:cb:_protocol_handler';
 
@@ -208,44 +213,44 @@ sub _protocol_handler {
 
         eval { $data = from_json( $data ); };
 
-        if( $@ ) {
+        if ( $@ ) {
             ERROR "Got non-json ($@)";
         } else {
             my $channel = $data->{ channel };
 
-            if( !defined $channel ) {
-                $channel = 0; # control channel
+            if ( !defined $channel ) {
+                $channel = 0;    # control channel
             }
 
             DEBUG "*** Received message on channel $channel";
-    
-            if( !exists $self->{ channels }->{ $channel } ) {
-                  # ignore traffic on unsupported channels
+
+            if ( !exists $self->{ channels }->{ $channel } ) {
+                # ignore traffic on unsupported channels
                 return;
             }
-    
+
             my $method = "channel_$self->{channels}->{$channel}";
-    
-              # Call the channel-specific handler
+
+            # Call the channel-specific handler
             $self->$method( $data );
         }
 
-          # Keep the ball rolling
-        $self->{ dispatcher_handle }->push_read( 
-            line => $self->_protocol_handler() );
+        # Keep the ball rolling
+        $self->{ dispatcher_handle }
+            ->push_read( line => $self->_protocol_handler() );
 
         1;
-    }
+        }
 }
 
 ###########################################
 sub channel_control {
 ###########################################
-    my( $self, $data ) = @_;
+    my ( $self, $data ) = @_;
 
     DEBUG "Received control message: ", Dumper( $data );
 
-    if( ! $self->{ dispatcher_listening } ) {
+    if ( !$self->{ dispatcher_listening } ) {
         $self->{ dispatcher_listening } = 1;
 
         $self->event( "worker_dconn_listening" );
@@ -257,7 +262,7 @@ sub channel_control {
 ###########################################
 sub channel_worker_to_dispatcher {
 ###########################################
-    my( $self, $data ) = @_;
+    my ( $self, $data ) = @_;
 
     DEBUG "Received dispatcher reply";
 
@@ -268,12 +273,11 @@ sub channel_worker_to_dispatcher {
 ###########################################
 sub channel_dispatcher_to_worker {
 ###########################################
-    my( $self, $data ) = @_;
+    my ( $self, $data ) = @_;
 
     DEBUG "Received dispatcher command: $data->{ cmd }";
 
-    $self->event( "worker_dconn_cmd_recv", 
-                  $data->{ task_id }, $data->{ cmd } );
+    $self->event( "worker_dconn_cmd_recv", $data->{ task_id }, $data->{ cmd } );
 
     my $ack = {
         channel => 2,
@@ -283,33 +287,33 @@ sub channel_dispatcher_to_worker {
         msg     => "OK",
     };
 
-    DEBUG "Sending ACK back to handle ", 
-          $self->{dispatcher_handle}, ": ", Dumper( $ack );
+    DEBUG "Sending ACK back to handle ",
+        $self->{ dispatcher_handle }, ": ", Dumper( $ack );
     $self->{ dispatcher_handle }->push_write( to_json( $ack ) . "\n" );
 }
 
 ###########################################
 sub ssl {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
-    if( ! $self->{ ssl } ) {
+    if ( !$self->{ ssl } ) {
         return ();
     }
 
     return (
-       tls => "connect",
-       tls_ctx => {
-             # worker
+        tls     => "connect",
+        tls_ctx => {
+            # worker
 
-             # worker validates server's cert
-           verify  => 1,
-           ca_file => $self->{ ca_cert },
+            # worker validates server's cert
+            verify  => 1,
+            ca_file => $self->{ ca_cert },
 
-             # worker provides client cert to server
-           cert_file => $self->{ worker_cert },
-           key_file  => $self->{ worker_key },
-       },
+            # worker provides client cert to server
+            cert_file => $self->{ worker_cert },
+            key_file  => $self->{ worker_key },
+        },
     );
 }
 

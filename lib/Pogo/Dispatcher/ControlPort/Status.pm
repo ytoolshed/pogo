@@ -13,16 +13,16 @@ use Pogo::Util qw( http_response_json );
 ###########################################
 sub app {
 ###########################################
-    my( $class, $dispatcher ) = @_;
+    my ( $class, $dispatcher ) = @_;
 
     return sub {
-        my( $env ) = @_;
+        my ( $env ) = @_;
 
-        return http_response_json( { 
-              pogo_version => $Pogo::VERSION,
-              workers      => 
-                [ $dispatcher->{ wconn_pool }->workers_connected ],
-            } );
+        return http_response_json(
+            {   pogo_version => $Pogo::VERSION,
+                workers => [ $dispatcher->{ wconn_pool }->workers_connected ],
+            }
+        );
     };
 }
 

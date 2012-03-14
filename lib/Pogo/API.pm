@@ -5,8 +5,8 @@ use strict;
 use warnings;
 use Plack::App::URLMap;
 use Pogo::Defaults qw(
-  $POGO_API_TEST_PORT
-  $POGO_API_TEST_HOST
+    $POGO_API_TEST_PORT
+    $POGO_API_TEST_HOST
 );
 use Log::Log4perl qw(:easy);
 use base qw(Pogo::Object::Event);
@@ -14,7 +14,7 @@ use base qw(Pogo::Object::Event);
 ###########################################
 sub new {
 ###########################################
-    my( $class ) = @_;
+    my ( $class ) = @_;
 
     my $self = {
         netloc           => "[no netloc]",
@@ -29,54 +29,53 @@ sub new {
 ###########################################
 sub base_url {
 ###########################################
-  my( $self ) = @_;
+    my ( $self ) = @_;
 
-  return "$self->{ netloc }/$self->{ protocol_version }";
+    return "$self->{ netloc }/$self->{ protocol_version }";
 }
 
 ###########################################
 sub standalone {
 ###########################################
-  my( $self ) = @_;
+    my ( $self ) = @_;
 
-  DEBUG "Starting standalone API server on ",
+    DEBUG "Starting standalone API server on ",
         "$POGO_API_TEST_HOST:$POGO_API_TEST_PORT";
 
-  $self->{ api_server } = Plack::Handler::AnyEvent::HTTPD->new(
-      host => $POGO_API_TEST_HOST,
-      port => $POGO_API_TEST_PORT,
-  );
+    $self->{ api_server } = Plack::Handler::AnyEvent::HTTPD->new(
+        host => $POGO_API_TEST_HOST,
+        port => $POGO_API_TEST_PORT,
+    );
 
-  $self->{ netloc } = "http://$POGO_API_TEST_HOST:$POGO_API_TEST_PORT";
+    $self->{ netloc } = "http://$POGO_API_TEST_HOST:$POGO_API_TEST_PORT";
 
-  $self->{ api_server }->register_service( Pogo::API->app() );
+    $self->{ api_server }->register_service( Pogo::API->app() );
 
-  DEBUG "Standalone server ready";
-  $self->event( "api_server_up", 
-                $POGO_API_TEST_HOST, $POGO_API_TEST_PORT );
+    DEBUG "Standalone server ready";
+    $self->event( "api_server_up", $POGO_API_TEST_HOST, $POGO_API_TEST_PORT );
 }
 
 ###########################################
 sub app {
 ###########################################
-    my( $class ) = @_;
+    my ( $class ) = @_;
 
     my $app = Plack::App::URLMap->new();
 
-      # map URLs to modules, like /status => API/Status.pm etc.
+    # map URLs to modules, like /status => API/Status.pm etc.
     for my $api ( qw( status v1 ) ) {
 
         my $module = __PACKAGE__;
         $module .= "::" . ucfirst( $api );
 
         eval "require $module";
-        if( $@ ) {
+        if ( $@ ) {
             die "Failed to load module $module ($@)";
         }
 
         DEBUG "Mounting /$api to module $module";
 
-        $app->mount( "/$api" => $module->app( ) );
+        $app->mount( "/$api" => $module->app() );
     }
 
     return $app;

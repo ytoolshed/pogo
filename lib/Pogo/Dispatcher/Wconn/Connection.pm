@@ -18,7 +18,7 @@ our $VERSION = "0.01";
 ###########################################
 sub new {
 ###########################################
-    my($class, %options) = @_;
+    my ( $class, %options ) = @_;
 
     my $self = {
         protocol => "2.0",
@@ -27,15 +27,15 @@ sub new {
             1 => "worker_to_dispatcher",
             2 => "dispatcher_to_worker",
         },
-        qp_retries           => 3,
-        qp_timeout           => 5,
+        qp_retries    => 3,
+        qp_timeout    => 5,
         worker_handle => undef,
         %options,
     };
 
     $self->{ qp } = Pogo::Util::QP->new(
-         retries => $self->{ qp_retries },
-         timeout => $self->{ qp_timeout },
+        retries => $self->{ qp_retries },
+        timeout => $self->{ qp_timeout },
     );
 
     bless $self, $class;
@@ -44,7 +44,7 @@ sub new {
 ###########################################
 sub start {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     DEBUG "Dispatcher starting wconn connection";
 
@@ -52,90 +52,95 @@ sub start {
 
     $self->reg_cb( "dispatcher_wconn_send_cmd", $self->_send_cmd_handler() );
 
-    $self->{ qp }->reg_cb( "next", sub {
-        my( $c, $data ) = @_;
+    $self->{ qp }->reg_cb(
+        "next",
+        sub {
+            my ( $c, $data ) = @_;
 
-        my $json = to_json( $data );
+            my $json = to_json( $data );
 
-        DEBUG "Dispatcher wconn sending $json";
+            DEBUG "Dispatcher wconn sending $json";
 
-        $self->{ worker_handle }->push_write( $json . "\n" );
-    } );
+            $self->{ worker_handle }->push_write( $json . "\n" );
+        }
+    );
 
-    $self->event_forward( { forward_from => $self->{ qp }, 
-                            prefix       => "dispatcher_wconn_qp_",
-                          },
-                          qw(idle) );
+    $self->event_forward(
+        {   forward_from => $self->{ qp },
+            prefix       => "dispatcher_wconn_qp_",
+        },
+        qw(idle)
+    );
 }
 
 ###########################################
 sub _hello_handler {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     DEBUG "Sending greeting";
 
-    my $data = { msg => "Hello, worker.",
-        protocol => $self->{ protocol } };
+    my $data = {
+        msg      => "Hello, worker.",
+        protocol => $self->{ protocol }
+    };
 
     # Send greeting
-    $self->{ worker_handle }->push_write( 
-        to_json( $data ) . "\n" );
+    $self->{ worker_handle }->push_write( to_json( $data ) . "\n" );
 
     # Handle communication
-    $self->{ worker_handle }->push_read( 
-        line => $self->_protocol_handler() );
+    $self->{ worker_handle }->push_read( line => $self->_protocol_handler() );
 }
 
 ###########################################
 sub _protocol_handler {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     DEBUG "Dispatcher protocol handler";
 
     # Figure out which channel the message came in on and call the
     # appropriate handler.
     return sub {
-        my( $hdl, $data ) = @_;
+        my ( $hdl, $data ) = @_;
 
         DEBUG "Dispatcher received: $data";
 
         eval { $data = from_json( $data ); };
 
-        if( $@ ) {
+        if ( $@ ) {
             ERROR "Got non-json ($@)";
         } else {
             my $channel = $data->{ channel };
 
-            if( !defined $channel ) {
-                $channel = 0; # control channel
+            if ( !defined $channel ) {
+                $channel = 0;    # control channel
             }
 
             DEBUG "Received message on channel $channel";
 
-            if( !exists $self->{ channels }->{ $channel } ) {
-                  # ignore traffic on unsupported channels
+            if ( !exists $self->{ channels }->{ $channel } ) {
+                # ignore traffic on unsupported channels
                 return;
             }
-    
+
             INFO "Switching channel to $channel";
             my $method = "channel_$self->{channels}->{$channel}";
-    
-              # Call the channel-specific handler
+
+            # Call the channel-specific handler
             $self->$method( $data );
         }
-    
-          # Keep the ball rolling
-        $self->{ worker_handle }->push_read( 
-            line => $self->_protocol_handler() );
-    }
+
+        # Keep the ball rolling
+        $self->{ worker_handle }
+            ->push_read( line => $self->_protocol_handler() );
+        }
 }
 
 ###########################################
 sub channel_control {
 ###########################################
-    my( $self, $data ) = @_;
+    my ( $self, $data ) = @_;
 
     DEBUG "Received control message: ", Dumper( $data );
 }
@@ -143,7 +148,7 @@ sub channel_control {
 ###########################################
 sub channel_worker_to_dispatcher {
 ###########################################
-    my( $self, $data ) = @_;
+    my ( $self, $data ) = @_;
 
     DEBUG "Received worker command: $data->{cmd}";
 
@@ -158,14 +163,14 @@ sub channel_worker_to_dispatcher {
         msg     => "OK",
     };
 
-      # ACK the command
+    # ACK the command
     $self->{ worker_handle }->push_write( to_json( $out_data ) . "\n" );
 }
 
 ###########################################
 sub channel_dispatcher_to_worker {
 ###########################################
-    my( $self, $data ) = @_;
+    my ( $self, $data ) = @_;
 
     DEBUG "Received worker ACK";
 
@@ -183,10 +188,10 @@ sub channel_dispatcher_to_worker {
 ###########################################
 sub _send_cmd_handler {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     return sub {
-        my( $c, $data ) = @_;
+        my ( $c, $data ) = @_;
 
         DEBUG "Dispatcher sending worker command: ", Dumper( $data );
 

@@ -12,14 +12,14 @@ use base qw(Pogo::Worker::Task);
 ###########################################
 sub new {
 ###########################################
-    my($class, %options) = @_;
+    my ( $class, %options ) = @_;
 
     my $self = {
         cmd => undef,
         %options,
     };
 
-    if( ! defined $self->{ cmd } ) {
+    if ( !defined $self->{ cmd } ) {
         LOGDIE "parameter 'cmd' missing";
     }
 
@@ -29,31 +29,33 @@ sub new {
 ###########################################
 sub start {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     DEBUG "Starting command $self->{ cmd }";
 
     $self->{ guard } = run_cmd $self->{ cmd },
-      "<", "/dev/null",
-      ">", $self->on_stdout(),
-      "2>", $self->on_stderr(),
-    ;
+        "<",  "/dev/null",
+        ">",  $self->on_stdout(),
+        "2>", $self->on_stderr(),
+        ;
 
-    $self->{ guard }->cb( sub {
-        my $rc = shift->recv;
-        $self->event( "on_finish", $rc );
-    } );
+    $self->{ guard }->cb(
+        sub {
+            my $rc = shift->recv;
+            $self->event( "on_finish", $rc );
+        }
+    );
 }
 
 ###########################################
 sub on_stdout {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     return sub {
-        my( $data ) = @_;
+        my ( $data ) = @_;
 
-        if( !defined $data ) {
+        if ( !defined $data ) {
             # DEBUG "Eof event";
             # $self->event( "on_finish" );
             return 1;
@@ -67,12 +69,12 @@ sub on_stdout {
 ###########################################
 sub on_stderr {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     return sub {
-        my( $data ) = @_;
+        my ( $data ) = @_;
 
-        if( !defined $data ) {
+        if ( !defined $data ) {
             return 1;
         }
 
