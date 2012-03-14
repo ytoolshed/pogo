@@ -17,6 +17,7 @@ my $perltidyrc = File::Spec->rel2abs( "adm/perltidyrc" ) ;
 find sub {
 
     my $source      = $_;
+    my $abs_source  = File::Spec->rel2abs( $source );
     my $name        = $File::Find::name;
     my $destination = $source . ".tdy";
 
@@ -25,20 +26,25 @@ find sub {
 
     DEBUG "pogotidy: $name";
 
-    my $rc = Perl::Tidy::perltidy(
+      # syntax check
+    my $rc = system "$^X -Ilib -c $abs_source";
+
+    LOGDIE "Syntax check failed on $source" if $rc != 0;
+
+    Perl::Tidy::perltidy(
         source            => $source,
         destination       => $destination,
         perltidyrc        => $perltidyrc,
     );
 
-    LOGDIE "Tidy failed on $source" unless $rc;
-
     if( compare( $source, $destination ) == 0) {
         # no change
-    } else {
-        DEBUG "Fixed up $name";
-        # mv $destination, $source;
+        return;
     }
+
+    DEBUG "Fixed up $name";
+    exit 0;
+    # mv $destination, $source;
 
 }, "lib";
 
