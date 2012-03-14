@@ -1,0 +1,19 @@
+#!/usr/local/bin/perl -w
+###########################################
+# pogotidy -- tidy up the entire project
+# Mike Schilli, 2012 (m@perlmeister.com)
+###########################################
+use strict;
+use Sysadm::Install qw(:all);
+use Perl::Tidy;
+
+my $source = "lib/Pogo.pm";
+my $destination = "lib/Pogo.pm.123";
+
+Perl::Tidy::perltidy(
+    source            => $source,
+    destination       => $destination,
+    perltidyrc        => "adm/perltidyrc",
+);
+
+# perltidy -pro=adm/perltidyrc lib/Pogo/Dispatcher.pm
