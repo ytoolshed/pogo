@@ -6,10 +6,17 @@ use warnings;
 use Log::Log4perl qw(:easy);
 use AnyEvent;
 use AnyEvent::Strict;
-use Net::ZooKeeper qw(:errors);
 use Data::Dumper;
 use Pogo::Util::QP;
+use Pogo::Plugin;
 use base qw(Pogo::Object::Event);
+
+my $ZK_CLASS;
+
+BEGIN {
+    $ZK_CLASS = Pogo::Plugin->load( "ZooKeeper" );
+    $ZK_CLASS->import( "ZOK" );
+}
 
 ###########################################
 sub new {
@@ -96,7 +103,7 @@ sub connect_handler {
 
         DEBUG "Connecting to ZK on $host:$port";
         $self->{ zk } =
-            Net::ZooKeeper->new( "$host:$port", %{ $self->{ zk_options } }, );
+            $ZK_CLASS->new( "$host:$port", %{ $self->{ zk_options } }, );
 
         my $rc = $self->ping();
 
