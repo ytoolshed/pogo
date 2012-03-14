@@ -13,6 +13,7 @@ use Log::Log4perl qw(:easy);
 Log::Log4perl->easy_init($DEBUG);
 
 my $perltidyrc = File::Spec->rel2abs( "adm/perltidyrc" ) ;
+my $lib        = File::Spec->rel2abs( "lib" );
 
 find sub {
 
@@ -27,7 +28,7 @@ find sub {
     DEBUG "pogotidy: $name";
 
       # syntax check
-    my $rc = system "$^X -Ilib -c $abs_source";
+    my $rc = system "$^X -I$lib -c $abs_source";
 
     LOGDIE "Syntax check failed on $source" if $rc != 0;
 
