@@ -43,8 +43,7 @@ find sub {
     }
 
     DEBUG "Fixed up $name";
-    exit 0;
-    # mv $destination, $source;
+    mv $destination, $source;
 
 }, "lib";
 
