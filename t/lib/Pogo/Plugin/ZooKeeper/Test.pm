@@ -5,6 +5,18 @@ use strict;
 use warnings;
 use Log::Log4perl qw(:easy);
 use File::Basename;
+use Pogo::Util qw(make_accessor);
+use AnyEvent;
+require Exporter;
+our @ISA = qw( Exporter Pogo::Object::Event );
+our @EXPORT_OK = qw( ZOK ZINVALIDSTATE ZCONNECTIONLOSS );
+
+__PACKAGE__->make_accessor( "ZOK" );
+__PACKAGE__->make_accessor( "ZINVALIDSTATE" );
+__PACKAGE__->make_accessor( "ZCONNECTIONLOSS" );
+__PACKAGE__->ZOK(0);
+__PACKAGE__->ZINVALIDSTATE(-9);
+__PACKAGE__->ZCONNECTIONLOSS(-4);
 
 ###########################################
 sub new {
@@ -12,10 +24,12 @@ sub new {
     my($class, %options) = @_;
 
     my $self = {
-        name     => undef,
-        path     => undef,
-        content  => undef,
-        children => {},
+        name      => undef,
+        path      => undef,
+        content   => undef,
+        children  => {},
+        connected => undef,
+        connector => undef,
         %options
     };
 
@@ -23,6 +37,10 @@ sub new {
     $self->{path} = "/" unless defined $self->{path};
     DEBUG "zkm: new node '$self->{path}'";
 
+    $self->{ connector } = AnyEvent->timer(
+        after => 0,
+        cb    => sub { $self->{ connected }->( 1 ) },
+    );
     bless $self, $class;
     return $self;
 }
@@ -305,6 +323,13 @@ sub unlock {
 ###########################################
     DEBUG "mockstore: unlock @_ (stubbed)";
     return 1; 
+}
+
+###########################################
+sub priority {
+###########################################
+      # For plugin framework
+    return 10;
 }
 
 1;

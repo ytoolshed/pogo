@@ -3,7 +3,22 @@ package Pogo::Plugin::ZooKeeper::Default;
 ###########################################
 use strict;
 use warnings;
-use base qw( Net::ZooKeeper );
+use Net::ZooKeeper;
+use Exporter qw( import );
+our @ISA = qw( Exporter Net::ZooKeeper );
+our @EXPORT_OK = qw( ZOK ZINVALIDSTATE ZCONNECTIONLOSS );
+
+###########################################
+sub new {
+###########################################
+    my($class, %options) = @_;
+
+    my $self = {
+        %options,
+    };
+
+    bless $self, $class;
+}
 
 ###########################################
 sub priority {

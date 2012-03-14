@@ -14,8 +14,9 @@ use base qw(Pogo::Object::Event);
 my $ZK_CLASS;
 
 BEGIN {
-    $ZK_CLASS = Pogo::Plugin->load( "ZooKeeper" );
-    $ZK_CLASS->import( "ZOK" );
+    $DB::single = 1;
+    $ZK_CLASS = ref Pogo::Plugin->load( "ZooKeeper" );
+    $ZK_CLASS->import( qw( ZOK ZINVALIDSTATE ZCONNECTIONLOSS ) );
 }
 
 ###########################################
