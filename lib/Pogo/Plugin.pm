@@ -109,6 +109,8 @@ sub _init {
     return bless( $instance, $class );
 }
 
+1;
+
 =pod
 
 =head1 NAME
