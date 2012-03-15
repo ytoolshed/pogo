@@ -101,6 +101,19 @@ sub start {
             $self->event( "worker_task_start", $task_id, $cmd );
         }
     );
+
+    $self->reg_cb(
+        "worker_task_done",
+        sub {
+            my ( $c, $task_id, $rc ) = @_;
+
+            $self->to_dispatcher(
+                { cmd     => "task_done",
+                  task_id => $task_id,
+                  rc      => $rc,
+            } );
+        }
+    );
 }
 
 ###########################################

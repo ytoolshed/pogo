@@ -81,6 +81,16 @@ sub start {
         }
     );
 
+    # if a completed task report comes back from a worker
+    $self->reg_cb(
+        "dispatcher_wconn_cmd_recv",
+        sub {
+            my ( $c, $data ) = @_;
+            DEBUG "Dispatcher received worker command: ",
+                  "$data->{ cmd } task=$data->{ task_id }";
+        }
+    );
+
     DEBUG "Dispatcher started";
 }
 
