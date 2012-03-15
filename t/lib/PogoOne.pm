@@ -77,6 +77,7 @@ sub start {
         dispatcher_wconn_ack
         dispatcher_controlport_up
         dispatcher_job_received
+        dispatcher_task_done
     ) );
 
     $self->event_forward( { forward_from => $worker }, qw(

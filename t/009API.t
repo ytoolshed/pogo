@@ -15,7 +15,7 @@ use JSON qw(from_json);
 
 #$Object::Event::DEBUG = 2;
 
-plan tests => 8;
+plan tests => 7;
 
   # dispatcher/worker
 my $pogo = PogoOne->new();
@@ -92,12 +92,10 @@ sub run_tests {
             "received ack from dispatcher CP #2";
     };
 
-    $pogo->reg_cb( dispatcher_wconn_cmd_recv  => sub {
-        my( $c, $data ) = @_;
+    $pogo->reg_cb( dispatcher_task_done  => sub {
+        my( $c, $task_id ) = @_;
 
-        is $data->{ cmd }, "task_done", "recvd task_done from worker #7";
-        is $data->{ task_id }, 
-        $pogo->{ dispatcher }->next_task_id_base() . "-1", 
+        is $task_id, $pogo->{ dispatcher }->next_task_id_base() . "-1", 
            "dispatcher: worker task 1 done #8";
 });
 
