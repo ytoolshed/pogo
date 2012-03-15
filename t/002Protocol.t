@@ -29,6 +29,8 @@ $pogo->reg_cb( dispatcher_wconn_cmd_recv  => sub {
 
     DEBUG "Dispatcher received command";
 
+    return if $data->{ cmd } ne "command-by-worker";
+
     is( $data->{ cmd }, "command-by-worker", "received worker command #2" );
 });
 
@@ -41,8 +43,12 @@ $pogo->reg_cb( worker_dconn_listening => sub {
                                         task_id => "123" } );
 });
 
+my $dconn_acks = 0;
+
 $pogo->reg_cb( worker_dconn_ack => sub {
     my( $c ) = @_;
+
+    return if $dconn_acks++ > 0;
 
     ok 1, "worker got dispatcher ack #3";
 } );

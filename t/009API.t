@@ -56,7 +56,7 @@ sub run_tests {
 ####################################
     ok 1, "all components required for test are up #1";
 
-    my $cmdline = "sleep 1";
+    my $cmdline = "test";
 
     $pogo->reg_cb( dispatcher_job_received => sub {
         my( $c, $cmd ) = @_;

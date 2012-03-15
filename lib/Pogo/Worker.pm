@@ -98,7 +98,7 @@ sub start {
         sub {
             my ( $c, $task_id, $cmd ) = @_;
 
-            $self->event( "worker_task_start", $task_id, $cmd );
+            $self->cmd_handler( $task_id, $cmd );
         }
     );
 
@@ -114,6 +114,34 @@ sub start {
             } );
         }
     );
+}
+
+###########################################
+sub cmd_handler {
+###########################################
+    my ( $self, $task_id, $cmd ) = @_;
+
+    my %commands = map { $_ => 1 } 
+      qw( test );
+    
+    if( exists $commands{ $cmd } ) {
+        my $method = $cmd . "_cmd";
+        no strict 'refs';
+        $self->$method( $task_id );
+        return;
+    }
+
+    ERROR "Invalid command: $cmd";
+
+    $self->event( "worker_task_done", $task_id, -1, "", "", $cmd );
+}
+
+###########################################
+sub test_cmd {
+###########################################
+    my ( $self, $task_id ) = @_;
+
+    $self->event( "worker_task_start", $task_id, "sleep 1" );
 }
 
 ###########################################
