@@ -8,14 +8,19 @@ use AnyEvent;
 use AnyEvent::Strict;
 use Data::Dumper;
 use Pogo::Util::QP;
-use Pogo::Plugin;
+use Module::Pluggable search_path => ['Pogo::Plugin::ZooKeeper'];
 use base qw(Pogo::Object::Event);
 
 my $ZK_CLASS;
 
 BEGIN {
     $DB::single = 1;
-    $ZK_CLASS = ref Pogo::Plugin->load( "ZooKeeper" );
+
+    ($ZK_CLASS) = __PACKAGE__->plugins();
+    eval "require $ZK_CLASS";
+    if( $@ ) {
+        die "$@";
+    }
     $ZK_CLASS->import( qw( ZOK ZINVALIDSTATE ZCONNECTIONLOSS ) );
 }
 
@@ -23,6 +28,8 @@ BEGIN {
 sub new {
 ###########################################
     my ( $class, @opts ) = @_;
+
+    DEBUG "Instantiating ZK class $ZK_CLASS";
 
     my $self = {
         zk                        => undef,
@@ -37,6 +44,8 @@ sub new {
     };
 
     bless $self, $class;
+
+    DEBUG "Setting up connector";
 
     # connect/reconnect
     $self->{ connector } =

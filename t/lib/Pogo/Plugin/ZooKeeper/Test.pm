@@ -21,14 +21,13 @@ __PACKAGE__->ZCONNECTIONLOSS(-4);
 ###########################################
 sub new {
 ###########################################
-    my($class, %options) = @_;
+    my($class, $host, %options) = @_;
 
     my $self = {
         name      => undef,
         path      => undef,
         content   => undef,
         children  => {},
-        connected => undef,
         connector => undef,
         %options
     };
@@ -39,7 +38,8 @@ sub new {
 
     $self->{ connector } = AnyEvent->timer(
         after => 0,
-        cb    => sub { $self->{ connected }->( 1 ) },
+        cb    => sub { $self->event( "zk_connect_ok" );
+        },
     );
     bless $self, $class;
     return $self;
