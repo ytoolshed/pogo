@@ -5,18 +5,42 @@ use strict;
 use warnings;
 use Log::Log4perl qw(:easy);
 use File::Basename;
-use Pogo::Util qw(make_accessor);
 use AnyEvent;
 require Exporter;
 our @ISA = qw( Exporter Pogo::Object::Event );
 our @EXPORT_OK = qw( ZOK ZINVALIDSTATE ZCONNECTIONLOSS );
 
-__PACKAGE__->make_accessor( "ZOK" );
-__PACKAGE__->make_accessor( "ZINVALIDSTATE" );
-__PACKAGE__->make_accessor( "ZCONNECTIONLOSS" );
-__PACKAGE__->ZOK(0);
-__PACKAGE__->ZINVALIDSTATE(-9);
-__PACKAGE__->ZCONNECTIONLOSS(-4);
+my @ZK_ERRORS = (
+  [ 0,    'ZOK',                      'Everything is OK' ],
+  [ -1,   'ZSYSTEMERROR',             'ZSYSTEMERROR' ],
+  [ -2,   'ZRUNTIMEINCONSISTENCY',    'A runtime inconsistency was found', ],
+  [ -3,   'ZDATAINCONSISTENCY',       'A data inconsistency was found', ],
+  [ -4,   'ZCONNECTIONLOSS',          'Connection to the server has been lost', ],
+  [ -5,   'ZMARSHALLINGERROR',        'Error while marshalling or unmarshalling data', ],
+  [ -6,   'ZUNIMPLEMENTED',           'Operation is unimplemented', ],
+  [ -7,   'ZOPERATIONTIMEOUT',        'Operation timeout', ],
+  [ -8,   'ZBADARGUMENTS',            'Invalid arguments', ],
+  [ -9,   'ZINVALIDSTATE',            'Invalid zhandle state', ],
+  [ -100, 'ZAPIERROR',                'ZAPIERROR' ],
+  [ -101, 'ZNONODE',                  'Node does not exist' ],
+  [ -102, 'ZNOAUTH',                  'Not authenticated' ],
+  [ -103, 'ZBADVERSION',              'Version conflict' ],
+  [ -108, 'ZNOCHILDRENFOREPHEMERALS', 'Ephemeral nodes may not have children', ],
+  [ -110, 'ZNODEEXISTS',              'The node already exists', ],
+  [ -111, 'ZNOTEMPTY',                'The node has children', ],
+  [ -112, 'ZSESSIONEXPIRED',          'The session has been expired by the server', ],
+  [ -113, 'ZINVALIDCALLBACK',         'Invalid callback specified', ],
+  [ -114, 'ZINVALIDACL',              'Invalid ACL specified', ],
+  [ -115, 'ZAUTHFAILED',              'Client authentication failed', ],
+  [ -116, 'ZCLOSING',                 'ZooKeeper is closing', ],
+  [ -117, 'ZNOTHING',                 '(not error) no server responses to process', ],
+  [ -118, 'ZSESSIONMOVED',            'session moved to another server, so operation is ignored', ],
+);
+
+for my $zk_error ( @ZK_ERRORS ) {
+    my( $int, $name, $comment ) = @$zk_error;
+    eval "use constant $name => $int";
+}
 
 ###########################################
 sub new {

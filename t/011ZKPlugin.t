@@ -6,7 +6,7 @@ use Pogo::Plugin;
 use Test::More;
 use Log::Log4perl qw(:easy);
 
-plan tests => 1;
+plan tests => 2;
 
 BEGIN {
     use FindBin qw( $Bin );
@@ -36,7 +36,7 @@ $zk->reg_cb(
         
         my $value;
         $zv = AnyEvent->condvar();
-        $zk->get( "/foo", sub { $value = $_[1] } );
+        $zk->get( "/foo", sub { $value = $_[1]; $zv->send(); } );
         DEBUG "Waiting for get";
         $zv->recv();
 
@@ -49,6 +49,6 @@ $zk->reg_cb(
 ok 1, "test";
 
 DEBUG "Starting up";
-# $zk->start();
+$zk->start();
 
-#$cv->recv();
+$cv->recv();
