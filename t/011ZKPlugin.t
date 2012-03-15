@@ -49,6 +49,6 @@ $zk->reg_cb(
 ok 1, "test";
 
 DEBUG "Starting up";
-$zk->start();
+# $zk->start();
 
-$cv->recv();
+#$cv->recv();

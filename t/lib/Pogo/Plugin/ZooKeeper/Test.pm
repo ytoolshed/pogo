@@ -138,7 +138,8 @@ sub path {
         if( !exists $node->{children}->{ $part } ) {
             if( $create ) {
                  $node->{children}->{ $part } = 
-                     Net::ZooKeeper::Mock::Node->new( 
+                     __PACKAGE__->new( 
+                         "bogushost",
                          name => $part,
                          path => $path_so_far );
             } else {
@@ -149,6 +150,12 @@ sub path {
     }
 
     return $node;
+}
+
+###########################################
+sub get_error {
+###########################################
+    return 0;
 }
 
 ###########################################
@@ -342,11 +349,7 @@ Pogo::Plugin::ZooKeeper::Test - In-memory plugin emulating ZK for testing
 
 =head1 SYNOPSIS
 
-    use Pogo::Plugin;
-
-    my $zk = Pogo::Plugin->load( "ZooKeeper" )->instance();
-    $zk->create( "/foo" );
-    $zk->set( "/foo", "bar" );
+    use Pogo::Plugin::ZooKeeper::Test;
 
 =head1 DESCRIPTION
 
