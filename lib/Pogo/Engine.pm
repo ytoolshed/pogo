@@ -1,5 +1,5 @@
 ###########################################
-package Pogo::XXX;
+package Pogo::Engine;
 ###########################################
 use strict;
 use warnings;
