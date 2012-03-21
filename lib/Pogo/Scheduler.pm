@@ -126,6 +126,11 @@ a sequence can be started, this dependency can be defined in a sequence:
     sequence:
       - [ @colo[north_america], @colo[south_east_asia] ]
 
+The statement above defines that all hosts carrying the tag C<colo> will be
+processed in an order that makes sure that those carrying the tag value
+C<north_america> will be finished before any of the hosts carrying the C<colo>
+tag value C<south_east_asia> will be started.
+
 =item B<Constraints>
 
 To limit the number of hosts handled in parallel, constraints can be put in
@@ -147,6 +152,55 @@ This will allow Pogo to process up to 3 hosts of both the C<north_america> and
 C<south_korea> colos in parallel.
 
 =back 
+
+=head2 Example
+
+Let's take a look at the following configuration and how pogo will handle it:
+
+    tag:
+      colo:
+        north_america:
+          - host1
+          - host2
+          - host3
+        south_east_asia:
+          - host4
+          - host5
+          - host6
+
+    sequence:
+      - [ @colo[north_america], @colo[south_east_asia] ] 
+
+    constraint:
+      @colo: 2
+
+Now if you ask Pogo to process all hosts carrying the C<@colo> tag (or
+specify C<host[1-4]>), the following will happen ("|" indicates that the
+following line starts in parallel):
+
+    host1 start 
+    | host2 start
+    host1 end
+    | host3 start
+    host2 end
+    host3 end
+
+    host4 start
+    | host5 start
+    host4 end
+    | host6 start
+    host5 end
+    host6 end
+
+Since the constraint says that we can process up to two hosts per colo
+in parallel, Pogo starts with host1 and host2 in parallel. It won't throw
+in any hosts from colo C<south_east_asia> yet, because of the sequence definition
+that says that colo C<north_america> has to be completed first. As soon as
+host1 and host2 are done, Pogo starts host3, maximizing the resource constraint
+of 2 hosts per colo. Even when host2 is done, it cannot proceed with any
+colo C<south_east_asia> hosts yet, because of the earlier sequence requirement.
+Only when host3 is completed, it starts both host4 and host5 in parallel, 
+again maximizing the per-colo resource constraint of 2.
 
 =head1 IMPLEMENTATION
 
