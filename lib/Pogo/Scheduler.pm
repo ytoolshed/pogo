@@ -87,24 +87,9 @@ include
 
 =over 4
 
-=item *
+=item B<Tags>
 
-Hostgroups: combine hosts in named groups and refer to them by group name
-later. Example:
-
-    group:
-      frontends:
-        - host1
-        - host2
-      backends:
-        - host3
-        - host4
-
-=item *
-
-Tags: Hosts can be tagged with labels and assigned a value. For example,
-host C<host.colo.com> might be tagged with the label C<colo> and assigned
-the value C<south_east_asia>. Example:
+Hosts can be tagged with labels and assigned a value.  Example:
 
     tag:
       colo:
@@ -118,24 +103,50 @@ the value C<south_east_asia>. Example:
 This defines that host1 carries a tag C<colo> that has the value 
 C<north_america>.
 
-=item *
+All hosts carrying a specific tag value can be referred to later on with
+the following notation:
 
-Sequences: one host or hostgroup must be finished before the next one in 
-a sequence can be started
+    @tagname[ tag_value ]
 
-=item *
+For example, to refer to all hosts carrying the tag C<colo> with a value
+C<north_america>, use C<@colo[north_america]>.
 
-Limited resources: Define the number of 
+To refer to all hosts carrying a specific tag, regardless of its value,
+use the
+
+    @tagname
+
+notation.
+
+=item B<Sequences>
+
+If one host or hostgroup must be finished before the next one in 
+a sequence can be started, this dependency can be defined in a sequence:
+
+    sequence:
+      - [ @colo[north_america], @colo[south_east_asia] ]
+
+=item B<Constraints>
+
+To limit the number of hosts handled in parallel, constraints can be put in
+place. For example, 
+
+    constraint:
+      @colo[north_america]: 3
+      @colo[south_east_asia]: 15%
+
+limits the number of hosts processed in parallel in the C<north_america> 
+colocation to 3, and in the C<south_east_asia> colo to 15%. To apply a 
+constraint evenly on all hosts carrying a specific tag, grouped by tag value,
+use
+
+    constraint:
+      @colo: 3
+
+This will allow Pogo to process up to 3 hosts of both the C<north_america> and
+C<south_korea> colos in parallel.
 
 =back 
-
-    group:
-      frontends:
-        - host1
-        - host2
-      backends:
-        - host3
-        - host4
 
 =head1 IMPLEMENTATION
 
