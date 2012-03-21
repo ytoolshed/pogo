@@ -90,14 +90,33 @@ include
 =item *
 
 Hostgroups: combine hosts in named groups and refer to them by group name
-later
+later. Example:
+
+    group:
+      frontends:
+        - host1
+        - host2
+      backends:
+        - host3
+        - host4
 
 =item *
 
 Tags: Hosts can be tagged with labels and assigned a value. For example,
-host C<host.colo.com> might be tagged 
-combine hosts in named groups and refer to them by group name
-later
+host C<host.colo.com> might be tagged with the label C<colo> and assigned
+the value C<south_east_asia>. Example:
+
+    tag:
+      colo:
+        north_america:
+          - host1
+          - host2
+        south_east_asia:
+          - host3
+          - host4
+
+This defines that host1 carries a tag C<colo> that has the value 
+C<north_america>.
 
 =item *
 
