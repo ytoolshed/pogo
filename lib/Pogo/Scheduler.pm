@@ -80,9 +80,113 @@ can start.
 Tasks adhere to the Pogo::Scheduler::Task interface. When the scheduler
 selects a task to run, it sends it a "task_run" event.
 
+=head2 Configuration
+
+Pogo can be configured to apply predefined rules during deployments. Features
+include 
+
+=over 4
+
+=item *
+
+Hostgroups: combine hosts in named groups and refer to them by group name
+later
+
+=item *
+
+Tags: Hosts can be tagged with labels and assigned a value. For example,
+host C<host.colo.com> might be tagged 
+combine hosts in named groups and refer to them by group name
+later
+
+=item *
+
+Sequences: one host or hostgroup must be finished before the next one in 
+a sequence can be started
+
+=item *
+
+Limited resources: Define the number of 
+
+=back 
+
+    group:
+      frontends:
+        - host1
+        - host2
+      backends:
+        - host3
+        - host4
+
 =head1 IMPLEMENTATION
 
-Current implementation:
+=head2 ZooKeeper Layout
+
+    /pogo/global/resource/<namespace>
+    /pogo/job
+
+To obtain a ticket for a resource, the client to add a sequential node to
+the /pogo/resource hierarchy. A resource 
+
+For example if a number of hosts have the tag C<colo> set to either
+C<east> or C<west>, 
+
+    tags:
+      colo:
+        east:
+          - @frontend
+        west::
+          - host5
+          - host6
+
+    constraints:
+      sequences:
+          frontends:
+            - host1
+            - host2
+        
+
+      web-master:
+        - web-master.east.corp.com
+        - web-master.west.corp.com
+      web-mirror:
+        - web-mirror.east.corp.com
+        - web-mirror.west.corp.com
+      db-master:
+        - db-master.colo.corp.com
+        - db-master.inside.corp.com
+      db-mirror:
+        - db-mirror.colo.corp.com
+        - db-mirror.inside.corp.com
+    
+      coast:
+        east:
+          - web-master.east.corp.com
+          - web-mirror.east.corp.com
+          - db-master.east.corp.com
+        west:
+          - web-master.west.corp.com
+          - web-mirror.west.corp.com
+          - db-master.west.corp.com
+      location:
+        colo:
+          - db-master.colo.corp.com
+          - db-mirror.colo.corp.com
+        inside:
+          - db-master.inside.corp.com
+          - db-mirror.inside.corp.com
+    
+    constraints:
+      - env: coast
+        sequences:
+          - envs: [ east, west ]
+            apps: [ web-mirror, web-master ]
+      - env: location
+        sequences:
+          - envs: [ inside, colo ]
+            apps: [ db-mirror, db-master ]
+
+=head2 Legacy implementation:
 
 Namespace-level appgroup and constraints definitions in a yaml configuration
 file:
