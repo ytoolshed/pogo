@@ -202,6 +202,43 @@ colo C<south_east_asia> hosts yet, because of the earlier sequence requirement.
 Only when host3 is completed, it starts both host4 and host5 in parallel, 
 again maximizing the per-colo resource constraint of 2.
 
+=head2 Combining Tags
+
+Tags can be combined using a boolean AND by nesting them. If an entry
+doesn't refer to a value but an underlying key-value structure, the
+Pogo configuration will apply the setting to all targets matching the
+chain of tags that leads to an eventual value.
+
+For example, if a constraint applies to all hosts tagged @frontend in colo
+C<north_america>, use
+
+    constraint:
+      @frontend:
+         @colo[north_america]: 2
+
+=head2 External Tag Resolvers
+
+In your organization, you might have custom rules on how to 'tag' hosts or
+combine them into groups. This is why the Pogo configuration format supports
+I<custom tag resolvers>, a plugin system that allows you to add customized 
+logic.
+
+If a tag cannot be resolved into a list of targets, the configurator will
+look try to load a Plugin with the tag's name.
+
+For example, with
+
+    constraint:
+      @_MyRules[my_db_server]: 2
+
+and no tag C<_MyRules> defined anywhere in the configuration file, the
+scheduler will look for C<MyRules.pm> in
+
+    lib/Pogo/Scheduler/Config/Plugin
+
+and call its C<targets()> method with a parameter of C<my_db_server> 
+to obtain all targets in the 'my_db_server' group.
+
 =head1 IMPLEMENTATION
 
 =head2 ZooKeeper Layout
