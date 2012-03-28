@@ -69,8 +69,9 @@ Pogo::Scheduler - Schedule Pogo Jobs or Tasks
 
 =head1 DESCRIPTION
 
-Pogo::Scheduler is a high-level component that accepts tasks and runs 
-them.
+Pogo::Scheduler is a high-level component that accepts task requests, 
+dynamically determines their run order and puts them into a run queue
+when their time has come.
 
 Subclasses of Pogo::Scheduler define components running more
 complex schedulers, dealing with limited resources or prerequisite 
