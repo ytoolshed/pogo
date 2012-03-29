@@ -31,7 +31,6 @@ sub new {
         ],
         auto_reconnect => 1,
         tasks          => {},
-        next_task_id   => 1,
         %options,
     };
 
@@ -196,24 +195,6 @@ sub task_start {
 
     # save it in the task tracker by its unique id to keep it running
     $self->{ tasks }->{ $task->id() } = $task;
-}
-
-###########################################
-sub next_task_id_base {
-###########################################
-    my ( $self ) = @_;
-
-    return hostname();
-}
-
-###########################################
-sub next_task_id {
-###########################################
-    my ( $self ) = @_;
-
-    my $id = $self->{ next_task_id }++;
-
-    return $self->next_task_id_base() . "-$id";
 }
 
 1;
