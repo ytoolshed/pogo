@@ -6,7 +6,7 @@ use warnings;
 use Log::Log4perl qw(:easy);
 use AnyEvent;
 use AnyEvent::Strict;
-use Pogo::Object::Event.pm
+use base qw( Pogo::Object::Event );
 
 ###########################################
 sub new {
@@ -19,23 +19,21 @@ sub new {
 
     bless $self, $class;
 
-    $self->init();
+    $self->reg_cb( "task_finished", sub {
+      # just ignore
+    } );
 
     return $self;
 }
 
 ###########################################
-sub init {
-###########################################
-    my( $self ) = @_;
-
-    #$self->reg_cb( "scheduler_" );
-}
-
-###########################################
 sub task_add {
 ###########################################
-    my( $self, @tasks ) = @_;
+    my( $self, $task ) = @_;
+
+      # trivial scheduler, just run the task
+    DEBUG "Running task $task";
+    $self->event( "task_run", $task );
 }
 
 ###########################################
@@ -102,6 +100,32 @@ that the scheduler may update the schedule accordingly.
 =item C<new()>
 
 Constructor.
+
+=back
+
+=head1 EVENTS
+
+=head2 Incoming
+
+=over 4
+
+=item C<task_add( $task )>
+
+Subscriber requests a task to be added to the schedule.
+
+=item C<task_finished( $task )>
+
+Subscriber reports that task has been run.
+
+=back
+
+=head2 Outgoing
+
+=over 4
+
+=item C<task_run( $task )>
+
+Task has been scheduled, subscriber should run it.
 
 =back
 
