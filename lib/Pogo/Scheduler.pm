@@ -246,8 +246,10 @@ To determine runnable hosts and put them onto the run queue, the algorithm
 needs to iterate over all not yet active hosts of a job, and evaluate
 for each if adding it would violate one of the predefined restrictions.
 
-According to the tag definitions, hosts carry one or more tags with
-corresponding values. 
+Restrictions can be caused by sequences (not all of the hosts of a prereq 
+part of the sequence haven't been processed) or constraints (the maximum
+number of hosts within a tag group are already being updated at the same
+time).
 
 A sequence definition like
 
@@ -271,8 +273,9 @@ in slots:
         - job123-host6
 
 and when the algorithm iterates over all slots (and eventually all hosts 
-within them), it will refuse to add C<colo.south_east_asia> hosts to the run 
-queue as long as there are C<colo.north_america> hosts left.
+within them), it will refuse to add hosts in 
+C<colo.south_east_asia> hosts to the run queue as long as there 
+are C<colo.north_america> hosts left.
 
 TODO
 
