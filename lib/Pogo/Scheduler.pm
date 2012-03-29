@@ -240,6 +240,42 @@ scheduler will look for C<MyRules.pm> in
 and call its C<targets()> method with a parameter of C<my_db_server> 
 to obtain all targets in the 'my_db_server' group.
 
+=head2 Slot Algorithm
+
+To determine runnable hosts and put them onto the run queue, the algorithm
+needs to iterate over all not yet active hosts of a job, and evaluate
+for each if adding it would violate one of the predefined restrictions.
+
+According to the tag definitions, hosts carry one or more tags with
+corresponding values. 
+
+A sequence definition like
+
+    sequence:
+      - [ @colo[north_america], @colo[south_east_asia] ] 
+
+will be unrolled to
+
+    prev: colo.north_america => colo.south_east_asia
+
+by concatenating the components in alphabetical order. Hosts are arranged
+in slots:
+
+    colo.north_america:
+        - job123-host1
+        - job123-host2
+        - job123-host3
+    colo.south_east_asia:
+        - job123-host4
+        - job123-host5
+        - job123-host6
+
+and when the algorithm iterates over all slots (and eventually all hosts 
+within them), it will refuse to add C<colo.south_east_asia> hosts to the run 
+queue as long as there are C<colo.north_america> hosts left.
+
+TODO
+
 =head1 IMPLEMENTATION
 
 =head2 ZooKeeper Layout
