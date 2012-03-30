@@ -1,4 +1,73 @@
 package Pogo::Scheduler::Classic;
+use strict;
+use Log::Log4perl qw(:easy);
+use Template;
+use Template::Parser;
+use Template::Stash;
+use YAML::Syck qw(Load LoadFile);
+use base qw( Pogo::Scheduler );
+
+###########################################
+sub new {
+###########################################
+    my( $class, %options ) = @_;
+
+    my $self = {
+        %options,
+    };
+
+    bless $self, $class;
+
+    return $self;
+}
+
+###########################################
+sub config {
+###########################################
+    my( $self ) = @_;
+
+    return $self->{ config };
+}
+
+###########################################
+sub config_load {
+###########################################
+    my( $self, $yaml ) = @_;
+
+    if( ref $yaml eq "SCALAR" ) {
+        $self->{ config } = Load( $$yaml );
+    } else {
+        $self->{ config } = LoadFile( $yaml );
+    }
+
+    my $vars = $self->{ config }->{ tag };
+
+      # unravel macros
+    $self->vars_interp_recurse( $self->{ config }->{ sequence }, $vars );
+}
+
+###########################################
+sub vars_interp_recurse {
+###########################################
+    my( $self, $data, $vars ) = @_;
+
+    if( ref( $data ) eq "" ) {
+        if( $data =~ /(?:\$([\w.]+))/ ) {
+            my $varname = $1;
+            my $stash = Template::Stash->new( $vars );
+            my $val = $stash->get( $varname );
+            $_[1] = $val;
+        }
+    } elsif( ref( $data ) eq "HASH" ) {
+        for my $key ( keys %$data ) {
+            $self->vars_interp_recurse( $data->{ $key }, $vars );
+        }
+    } elsif( ref( $data ) eq "ARRAY" ) {
+        for my $ele ( @$data ) {
+            $self->vars_interp_recurse( $ele, $vars );
+        }
+    }
+}
 
 1;
 
