@@ -58,7 +58,6 @@ requires 'Net::SSLeay';
 #requires 'Net::ZooKeeper';
 requires 'AnyEvent::HTTPD';
 requires 'JSON::XS'; 
-requires 'Net::ZooKeeper';
 requires 'MIME::Types';
 requires 'PasswordMonkey';
 requires 'Plack';
