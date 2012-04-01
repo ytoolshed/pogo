@@ -42,6 +42,7 @@ requires 'CPAN';
 requires 'Pod::Simple';
 requires 'Pod::Parser';
 requires 'Sysadm::Install';
+requires 'YAML::Syck';
 requires 'Pod::Usage';
 requires 'Getopt::Long';
 requires 'ExtUtils::MakeMaker';
