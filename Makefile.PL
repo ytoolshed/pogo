@@ -55,7 +55,7 @@ requires 'File::Slurp';
 requires 'GnuPG';
 requires 'Module::Pluggable';
 requires 'Net::SSLeay';
-requires 'Net::ZooKeeper';
+#requires 'Net::ZooKeeper';
 requires 'AnyEvent::HTTPD';
 requires 'JSON::XS'; 
 requires 'Net::ZooKeeper';
