@@ -1,8 +1,6 @@
 
 use warnings;
 use strict;
-use AnyEvent;
-use Pogo::Plugin;
 use Test::More;
 use Log::Log4perl qw(:easy);
 
@@ -17,8 +15,6 @@ BEGIN {
 }
 
 use Pogo::Scheduler::Classic;
-use PogoOne;
-
 my $scheduler = Pogo::Scheduler::Classic->new();
 
 my $cv = AnyEvent->condvar();
