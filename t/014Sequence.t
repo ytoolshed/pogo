@@ -6,7 +6,9 @@ use Pogo::Plugin;
 use Test::More;
 use Log::Log4perl qw(:easy);
 
-plan tests => 6;
+my $nof_tests = 6;
+
+plan tests => $nof_tests;
 
 BEGIN {
     use FindBin qw( $Bin );
@@ -15,14 +17,13 @@ BEGIN {
 }
 
 use Pogo::Scheduler::Classic;
-use PogoTest;
 use PogoOne;
 
-my $one = PogoOne->new();
+my $scheduler = Pogo::Scheduler::Classic->new();
 
-my $s = Pogo::Scheduler::Classic->new();
+my $cv = AnyEvent->condvar();
 
-$s->config_load( \ <<'EOT' );
+$scheduler->config_load( \ <<'EOT' );
 tag:
   colo:
     north_america:
@@ -40,20 +41,40 @@ EOT
 
 my %expected = map { $_ => 1 } qw( host1 host2 host3 );
 
-$s->reg_cb( "task_run", sub {
+my $nof_tasks_received = 0;
+
+$scheduler->reg_cb( "task_run", sub {
     my( $c, $task ) = @_;
 
-    ok exists $expected{ $task }, "Received task $task (expected)";
+    DEBUG "Received task $task to run";
+    DEBUG "Expected: [", join( ", ", keys %expected ), "]";
 
     if( !scalar keys %expected ) {
           # we've gotten the first batch, allow the second
+        DEBUG "Resetting %expected for 2nd half";
         %expected = map { $_ => 1 } qw( host4 host5 host6 );
+    }
+
+    if( exists $expected{ $task } ) {
+        my( $num ) = ( $task =~ /(\d+)/ );
+        ok 1, "Received task $task (expected) #$num";
+        delete $expected{ $task };
+
+        $nof_tasks_received++;
+
+          # Crunch, crunch, crunch. Task done. Report back.
+        $scheduler->event( "task_finished", $task );
+
+        if( $nof_tasks_received == $nof_tests ) {
+            $cv->send(); # quit
+        }
     }
 } );
 
 for my $hostid ( reverse 1..6 ) {
-    $s->task_add( "host$hostid" );
+    $scheduler->task_add( "host$hostid" );
 }
 
-$s->start();
-$one->start();
+$scheduler->start();
+
+$cv->recv;

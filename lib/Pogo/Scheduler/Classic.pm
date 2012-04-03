@@ -90,23 +90,15 @@ sub batch_next {
         return undef;
     }
 
+    DEBUG "Current batch is: @$batch";
+
     $self->{ tasks_in_batch } = {};
 
     for my $task ( @$batch ) {
         $self->{ tasks_in_batch }->{ $task }++;
     }
 
-      # see if any queued up items qualify
-    my @queue_new = ();
-    for my $task ( @{ $self->{ tasks_queued } } ) {
-        if( exists $self->{ tasks_in_batch }->{ $task } ) {
-            delete $self->{ tasks_in_batch }->{ $task };
-            $self->event( "task_run", $task );
-        } else {
-            push @queue_new, $task;
-        }
-    }
-    $self->{ tasks_queued } = \@queue_new;
+    $self->queue_process();
 }
 
 ###########################################
@@ -120,7 +112,44 @@ sub batch_current {
         return undef;
     }
 
-    return @$batch;
+    return $batch;
+}
+
+###########################################
+sub queue_process {
+###########################################
+    my( $self ) = @_;
+
+    DEBUG "Processing queue";
+    DEBUG "Old queue: ", join( ", ", @{ $self->{ tasks_queued } } );
+
+    my @queue_new = ();
+    my @events    = ();
+
+      # see if any queued up items qualify
+    for my $task ( @{ $self->{ tasks_queued } } ) {
+
+        DEBUG "Checking task $task";
+
+        if( exists $self->{ tasks_in_batch }->{ $task } ) {
+            DEBUG "Scheduling task $task to run";
+            push @events, $task;
+        } else {
+            DEBUG "Queueing task $task up";
+            push @queue_new, $task;
+        }
+    }
+
+      # update queue
+    $self->{ tasks_queued } = \@queue_new;
+
+    DEBUG "New queue: ", join( ", ", @{ $self->{ tasks_queued } } );
+
+      # send these events at the end of the queue processing,
+      # otherwise the callbacks will interfer.
+    for my $event ( @events ) {
+        $self->event( "task_run", $event );
+    }
 }
 
 ###########################################
@@ -151,14 +180,8 @@ sub task_add {
 ###########################################
     my( $self, $task ) = @_;
 
-    DEBUG "Scheduling task $task";
-
-    if( exists $self->{ tasks_in_batch }->{ $task } ) {
-        delete $self->{ tasks_in_batch }->{ $task };
-        $self->event( "task_run", $task );
-    } else {
-        push @{ $self->{ tasks_queued} }, $task;
-    }
+    DEBUG "Queuing task $task";
+    push @{ $self->{ tasks_queued} }, $task;
 }
 
 ###########################################
@@ -167,15 +190,19 @@ sub task_finished {
     my( $self, $task ) = @_;
 
     if( exists $self->{ tasks_in_batch }->{ $task } ) {
+        INFO "Removing task $task from batch.";
         delete $self->{ tasks_in_batch }->{ $task };
     } else {
         ERROR "Got unexpected task back: $task";
     }
         
     if( $self->is_batch_finished() ) {
+        INFO "Batch is finished. See what's next.";
+
         if( $self->batch_next() ) {
-            INFO "Next batch is up.";
+            INFO "Next batch was loaded";
         } else {
+              # no more batches, we're done.
               # caller is supposed to tear component down
               # when receiving this event
             $self->event( "job_done" );
