@@ -15,6 +15,10 @@ BEGIN {
 }
 
 use Pogo::Scheduler::Classic;
+use PogoTest;
+use PogoOne;
+
+my $one = PogoOne->new();
 
 my $s = Pogo::Scheduler::Classic->new();
 
@@ -50,3 +54,6 @@ $s->reg_cb( "task_run", sub {
 for my $hostid ( reverse 1..6 ) {
     $s->task_add( "host$hostid" );
 }
+
+$s->start();
+$one->start();

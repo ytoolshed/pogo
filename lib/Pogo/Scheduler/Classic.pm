@@ -13,10 +13,18 @@ sub new {
     my( $class, %options ) = @_;
 
     my $self = {
+        slot_hosts => {},
+        slot_prev  => {},
+        slot_succ  => {},
         %options,
     };
 
     bless $self, $class;
+
+    $self->reg_cb( "task_finished", sub {
+      my( $c, @params ) = @_;
+      $self->task_finished( @params );
+    } );
 
     return $self;
 }
@@ -47,6 +55,75 @@ sub config_load {
 }
 
 ###########################################
+sub start {
+###########################################
+    my( $self ) = @_;
+
+    $self->batch_next();
+}
+
+###########################################
+sub is_batch_finished {
+###########################################
+    my( $self ) = @_;
+
+    return 0 == scalar keys %{ $self->{ tasks_in_batch } };
+}
+
+###########################################
+sub batch_next {
+###########################################
+    my( $self ) = @_;
+
+    if( defined $self->{ batch_seq } ) {
+        $self->{ batch_seq }++;
+    } else {
+        $self->{ batch_seq } = 0;
+    }
+
+    INFO "Processing sequence $self->{ batch_seq }";
+
+    my $batch = $self->batch_current();
+
+    if( ! defined $batch ) {
+        INFO "Out of batches";
+        return undef;
+    }
+
+    $self->{ tasks_in_batch } = {};
+
+    for my $task ( @$batch ) {
+        $self->{ tasks_in_batch }->{ $task }++;
+    }
+
+      # see if any queued up items qualify
+    my @queue_new = ();
+    for my $task ( @{ $self->{ tasks_queued } } ) {
+        if( exists $self->{ tasks_in_batch }->{ $task } ) {
+            delete $self->{ tasks_in_batch }->{ $task };
+            $self->event( "task_run", $task );
+        } else {
+            push @queue_new, $task;
+        }
+    }
+    $self->{ tasks_queued } = \@queue_new;
+}
+
+###########################################
+sub batch_current {
+###########################################
+    my( $self ) = @_;
+
+    my $batch = $self->{ config }->{ sequence }->[ $self->{ batch_seq } ];
+
+    if( !defined $batch ) {
+        return undef;
+    }
+
+    return @$batch;
+}
+
+###########################################
 sub vars_interp_recurse {
 ###########################################
     my( $self, $data, $vars ) = @_;
@@ -65,6 +142,43 @@ sub vars_interp_recurse {
     } elsif( ref( $data ) eq "ARRAY" ) {
         for my $ele ( @$data ) {
             $self->vars_interp_recurse( $ele, $vars );
+        }
+    }
+}
+
+###########################################
+sub task_add {
+###########################################
+    my( $self, $task ) = @_;
+
+    DEBUG "Scheduling task $task";
+
+    if( exists $self->{ tasks_in_batch }->{ $task } ) {
+        delete $self->{ tasks_in_batch }->{ $task };
+        $self->event( "task_run", $task );
+    } else {
+        push @{ $self->{ tasks_queued} }, $task;
+    }
+}
+
+###########################################
+sub task_finished {
+###########################################
+    my( $self, $task ) = @_;
+
+    if( exists $self->{ tasks_in_batch }->{ $task } ) {
+        delete $self->{ tasks_in_batch }->{ $task };
+    } else {
+        ERROR "Got unexpected task back: $task";
+    }
+        
+    if( $self->is_batch_finished() ) {
+        if( $self->batch_next() ) {
+            INFO "Next batch is up.";
+        } else {
+              # caller is supposed to tear component down
+              # when receiving this event
+            $self->event( "job_done" );
         }
     }
 }
