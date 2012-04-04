@@ -3,6 +3,7 @@ use warnings;
 use strict;
 use Test::More;
 use Log::Log4perl qw(:easy);
+use Pogo::Util::Bucketeer;
 
 my $nof_tests = 6;
 
@@ -34,41 +35,26 @@ sequence:
   - $colo.north_america
   - $colo.south_east_asia
 EOT
-
-my %expected = map { $_ => 1 } qw( host1 host2 host3 );
-
-my $nof_tasks_received = 0;
+ 
+my $bck = Pogo::Util::Bucketeer->new(
+    buckets => [
+  [ qw( host1 host2 host3 ) ],
+  [ qw( host4 host5 host6 ) ],
+] );
 
 $scheduler->reg_cb( "task_run", sub {
     my( $c, $task ) = @_;
 
-    DEBUG "Received task $task to run";
-    DEBUG "Expected: [", join( ", ", keys %expected ), "]";
+    ok $bck->item( $task ), "task $task in seq";
 
-    if( !scalar keys %expected ) {
-          # we've gotten the first batch, allow the second
-        DEBUG "Resetting %expected for 2nd half";
-        %expected = map { $_ => 1 } qw( host4 host5 host6 );
-    }
+      # Crunch, crunch, crunch. Task done. Report back.
+    $scheduler->event( "task_finished", $task );
 
-    if( exists $expected{ $task } ) {
-        my( $num ) = ( $task =~ /(\d+)/ );
-        ok 1, "Received task $task (expected) #$num";
-        delete $expected{ $task };
-
-        $nof_tasks_received++;
-
-          # Crunch, crunch, crunch. Task done. Report back.
-        $scheduler->event( "task_finished", $task );
-
-        if( $nof_tasks_received == $nof_tests ) {
-            $cv->send(); # quit
-        }
-    }
+    $bck->all_done and $cv->send(); # quit
 } );
 
-for my $hostid ( reverse 1..6 ) {
-    $scheduler->task_add( "host$hostid" );
+for my $task ( $bck->items() ) {
+    $scheduler->task_add( $task );
 }
 
 $scheduler->start();
