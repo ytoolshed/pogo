@@ -13,77 +13,111 @@ sub new {
     my($class, %options) = @_;
 
     my $self = {
-       buckets   => [],
-       bucket_id => undef,
+       buckets           => [],
+       bucket_id_current => undef,
        %options,
     };
 
     bless $self, $class;
+
+      # transform into bucket hashes
+    for my $bucket ( @{ $self->{ buckets } } ) {
+        $bucket = { map { $_ => 1 } @$bucket };
+    }
+
+    $self->bucket_current_next();
+
+    return $self;
 }
 
 ###########################################
 sub bucket_current_next {
 ###########################################
-   my( $self ) = @_;
-
-   my $next_bucket = 0;
-
-   if( defined $self->{ bucket_id } ) {
-       $next_bucket = $self->{ bucket_id } + 1;
-   }
-
-   return $self->bucket_current_id( $next_bucket );
+    my( $self ) = @_;
+ 
+    my $next_bucket = 0;
+ 
+    if( defined $self->{ bucket_id_current } ) {
+        $next_bucket = $self->{ bucket_id_current } + 1;
+    }
+ 
+    return $self->bucket_current_id( $next_bucket );
 }
 
 ###########################################
 sub bucket_current_id {
 ###########################################
-   my( $self, $id ) = @_;
-
-   if( $id + 1 < scalar @{ $self->{ buckets } } ) {
-       $self->{ bucket_id } = $id;
-       return 1;
-   }
-
-   return undef;
+    my( $self, $id ) = @_;
+ 
+    if( $id < scalar @{ $self->{ buckets } } ) {
+        $self->{ bucket_id_current } = $id;
+        DEBUG "Setting current bucket id to $id";
+        return 1;
+    } else {
+        DEBUG "Out of buckets, can't increase id to $id";
+    }
+ 
+    return undef;
 }
 
 ###########################################
-sub done {
+sub all_done {
 ###########################################
-   my( $self ) = @_;
-
-   if( defined $self->{ bucket_id } and
-       $self->{ bucket_id } + 1 == scalar @{ $self->{ buckets } } ) {
-       return 1;
-   }
-
-   return 0;
+    my( $self ) = @_;
+ 
+    if( defined $self->{ bucket_id_current } and
+        $self->{ bucket_id_current } + 1 == scalar @{ $self->{ buckets } } ) {
+        return 1;
+    }
+ 
+    return 0;
 }
 
 ###########################################
 sub items {
 ###########################################
-   my( $self ) = @_;
-
-   my @items = ();
-   for my $bucket ( @{ $self->{ buckets } } ) {
-       push @items, @$bucket,
-   }
-   return @items;
+    my( $self ) = @_;
+ 
+    my @items = ();
+ 
+    for my $bucket ( @{ $self->{ buckets } } ) {
+        push @items, @$bucket,
+    }
+ 
+    return @items;
 }
 
 ###########################################
-sub item_finished {
+sub item {
 ###########################################
-   my( $self, $item ) = @_;
+    my( $self, $item ) = @_;
+ 
+    if( ! defined $self->{ bucket_id_current } ) {
+        ERROR "No bucket defined, but got item $item";
+        return undef;
+    }
+ 
+    if( delete
+        $self->{ buckets }->[ $self->{ bucket_id_current } ]->{ $item } ) {
+        DEBUG "Item $item came in as expected";
+    } else {
+        ERROR "Item $item came in unexpected";
+        return undef;
+    }
 
-   if( ! defined $self->{ bucket_id } ) {
+      # current bucket empty?
+    my $remaining = scalar keys %{
+                    $self->{ buckets }->[ $self->{ bucket_id_current } ] };
 
+    if( 0 == $remaining ) {
+          # switch to next
+        DEBUG "Switching to next bucket";
+        $self->bucket_current_next();
+    } else {
+        DEBUG "$remaining items remaining in bucket";
+    }
 
-   if( ! defined $self->{ bucket_id } ) {
-       die "received unexpected item: $item";
-   }
+    return 1;
 }
 
 1;
@@ -100,52 +134,6 @@ Pogo::Util::Bucketeer - Pogo Test Utility to make sure sequencing works
 
     my $bkt = Pogo::Util::Bucketeer->new(
         buckets => [
-          [ qw( host1 host2 ),
-            qw( host3 host4 ),
-          ]
-        ]
-    );
-
-    my $seqr = FooSequencer->new();
-    my $cv   = AnyEvent->condvar();
-
-      # Whenever the sequencer spits out an item, we want to check if
-      # it's in the bucket order defined earlier or out of sequence.
-
-    $seqr->reg_cb( "foo_item_process", sub {
-        my( $c, $item ) = @_;
-
-        if( $bkt->item( $item ) ) {
-          print "Item $item received in expected order\n";
-        } else {
-          die "Whoa! Item $item received in unexpected order!";
-        }
-
-        if( $bkt->all_done() ) {
-            $cv->send();
-        }
-    }
-
-      # submit host1, host2, host3, host4 to the sequencer, which then
-      # (hopefully) sends them out via events in the bucket order expected
-    $seqr->( $bkt->items() );
-
-    $cv->recv();
-
-=head1 DESCRIPTION
-
-Pogo::Util::Bucketeer makes sure a sequencing algorithm spits out 
-items in the desired order. It defines N buckets of items.
-Within a bucket, the item order is irrelevant. However, items within
-a bucket must come out of the sequencer I<before> items of the next bucket
-(or any other bucket for that matter).
-
-=head1 EXAMPLE
-
-    use Pogo::Util::Bucketeer;
-
-    my $bkt = Pogo::Util::Bucketeer->new(
-        buckets => [
           [ qw( host1 host2 host3 ),
             qw( host3 host4 ),
           ]
@@ -156,6 +144,20 @@ a bucket must come out of the sequencer I<before> items of the next bucket
     $bkt->item( "host1" ) or die;   # ok
 
     $bkt->item( "host4" ) or die;   # not ok
+
+    $bkt->item( "host3" ) or die;   # ok
+    $bkt->item( "host4" ) or die;   # ok
+    $bkt->all_done() or die;        # ok
+
+=head1 DESCRIPTION
+
+Pogo::Util::Bucketeer makes sure a sequencing algorithm spits out 
+items in the desired order. It defines N buckets of items.
+Within a bucket, the item order is irrelevant. However, items within
+a bucket must come out of the sequencer I<before> items of the next bucket
+(or any other bucket for that matter).
+
+=head1 EXAMPLE
 
 =head1 LICENSE
 
