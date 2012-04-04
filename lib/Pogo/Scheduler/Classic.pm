@@ -393,41 +393,45 @@ scheduler will look for C<MyRules.pm> in
 and call its C<targets()> method with a parameter of C<my_db_server> 
 to obtain all targets in the 'my_db_server' group.
 
-=head2 Slot Algorithm
+=head2 Sequences on subsets
 
-To determine runnable hosts and put them onto the run queue, the algorithm
-needs to iterate over all not yet active hosts of a job, and evaluate
-for each if adding it would violate one of the predefined restrictions.
-
-Restrictions can be caused by sequences (not all of the hosts of a prereq 
-part of the sequence have been processed) or constraints (the maximum
-number of hosts within a tag group are already being updated at the same
-time).
-
-A sequence definition like
+For example to define a sequence only applicable only to hosts
+tagged C<frontend>, use
 
     sequence:
-      - [ $colo.north_america, $colo.south_east_asia ]
+      frontend:
+        - $colo.north_america
+        - $colo.south_east_asia
 
-will be unrolled to
+with hosts grouped into
 
-    prev: $colo.south_east_asia => $colo.north_america
+    tag:
+      colo:
+        north_america:
+          - host1
+          - host2
+          - host3
+        south_east_asia:
+          - host4
+          - host5
+          - host6
+      frontend:
+        - host1 
+        - host4
 
-Hosts are arranged in slots:
+this will run in the following order:
 
-    colo.north_america:
-        - job123-host1
-        - job123-host2
-        - job123-host3
-    colo.south_east_asia:
-        - job123-host4
-        - job123-host5
-        - job123-host6
+    host1
+    | host2
+    | host3
+    | host5
+    | host6
+    host4
 
-and when the algorithm iterates over all slots (and eventually all hosts 
-within them), it will refuse to add hosts in 
-C<colo.south_east_asia> hosts to the run queue as long as there 
-are C<colo.north_america> hosts left.
+Since the sequence requirement only applies to C<frontend> hosts C<host1> and
+C<host4>. The remaining hosts in colo C<south_east_asia> are not affected
+and can now run unconstrained. C<host4>, on the other hand, needs to wait 
+until C<host1> is done.
 
 =head1 LICENSE
 
