@@ -81,7 +81,7 @@ sub items {
     my @items = ();
  
     for my $bucket ( @{ $self->{ buckets } } ) {
-        push @items, @$bucket,
+        push @items, sort keys %$bucket,
     }
  
     return @items;
