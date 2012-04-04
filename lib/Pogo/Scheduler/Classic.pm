@@ -418,6 +418,9 @@ with hosts grouped into
       frontend:
         - host1 
         - host4
+      backend:
+        - host2 
+        - host5
 
 this will run in the following order:
 
@@ -435,7 +438,43 @@ until C<host1> is done.
 
 =head2 Slot Algorithm
 
-TODO
+If sequence definitions are independent of each other, they can be run
+in parallel as long as individual sequence rules aren't violated. 
+For example, with
+
+    sequence:
+      frontend:
+        - $colo.north_america
+        - $colo.south_east_asia
+      backend:
+        - $colo.south_east_asia
+        - $colo.north_america
+
+and with hosts grouped into
+
+    tag:
+      colo:
+        north_america:
+          - host1
+          - host2
+          - host3
+        south_east_asia:
+          - host4
+          - host5
+          - host6
+      frontend:
+        - host1 
+        - host4
+      backend:
+        - host2 
+        - host5
+
+we can run the following threads concurrently:
+
+    + host1 -> host4
+    + host5 -> host2
+    + host3
+    + host6
 
 =head1 LICENSE
 
