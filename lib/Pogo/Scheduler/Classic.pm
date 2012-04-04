@@ -476,6 +476,17 @@ we can run the following threads concurrently:
     + host3
     + host6
 
+The following "slots" are created:
+
+    - frontend.colo.north_america
+      - host1
+    - frontend.colo.south_east_asia
+      - host4
+    - backend.colo.north_america
+      - host2
+    - backend.colo.south_east_asia
+      - host5
+
 =head1 LICENSE
 
 Copyright (c) 2010-2012 Yahoo! Inc. All rights reserved.
