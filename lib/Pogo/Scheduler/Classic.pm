@@ -367,7 +367,7 @@ For example, if a constraint applies to all hosts tagged C<frontend>
 (regardless of value) in colo C<north_america>, use
 
     constraint:
-      $frontend:
+      frontend:
          $colo.north_america: 2
 
 =head2 External Tag Resolvers
@@ -432,6 +432,10 @@ Since the sequence requirement only applies to C<frontend> hosts C<host1> and
 C<host4>. The remaining hosts in colo C<south_east_asia> are not affected
 and can now run unconstrained. C<host4>, on the other hand, needs to wait 
 until C<host1> is done.
+
+=head2 Slot Algorithm
+
+TODO
 
 =head1 LICENSE
 
