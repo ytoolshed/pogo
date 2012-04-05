@@ -395,7 +395,7 @@ to obtain all targets in the 'my_db_server' group.
 
 =head2 Sequences on subsets
 
-For example to define a sequence only applicable only to hosts
+For example to define a sequence only applicable to hosts
 tagged C<frontend>, use
 
     sequence:
@@ -425,10 +425,7 @@ with hosts grouped into
 this will run in the following order:
 
     host1
-    | host2
-    | host3
-    | host5
-    | host6
+    | host2 | host3 | host5 | host6 start
     host4
 
 Since the sequence requirement only applies to C<frontend> hosts C<host1> and
@@ -471,12 +468,14 @@ and with hosts grouped into
 
 we can run the following threads concurrently:
 
-    + host1 -> host4
-    + host5 -> host2
-    + host3
-    + host6
+    thread1: host1 -> host4
+    thread2: host5 -> host2
+    thread3: host3+host6
 
-The following "slots" are created for a job:
+For this to happen, the following "slots" are created for a job by 
+walking through the C<sequence> definitions and creating a slot for
+every entry found, followed by the hosts covered (or left empty
+if the slot contains no hosts):
 
     job123:
       slots:
@@ -492,7 +491,10 @@ The following "slots" are created for a job:
           - host3
           - host6
 
-Pulling in the sequence definitions in the configuration, and performing
+The last slot, C<unconstrained>, holds all the hosts that are not bound
+by sequence constraints.
+
+Pulling in the sequence definitions from the configuration, and performing
 a topological sort on the dependencies, we can now write the 
 following schedule (with multiple threads enumerated sequentially,
 to be all executed in parallel independently of each other):
@@ -533,12 +535,12 @@ results are trickling in, (e.g.
 "job123:thread1:frontend.colo.north_america:host1"), it goes back to the job
 schedule data, looks up the job ("job123"), the thread ("thread1"), the
 slot ("frontend.colo.north_america"), finds the host ("host1") and deletes
-it. If this makes the corresponding slots empty, it is deleted and the
+it. If this makes the corresponding slot empty, it is deleted and the
 next slot's hosts are all put into the run queue. 
 
-If there are no more
-slots in the thread, the thread gets deleted. If there are no more threads
-in the job, the job is finished.
+If there are no more slots in the thread, the thread gets deleted. 
+
+If there are no more threads in the job, the job is finished.
 
 =head1 LICENSE
 
