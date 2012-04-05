@@ -210,6 +210,34 @@ sub task_finished {
     }
 }
 
+###########################################
+sub leaf_paths {
+###########################################
+    my( $node, $path, $results ) = @_;
+
+    $results = [] if ! defined $results;
+
+    if( ref( $node ) eq "HASH" ) {
+        for my $key ( keys %$node ) {
+            my $lead;
+            if( defined $path ) {
+                $lead = "$path.$key";
+            } else {
+                $lead = $key;
+            }
+            leaf_paths( $node->{ $key }, $lead, $results );
+        }
+    } elsif( ref( $node ) eq "ARRAY" ) {
+        for my $entry ( @$node ) {
+            push @$results, "$path-$entry";
+        }
+    } else {
+        push @$results, "$path-$node";
+    }
+
+    return @$results;
+}
+
 1;
 
 __END__
