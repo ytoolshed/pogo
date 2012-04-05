@@ -476,16 +476,69 @@ we can run the following threads concurrently:
     + host3
     + host6
 
-The following "slots" are created:
+The following "slots" are created for a job:
 
-    - frontend.colo.north_america
-      - host1
-    - frontend.colo.south_east_asia
-      - host4
-    - backend.colo.north_america
-      - host2
-    - backend.colo.south_east_asia
-      - host5
+    job123:
+      slots:
+        frontend.colo.north_america:
+          - host1
+        frontend.colo.south_east_asia:
+          - host4
+        backend.colo.north_america:
+          - host2
+        backend.colo.south_east_asia:
+          - host5
+        unconstrained:
+          - host3
+          - host6
+
+Pulling in the sequence definitions in the configuration, and performing
+a topological sort on the dependencies, we can now write the 
+following schedule (with multiple threads enumerated sequentially,
+to be all executed in parallel independently of each other):
+
+    job123:
+      schedule:
+        thread1:
+          frontend.colo.north_america:
+            host1
+          frontend.colo.south_east_asia:
+            host4
+        thread2:
+          backend.colo.south_east_asia:
+            - host5
+          backend.colo.north_america:
+            - host2
+        thread3:
+          unconstrained:
+            - host3
+            - host6
+
+The algorithm then starts like this, getting the first batches of each
+thread rolling:
+
+    for my $thread in ( job_threads() ) {
+        push @run_queue, $thread->slots()[0]->hosts();
+    }
+
+The run queue now contains the following information:
+
+    job123:thread1:frontend.colo.north_america:host1
+    job123:thread2:backend.colo.north_america:host5
+    job123:thread3:unconstrained:host3
+    job123:thread3:unconstrained:host6
+
+The dispatcher then assigns each job in the run queue to a worker. As
+results are trickling in, (e.g. 
+"job123:thread1:frontend.colo.north_america:host1"), it goes back to the job
+schedule data, looks up the job ("job123"), the thread ("thread1"), the
+slot ("frontend.colo.north_america"), finds the host ("host1") and deletes
+it. If this makes the corresponding slots empty, it is deleted and the
+next slot's hosts are all put into the run queue. 
+
+If there are no more
+slots in the thread, the thread gets deleted. If there are no more threads
+in the job, the job is finished.
 
 =head1 LICENSE
 
