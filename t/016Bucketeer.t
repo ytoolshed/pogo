@@ -4,7 +4,7 @@ use strict;
 use Test::More;
 use Log::Log4perl qw(:easy);
 
-my $nof_tests = 9;
+my $nof_tests = 12;
 
 BEGIN {
     use FindBin qw( $Bin );
@@ -23,15 +23,30 @@ my $bkt = Pogo::Util::Bucketeer->new(
   ]
 );
 
-ok !$bkt->all_done(), "not all done";
+my $bkt2 = Pogo::Util::Bucketeer->new(
+  buckets => [
+    [ qw( host10 host12 ) ],
+  ]
+);
 
-ok $bkt->item( "host2" ), "host2 in seq";
-ok $bkt->item( "host1" ), "host1 in seq"; 
-ok !$bkt->item( "host4" ), "host4 out of seq";
+my $thread = Pogo::Util::Bucketeer::Threaded->new();
+$thread->bucketeer_add( $bkt );
+$thread->bucketeer_add( $bkt2 );
 
-ok !$bkt->all_done(), "not all done";
+ok !$thread->all_done(), "not all done";
 
-ok $bkt->item( "host3" ), "host3 in seq";
-ok $bkt->item( "host4" ), "host4 in seq";
-ok $bkt->item( "host5" ), "host5 in seq";
-ok $bkt->all_done(), "all done";
+ok $thread->item( "host2" ), "host2 in seq";
+ok $thread->item( "host1" ), "host1 in seq"; 
+ok !$thread->item( "host4" ), "host4 out of seq";
+
+ok !$thread->all_done(), "not all done";
+
+ok $thread->item( "host3" ), "host3 in seq";
+ok $thread->item( "host4" ), "host4 in seq";
+ok $thread->item( "host5" ), "host5 in seq";
+ok !$thread->all_done(), "not all done";
+
+ok $thread->item( "host12" ), "host11 (thread2) in seq";
+ok $thread->item( "host10" ), "host10 (thread2) in seq"; 
+
+ok $thread->all_done(), "all done";
