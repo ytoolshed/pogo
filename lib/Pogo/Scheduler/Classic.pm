@@ -210,6 +210,34 @@ sub task_finished {
     }
 }
 
+###########################################
+sub leaf_paths {
+###########################################
+    my( $node, $path, $results ) = @_;
+
+    $results = [] if ! defined $results;
+
+    if( ref( $node ) eq "HASH" ) {
+        for my $key ( keys %$node ) {
+            my $lead;
+            if( defined $path ) {
+                $lead = "$path.$key";
+            } else {
+                $lead = $key;
+            }
+            leaf_paths( $node->{ $key }, $lead, $results );
+        }
+    } elsif( ref( $node ) eq "ARRAY" ) {
+        for my $entry ( @$node ) {
+            push @$results, "$path-$entry";
+        }
+    } else {
+        push @$results, "$path-$node";
+    }
+
+    return @$results;
+}
+
 1;
 
 __END__
@@ -367,7 +395,7 @@ For example, if a constraint applies to all hosts tagged C<frontend>
 (regardless of value) in colo C<north_america>, use
 
     constraint:
-      $frontend:
+      frontend:
          $colo.north_america: 2
 
 =head2 External Tag Resolvers
@@ -393,41 +421,154 @@ scheduler will look for C<MyRules.pm> in
 and call its C<targets()> method with a parameter of C<my_db_server> 
 to obtain all targets in the 'my_db_server' group.
 
-=head2 Slot Algorithm
+=head2 Sequences on subsets
 
-To determine runnable hosts and put them onto the run queue, the algorithm
-needs to iterate over all not yet active hosts of a job, and evaluate
-for each if adding it would violate one of the predefined restrictions.
-
-Restrictions can be caused by sequences (not all of the hosts of a prereq 
-part of the sequence have been processed) or constraints (the maximum
-number of hosts within a tag group are already being updated at the same
-time).
-
-A sequence definition like
+For example to define a sequence only applicable to hosts
+tagged C<frontend>, use
 
     sequence:
-      - [ $colo.north_america, $colo.south_east_asia ]
+      frontend:
+        - $colo.north_america
+        - $colo.south_east_asia
 
-will be unrolled to
+with hosts grouped into
 
-    prev: $colo.south_east_asia => $colo.north_america
+    tag:
+      colo:
+        north_america:
+          - host1
+          - host2
+          - host3
+        south_east_asia:
+          - host4
+          - host5
+          - host6
+      frontend:
+        - host1 
+        - host4
+      backend:
+        - host2 
+        - host5
 
-Hosts are arranged in slots:
+this will run in the following order:
 
-    colo.north_america:
-        - job123-host1
-        - job123-host2
-        - job123-host3
-    colo.south_east_asia:
-        - job123-host4
-        - job123-host5
-        - job123-host6
+    host1
+    | host2 | host3 | host5 | host6 start
+    host4
 
-and when the algorithm iterates over all slots (and eventually all hosts 
-within them), it will refuse to add hosts in 
-C<colo.south_east_asia> hosts to the run queue as long as there 
-are C<colo.north_america> hosts left.
+Since the sequence requirement only applies to C<frontend> hosts C<host1> and
+C<host4>. The remaining hosts in colo C<south_east_asia> are not affected
+and can now run unconstrained. C<host4>, on the other hand, needs to wait 
+until C<host1> is done.
+
+=head2 Slot Algorithm
+
+If sequence definitions are independent of each other, they can be run
+in parallel as long as individual sequence rules aren't violated. 
+For example, with
+
+    sequence:
+      frontend:
+        - $colo.north_america
+        - $colo.south_east_asia
+      backend:
+        - $colo.south_east_asia
+        - $colo.north_america
+
+and with hosts grouped into
+
+    tag:
+      colo:
+        north_america:
+          - host1
+          - host2
+          - host3
+        south_east_asia:
+          - host4
+          - host5
+          - host6
+      frontend:
+        - host1 
+        - host4
+      backend:
+        - host2 
+        - host5
+
+we can run the following threads concurrently:
+
+    thread1: host1 -> host4
+    thread2: host5 -> host2
+    thread3: host3+host6
+
+For this to happen, the following "slots" are created for a job by 
+walking through the C<sequence> definitions and creating a slot for
+every entry found, followed by the hosts covered (or left empty
+if the slot contains no hosts):
+
+    job123:
+      slots:
+        frontend.colo.north_america:
+          - host1
+        frontend.colo.south_east_asia:
+          - host4
+        backend.colo.north_america:
+          - host2
+        backend.colo.south_east_asia:
+          - host5
+        unconstrained:
+          - host3
+          - host6
+
+The last slot, C<unconstrained>, holds all the hosts that are not bound
+by sequence constraints.
+
+Pulling in the sequence definitions from the configuration, and performing
+a topological sort on the dependencies, we can now write the 
+following schedule (with multiple threads enumerated sequentially,
+to be all executed in parallel independently of each other):
+
+    job123:
+      schedule:
+        thread1:
+          frontend.colo.north_america:
+            host1
+          frontend.colo.south_east_asia:
+            host4
+        thread2:
+          backend.colo.south_east_asia:
+            - host5
+          backend.colo.north_america:
+            - host2
+        thread3:
+          unconstrained:
+            - host3
+            - host6
+
+The algorithm then starts like this, getting the first batches of each
+thread rolling:
+
+    for my $thread in ( job_threads() ) {
+        push @run_queue, $thread->slots()[0]->hosts();
+    }
+
+The run queue now contains the following information:
+
+    job123:thread1:frontend.colo.north_america:host1
+    job123:thread2:backend.colo.north_america:host5
+    job123:thread3:unconstrained:host3
+    job123:thread3:unconstrained:host6
+
+The dispatcher then assigns each job in the run queue to a worker. As
+results are trickling in, (e.g. 
+"job123:thread1:frontend.colo.north_america:host1"), it goes back to the job
+schedule data, looks up the job ("job123"), the thread ("thread1"), the
+slot ("frontend.colo.north_america"), finds the host ("host1") and deletes
+it. If this makes the corresponding slot empty, it is deleted and the
+next slot's hosts are all put into the run queue. 
+
+If there are no more slots in the thread, the thread gets deleted. 
+
+If there are no more threads in the job, the job is finished.
 
 =head1 LICENSE
 
