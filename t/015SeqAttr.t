@@ -44,6 +44,9 @@ sequence:
   $frontend:
     - $colo.north_america
     - $colo.south_east_asia
+  $backend:
+    - $colo.south_east_asia
+    - $colo.north_america
 EOT
 
 $scheduler->config_load( \$data ) or 

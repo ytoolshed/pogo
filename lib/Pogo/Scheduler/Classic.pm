@@ -62,7 +62,35 @@ sub config_load {
         push @{ $self->{ host_slots }->{ $slot } }, $host;
     }
 
+    $self->slot_setup();
+
     return 1;
+}
+
+###########################################
+sub slot_setup {
+###########################################
+    my( $self ) = @_;
+
+    for my $slot ( @{ $self->{ slots } } ) {
+        my @parts = ();
+
+        while( $slot =~ /(\$[^\$]*)/g ) {
+            my $part = $1;
+            $part =~ s/^\$//;
+            $part =~ s/\.$//;
+            push @parts, $part;
+        }
+
+        my @hosts = @{ $self->{ host_slots }->{ shift @parts } };
+
+        for my $part ( @parts ) {
+            @hosts = array_intersection( \@hosts, 
+                       $self->{ host_slots }->{ $part } );
+        }
+
+        $self->{ hosts_by_slot }->{ $slot } = \@hosts;
+    }
 }
 
 ###########################################
@@ -111,6 +139,32 @@ sub leaf_paths {
         }
     }
     return \@result;
+}
+
+###########################################
+sub array_intersection {
+###########################################
+    my( $arr1, $arr2 ) = @_;
+
+    my @intersection = ();
+
+    my %count1 = ();
+    my %count2 = ();
+
+    foreach my $element ( @$arr1 ) {
+        $count1{ $element } = 1;
+    }
+
+    foreach my $element ( @$arr2 ) {
+        if( $count2{ $element }++ ) {
+            next; # skip inner-2-dupes
+        }
+        if( $count1{ $element } ) {
+            push @intersection, $element;
+        }
+    }
+
+    return @intersection;
 }
 
 1;
