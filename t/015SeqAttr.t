@@ -56,10 +56,13 @@ my $paths = $scheduler->leaf_paths( $struct );
 
 cmp_deeply( $paths, [ [qw(a b d)], [qw(a b c)] ], "leaf_paths" );
 
-__END__
-
 $scheduler->config_load( \$data ) or 
     die "Failed ot load config";
+
+use Data::Dumper;
+print Dumper( $scheduler );
+
+__END__
 
 use Data::Dumper;
 print Dumper( $scheduler );

@@ -53,12 +53,14 @@ sub config_load {
     }
 
     $self->{ slots } = 
-        $self->leaf_paths( $self->{ config }->{ sequence } );
+        [ map { join ".", @$_ } 
+            @{ $self->leaf_paths( $self->{ config }->{ sequence } ) } ];
 
     $self->{ slots_vars } = $self->{ config }->{ tag };
 
     for my $path ( @{ $self->leaf_paths( $self->{ config }->{ tag } ) } ) {
-        my( $slot, $host ) = ( $path =~ /(.*)\.(.*)/ );
+        my $host = pop @$path;
+        my $slot = join '.', @$path;
         push @{ $self->{ host_slots }->{ $slot } }, $host;
     }
 
