@@ -68,9 +68,17 @@ sub config_load {
 }
 
 ###########################################
+sub hosts {
+###########################################
+    my( $self ) = @_;
+}
+
+###########################################
 sub slot_setup {
 ###########################################
     my( $self ) = @_;
+
+    my @all_hosts = ();
 
     for my $slot ( @{ $self->{ slots } } ) {
         my @parts = ();
@@ -114,30 +122,36 @@ sub task_finished {
 ############################################################
 sub leaf_paths {
 ############################################################
-    my ($self, $root) = @_;
+    my ( $self, $root ) = @_;
+
+      # Transforms a nested hash/array data structure into 
+      # an array of path components
+      # { a => { b => [ c,d ] } } =>
+      #   [ [a,b,c], [a,b,d] ]
 
     my @result = ();
     my @stack  = ();
 
-    push @stack, [$root, []];
+    push @stack, [ $root, [] ];
 
-    while(@stack) {
+    while( @stack ) {
         my $item = pop @stack;
 
         my($node, $path) = @$item;
 
         if(ref($node) eq "HASH") {
             for my $part (keys %$node) {
-                push @stack, [$node->{$part}, [@$path, $part]];
+                push @stack, [ $node->{$part}, [@$path, $part] ];
             }
         } elsif( ref($node) eq "ARRAY") {
             for my $part ( @$node ) {
-                push @result, join ".", @$path, $part;
+                push @stack, [ $part, [@$path, $part]];
             }
         } else {
-            push @result, join ".", @$path, @$node;
+            push @result, [@$path];
         }
     }
+
     return \@result;
 }
 

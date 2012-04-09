@@ -6,9 +6,10 @@ use Pogo::Plugin;
 use Test::More;
 use Log::Log4perl qw(:easy);
 use Pogo::Util::Bucketeer;
+use Test::Deep;
 use YAML qw(Load);
 
-my $nof_tests = 6;
+my $nof_tests = 1;
 
 plan tests => $nof_tests;
 
@@ -48,6 +49,14 @@ sequence:
     - $colo.south_east_asia
     - $colo.north_america
 EOT
+
+my $struct = { a => { b => [ qw(c d) ] } };
+
+my $paths = $scheduler->leaf_paths( $struct );
+
+cmp_deeply( $paths, [ [qw(a b d)], [qw(a b c)] ], "leaf_paths" );
+
+__END__
 
 $scheduler->config_load( \$data ) or 
     die "Failed ot load config";
