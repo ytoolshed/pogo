@@ -62,6 +62,10 @@ $scheduler->config_load( \$data ) or
 use Data::Dumper;
 print Dumper( $scheduler );
 
+for my $host ( $scheduler->config_hosts() ) {
+    print "host=$host\n";
+}
+
 __END__
 
 use Data::Dumper;

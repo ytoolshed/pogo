@@ -70,17 +70,11 @@ sub config_load {
 }
 
 ###########################################
-sub hosts {
-###########################################
-    my( $self ) = @_;
-}
-
-###########################################
 sub slot_setup {
 ###########################################
     my( $self ) = @_;
 
-    my @all_hosts = ();
+    my $all_hosts = $self->config_hosts_hash();
 
     for my $slot ( @{ $self->{ slots } } ) {
         my @parts = ();
@@ -99,8 +93,44 @@ sub slot_setup {
                        $self->{ host_slots }->{ $part } );
         }
 
+        for my $host ( @hosts ) {
+            delete $all_hosts->{ $host };
+        }
+
         $self->{ hosts_by_slot }->{ $slot } = \@hosts;
     }
+
+      # what's left over is unconstrained
+    $self->{ hosts_by_slot }->{ unconstrained } = [ keys %{ $all_hosts } ];
+}
+
+###########################################
+sub config_hosts_hash {
+###########################################
+    my( $self ) = @_;
+
+    # extract all the hosts defined in the config file (might include
+    # custom tag resolvers).
+    my $tags      = $self->leaf_paths( $self->{ config }->{ tag } );
+    my $sequences = $self->leaf_paths( $self->{ config }->{ sequence } );
+
+    my %hosts = ();
+
+    for my $path ( @$tags, @$sequences ) {
+        if( $path->[-1] !~ /^\$/ ) {
+            $hosts{ $path->[-1] } = 1;
+        }
+    }
+
+    return \%hosts;
+}
+
+###########################################
+sub config_hosts {
+###########################################
+    my( $self ) = @_;
+
+    return keys %{ $self->config_hosts_hash() };
 }
 
 ###########################################
