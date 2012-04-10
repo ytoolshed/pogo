@@ -6,6 +6,7 @@ use Pogo::Plugin;
 use Test::More;
 use Log::Log4perl qw(:easy);
 use Pogo::Util::Bucketeer;
+use Pogo::Util;
 use Test::Deep;
 use YAML qw(Load);
 
@@ -52,26 +53,12 @@ EOT
 
 my $struct = { a => { b => [ qw(c d) ] } };
 
-my $paths = $scheduler->leaf_paths( $struct );
+my $paths = Pogo::Util::leaf_paths( $struct );
 
 cmp_deeply( $paths, [ [qw(a b d)], [qw(a b c)] ], "leaf_paths" );
 
 $scheduler->config_load( \$data ) or 
     die "Failed ot load config";
-
-#use Data::Dumper;
-#print Dumper( $scheduler );
-
-#for my $host ( $scheduler->config_hosts() ) {
-#    print "host=$host\n";
-#}
-
-#$scheduler->leaf_paths( $struct, {
-#    array => sub { 
-#    my( $c, $node, $path ) = @_;
-#
-#    print Dumper( { node => $node, path => $path } );
-#} } );
 
 my @queue = ();
 

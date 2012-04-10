@@ -7,7 +7,8 @@ use Log::Log4perl qw(:easy);
 use JSON qw( to_json );
 
 require Exporter;
-our @EXPORT_OK = qw( http_response_json make_accessor);
+our @EXPORT_OK = qw( http_response_json make_accessor struct_traverse
+                     array_intersection );
 our @ISA       = qw( Exporter );
 
 ###########################################
@@ -49,6 +50,81 @@ EOT
     if ( !defined *{ "$package\::$name" } ) {
         eval $code or die "$@";
     }
+}
+
+############################################################
+sub struct_traverse {
+############################################################
+    my ( $root, $callbacks ) = @_;
+
+      # Transforms a nested hash/array data structure depth-first and 
+      # executes defined callbacks.
+
+      # array => sub { # on every array }
+      #     { a => { b => [ c, d ] } }
+      #     calls: c, [a, b], 
+      #            d, [a, b]
+      # 
+      # leaf  => sub { # every leaf node calls with this path components }
+      #     { a => { b => [ c,d ] } } =>
+      #     calls: c, [a, b], 
+      #            d, [a, b]
+
+    my @stack  = ();
+    $callbacks = {} if !defined $callbacks;
+
+    push @stack, [ $root, [] ];
+
+    while( @stack ) {
+        my $item = pop @stack;
+
+        my($node, $path) = @$item;
+
+        if(ref($node) eq "HASH") {
+            for my $part (keys %$node) {
+                push @stack, [ $node->{$part}, [@$path, $part] ];
+            }
+        } elsif( ref($node) eq "ARRAY") {
+            if( exists $callbacks->{ array } ) {
+                $callbacks->{ array }->( $node, $path );
+            }
+            for my $part ( @$node ) {
+                push @stack, [ $part, [@$path, $part]];
+            }
+        } else {
+            if( exists $callbacks->{ leaf } ) {
+                $callbacks->{ leaf }->( $node, $path );
+            }
+        }
+    }
+
+    return 1;
+}
+
+###########################################
+sub array_intersection {
+###########################################
+    my( $arr1, $arr2 ) = @_;
+
+    my @intersection = ();
+
+    my %count1 = ();
+    my %count2 = ();
+
+    foreach my $element ( @$arr1 ) {
+        $count1{ $element } = 1;
+    }
+
+    foreach my $element ( @$arr2 ) {
+        if( $count2{ $element }++ ) {
+            next; # skip inner-2-dupes
+        }
+        if( $count1{ $element } ) {
+            push @intersection, $element;
+        }
+    }
+
+    return @intersection;
 }
 
 1;

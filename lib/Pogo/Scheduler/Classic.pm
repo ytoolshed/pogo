@@ -5,6 +5,7 @@ use Template;
 use Template::Parser;
 use Template::Stash;
 use YAML::Syck qw(Load LoadFile);
+use Pogo::Util qw( array_intersection struct_traverse );
 use base qw( Pogo::Scheduler );
 
 ###########################################
@@ -54,17 +55,35 @@ sub config_load {
         }
     }
 
-    $self->{ slots } = 
-        [ map { join ".", @$_ } 
-            @{ $self->leaf_paths( $self->{ config }->{ sequence } ) } ];
+    $self->{ slots } = [];
+
+      # The full path to every leaf node in the 'sequence' definition, 
+      # separated by dots, constitutes a slot.
+    Pogo::Util::struct_traverse( $self->{ config }->{ sequence }, { 
+        leaf => sub {
+            my( $node, $path ) = @_; 
+
+            my $slot = join ".", @$path, $node;
+            push @{ $self->{ slots } }, $slot;
+        } 
+    } );
+
+    $DB::single = 1;
 
     $self->{ slots_vars } = $self->{ config }->{ tag };
 
-    for my $path ( @{ $self->leaf_paths( $self->{ config }->{ tag } ) } ) {
-        my $host = pop @$path;
-        my $slot = join '.', @$path;
-        push @{ $self->{ host_slots }->{ $slot } }, $host;
-    }
+      # Traverse the configuration's "tag" structure and map hosts
+      # to slots (host slots constitute of the full path to the leaf nodes
+      # in the "tag" configuration).
+    Pogo::Util::struct_traverse( $self->{ config }->{ tag }, {
+        leaf => sub {
+            my( $node, $path ) = @_; 
+
+            my $host = $node;
+            my $slot = join '.', @$path;
+            push @{ $self->{ host_slots }->{ $slot } }, $host;
+        }
+    } );
 
     $self->slot_setup();
     $self->thread_setup();
@@ -89,7 +108,9 @@ sub slot_setup {
             push @parts, $part;
         }
 
-        my @hosts = @{ $self->{ host_slots }->{ shift @parts } };
+        my $found = $self->{ host_slots }->{ shift @parts };
+        my @hosts = ();
+        @hosts = @$found if defined $found;
 
         for my $part ( @parts ) {
             @hosts = array_intersection( \@hosts, 
@@ -114,13 +135,14 @@ sub thread_setup {
 
     $self->{ threads } = [];
 
-    $self->leaf_paths( $self->{ config }->{ sequence }, {
+    Pogo::Util::struct_traverse( $self->{ config }->{ sequence }, {
       array => sub {
           my( $c, $sequence, $path ) = @_;
 
           push @{ $self->{ threads } }, 
                [ map { join '.', @$path, $_ } @$sequence ];
-    } } );
+      } 
+    } );
 
     push @{ $self->{ threads } }, ["unconstrained"];
 }
@@ -166,18 +188,20 @@ sub config_hosts_hash {
 
     # extract all the hosts defined in the config file (might include
     # custom tag resolvers).
-    my $tags      = $self->leaf_paths( $self->{ config }->{ tag } );
-    my $sequences = $self->leaf_paths( $self->{ config }->{ sequence } );
+    my $hosts = {};
 
-    my %hosts = ();
+    for my $key ( qw( tag sequence ) ) {
+        my $root =  $self->{ config }->{ $key };
+        Pogo::Util::struct_traverse( $root, {
+            leaf => sub {
+                my( $node, $path ) = @_;
 
-    for my $path ( @$tags, @$sequences ) {
-        if( $path->[-1] !~ /^\$/ ) {
-            $hosts{ $path->[-1] } = 1;
-        }
+                $hosts->{ $node } = 1 if $node !~ /^\$/;
+            }
+        } );
     }
 
-    return \%hosts;
+    return $hosts;
 }
 
 ###########################################
@@ -203,75 +227,6 @@ sub task_finished {
 
       # when all is done
     $self->event( "job_done" );
-}
-
-############################################################
-sub leaf_paths {
-############################################################
-    my ( $self, $root, $callbacks ) = @_;
-
-      # Transforms a nested hash/array data structure into 
-      # an array of path components
-      # { a => { b => [ c,d ] } } =>
-      #   [ [a,b,c], [a,b,d] ]
-
-      # callbacks:
-      # array => sub { # on every array }
-
-    my @result = ();
-    my @stack  = ();
-    $callbacks = {} if !defined $callbacks;
-
-    push @stack, [ $root, [] ];
-
-    while( @stack ) {
-        my $item = pop @stack;
-
-        my($node, $path) = @$item;
-
-        if(ref($node) eq "HASH") {
-            for my $part (keys %$node) {
-                push @stack, [ $node->{$part}, [@$path, $part] ];
-            }
-        } elsif( ref($node) eq "ARRAY") {
-            if( exists $callbacks->{ array } ) {
-                $callbacks->{ array }->( $self, $node, $path );
-            }
-            for my $part ( @$node ) {
-                push @stack, [ $part, [@$path, $part]];
-            }
-        } else {
-            push @result, [@$path];
-        }
-    }
-
-    return \@result;
-}
-
-###########################################
-sub array_intersection {
-###########################################
-    my( $arr1, $arr2 ) = @_;
-
-    my @intersection = ();
-
-    my %count1 = ();
-    my %count2 = ();
-
-    foreach my $element ( @$arr1 ) {
-        $count1{ $element } = 1;
-    }
-
-    foreach my $element ( @$arr2 ) {
-        if( $count2{ $element }++ ) {
-            next; # skip inner-2-dupes
-        }
-        if( $count1{ $element } ) {
-            push @intersection, $element;
-        }
-    }
-
-    return @intersection;
 }
 
 1;
