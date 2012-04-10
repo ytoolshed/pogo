@@ -13,9 +13,8 @@ sub new {
     my( $class, %options ) = @_;
 
     my $self = {
-        slot_hosts => {},
-        slot_prev  => {},
-        slot_succ  => {},
+        threads => [],
+        config  => {},
         %options,
     };
 
@@ -48,131 +47,145 @@ sub config_load {
         $self->{ config } = LoadFile( $yaml );
     }
 
-    my $vars = $self->{ config }->{ tag };
-
-      # unravel macros
-    $self->vars_interp_recurse( $self->{ config }->{ sequence }, $vars );
-}
-
-###########################################
-sub start {
-###########################################
-    my( $self ) = @_;
-
-    $self->batch_next();
-}
-
-###########################################
-sub is_batch_finished {
-###########################################
-    my( $self ) = @_;
-
-    return 0 == scalar keys %{ $self->{ tasks_in_batch } };
-}
-
-###########################################
-sub batch_next {
-###########################################
-    my( $self ) = @_;
-
-    if( defined $self->{ batch_seq } ) {
-        $self->{ batch_seq }++;
-    } else {
-        $self->{ batch_seq } = 0;
-    }
-
-    INFO "Processing sequence $self->{ batch_seq }";
-
-    my $batch = $self->batch_current();
-
-    if( ! defined $batch ) {
-        INFO "Out of batches";
-        return undef;
-    }
-
-    DEBUG "Current batch is: @$batch";
-
-    $self->{ tasks_in_batch } = {};
-
-    for my $task ( @$batch ) {
-        $self->{ tasks_in_batch }->{ $task }++;
-    }
-
-    $self->queue_process();
-}
-
-###########################################
-sub batch_current {
-###########################################
-    my( $self ) = @_;
-
-    my $batch = $self->{ config }->{ sequence }->[ $self->{ batch_seq } ];
-
-    if( !defined $batch ) {
-        return undef;
-    }
-
-    return $batch;
-}
-
-###########################################
-sub queue_process {
-###########################################
-    my( $self ) = @_;
-
-    DEBUG "Processing queue";
-    DEBUG "Old queue: ", join( ", ", @{ $self->{ tasks_queued } } );
-
-    my @queue_new = ();
-    my @events    = ();
-
-      # see if any queued up items qualify
-    for my $task ( @{ $self->{ tasks_queued } } ) {
-
-        DEBUG "Checking task $task";
-
-        if( exists $self->{ tasks_in_batch }->{ $task } ) {
-            DEBUG "Scheduling task $task to run";
-            push @events, $task;
-        } else {
-            DEBUG "Queueing task $task up";
-            push @queue_new, $task;
+    for my $field ( qw( sequence tag ) ) {
+        if( !exists $self->{ config }->{ $field } ) {
+            ERROR "Improper config file: No $field";
+            return undef;
         }
     }
 
-      # update queue
-    $self->{ tasks_queued } = \@queue_new;
+    $self->{ slots } = 
+        [ map { join ".", @$_ } 
+            @{ $self->leaf_paths( $self->{ config }->{ sequence } ) } ];
 
-    DEBUG "New queue: ", join( ", ", @{ $self->{ tasks_queued } } );
+    $self->{ slots_vars } = $self->{ config }->{ tag };
 
-      # send these events at the end of the queue processing,
-      # otherwise the callbacks will interfer.
-    for my $event ( @events ) {
-        $self->event( "task_run", $event );
+    for my $path ( @{ $self->leaf_paths( $self->{ config }->{ tag } ) } ) {
+        my $host = pop @$path;
+        my $slot = join '.', @$path;
+        push @{ $self->{ host_slots }->{ $slot } }, $host;
+    }
+
+    $self->slot_setup();
+    $self->thread_setup();
+
+    return 1;
+}
+
+###########################################
+sub slot_setup {
+###########################################
+    my( $self ) = @_;
+
+    my $all_hosts = $self->config_hosts_hash();
+
+    for my $slot ( @{ $self->{ slots } } ) {
+        my @parts = ();
+
+        while( $slot =~ /(\$[^\$]*)/g ) {
+            my $part = $1;
+            $part =~ s/^\$//;
+            $part =~ s/\.$//;
+            push @parts, $part;
+        }
+
+        my @hosts = @{ $self->{ host_slots }->{ shift @parts } };
+
+        for my $part ( @parts ) {
+            @hosts = array_intersection( \@hosts, 
+                       $self->{ host_slots }->{ $part } );
+        }
+
+        for my $host ( @hosts ) {
+            delete $all_hosts->{ $host };
+        }
+
+        $self->{ hosts_by_slot }->{ $slot } = \@hosts;
+    }
+
+      # what's left over is unconstrained
+    $self->{ hosts_by_slot }->{ unconstrained } = [ keys %{ $all_hosts } ];
+}
+
+###########################################
+sub thread_setup {
+###########################################
+    my( $self ) = @_;
+
+    $self->{ threads } = [];
+
+    $self->leaf_paths( $self->{ config }->{ sequence }, {
+      array => sub {
+          my( $c, $sequence, $path ) = @_;
+
+          push @{ $self->{ threads } }, 
+               [ map { join '.', @$path, $_ } @$sequence ];
+    } } );
+
+    push @{ $self->{ threads } }, ["unconstrained"];
+}
+
+###########################################
+sub schedule {
+###########################################
+    my( $self ) = @_;
+
+    $DB::single = 1;
+
+    while( scalar @{ $self->{ threads } } ) {
+
+        for my $thread ( @{ $self->{ threads } } ) {
+
+            # no more slots in the thread? get rid of the thread
+            if( scalar @$thread == 0 ) {
+                shift @{ $self->{ threads } };
+                next;
+            }
+
+            my $slot = $thread->[ 0 ];
+
+            # schedule all the hosts in the slot (will change later 
+            # with constraints)
+            for my $host ( @{ $self->{ hosts_by_slot }->{ $slot } } ) {
+                $self->task_add( $host );
+            }
+
+            # slot done, get rid of it
+            shift @$thread;
+
+            # to into the next round immediately (later, we'll wait
+            # until slot hosts are complete)
+        }
     }
 }
 
 ###########################################
-sub vars_interp_recurse {
+sub config_hosts_hash {
 ###########################################
-    my( $self, $data, $vars ) = @_;
+    my( $self ) = @_;
 
-    if( ref( $data ) eq "" ) {
-        if( $data =~ /(?:\$([\w.]+))/ ) {
-            my $varname = $1;
-            my $stash = Template::Stash->new( $vars );
-            my $val = $stash->get( $varname );
-            $_[1] = $val;
-        }
-    } elsif( ref( $data ) eq "HASH" ) {
-        for my $key ( keys %$data ) {
-            $self->vars_interp_recurse( $data->{ $key }, $vars );
-        }
-    } elsif( ref( $data ) eq "ARRAY" ) {
-        for my $ele ( @$data ) {
-            $self->vars_interp_recurse( $ele, $vars );
+    # extract all the hosts defined in the config file (might include
+    # custom tag resolvers).
+    my $tags      = $self->leaf_paths( $self->{ config }->{ tag } );
+    my $sequences = $self->leaf_paths( $self->{ config }->{ sequence } );
+
+    my %hosts = ();
+
+    for my $path ( @$tags, @$sequences ) {
+        if( $path->[-1] !~ /^\$/ ) {
+            $hosts{ $path->[-1] } = 1;
         }
     }
+
+    return \%hosts;
+}
+
+###########################################
+sub config_hosts {
+###########################################
+    my( $self ) = @_;
+
+    return keys %{ $self->config_hosts_hash() };
 }
 
 ###########################################
@@ -180,8 +193,7 @@ sub task_add {
 ###########################################
     my( $self, $task ) = @_;
 
-    DEBUG "Queuing task $task";
-    push @{ $self->{ tasks_queued} }, $task;
+    $self->event( "task_run", $task );
 }
 
 ###########################################
@@ -189,53 +201,77 @@ sub task_finished {
 ###########################################
     my( $self, $task ) = @_;
 
-    if( exists $self->{ tasks_in_batch }->{ $task } ) {
-        INFO "Removing task $task from batch.";
-        delete $self->{ tasks_in_batch }->{ $task };
-    } else {
-        ERROR "Got unexpected task back: $task";
-    }
-        
-    if( $self->is_batch_finished() ) {
-        INFO "Batch is finished. See what's next.";
+      # when all is done
+    $self->event( "job_done" );
+}
 
-        if( $self->batch_next() ) {
-            INFO "Next batch was loaded";
+############################################################
+sub leaf_paths {
+############################################################
+    my ( $self, $root, $callbacks ) = @_;
+
+      # Transforms a nested hash/array data structure into 
+      # an array of path components
+      # { a => { b => [ c,d ] } } =>
+      #   [ [a,b,c], [a,b,d] ]
+
+      # callbacks:
+      # array => sub { # on every array }
+
+    my @result = ();
+    my @stack  = ();
+    $callbacks = {} if !defined $callbacks;
+
+    push @stack, [ $root, [] ];
+
+    while( @stack ) {
+        my $item = pop @stack;
+
+        my($node, $path) = @$item;
+
+        if(ref($node) eq "HASH") {
+            for my $part (keys %$node) {
+                push @stack, [ $node->{$part}, [@$path, $part] ];
+            }
+        } elsif( ref($node) eq "ARRAY") {
+            if( exists $callbacks->{ array } ) {
+                $callbacks->{ array }->( $self, $node, $path );
+            }
+            for my $part ( @$node ) {
+                push @stack, [ $part, [@$path, $part]];
+            }
         } else {
-              # no more batches, we're done.
-              # caller is supposed to tear component down
-              # when receiving this event
-            $self->event( "job_done" );
+            push @result, [@$path];
         }
     }
+
+    return \@result;
 }
 
 ###########################################
-sub leaf_paths {
+sub array_intersection {
 ###########################################
-    my( $node, $path, $results ) = @_;
+    my( $arr1, $arr2 ) = @_;
 
-    $results = [] if ! defined $results;
+    my @intersection = ();
 
-    if( ref( $node ) eq "HASH" ) {
-        for my $key ( keys %$node ) {
-            my $lead;
-            if( defined $path ) {
-                $lead = "$path.$key";
-            } else {
-                $lead = $key;
-            }
-            leaf_paths( $node->{ $key }, $lead, $results );
-        }
-    } elsif( ref( $node ) eq "ARRAY" ) {
-        for my $entry ( @$node ) {
-            push @$results, "$path-$entry";
-        }
-    } else {
-        push @$results, "$path-$node";
+    my %count1 = ();
+    my %count2 = ();
+
+    foreach my $element ( @$arr1 ) {
+        $count1{ $element } = 1;
     }
 
-    return @$results;
+    foreach my $element ( @$arr2 ) {
+        if( $count2{ $element }++ ) {
+            next; # skip inner-2-dupes
+        }
+        if( $count1{ $element } ) {
+            push @intersection, $element;
+        }
+    }
+
+    return @intersection;
 }
 
 1;

@@ -36,5 +36,5 @@ EOT
 
 my $cfg = $s->config();
 
-is "@{ $cfg->{ sequence }->[0] }", "host1 host2 host3";
-is "@{ $cfg->{ sequence }->[1] }", "host4 host5 host6";
+is "$cfg->{ sequence }->[0]", '$colo.north_america', "config sequence";
+is "$cfg->{ sequence }->[1]", '$colo.south_east_asia', "config sequence";

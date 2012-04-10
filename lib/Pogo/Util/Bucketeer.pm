@@ -4,8 +4,6 @@ package Pogo::Util::Bucketeer;
 use strict;
 use warnings;
 use Log::Log4perl qw(:easy);
-use AnyEvent;
-use AnyEvent::Strict;
 
 ###########################################
 sub new {
@@ -66,6 +64,8 @@ sub all_done {
     my( $self ) = @_;
  
     if( defined $self->{ bucket_id_current } and
+        0 == scalar keys %{ 
+            $self->{ buckets }->[ $self->{ bucket_id_current } ] } and
         $self->{ bucket_id_current } + 1 == scalar @{ $self->{ buckets } } ) {
         return 1;
     }
@@ -101,7 +101,6 @@ sub item {
         $self->{ buckets }->[ $self->{ bucket_id_current } ]->{ $item } ) {
         DEBUG "Item $item came in as expected";
     } else {
-        ERROR "Item $item came in unexpected";
         return undef;
     }
 
@@ -117,6 +116,66 @@ sub item {
         DEBUG "$remaining items remaining in bucket";
     }
 
+    return 1;
+}
+
+###########################################
+package Pogo::Util::Bucketeer::Threaded;
+###########################################
+use strict;
+use warnings;
+use Log::Log4perl qw(:easy);
+
+###########################################
+sub new {
+###########################################
+    my($class, %options) = @_;
+
+    my $self = {
+       threads => [],
+       %options,
+    };
+
+    bless $self, $class;
+}
+
+###########################################
+sub bucketeer_add {
+###########################################
+    my( $self, $bucketeer ) = @_;
+
+    push @{ $self->{ threads } }, $bucketeer;
+}
+
+###########################################
+sub item {
+###########################################
+    my( $self, $item ) = @_;
+
+    for my $thread ( @{ $self->{ threads } } ) {
+        if( $thread->item( $item ) ) {
+            return 1;
+        }
+    }
+
+    ERROR "None of the threads waiting on item $item";
+    return 0;
+}
+
+###########################################
+sub all_done {
+###########################################
+    my( $self ) = @_;
+
+    for my $thread ( @{ $self->{ threads } } ) {
+        DEBUG "Checking thread $thread";
+
+        if( !$thread->all_done() ) {
+            return 0;
+        }
+    }
+
+      # all threads are done
     return 1;
 }
 

@@ -53,10 +53,6 @@ $scheduler->reg_cb( "task_run", sub {
     $bck->all_done and $cv->send(); # quit
 } );
 
-for my $task ( $bck->items() ) {
-    $scheduler->task_add( $task );
-}
-
-$scheduler->start();
+$scheduler->schedule();
 
 $cv->recv;
