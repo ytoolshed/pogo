@@ -67,6 +67,7 @@ sub config_load {
     }
 
     $self->slot_setup();
+    $self->thread_setup();
 
     return 1;
 }
@@ -104,6 +105,24 @@ sub slot_setup {
 
       # what's left over is unconstrained
     $self->{ hosts_by_slot }->{ unconstrained } = [ keys %{ $all_hosts } ];
+}
+
+###########################################
+sub thread_setup {
+###########################################
+    my( $self ) = @_;
+
+    $self->{ threads } = [];
+
+    $self->leaf_paths( $self->{ config }->{ sequence }, {
+      array => sub {
+          my( $c, $sequence, $path ) = @_;
+
+          push @{ $self->{ threads } }, 
+               [ map { join '.', @$path, $_ } @$sequence ];
+    } } );
+
+    push @{ $self->{ threads } }, ["unconstrained"];
 }
 
 ###########################################
@@ -162,6 +181,9 @@ sub leaf_paths {
       # an array of path components
       # { a => { b => [ c,d ] } } =>
       #   [ [a,b,c], [a,b,d] ]
+
+      # callbacks:
+      # array => sub { # on every array }
 
     my @result = ();
     my @stack  = ();
