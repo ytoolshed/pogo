@@ -68,8 +68,6 @@ sub config_load {
         } 
     } );
 
-    $DB::single = 1;
-
     $self->{ slots_vars } = $self->{ config }->{ tag };
 
       # Traverse the configuration's "tag" structure and map hosts
@@ -137,7 +135,7 @@ sub thread_setup {
 
     Pogo::Util::struct_traverse( $self->{ config }->{ sequence }, {
       array => sub {
-          my( $c, $sequence, $path ) = @_;
+          my( $sequence, $path ) = @_;
 
           push @{ $self->{ threads } }, 
                [ map { join '.', @$path, $_ } @$sequence ];

@@ -93,7 +93,10 @@ sub struct_traverse {
             }
         } else {
             if( exists $callbacks->{ leaf } ) {
-                $callbacks->{ leaf }->( $node, $path );
+                  # Remove one item from path
+                my @dir_path = @$path;
+                pop @dir_path;
+                $callbacks->{ leaf }->( $node, \@dir_path );
             }
         }
     }

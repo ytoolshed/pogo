@@ -53,7 +53,15 @@ EOT
 
 my $struct = { a => { b => [ qw(c d) ] } };
 
-my $paths = Pogo::Util::leaf_paths( $struct );
+my $paths = [];
+
+Pogo::Util::struct_traverse( $struct, { 
+    leaf => sub {
+        my( $node, $path ) = @_; 
+
+        push @$paths, [@$path, $node];
+    } 
+} );
 
 cmp_deeply( $paths, [ [qw(a b d)], [qw(a b c)] ], "leaf_paths" );
 
