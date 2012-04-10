@@ -126,6 +126,40 @@ sub thread_setup {
 }
 
 ###########################################
+sub schedule {
+###########################################
+    my( $self ) = @_;
+
+    $DB::single = 1;
+
+    while( scalar @{ $self->{ threads } } ) {
+
+        for my $thread ( @{ $self->{ threads } } ) {
+
+            # no more slots in the thread? get rid of the thread
+            if( scalar @$thread == 0 ) {
+                shift @{ $self->{ threads } };
+                next;
+            }
+
+            my $slot = $thread->[ 0 ];
+
+            # schedule all the hosts in the slot (will change later 
+            # with constraints)
+            for my $host ( @{ $self->{ hosts_by_slot }->{ $slot } } ) {
+                $self->task_add( $host );
+            }
+
+            # slot done, get rid of it
+            shift @$thread;
+
+            # to into the next round immediately (later, we'll wait
+            # until slot hosts are complete)
+        }
+    }
+}
+
+###########################################
 sub config_hosts_hash {
 ###########################################
     my( $self ) = @_;
@@ -159,8 +193,7 @@ sub task_add {
 ###########################################
     my( $self, $task ) = @_;
 
-    DEBUG "Queuing task $task";
-    push @{ $self->{ tasks_queued} }, $task;
+    $self->event( "task_run", $task );
 }
 
 ###########################################

@@ -9,7 +9,7 @@ use Pogo::Util::Bucketeer;
 use Test::Deep;
 use YAML qw(Load);
 
-my $nof_tests = 1;
+my $nof_tests = 2;
 
 plan tests => $nof_tests;
 
@@ -59,19 +59,30 @@ cmp_deeply( $paths, [ [qw(a b d)], [qw(a b c)] ], "leaf_paths" );
 $scheduler->config_load( \$data ) or 
     die "Failed ot load config";
 
-use Data::Dumper;
-print Dumper( $scheduler );
+#use Data::Dumper;
+#print Dumper( $scheduler );
 
-for my $host ( $scheduler->config_hosts() ) {
-    print "host=$host\n";
-}
+#for my $host ( $scheduler->config_hosts() ) {
+#    print "host=$host\n";
+#}
 
-$scheduler->leaf_paths( $struct, {
-    array => sub { 
-    my( $c, $node, $path ) = @_;
+#$scheduler->leaf_paths( $struct, {
+#    array => sub { 
+#    my( $c, $node, $path ) = @_;
+#
+#    print Dumper( { node => $node, path => $path } );
+#} } );
 
-    print Dumper( { node => $node, path => $path } );
-} } );
+my @queue = ();
+
+$scheduler->reg_cb( "task_run", sub {
+    my( $c, $task ) = @_;
+    push @queue, $task;
+} );
+
+$scheduler->schedule();
+
+cmp_deeply( \@queue, [ qw(host5 host1 host3 host6 host2 host4) ], "task queue" );
 
 __END__
 
