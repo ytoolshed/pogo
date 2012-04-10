@@ -1,5 +1,5 @@
 ######################################################################
-    Pogo 0.01
+    Pogo 5.00
 ######################################################################
 
 NAME
@@ -12,6 +12,37 @@ DESCRIPTION
     It is mostly used for quick mass software deployments on server farms
     while making sure only an allowed number of nodes are upgraded in
     parallel to ensure business continuity.
+
+  Architecture
+    Pogo consists of several components, which can be all running on the
+    same system, or, in order to scale it, be replicated and even be
+    installed on many distributed hosts. Those components are
+
+    Client
+        Users submit jobs to pogo using the client, which in turn contacts
+        the API.
+
+    API Takes requests via HTTP from the client and forwards them to a
+        dispatcher.
+
+    Dispatcher
+        Takes job requests from the API, figures out constraints, and
+        determines single tasks the job consists of. It then assigns tasks
+        to workers, watches their individual completion and keeps track of
+        overall job completion. Dispatchers can be queried by the API to
+        determine the status of a given job.
+
+    Worker
+        Takes a task (like "ssh to a host and run this command") from the
+        dispatcher, executes it and reports back the result. Can handle many
+        tasks concurrently.
+
+  Security
+    To make sure dispatchers and workers communicate over secure channels,
+    and enable them to authenticate each other (is a connecting worker
+    really an authorized worker, or is the dispatcher it's connecting to
+    really an authorized dispatcher?), Pogo uses SSL server and client
+    certs. See Pogo::Security for details.
 
 LICENSE
     Copyright (c) 2010-2012 Yahoo! Inc. All rights reserved.
@@ -30,4 +61,12 @@ LICENSE
 
 AUTHORS
     Mike Schilli <m@perlmeister.com> Ian Bettinger <ibettinger@yahoo.com>
+
+    Many thanks to the following folks for implementing the original version
+    of Pogo:
+
+    Andrew Sloane <andy@a1k0n.net>, Michael Fischer
+    <michael+pogo@dynamine.net>, Nicholas Harteau <nrh@hep.cat>, Nick Purvis
+    <nep@noisetu.be>, Robert Phan <robert.phan@gmail.com>, Srini Singanallur
+    <ssingan@yahoo.com>, Yogesh Natarajan <yogesh_ny@yahoo.co.in>
 
