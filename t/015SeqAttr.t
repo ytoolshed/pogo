@@ -66,6 +66,13 @@ for my $host ( $scheduler->config_hosts() ) {
     print "host=$host\n";
 }
 
+$scheduler->leaf_paths( $struct, {
+    array => sub { 
+    my( $c, $node, $path ) = @_;
+
+    print Dumper( { node => $node, path => $path } );
+} } );
+
 __END__
 
 use Data::Dumper;

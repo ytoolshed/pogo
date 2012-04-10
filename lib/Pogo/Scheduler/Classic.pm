@@ -13,6 +13,8 @@ sub new {
     my( $class, %options ) = @_;
 
     my $self = {
+        threads => [],
+        config  => {},
         %options,
     };
 
@@ -154,7 +156,7 @@ sub task_finished {
 ############################################################
 sub leaf_paths {
 ############################################################
-    my ( $self, $root ) = @_;
+    my ( $self, $root, $callbacks ) = @_;
 
       # Transforms a nested hash/array data structure into 
       # an array of path components
@@ -163,6 +165,7 @@ sub leaf_paths {
 
     my @result = ();
     my @stack  = ();
+    $callbacks = {} if !defined $callbacks;
 
     push @stack, [ $root, [] ];
 
@@ -176,6 +179,9 @@ sub leaf_paths {
                 push @stack, [ $node->{$part}, [@$path, $part] ];
             }
         } elsif( ref($node) eq "ARRAY") {
+            if( exists $callbacks->{ array } ) {
+                $callbacks->{ array }->( $self, $node, $path );
+            }
             for my $part ( @$node ) {
                 push @stack, [ $part, [@$path, $part]];
             }
