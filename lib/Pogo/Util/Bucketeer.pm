@@ -97,10 +97,13 @@ sub item {
         return undef;
     }
  
-    if( delete
-        $self->{ buckets }->[ $self->{ bucket_id_current } ]->{ $item } ) {
+    my $bucket = $self->{ buckets }->[ $self->{ bucket_id_current } ];
+
+    if( delete $bucket->{ $item } ) {
         DEBUG "Item $item came in as expected";
     } else {
+        DEBUG "Item $item came in unexpected, expected [", 
+          join( ', ', keys %$bucket ), "]";
         return undef;
     }
 

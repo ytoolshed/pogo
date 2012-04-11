@@ -53,6 +53,7 @@ $scheduler->reg_cb( "task_run", sub {
     $bck->all_done and $cv->send(); # quit
 } );
 
-$scheduler->schedule();
+  # schedule all hosts
+$scheduler->schedule( [ $scheduler->config_hosts() ] );
 
 $cv->recv;

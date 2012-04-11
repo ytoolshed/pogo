@@ -75,7 +75,7 @@ $scheduler->reg_cb( "task_run", sub {
     push @queue, $task;
 } );
 
-$scheduler->schedule();
+$scheduler->schedule( [ $scheduler->config_hosts() ] );
 
 cmp_deeply( \@queue, [ qw(host5 host1 host3 host6 host2 host4) ], "task queue" );
 

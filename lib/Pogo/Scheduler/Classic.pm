@@ -148,9 +148,11 @@ sub thread_setup {
 ###########################################
 sub schedule {
 ###########################################
-    my( $self ) = @_;
+    my( $self, $hosts ) = @_;
 
-    $DB::single = 1;
+    $hosts = [] if !defined $hosts;
+
+    my %hosts = map { $_ => 1 } @$hosts; # for faster lookups
 
     while( scalar @{ $self->{ threads } } ) {
 
@@ -167,7 +169,7 @@ sub schedule {
             # schedule all the hosts in the slot (will change later 
             # with constraints)
             for my $host ( @{ $self->{ hosts_by_slot }->{ $slot } } ) {
-                $self->task_add( $host );
+                $self->task_run( $host ) if exists $hosts{ $host };
             }
 
             # slot done, get rid of it
@@ -211,7 +213,7 @@ sub config_hosts {
 }
 
 ###########################################
-sub task_add {
+sub task_run {
 ###########################################
     my( $self, $task ) = @_;
 
