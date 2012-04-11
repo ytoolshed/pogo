@@ -77,6 +77,11 @@ sub task_mark_done {
         DEBUG "Marking task ", $task->id(), " done";
         delete $self->{ active_task_by_id }->{ $task->id() };
 
+        if( $self->{ next_task_idx } == $#{ $self->{ tasks } } and
+            !$self->tasks_active() ) {
+            $self->event( "slot_done", $self );
+        }
+
         return 1;
     }
 

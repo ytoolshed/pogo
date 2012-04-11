@@ -17,6 +17,9 @@ sub new {
     my($class, %options) = @_;
 
     my $self = {
+        slots => [],
+        next_slot_idx => 0,
+        active_slot   => undef,
         %options,
     };
 
@@ -29,18 +32,44 @@ sub new {
 sub slot_add {
 ###########################################
     my( $self, $slot ) = @_;
+
+    push @{ $self->{ slots } }, $slot;
 }
 
 ###########################################
-sub start {
+sub slot_next {
 ###########################################
     my( $self ) = @_;
+
+    if( ! $self->slots_left() ) {
+        $self->{ active_slot } = undef;
+        $self->event( "thread_done", $self );
+        return undef;
+    }
+
+    my $slot = $self->{ slots }->{ $self->{ next_slot_idx } };
+    $self->{ active_slot } = $slot;
+
+    $self->{ next_slot_idx }++;
+    return $slot;
 }
 
 ###########################################
-sub resume {
+sub slots_left {
 ###########################################
     my( $self ) = @_;
+
+    return $self->{ next_slot_idx } <= $#{ $self->{ slots } };
+}
+
+###########################################
+sub task_mark_done {
+###########################################
+    my( $self, $task ) = @_;
+
+    if( $self->{ active_slot }->task_mark_done( $task ) ) {
+        return 1;
+    }
 }
 
 1;

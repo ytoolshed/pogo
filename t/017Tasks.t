@@ -4,7 +4,7 @@ use strict;
 use Test::More;
 use Log::Log4perl qw(:easy);
 
-my $nof_tests = 5;
+my $nof_tests = 6;
 
 BEGIN {
     use FindBin qw( $Bin );
@@ -21,6 +21,14 @@ my $slot = Pogo::Scheduler::Slot->new();
 
 my @tasks = ();
 
+my $cv = AnyEvent->condvar();
+
+$slot->reg_cb( "slot_done", sub {
+    my( $c, $s ) = @_;
+    ok 1, "received slot_done";
+    $cv->send();
+} );
+
 for( 1..4 ) {
     my $task = Pogo::Scheduler::Task->new();
     push @tasks, $task;
@@ -36,3 +44,5 @@ while( my $task = $slot->task_next() ) {
 }
 
 is $slot->tasks_active(), 0, "no more active tasks";
+
+$cv->recv();
