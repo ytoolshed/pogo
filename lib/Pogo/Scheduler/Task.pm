@@ -8,7 +8,7 @@ use AnyEvent;
 use AnyEvent::Strict;
 use base qw(Pogo::Object::Event);
 
-use Pogo::Util qw( make_accessor );
+use Pogo::Util qw( make_accessor id_gen );
 __PACKAGE__->make_accessor( $_ ) for qw( id slot thread);
 
 ###########################################
@@ -19,6 +19,8 @@ sub new {
     my $self = {
         %options,
     };
+
+    $self->{ id } = id_gen( "task" ) if ! defined $self->{ id };
 
     bless $self, $class;
 }

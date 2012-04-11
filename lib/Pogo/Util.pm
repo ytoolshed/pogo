@@ -8,7 +8,7 @@ use JSON qw( to_json );
 
 require Exporter;
 our @EXPORT_OK = qw( http_response_json make_accessor struct_traverse
-                     array_intersection );
+                     array_intersection id_gen);
 our @ISA       = qw( Exporter );
 
 ###########################################
@@ -128,6 +128,18 @@ sub array_intersection {
     }
 
     return @intersection;
+}
+
+my $LAST_ID = 0;
+
+##################################################
+sub id_gen {
+##################################################
+    my( $prefix ) = @_;
+
+    $prefix = "id" if !defined $prefix;
+
+    return sprintf "$prefix-%09d", $LAST_ID++;
 }
 
 1;

@@ -17,8 +17,13 @@ sub new {
     my($class, %options) = @_;
 
     my $self = {
+        task_by_id        => {},
+        next_task_idx     => 0,
+        active_task_by_id => {},
         %options,
     };
+
+    $self->{ id } = id_gen( "slot" ) if ! defined $self->{ id };
 
     bless $self, $class;
 }
@@ -27,6 +32,53 @@ sub new {
 sub task_add {
 ###########################################
     my( $self, $task ) = @_;
+
+    push @{ $self->{ tasks } }, $task;
+
+    $self->{ task_by_id }->{ $task->id() } = $task;
+
+    return 1;
+}
+
+###########################################
+sub task_next {
+###########################################
+    my( $self ) = @_;
+
+    if( $self->{ next_task_idx } == $#{ $self->{ tasks } } ) {
+        return undef;
+    }
+
+    my $task = $self->{ tasks }->[ $self->{ next_idx } ];;
+
+    $self->{ active_task_by_id }->{ $task->id() } = $task;
+
+    $self->{ next_task_idx }++;
+
+    return $task;
+}
+
+###########################################
+sub tasks_todo {
+###########################################
+    my( $self ) = @_;
+
+    # ...
+}
+
+###########################################
+sub task_done {
+###########################################
+    my( $self, $task ) = @_;
+
+    if( exists $self->{ active_task_by_id }->{ $task->id() } ) {
+        DEBUG "Marking task ", $task->id(), " done";
+        delete $self->{ active_task_by_id }->{ $task->id() };
+
+        return 1;
+    }
+
+    ERROR "No such active task: ", $task->id();
 }
 
 ###########################################
@@ -46,6 +98,15 @@ sub stop {
 ###########################################
     my( $self ) = @_;
 }
+
+###########################################
+sub tasks {
+###########################################
+    my( $self ) = @_;
+
+    return @{ $self->{ tasks } };
+}
+
 
 1;
 

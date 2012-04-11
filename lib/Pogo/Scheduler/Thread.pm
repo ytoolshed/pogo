@@ -20,6 +20,8 @@ sub new {
         %options,
     };
 
+    $self->{ id } = id_gen( "thread" ) if ! defined $self->{ id };
+
     bless $self, $class;
 }
 
