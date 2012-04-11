@@ -8,7 +8,7 @@ use AnyEvent;
 use AnyEvent::Strict;
 use base qw(Pogo::Object::Event);
 
-use Pogo::Util qw( make_accessor );
+use Pogo::Util qw( make_accessor id_gen );
 __PACKAGE__->make_accessor( $_ ) for qw( id tasks thread);
 
 ###########################################
@@ -45,11 +45,11 @@ sub task_next {
 ###########################################
     my( $self ) = @_;
 
-    if( $self->{ next_task_idx } == $#{ $self->{ tasks } } ) {
+    if( $self->{ next_task_idx } > $#{ $self->{ tasks } } ) {
         return undef;
     }
 
-    my $task = $self->{ tasks }->[ $self->{ next_idx } ];;
+    my $task = $self->{ tasks }->[ $self->{ next_task_idx } ];
 
     $self->{ active_task_by_id }->{ $task->id() } = $task;
 
@@ -59,17 +59,19 @@ sub task_next {
 }
 
 ###########################################
-sub tasks_todo {
+sub tasks_active {
 ###########################################
     my( $self ) = @_;
 
-    # ...
+    return scalar keys %{ $self->{ active_task_by_id } };
 }
 
 ###########################################
-sub task_done {
+sub task_mark_done {
 ###########################################
     my( $self, $task ) = @_;
+
+      # Mark task done
 
     if( exists $self->{ active_task_by_id }->{ $task->id() } ) {
         DEBUG "Marking task ", $task->id(), " done";
@@ -82,31 +84,12 @@ sub task_done {
 }
 
 ###########################################
-sub start {
-###########################################
-    my( $self ) = @_;
-}
-
-###########################################
-sub resume {
-###########################################
-    my( $self ) = @_;
-}
-
-###########################################
-sub stop {
-###########################################
-    my( $self ) = @_;
-}
-
-###########################################
 sub tasks {
 ###########################################
     my( $self ) = @_;
 
     return @{ $self->{ tasks } };
 }
-
 
 1;
 

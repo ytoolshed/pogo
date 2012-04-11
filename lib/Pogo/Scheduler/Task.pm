@@ -11,18 +11,30 @@ use base qw(Pogo::Object::Event);
 use Pogo::Util qw( make_accessor id_gen );
 __PACKAGE__->make_accessor( $_ ) for qw( id slot thread);
 
+use overload ( 'fallback' => 1, '""' => 'as_string' );
+
 ###########################################
 sub new {
 ###########################################
-    my($class, %options) = @_;
+    my( $class, %options ) = @_;
 
     my $self = {
+        thread => "no_thread_defined",
+        slot   => "no_slot_defined",
         %options,
     };
 
     $self->{ id } = id_gen( "task" ) if ! defined $self->{ id };
 
     bless $self, $class;
+}
+
+###########################################
+sub as_string {
+###########################################
+    my( $self ) = @_;
+
+    return "$self->{ id }:$self->{ slot }:$self->{ thread }";
 }
 
 1;
