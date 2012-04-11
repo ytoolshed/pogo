@@ -72,12 +72,16 @@ my @queue = ();
 
 $scheduler->reg_cb( "task_run", sub {
     my( $c, $task ) = @_;
-    push @queue, $task;
+
+    my $host = $task->{ host };
+
+    push @queue, $host;
 } );
 
 $scheduler->schedule( [ $scheduler->config_hosts() ] );
 
-cmp_deeply( \@queue, [ qw(host5 host1 host3 host6 host2 host4) ], "task queue" );
+cmp_deeply( \@queue, 
+            [ qw(host5 host1 host3 host6 host2 host4) ], "task queue" );
 
 __END__
 

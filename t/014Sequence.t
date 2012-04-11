@@ -45,7 +45,9 @@ my $bck = Pogo::Util::Bucketeer->new(
 $scheduler->reg_cb( "task_run", sub {
     my( $c, $task ) = @_;
 
-    ok $bck->item( $task ), "task $task in seq";
+    my $host = $task->{ host };
+
+    ok $bck->item( $host ), "host $host in seq";
 
       # Crunch, crunch, crunch. Task done. Report back.
     $scheduler->event( "task_finished", $task );

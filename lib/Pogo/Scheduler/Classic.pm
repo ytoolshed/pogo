@@ -166,11 +166,8 @@ sub schedule {
 
             my $slot = $thread->[ 0 ];
 
-            # schedule all the hosts in the slot (will change later 
-            # with constraints)
-            for my $host ( @{ $self->{ hosts_by_slot }->{ $slot } } ) {
-                $self->task_run( $host ) if exists $hosts{ $host };
-            }
+              # run all the runnable hosts in the slot
+            $self->slot_run( $slot, \%hosts );
 
             # slot done, get rid of it
             shift @$thread;
@@ -179,6 +176,28 @@ sub schedule {
             # until slot hosts are complete)
         }
     }
+}
+
+###########################################
+sub slot_run {
+###########################################
+    my( $self, $slot, $hosts ) = @_;
+
+      # schedule all the hosts in the slot (will change later 
+      # with constraints)
+    for my $host ( @{ $self->{ hosts_by_slot }->{ $slot } } ) {
+
+        next if !exists $hosts->{ $host };
+
+        my $task = {
+            slot => $slot,
+            host => $host,
+        };
+
+        $self->task_run( $task );
+    }
+
+    #job123:thread1:frontend.colo.north_america:host1
 }
 
 ###########################################
@@ -535,10 +554,17 @@ to be all executed in parallel independently of each other):
             - host3
             - host6
 
-The algorithm then starts like this, getting the first batches of each
-thread rolling:
+Since a job typically does not run all the hosts in the configuration,
+but only a subset, hosts that aren't part of the job are removed from
+the schedule. The schedule is the written to persistent/shared storage
+(e.g. ZooKeeper).
 
-    for my $thread in ( job_threads() ) {
+TODO
+
+Then, the algorithm starts like this, getting the first batches of 
+each thread rolling:
+
+    for my $thread ( job_threads() ) {
         push @run_queue, $thread->slots()[0]->hosts();
     }
 
