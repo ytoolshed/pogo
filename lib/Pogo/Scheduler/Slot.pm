@@ -55,6 +55,8 @@ sub task_next {
 
     $self->{ next_task_idx }++;
 
+    $self->event( "task_run", $task );
+
     return $task;
 }
 
@@ -71,13 +73,14 @@ sub task_mark_done {
 ###########################################
     my( $self, $task ) = @_;
 
+    $DB::single = 1;
       # Mark task done
 
     if( exists $self->{ active_task_by_id }->{ $task->id() } ) {
         DEBUG "Marking task ", $task->id(), " done";
         delete $self->{ active_task_by_id }->{ $task->id() };
 
-        if( $self->{ next_task_idx } == $#{ $self->{ tasks } } and
+        if( $self->{ next_task_idx } > $#{ $self->{ tasks } } and
             !$self->tasks_active() ) {
             $self->event( "slot_done", $self );
         }
