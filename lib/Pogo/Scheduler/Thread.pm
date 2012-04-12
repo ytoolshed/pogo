@@ -9,7 +9,7 @@ use AnyEvent::Strict;
 use base qw(Pogo::Object::Event);
 
 use Pogo::Util qw( make_accessor id_gen );
-__PACKAGE__->make_accessor( $_ ) for qw( id slots );
+__PACKAGE__->make_accessor( $_ ) for qw( id slots is_done);
 
 use overload ( 'fallback' => 1, '""' => 'as_string' );
 
@@ -22,6 +22,7 @@ sub new {
         slots => [],
         next_slot_idx => 0,
         active_slot   => undef,
+        is_done       => 0,
         %options,
     };
 
@@ -51,6 +52,8 @@ sub kick {
 
         DEBUG "Thread $self: Next slot is $slot";
 
+        $self->event_forward( $slot, "task_run" );
+
         $slot->reg_cb( "slot_done", sub {
             my( $c, $slot ) = @_;
             DEBUG "Thread $self received slot_done from slot $slot";
@@ -60,6 +63,7 @@ sub kick {
         $slot->start();
     } else {
         DEBUG "No more slots, thread $self done";
+        $self->is_done( 1 );
         $self->event( "thread_done" );
     }
 }

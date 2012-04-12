@@ -50,10 +50,12 @@ $scheduler->reg_cb( "task_run", sub {
     ok $bck->item( $host ), "host $host in seq";
 
       # Crunch, crunch, crunch. Task done. Report back.
-    $scheduler->event( "task_finished", $task );
+    $scheduler->event( "task_done", $task );
 
     $bck->all_done and $cv->send(); # quit
 } );
+
+$DB::single = 1;
 
   # schedule all hosts
 $scheduler->schedule( [ $scheduler->config_hosts() ] );
