@@ -52,7 +52,8 @@ sub kick {
 
         DEBUG "Thread $self: Next slot is $slot";
 
-        $self->event_forward( $slot, "task_run" );
+        $self->event_forward( { forward_from => $slot }, 
+            "task_run" );
 
         $slot->reg_cb( "slot_done", sub {
             my( $c, $slot ) = @_;

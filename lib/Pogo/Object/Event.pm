@@ -24,7 +24,7 @@ sub event_forward {
     my ( $self, $opts, @events ) = @_;
 
     if ( !exists $opts->{ forward_from } ) {
-        LOGDIE "Missing mandatory param 'forward_from'";
+        LOGCONFESS "Missing mandatory param 'forward_from'";
     }
 
     for my $event ( @events ) {
@@ -64,7 +64,8 @@ Pogo::Object::Event - Additional Object::Event functions
         my( $self ) = @_;
 
         my $w = Pogo::Foo::Bar->new();
-        $self->event_forward( $w, qw( foo_bar_this foo_bar_that ) );
+        $self->event_forward( {forward_from => $w }, 
+            qw( foo_bar_this foo_bar_that ) );
     }
 
 =head1 DESCRIPTION
