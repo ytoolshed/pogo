@@ -36,6 +36,8 @@ sub task_add {
 ###########################################
     my( $self, $task ) = @_;
 
+    DEBUG "Adding task $task to slot $self";
+
     push @{ $self->{ tasks } }, $task;
 
     $self->{ task_by_id }->{ $task->id() } = $task;

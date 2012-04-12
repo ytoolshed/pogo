@@ -184,10 +184,16 @@ sub schedule {
     $self->reg_cb( "task_done", sub {
         my( $c, $task ) = @_;
 
+        DEBUG "Scheduler received task_done for task $task";
+
           # forward task done confirmation to the thread it was
           # running in
-        $self->{ thread_by_id }->{ $task->thread_id() }->event(
-            "task_done", $task );
+        if( exists $self->{ thread_by_id }->{ $task->thread_id() } ) {
+            $self->{ thread_by_id }->{ $task->thread_id() }->event(
+                "task_done", $task );
+        } else {
+            ERROR "Received task with unknown thread id: $task";
+        }
     } );
 
     for my $thread ( @{ $self->{ threads } } ) {
@@ -219,6 +225,7 @@ sub schedule {
             }
         }
 
+          # start thread in parallel with other threads
         $thread->start();
     }
 }

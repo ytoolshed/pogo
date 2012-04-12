@@ -19,8 +19,8 @@ sub new {
     my( $class, %options ) = @_;
 
     my $self = {
-        thread => "no_thread_defined",
-        slot   => "no_slot_defined",
+        thread_id => "no_thread_defined",
+        slot_id   => "no_slot_defined",
         %options,
     };
 
@@ -38,7 +38,7 @@ sub as_string {
 ###########################################
     my( $self ) = @_;
 
-    return "$self->{ id }:$self->{ slot }:$self->{ thread }";
+    return "$self->{ id }:$self->{ slot_id }:$self->{ thread_id }";
 }
 
 1;

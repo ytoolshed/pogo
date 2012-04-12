@@ -50,6 +50,7 @@ $scheduler->reg_cb( "task_run", sub {
     ok $bck->item( $host ), "host $host in seq";
 
       # Crunch, crunch, crunch. Task done. Report back.
+    DEBUG "Sending task_done for task $task back to scheduler";
     $scheduler->event( "task_done", $task );
 
     $bck->all_done and $cv->send(); # quit
