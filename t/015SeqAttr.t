@@ -73,6 +73,7 @@ my @queue = ();
 $scheduler->reg_cb( "task_run", sub {
     my( $c, $task ) = @_;
 
+    DEBUG "*** Scheduled host $task";
     my $host = $task->{ host };
 
     push @queue, $host;
@@ -80,8 +81,9 @@ $scheduler->reg_cb( "task_run", sub {
 
 $scheduler->schedule( [ $scheduler->config_hosts() ] );
 
+  # hosts 2/4 need to wait
 cmp_deeply( \@queue, 
-            [ qw(host5 host1 host3 host6 host2 host4) ], "task queue" );
+            [ qw(host5 host1 host3 host6) ], "task queue" );
 
 __END__
 
