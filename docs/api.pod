@@ -112,3 +112,59 @@ timeout).
 =back
 
 =back
+
+=head2 Retrieving detailed job data for specific jobs
+
+=over 4
+
+=item C<GET /job/[jobid]>
+
+=item JSON Data
+
+=over 4
+
+=item C<version>
+
+Api version number.
+
+=item C<status>
+
+Request status, C<"OK"> if ok.
+
+=item C<response>
+
+A hash with several fields, namely:
+
+=over 4
+
+=item C<job_status>
+
+State of job (see "state" in /jobs documentation).
+
+=item C<host_status>
+
+Array of host status objects, each has the following fields:
+
+=over 4
+
+=item C<rc>
+
+Host status, will either contain a message like "waiting for condition" before
+a host is being processed, or "exited with status 2" if the target command
+has been executed.
+
+=item C<status>
+
+Host status ("waiting", "failed", "ok").
+
+=item C<log>
+
+URL to the log file on a worker machine.
+
+=item C<host>
+
+Name of the target host.
+
+=back
+
+=back
