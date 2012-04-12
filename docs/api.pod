@@ -37,22 +37,75 @@ An array of job data objects, each has the following fields:
 Range of hosts to be processed by the job.
 
 =item C<host_count>
+
+Number of hosts in the job.
+
 =item C<run_as>
+
+User to run the job as on the target.
+
 =item C<state>
-=item C<byauth-user>
+
+State of job ("gathering", "running", "deadlocked", "finished", 
+"unreachable", "halted", "offline", "ready", "waiting").
+
 =item C<posthook>
+
+Flag set to "1" if Pogo needs to run posthook scripts on the target after
+performing the task. "0" otherwise.
+
 =item C<timeout>
+
+Host timeout setting. Pogo will give up on a host if a task takes longer
+than C<timeout> seconds.
+
 =item C<user>
+
+Unix user who submitted the job on the client.
+
 =item C<prehook>
+
+Flag set to "1" if Pogo needs to run posthook scripts on the target after
+performing the task. "0" otherwise.
+
 =item C<requesthost>
+
+Name of the host the client submitted the job from.
+
 =item C<command>
+
+Command line to run on each target.
+
 =item C<invoked_as>
+
+Command line the client used when submitting the job.
+
 =item C<namespace>
+
+Configuration use space. Pogo can be configured to run differently in
+different namespaces.
+
 =item C<jobid>
+
+Unique ID of the submitted job, can be used to obtain additional job
+data later on.
+
 =item C<start_time>
+
+Job start time in UTC seconds.
+
 =item C<client>
+
+Version of the Pogo client used to submit the job.
+
 =item C<retry>
+
+User issued a job retry command.
+
 =item C<job_timeout>
+
+Timeout in seconds of the overall job (compare to individual host 
+timeout).
 
 =back
 
