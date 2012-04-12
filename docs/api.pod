@@ -1,0 +1,61 @@
+=head1 Pogo API Documentation
+
+=head2 Retrieving the job data overview
+
+=over 4
+
+=item C<GET /jobs>
+
+=item JSON Data
+
+=over 4
+
+=item C<version>
+
+API version number.
+
+=item C<status>
+
+Request status, C<"OK"> if ok.
+
+=item C<action>
+
+Set to "listjobs" for this type of request.
+
+=item C<hostname>
+
+Name of the API host which took the request.
+
+=item C<response>
+
+An array of job data objects, each has the following fields:
+
+=over 4
+
+=item C<range>
+
+Range of hosts to be processed by the job.
+
+=item C<host_count>
+=item C<run_as>
+=item C<state>
+=item C<byauth-user>
+=item C<posthook>
+=item C<timeout>
+=item C<user>
+=item C<prehook>
+=item C<requesthost>
+=item C<command>
+=item C<invoked_as>
+=item C<namespace>
+=item C<jobid>
+=item C<start_time>
+=item C<client>
+=item C<retry>
+=item C<job_timeout>
+
+=back
+
+=back
+
+=back
