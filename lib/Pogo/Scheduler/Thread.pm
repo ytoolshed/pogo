@@ -8,8 +8,10 @@ use AnyEvent;
 use AnyEvent::Strict;
 use base qw(Pogo::Object::Event);
 
-use Pogo::Util qw( make_accessor );
+use Pogo::Util qw( make_accessor id_gen );
 __PACKAGE__->make_accessor( $_ ) for qw( id slots );
+
+use overload ( 'fallback' => 1, '""' => 'as_string' );
 
 ###########################################
 sub new {
@@ -37,9 +39,45 @@ sub slot_add {
 }
 
 ###########################################
+sub kick {
+###########################################
+    my( $self ) = @_;
+
+    my $slot;
+
+    DEBUG "Thread $self kick";
+
+    if( $slot = $self->slot_next() ) {
+
+        DEBUG "Thread $self: Next slot is $slot";
+
+        $slot->reg_cb( "slot_done", sub {
+            my( $c, $slot ) = @_;
+            DEBUG "Thread $self received slot_done from slot $slot";
+            $self->kick();
+        });
+
+        $slot->start();
+    } else {
+        DEBUG "No more slots, thread $self done";
+        $self->event( "thread_done" );
+    }
+}
+
+###########################################
+sub start {
+###########################################
+    my( $self ) = @_;
+
+    $self->kick();
+}
+
+###########################################
 sub slot_next {
 ###########################################
     my( $self ) = @_;
+
+    DEBUG "thread calls slot_next";
 
     if( ! $self->slots_left() ) {
         $self->{ active_slot } = undef;
@@ -47,10 +85,13 @@ sub slot_next {
         return undef;
     }
 
-    my $slot = $self->{ slots }->{ $self->{ next_slot_idx } };
+    my $slot = $self->{ slots }->[ $self->{ next_slot_idx } ];
     $self->{ active_slot } = $slot;
 
     $self->{ next_slot_idx }++;
+
+    DEBUG "Next slot is $slot";
+
     return $slot;
 }
 
@@ -72,6 +113,14 @@ sub task_mark_done {
     }
 }
 
+###########################################
+sub as_string {
+###########################################
+    my( $self ) = @_;
+
+    return "$self->{ id }";
+}
+
 1;
 
 __END__
@@ -88,7 +137,37 @@ Pogo::Scheduler::Thread - Pogo Scheduler Thread Abstraction
 
 =head1 DESCRIPTION
 
-Pogo::Scheduler::Thread abstraction.
+Pogo::Scheduler::Thread abstraction. A thread holds a number of slots,
+which must be processed in sequence. Only if all tasks of a slot have
+been processed (i.e. the slot emits "slot_done"), the thread can move
+on to the next slot.
+
+=head2 METHODS
+
+=over 4
+
+=item C<slot_add( $slot )>
+
+Adds a slot to the thread's slot sequence.
+
+=item C<slot_next>
+
+Schedules the next slot.
+
+=item C<task_mark_done( $task )>
+
+Marks a task (which must be marked active in the thread's single
+active slot) complete.
+
+=back
+
+=head2 EVENTS
+
+=over 4
+
+=item C<>
+
+=back
 
 =head1 LICENSE
 

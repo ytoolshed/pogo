@@ -27,6 +27,10 @@ sub new {
     $self->{ id } = id_gen( "task" ) if ! defined $self->{ id };
 
     bless $self, $class;
+
+    DEBUG "Created task $self";
+
+    return $self;
 }
 
 ###########################################

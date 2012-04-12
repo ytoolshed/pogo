@@ -11,6 +11,8 @@ use base qw(Pogo::Object::Event);
 use Pogo::Util qw( make_accessor id_gen );
 __PACKAGE__->make_accessor( $_ ) for qw( id tasks thread);
 
+use overload ( 'fallback' => 1, '""' => 'as_string' );
+
 ###########################################
 sub new {
 ###########################################
@@ -41,6 +43,22 @@ sub task_add {
 }
 
 ###########################################
+sub start {
+###########################################
+    my( $self ) = @_;
+
+    $self->reg_cb( "task_mark_done", sub {
+        my( $c, $task ) = @_;
+
+        $self->task_mark_done( $task );
+    });
+
+      # Schedule all tasks (will change with constraints)
+    while( my $task = $self->task_next() ) {
+    }
+}
+
+###########################################
 sub task_next {
 ###########################################
     my( $self ) = @_;
@@ -55,6 +73,7 @@ sub task_next {
 
     $self->{ next_task_idx }++;
 
+    DEBUG "Slot $self scheduled task $task";
     $self->event( "task_run", $task );
 
     return $task;
@@ -82,6 +101,7 @@ sub task_mark_done {
 
         if( $self->{ next_task_idx } > $#{ $self->{ tasks } } and
             !$self->tasks_active() ) {
+            DEBUG "Slot $self is complete";
             $self->event( "slot_done", $self );
         }
 
@@ -97,6 +117,14 @@ sub tasks {
     my( $self ) = @_;
 
     return @{ $self->{ tasks } };
+}
+
+###########################################
+sub as_string {
+###########################################
+    my( $self ) = @_;
+
+    return "$self->{ id }";
 }
 
 1;
@@ -115,7 +143,39 @@ Pogo::Scheduler::Slot - Pogo Scheduler Slot Abstraction
 
 =head1 DESCRIPTION
 
-Pogo::Scheduler::Slot abstraction.
+Pogo::Scheduler::Slot abstraction. A slot consists of a queue of
+tasks. The queue is processed in sequence, but the slot can process
+as many items in parallel as it wishes.
+
+=head2 METHODS
+
+=over 4
+
+=item C<task_next()>
+
+Schedule the next task. Causes a C<task_run> event if there's 
+non-scheduled tasks in the queue.
+
+=back
+
+=head2 EVENTS
+
+=over 4
+
+=item C<task_run>
+
+Emitted when a task is scheduled to run.
+
+=item C<slot_done>
+
+Emitted when all tasks in the slot are marked done.
+
+=item C<task_mark_done>
+
+Consumed. Sent by the component user when the task, previously emitted
+by C<task_run> is complete. Marks the task as done internally.
+
+=back
 
 =head1 LICENSE
 

@@ -130,7 +130,7 @@ sub array_intersection {
     return @intersection;
 }
 
-my $LAST_ID = 0;
+my %LAST_ID = ();
 
 ##################################################
 sub id_gen {
@@ -139,7 +139,9 @@ sub id_gen {
 
     $prefix = "id" if !defined $prefix;
 
-    return sprintf "$prefix-%09d", $LAST_ID++;
+    $LAST_ID{ $prefix } = 0 if !exists $LAST_ID{ $prefix };
+
+    return sprintf "$prefix-%09d", $LAST_ID{ $prefix }++;
 }
 
 1;
