@@ -8,6 +8,7 @@ use YAML::Syck qw(Load LoadFile);
 use Pogo::Util qw( array_intersection struct_traverse );
 use Pogo::Scheduler::Thread;
 use Pogo::Scheduler::Slot;
+use Pogo::Scheduler::Task;
 use base qw( Pogo::Scheduler );
 
 ###########################################
@@ -16,8 +17,9 @@ sub new {
     my( $class, %options ) = @_;
 
     my $self = {
-        threads => [],
-        config  => {},
+        thread_by_id => {},
+        threads      => [],
+        config       => {},
         %options,
     };
 
@@ -143,6 +145,9 @@ sub thread_setup {
 
           my $thread = Pogo::Scheduler::Thread->new();
 
+            # for quick lookup later when tasks come back
+          $self->{ thread_by_id }->{ $thread->id() } = $thread;
+
           for my $seq ( @$sequence ) {
               my $slot = Pogo::Scheduler::Slot->new(
                   id => join('.', @$path, $seq),
@@ -171,7 +176,10 @@ sub schedule {
 
     $hosts = [] if !defined $hosts;
 
-    my %hosts = map { $_ => 1 } @$hosts; # for faster lookups
+    DEBUG "Scheduling hosts ",
+      join( ", ", @$hosts );
+
+    my %host_lookup = map { $_ => 1 } @$hosts; # for faster lookups
 
     $self->reg_cb( "task_done", sub {
         my( $c, $task ) = @_;
@@ -193,14 +201,20 @@ sub schedule {
             $self->event( "task_run", $task );
         } );
 
-        for my $slot ( @{ $self->{ threads } } ) {
-            for my $host ( 
-                keys %{ $self->{ hosts_by_slot }->{ $slot->id() } } ) {
-                if( exists $hosts->{ $host } ) {
-                    my $task = Pogo::Scheduler::Task->new( 
-                        id => $host
-                    );
-                    $slot->task_add( $task );
+        for my $thread ( @{ $self->{ threads } } ) {
+            for my $slot ( @{ $thread->{ slots } } ) {
+                for my $host ( 
+                    @{ $self->{ hosts_by_slot }->{ $slot->id() } } ) {
+
+                    if( exists $host_lookup{ $host } ) {
+                        my $task = Pogo::Scheduler::Task->new( 
+                            id        => $host,
+                            slot_id   => $slot,
+                            thread_id => $thread,
+                            host      => $host,
+                        );
+                        $slot->task_add( $task );
+                    }
                 }
             }
         }

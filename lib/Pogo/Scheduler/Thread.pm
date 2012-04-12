@@ -74,6 +74,9 @@ sub start {
 ###########################################
     my( $self ) = @_;
 
+    DEBUG "Starting thread $self with slots ",
+      join( ", ", @{ $self->{ slots } } );
+
     $self->kick();
 }
 
@@ -82,11 +85,10 @@ sub slot_next {
 ###########################################
     my( $self ) = @_;
 
-    DEBUG "thread calls slot_next";
-
     if( ! $self->slots_left() ) {
         $self->{ active_slot } = undef;
         $self->event( "thread_done", $self );
+        DEBUG "No more slots left in thread $self";
         return undef;
     }
 
@@ -94,8 +96,6 @@ sub slot_next {
     $self->{ active_slot } = $slot;
 
     $self->{ next_slot_idx }++;
-
-    DEBUG "Next slot is $slot";
 
     return $slot;
 }

@@ -9,7 +9,7 @@ use AnyEvent::Strict;
 use base qw(Pogo::Object::Event);
 
 use Pogo::Util qw( make_accessor id_gen );
-__PACKAGE__->make_accessor( $_ ) for qw( id slot thread);
+__PACKAGE__->make_accessor( $_ ) for qw( id slot_id thread_id);
 
 use overload ( 'fallback' => 1, '""' => 'as_string' );
 
