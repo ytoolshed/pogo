@@ -74,7 +74,8 @@ Name of the host the client submitted the job from.
 
 =item C<command>
 
-Command line to run on each target.
+Command line to run on each target. Can consist of multiple lines, i.e. 
+be an entire shell skript.
 
 =item C<invoked_as>
 
