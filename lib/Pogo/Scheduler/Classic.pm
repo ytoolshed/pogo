@@ -181,16 +181,15 @@ sub schedule {
 
     my %host_lookup = map { $_ => 1 } @$hosts; # for faster lookups
 
-    $self->reg_cb( "task_done", sub {
+    $self->reg_cb( "task_mark_done", sub {
         my( $c, $task ) = @_;
 
-        DEBUG "Scheduler received task_done for task $task";
+        DEBUG "Scheduler received task_mark_done for task $task";
 
-          # forward task done confirmation to the thread it was
-          # running in
+        DEBUG "Forwarding 'task_mark_done' to thread ", $task->thread_id();
         if( exists $self->{ thread_by_id }->{ $task->thread_id() } ) {
             $self->{ thread_by_id }->{ $task->thread_id() }->event(
-                "task_done", $task );
+                "task_mark_done", $task );
         } else {
             ERROR "Received task with unknown thread id: $task";
         }
@@ -207,20 +206,18 @@ sub schedule {
             $self->event( "task_run", $task );
         } );
 
-        for my $thread ( @{ $self->{ threads } } ) {
-            for my $slot ( @{ $thread->{ slots } } ) {
-                for my $host ( 
-                    @{ $self->{ hosts_by_slot }->{ $slot->id() } } ) {
-
-                    if( exists $host_lookup{ $host } ) {
-                        my $task = Pogo::Scheduler::Task->new( 
-                            id        => $host,
-                            slot_id   => $slot,
-                            thread_id => $thread,
-                            host      => $host,
-                        );
-                        $slot->task_add( $task );
-                    }
+        for my $slot ( @{ $thread->{ slots } } ) {
+            for my $host ( 
+                @{ $self->{ hosts_by_slot }->{ $slot->id() } } ) {
+    
+                if( exists $host_lookup{ $host } ) {
+                    my $task = Pogo::Scheduler::Task->new( 
+                        id        => $host,
+                        slot_id   => $slot,
+                        thread_id => $thread,
+                        host      => $host,
+                    );
+                    $slot->task_add( $task );
                 }
             }
         }

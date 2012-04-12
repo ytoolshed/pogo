@@ -29,6 +29,14 @@ sub new {
     $self->{ id } = id_gen( "thread" ) if ! defined $self->{ id };
 
     bless $self, $class;
+
+    $self->reg_cb( "task_mark_done", sub {
+        my( $c, $task ) = @_;
+
+        $self->task_mark_done( $task );
+    } );
+
+    return $self;
 }
 
 ###########################################

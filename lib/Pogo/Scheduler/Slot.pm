@@ -50,8 +50,8 @@ sub start {
 ###########################################
     my( $self ) = @_;
 
-    DEBUG "Starting slot $self with tasks ",
-      join( ", ", @{ $self->{ tasks } } );
+    DEBUG "Starting slot $self with tasks [",
+      join( ", ", @{ $self->{ tasks } } ), "]";
 
     $self->reg_cb( "task_mark_done", sub {
         my( $c, $task ) = @_;

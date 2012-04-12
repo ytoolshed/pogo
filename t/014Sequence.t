@@ -42,6 +42,8 @@ my $bck = Pogo::Util::Bucketeer->new(
   [ qw( host4 host5 host6 ) ],
 ] );
 
+my @timers = ();
+
 $scheduler->reg_cb( "task_run", sub {
     my( $c, $task ) = @_;
 
@@ -49,9 +51,13 @@ $scheduler->reg_cb( "task_run", sub {
 
     ok $bck->item( $host ), "host $host in seq";
 
-      # Crunch, crunch, crunch. Task done. Report back.
-    DEBUG "Sending task_done for task $task back to scheduler";
-    $scheduler->event( "task_done", $task );
+    my $w = AnyEvent->timer( after => 0.1, cb => sub {
+          # Crunch, crunch, crunch. Task done. Report back.
+        DEBUG "Sending task_mark_done for task $task back to scheduler";
+        $scheduler->event( "task_mark_done", $task );
+    } );
+
+    push @timers, $w;
 
     $bck->all_done and $cv->send(); # quit
 } );
