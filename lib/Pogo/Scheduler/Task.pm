@@ -9,7 +9,7 @@ use AnyEvent::Strict;
 use base qw(Pogo::Object::Event);
 
 use Pogo::Util qw( make_accessor id_gen );
-__PACKAGE__->make_accessor( $_ ) for qw( id slot thread);
+__PACKAGE__->make_accessor( $_ ) for qw( id slot_id thread_id);
 
 use overload ( 'fallback' => 1, '""' => 'as_string' );
 
@@ -19,8 +19,8 @@ sub new {
     my( $class, %options ) = @_;
 
     my $self = {
-        thread => "no_thread_defined",
-        slot   => "no_slot_defined",
+        thread_id => "no_thread_defined",
+        slot_id   => "no_slot_defined",
         %options,
     };
 
@@ -38,7 +38,7 @@ sub as_string {
 ###########################################
     my( $self ) = @_;
 
-    return "$self->{ id }:$self->{ slot }:$self->{ thread }";
+    return "$self->{ id }:$self->{ slot_id }:$self->{ thread_id }";
 }
 
 1;

@@ -19,6 +19,7 @@ sub new {
     my($class, %options) = @_;
 
     my $self = {
+        tasks             => [],
         task_by_id        => {},
         next_task_idx     => 0,
         active_task_by_id => {},
@@ -35,6 +36,8 @@ sub task_add {
 ###########################################
     my( $self, $task ) = @_;
 
+    DEBUG "Adding task $task to slot $self";
+
     push @{ $self->{ tasks } }, $task;
 
     $self->{ task_by_id }->{ $task->id() } = $task;
@@ -47,6 +50,9 @@ sub start {
 ###########################################
     my( $self ) = @_;
 
+    DEBUG "Starting slot $self with tasks [",
+      join( ", ", @{ $self->{ tasks } } ), "]";
+
     $self->reg_cb( "task_mark_done", sub {
         my( $c, $task ) = @_;
 
@@ -55,6 +61,7 @@ sub start {
 
       # Schedule all tasks (will change with constraints)
     while( my $task = $self->task_next() ) {
+        # nothing to do here, task_next does everything
     }
 }
 
@@ -63,7 +70,10 @@ sub task_next {
 ###########################################
     my( $self ) = @_;
 
+    DEBUG "Slot $self: Determine next task";
+
     if( $self->{ next_task_idx } > $#{ $self->{ tasks } } ) {
+        DEBUG "Slot $self: No more tasks";
         return undef;
     }
 

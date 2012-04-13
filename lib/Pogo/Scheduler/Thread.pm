@@ -9,7 +9,7 @@ use AnyEvent::Strict;
 use base qw(Pogo::Object::Event);
 
 use Pogo::Util qw( make_accessor id_gen );
-__PACKAGE__->make_accessor( $_ ) for qw( id slots );
+__PACKAGE__->make_accessor( $_ ) for qw( id slots is_done);
 
 use overload ( 'fallback' => 1, '""' => 'as_string' );
 
@@ -22,12 +22,21 @@ sub new {
         slots => [],
         next_slot_idx => 0,
         active_slot   => undef,
+        is_done       => 0,
         %options,
     };
 
     $self->{ id } = id_gen( "thread" ) if ! defined $self->{ id };
 
     bless $self, $class;
+
+    $self->reg_cb( "task_mark_done", sub {
+        my( $c, $task ) = @_;
+
+        $self->task_mark_done( $task );
+    } );
+
+    return $self;
 }
 
 ###########################################
@@ -51,6 +60,9 @@ sub kick {
 
         DEBUG "Thread $self: Next slot is $slot";
 
+        $self->event_forward( { forward_from => $slot }, 
+            "task_run" );
+
         $slot->reg_cb( "slot_done", sub {
             my( $c, $slot ) = @_;
             DEBUG "Thread $self received slot_done from slot $slot";
@@ -60,6 +72,7 @@ sub kick {
         $slot->start();
     } else {
         DEBUG "No more slots, thread $self done";
+        $self->is_done( 1 );
         $self->event( "thread_done" );
     }
 }
@@ -69,6 +82,9 @@ sub start {
 ###########################################
     my( $self ) = @_;
 
+    DEBUG "Starting thread $self with slots ",
+      join( ", ", @{ $self->{ slots } } );
+
     $self->kick();
 }
 
@@ -77,11 +93,10 @@ sub slot_next {
 ###########################################
     my( $self ) = @_;
 
-    DEBUG "thread calls slot_next";
-
     if( ! $self->slots_left() ) {
         $self->{ active_slot } = undef;
         $self->event( "thread_done", $self );
+        DEBUG "No more slots left in thread $self";
         return undef;
     }
 
@@ -89,8 +104,6 @@ sub slot_next {
     $self->{ active_slot } = $slot;
 
     $self->{ next_slot_idx }++;
-
-    DEBUG "Next slot is $slot";
 
     return $slot;
 }

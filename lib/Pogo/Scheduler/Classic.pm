@@ -6,6 +6,9 @@ use Template::Parser;
 use Template::Stash;
 use YAML::Syck qw(Load LoadFile);
 use Pogo::Util qw( array_intersection struct_traverse );
+use Pogo::Scheduler::Thread;
+use Pogo::Scheduler::Slot;
+use Pogo::Scheduler::Task;
 use base qw( Pogo::Scheduler );
 
 ###########################################
@@ -14,8 +17,9 @@ sub new {
     my( $class, %options ) = @_;
 
     my $self = {
-        threads => [],
-        config  => {},
+        thread_by_id => {},
+        threads      => [],
+        config       => {},
         %options,
     };
 
@@ -63,12 +67,12 @@ sub config_load {
         leaf => sub {
             my( $node, $path ) = @_; 
 
-            my $slot = join ".", @$path, $node;
+            my $slot = Pogo::Scheduler::Slot->new(
+                id => join(".", @$path, $node),
+            );
             push @{ $self->{ slots } }, $slot;
         } 
     } );
-
-    $self->{ slots_vars } = $self->{ config }->{ tag };
 
       # Traverse the configuration's "tag" structure and map hosts
       # to slots (host slots constitute of the full path to the leaf nodes
@@ -99,7 +103,9 @@ sub slot_setup {
     for my $slot ( @{ $self->{ slots } } ) {
         my @parts = ();
 
-        while( $slot =~ /(\$[^\$]*)/g ) {
+        my $slot_id = $slot->id();
+
+        while( $slot_id =~ /(\$[^\$]*)/g ) {
             my $part = $1;
             $part =~ s/^\$//;
             $part =~ s/\.$//;
@@ -119,7 +125,7 @@ sub slot_setup {
             delete $all_hosts->{ $host };
         }
 
-        $self->{ hosts_by_slot }->{ $slot } = \@hosts;
+        $self->{ hosts_by_slot }->{ $slot->id() } = \@hosts;
     }
 
       # what's left over is unconstrained
@@ -137,12 +143,30 @@ sub thread_setup {
       array => sub {
           my( $sequence, $path ) = @_;
 
-          push @{ $self->{ threads } }, 
-               [ map { join '.', @$path, $_ } @$sequence ];
+          my $thread = Pogo::Scheduler::Thread->new();
+
+            # for quick lookup later when tasks come back
+          $self->{ thread_by_id }->{ $thread->id() } = $thread;
+
+          for my $seq ( @$sequence ) {
+              my $slot = Pogo::Scheduler::Slot->new(
+                  id => join('.', @$path, $seq),
+              );
+              $thread->slot_add( $slot );
+          }
+
+          push @{ $self->{ threads } }, $thread;
       } 
     } );
 
-    push @{ $self->{ threads } }, ["unconstrained"];
+    my $slot = Pogo::Scheduler::Slot->new(
+        id => "unconstrained",
+    );
+
+    my $thread = Pogo::Scheduler::Thread->new();
+    $thread->slot_add( $slot );
+
+    push @{ $self->{ threads } }, $thread;
 }
 
 ###########################################
@@ -152,29 +176,54 @@ sub schedule {
 
     $hosts = [] if !defined $hosts;
 
-    my %hosts = map { $_ => 1 } @$hosts; # for faster lookups
+    DEBUG "Scheduling hosts ",
+      join( ", ", @$hosts );
 
-    while( scalar @{ $self->{ threads } } ) {
+    my %host_lookup = map { $_ => 1 } @$hosts; # for faster lookups
 
-        for my $thread ( @{ $self->{ threads } } ) {
+    $self->reg_cb( "task_mark_done", sub {
+        my( $c, $task ) = @_;
 
-            # no more slots in the thread? get rid of the thread
-            if( scalar @$thread == 0 ) {
-                shift @{ $self->{ threads } };
-                next;
-            }
+        DEBUG "Scheduler received task_mark_done for task $task";
 
-            my $slot = $thread->[ 0 ];
-
-              # run all the runnable hosts in the slot
-            $self->slot_run( $slot, \%hosts );
-
-            # slot done, get rid of it
-            shift @$thread;
-
-            # to into the next round immediately (later, we'll wait
-            # until slot hosts are complete)
+        DEBUG "Forwarding 'task_mark_done' to thread ", $task->thread_id();
+        if( exists $self->{ thread_by_id }->{ $task->thread_id() } ) {
+            $self->{ thread_by_id }->{ $task->thread_id() }->event(
+                "task_mark_done", $task );
+        } else {
+            ERROR "Received task with unknown thread id: $task";
         }
+    } );
+
+    for my $thread ( @{ $self->{ threads } } ) {
+
+        next if $thread->is_done();
+
+        $thread->reg_cb( "task_run", sub {
+            my( $c, $task ) = @_;
+
+            DEBUG "Classic running task $task";
+            $self->event( "task_run", $task );
+        } );
+
+        for my $slot ( @{ $thread->{ slots } } ) {
+            for my $host ( 
+                @{ $self->{ hosts_by_slot }->{ $slot->id() } } ) {
+    
+                if( exists $host_lookup{ $host } ) {
+                    my $task = Pogo::Scheduler::Task->new( 
+                        id        => $host,
+                        slot_id   => $slot,
+                        thread_id => $thread,
+                        host      => $host,
+                    );
+                    $slot->task_add( $task );
+                }
+            }
+        }
+
+          # start thread in parallel with other threads
+        $thread->start();
     }
 }
 
