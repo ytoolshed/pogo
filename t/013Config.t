@@ -4,9 +4,10 @@ use strict;
 use AnyEvent;
 use Pogo::Plugin;
 use Test::More;
+use Test::Deep;
 use Log::Log4perl qw(:easy);
 
-plan tests => 2;
+plan tests => 3;
 
 BEGIN {
     use FindBin qw( $Bin );
@@ -38,3 +39,18 @@ my $cfg = $s->config();
 
 is "$cfg->{ sequence }->[0]", '$colo.north_america', "config sequence";
 is "$cfg->{ sequence }->[1]", '$colo.south_east_asia', "config sequence";
+
+my $struct = { a => { b => [ qw(c d) ] } };
+
+my $paths = [];
+
+Pogo::Util::struct_traverse( $struct, { 
+    leaf => sub {
+        my( $node, $path ) = @_; 
+
+        push @$paths, [@$path, $node];
+    } 
+} );
+
+cmp_deeply( $paths, [ [qw(a b d)], [qw(a b c)] ], "leaf_paths" );
+

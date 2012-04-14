@@ -10,7 +10,7 @@ use Pogo::Util;
 use Test::Deep;
 use YAML qw(Load);
 
-my $nof_tests = 2;
+my $nof_tests = 1;
 
 plan tests => $nof_tests;
 
@@ -51,19 +51,10 @@ sequence:
     - $colo.north_america
 EOT
 
-my $struct = { a => { b => [ qw(c d) ] } };
-
-my $paths = [];
-
-Pogo::Util::struct_traverse( $struct, { 
-    leaf => sub {
-        my( $node, $path ) = @_; 
-
-        push @$paths, [@$path, $node];
-    } 
-} );
-
-cmp_deeply( $paths, [ [qw(a b d)], [qw(a b c)] ], "leaf_paths" );
+# threads:
+# 1) host5 -> host2
+# 2) host1 -> host4
+# 3) host3, host6 unconstrained
 
 $scheduler->config_load( \$data ) or 
     die "Failed ot load config";

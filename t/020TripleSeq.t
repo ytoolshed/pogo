@@ -5,6 +5,9 @@ use Test::More;
 use Log::Log4perl qw(:easy);
 use Pogo::Util::Bucketeer;
 
+# three groups of hosts in the sequence, but no hosts in the 
+# middle tier
+
 my $nof_tests = 6;
 
 plan tests => $nof_tests;
@@ -23,23 +26,28 @@ my $cv = AnyEvent->condvar();
 $scheduler->config_load( \ <<'EOT' );
 tag:
   colo:
-    north_america:
+    one:
       - host1
       - host2
       - host3
-    south_east_asia:
+    two:
       - host4
       - host5
       - host6
+    three:
+      - host7
+      - host8
+      - host9
 sequence:
-  - $colo.north_america
-  - $colo.south_east_asia
+  - $colo.one
+  - $colo.two
+  - $colo.three
 EOT
  
 my $bck = Pogo::Util::Bucketeer->new(
     buckets => [
   [ qw( host1 host2 host3 ) ],
-  [ qw( host4 host5 host6 ) ],
+  [ qw( host7 host8 host9 ) ],
 ] );
 
 my @timers = ();
@@ -63,6 +71,6 @@ $scheduler->reg_cb( "task_run", sub {
 } );
 
   # schedule all hosts
-$scheduler->schedule( [ $scheduler->config_hosts() ] );
+$scheduler->schedule( [ map { "host$_" } qw( 9 8 7 1 2 3 ) ] );
 
 $cv->recv;

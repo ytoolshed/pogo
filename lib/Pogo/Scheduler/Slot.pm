@@ -74,6 +74,9 @@ sub task_next {
 
     if( $self->{ next_task_idx } > $#{ $self->{ tasks } } ) {
         DEBUG "Slot $self: No more tasks";
+          # if this slot has no more active tasks (e.g. because
+          # it started without tasks in the first place), we're done
+        $self->slot_done_notify() if !$self->tasks_active();
         return undef;
     }
 
@@ -102,9 +105,6 @@ sub task_mark_done {
 ###########################################
     my( $self, $task ) = @_;
 
-    $DB::single = 1;
-      # Mark task done
-
     if( exists $self->{ active_task_by_id }->{ $task->id() } ) {
         DEBUG "Marking task ", $task->id(), " done";
         delete $self->{ active_task_by_id }->{ $task->id() };
@@ -112,13 +112,23 @@ sub task_mark_done {
         if( $self->{ next_task_idx } > $#{ $self->{ tasks } } and
             !$self->tasks_active() ) {
             DEBUG "Slot $self is complete";
-            $self->event( "slot_done", $self );
+            $self->slot_done_notify();
         }
 
         return 1;
     }
 
     ERROR "No such active task: ", $task->id();
+}
+
+###########################################
+sub slot_done_notify {
+###########################################
+    my( $self ) = @_;
+
+    if( !$self->{ slot_done_notified }++ ) {
+        $self->event( "slot_done", $self );
+    }
 }
 
 ###########################################
