@@ -126,6 +126,7 @@ sub slot_setup {
         }
 
         $self->{ hosts_by_slot }->{ $slot->id() } = \@hosts;
+        DEBUG "Slot $slot: [", join( ", ", @hosts ), "]";
     }
 
       # what's left over is unconstrained
@@ -154,6 +155,8 @@ sub thread_setup {
               );
               $thread->slot_add( $slot );
           }
+
+          DEBUG "Thread $thread: [", join( ", ", @{ $thread->slots() } ), "]";
 
           push @{ $self->{ threads } }, $thread;
       } 
@@ -406,7 +409,8 @@ Let's take a look at the following configuration and how pogo will handle it:
           - host6
 
     sequence:
-      - [ $colo.north_america, $colo.south_east_asia ] 
+      - $colo.north_america 
+      - $colo.south_east_asia
 
     constraint:
       $colo: 2
@@ -486,7 +490,7 @@ For example to define a sequence only applicable to hosts
 tagged C<frontend>, use
 
     sequence:
-      frontend:
+      $frontend:
         - $colo.north_america
         - $colo.south_east_asia
 
@@ -527,10 +531,10 @@ in parallel as long as individual sequence rules aren't violated.
 For example, with
 
     sequence:
-      frontend:
+      $frontend:
         - $colo.north_america
         - $colo.south_east_asia
-      backend:
+      $backend:
         - $colo.south_east_asia
         - $colo.north_america
 
@@ -607,8 +611,6 @@ Since a job typically does not run all the hosts in the configuration,
 but only a subset, hosts that aren't part of the job are removed from
 the schedule. The schedule is the written to persistent/shared storage
 (e.g. ZooKeeper).
-
-TODO
 
 Then, the algorithm starts like this, getting the first batches of 
 each thread rolling:
