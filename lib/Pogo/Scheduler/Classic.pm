@@ -231,28 +231,6 @@ sub schedule {
 }
 
 ###########################################
-sub slot_run {
-###########################################
-    my( $self, $slot, $hosts ) = @_;
-
-      # schedule all the hosts in the slot (will change later 
-      # with constraints)
-    for my $host ( @{ $self->{ hosts_by_slot }->{ $slot } } ) {
-
-        next if !exists $hosts->{ $host };
-
-        my $task = {
-            slot => $slot,
-            host => $host,
-        };
-
-        $self->task_run( $task );
-    }
-
-    #job123:thread1:frontend.colo.north_america:host1
-}
-
-###########################################
 sub config_hosts_hash {
 ###########################################
     my( $self ) = @_;
