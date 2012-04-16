@@ -300,6 +300,32 @@ sub task_finished {
     $self->event( "job_done" );
 }
 
+###########################################
+sub as_ascii {
+###########################################
+    my( $self ) = @_;
+
+    require Text::ASCIITable;
+
+    my $t = Text::ASCIITable->new( { headingText => 'Schedule' } );
+
+    my $maxcols = 0;
+
+    for my $thread ( @{ $self->{ threads } } ) {
+        my $slots = $thread->slots();
+        $maxcols = scalar @$slots if scalar @$slots > $maxcols;
+    }
+
+    $t->setCols( "Thread", map { "slot-$_" } ( 1 .. $maxcols ) );
+
+    for my $thread ( @{ $self->{ threads } } ) {
+        my $slots = $thread->slots();
+        $t->addRow( "$thread", map { "$_" } @$slots );
+    }
+
+    return "$t";
+}
+
 1;
 
 __END__
