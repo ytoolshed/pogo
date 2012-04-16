@@ -403,8 +403,9 @@ To limit the number of hosts handled in parallel, constraints can be put in
 place. For example, 
 
     constraint:
-      $colo.north_america: 3
-      $colo.south_east_asia: 15%
+      max_parallel:
+        $colo.north_america: 3
+        $colo.south_east_asia: 15%
 
 limits the number of hosts processed in parallel in the C<north_america> 
 colocation to 3, and in the C<south_east_asia> colo to 15%. To apply a 
@@ -412,10 +413,11 @@ constraint evenly on all hosts carrying a specific tag, grouped by tag value,
 use
 
     constraint:
-      $colo: 3
+      max_parallel:
+        $colo: 3
 
 This will allow Pogo to process up to 3 hosts of both the C<north_america> and
-C<south_korea> colos in parallel.
+C<south_east_asia> colos in parallel.
 
 =back 
 
@@ -439,7 +441,8 @@ Let's take a look at the following configuration and how pogo will handle it:
       - $colo.south_east_asia
 
     constraint:
-      $colo: 2
+      max_parallel:
+        $colo: 2
 
 Now if you ask Pogo to process all hosts carrying the C<colo> tag (or
 specify C<host[1-6]>), the following will happen ("|" indicates that the
