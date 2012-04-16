@@ -67,8 +67,11 @@ sub config_load {
         leaf => sub {
             my( $node, $path ) = @_; 
 
+            my $slotname = join(".", @$path, $node);
+
             my $slot = Pogo::Scheduler::Slot->new(
-                id => join(".", @$path, $node),
+                id         => $slotname,
+                constraint => $self->{ config }->{ constraint }->{ $slotname },
             );
             push @{ $self->{ slots } }, $slot;
         } 
@@ -465,8 +468,9 @@ For example, if a constraint applies to all hosts tagged C<frontend>
 (regardless of value) in colo C<north_america>, use
 
     constraint:
-      frontend:
-         $colo.north_america: 2
+      max_parallel:
+        frontend:
+           $colo.north_america: 2
 
 =head2 External Tag Resolvers
 

@@ -26,6 +26,8 @@ sub new {
         %options,
     };
 
+    $DB::single = 1;
+
     $self->{ id } = id_gen( "slot" ) if ! defined $self->{ id };
 
     bless $self, $class;
