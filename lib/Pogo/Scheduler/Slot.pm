@@ -6,6 +6,7 @@ use warnings;
 use Log::Log4perl qw(:easy);
 use AnyEvent;
 use AnyEvent::Strict;
+use Pogo::Scheduler::Constraint;
 use base qw(Pogo::Object::Event);
 
 use Pogo::Util qw( make_accessor id_gen );
@@ -26,8 +27,6 @@ sub new {
         constraint_cfg    => undef,
         %options,
     };
-
-    $DB::single = 1;
 
     $self->{ id } = id_gen( "slot" ) if ! defined $self->{ id };
 
@@ -71,8 +70,15 @@ sub start {
     });
 
     if( $self->is_constrained() ) {
-        use Data::Dumper;
-        DEBUG "Slot $self is constrained: ", Dumper( $self->{ constraint_cfg } );
+
+        $self->{ constraint } = Pogo::Scheduler::Constraint->new(
+            constraint_cfg => $self->{ constraint_cfg },
+            task_next      => sub {
+                my( $c ) = @_;
+
+                $self->task_next();
+            },
+        );
 
     } else {
           # unconstrained, schedule all tasks

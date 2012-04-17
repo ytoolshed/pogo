@@ -161,8 +161,11 @@ sub thread_setup {
               my $constraint_cfg;
 
               if( exists $self->{ config }->{ constraint }->{ $slotname } ) {
-                  $constraint_cfg = $self->{ config }->{ constraint }->{ $slotname };
+                  $constraint_cfg = 
+                    $self->{ config }->{ constraint }->{ $slotname };
               }
+
+              $DB::single = 1;
 
               my $slot = Pogo::Scheduler::Slot->new(
                   id             => $slotname,
