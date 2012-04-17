@@ -4,7 +4,7 @@ use strict;
 use Test::More;
 use Log::Log4perl qw(:easy);
 
-my $nof_tests = 7;
+my $nof_tests = 6;
 
 BEGIN {
     use FindBin qw( $Bin );
@@ -34,7 +34,7 @@ $slot->reg_cb( "slot_done", sub {
 
 $thread->reg_cb( "thread_done", sub {
     my( $c, $s ) = @_;
-    ok 1, "received thread_done #1";
+    ok 1, "received thread_done #2";
     $cv->send();
 } );
 

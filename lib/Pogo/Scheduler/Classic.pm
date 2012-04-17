@@ -71,7 +71,6 @@ sub config_load {
 
             my $slot = Pogo::Scheduler::Slot->new(
                 id         => $slotname,
-                constraint => $self->{ config }->{ constraint }->{ $slotname },
             );
             push @{ $self->{ slots } }, $slot;
         } 
@@ -129,11 +128,15 @@ sub slot_setup {
         }
 
         $self->{ hosts_by_slot }->{ $slot->id() } = \@hosts;
-        DEBUG "Slot $slot: [", join( ", ", @hosts ), "]";
     }
 
       # what's left over is unconstrained
     $self->{ hosts_by_slot }->{ unconstrained } = [ keys %{ $all_hosts } ];
+
+    for my $slot ( keys %{ $self->{ hosts_by_slot } } ) {
+        DEBUG "Slot $slot: [", 
+              join( ", ", @{ $self->{ hosts_by_slot }->{ $slot } } ), "]";
+    }
 }
 
 ###########################################
@@ -153,8 +156,18 @@ sub thread_setup {
           $self->{ thread_by_id }->{ $thread->id() } = $thread;
 
           for my $seq ( @$sequence ) {
+              my $slotname = join( '.', @$path, $seq );
+
+              my $constraint_cfg;
+
+              if( exists $self->{ config }->{ constraint }->{ $slotname } ) {
+                  $constraint_cfg = $self->{ config }->{ constraint }->{ $slotname };
+              }
+
               my $slot = Pogo::Scheduler::Slot->new(
-                  id => join('.', @$path, $seq),
+                  id             => $slotname,
+                  (defined $constraint_cfg ? 
+                     ( constraint_cfg => $constraint_cfg ) : () ),
               );
               $thread->slot_add( $slot );
           }

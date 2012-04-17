@@ -23,6 +23,7 @@ sub new {
         task_by_id        => {},
         next_task_idx     => 0,
         active_task_by_id => {},
+        constraint_cfg    => undef,
         %options,
     };
 
@@ -48,6 +49,14 @@ sub task_add {
 }
 
 ###########################################
+sub is_constrained {
+###########################################
+    my( $self ) = @_;
+
+    return defined $self->{ constraint_cfg };
+}
+
+###########################################
 sub start {
 ###########################################
     my( $self ) = @_;
@@ -61,10 +70,28 @@ sub start {
         $self->task_mark_done( $task );
     });
 
-      # Schedule all tasks (will change with constraints)
-    while( my $task = $self->task_next() ) {
-        # nothing to do here, task_next does everything
+    if( $self->is_constrained() ) {
+        use Data::Dumper;
+        DEBUG "Slot $self is constrained: ", Dumper( $self->{ constraint_cfg } );
+
+    } else {
+          # unconstrained, schedule all tasks
+        while( my $task = $self->task_next() ) {
+            # nothing to do here, task_next does everything
+        }
     }
+}
+
+###########################################
+sub tasks_left {
+###########################################
+    my( $self ) = @_;
+
+    if( $self->{ next_task_idx } <= $#{ $self->{ tasks } } ) {
+        return 1;
+    }
+
+    return 0;
 }
 
 ###########################################
@@ -74,7 +101,7 @@ sub task_next {
 
     DEBUG "Slot $self: Determine next task";
 
-    if( $self->{ next_task_idx } > $#{ $self->{ tasks } } ) {
+    if( ! $self->tasks_left() ) {
         DEBUG "Slot $self: No more tasks";
           # if this slot has no more active tasks (e.g. because
           # it started without tasks in the first place), we're done

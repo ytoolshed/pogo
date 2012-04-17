@@ -60,29 +60,36 @@ sub kick {
 ###########################################
     my( $self ) = @_;
 
-    my $slot;
-
     DEBUG "Thread $self kick";
 
-    if( $slot = $self->slot_next() ) {
+    # There could be either more tasks in the current slot (because
+    # we were limited by constraints) or subsequent slots.
+    if( $self->slots_left() or
+        ( defined $self->{ active_slot } and
+          $self->{ active_slot }->tasks_left() ) ) {
+      DEBUG "Still tasks left in thread.";
+    } else {
 
-        DEBUG "Thread $self: Next slot is $slot";
+        DEBUG "No more slots, thread $self done";
+        $self->is_done( 1 );
+        $self->event( "thread_done" );
+        return 0;
+    }
 
-        $self->event_forward( { forward_from => $slot }, 
-            "task_run" );
+    my $slot = $self->slot_next();
 
-        $slot->reg_cb( "slot_done", sub {
+    DEBUG "Thread $self: Next slot is $slot";
+
+    $self->event_forward( { forward_from => $slot }, 
+        "task_run" );
+
+    $slot->reg_cb( "slot_done", sub {
             my( $c, $slot ) = @_;
             DEBUG "Thread $self received slot_done from slot $slot";
             $self->kick();
         });
 
-        $slot->start();
-    } else {
-        DEBUG "No more slots, thread $self done";
-        $self->is_done( 1 );
-        $self->event( "thread_done" );
-    }
+    $slot->start();
 }
 
 ###########################################
