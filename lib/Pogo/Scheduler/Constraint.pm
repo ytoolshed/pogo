@@ -6,10 +6,9 @@ use warnings;
 use Log::Log4perl qw(:easy);
 use AnyEvent;
 use AnyEvent::Strict;
-use Pogo::Scheduler::Constraint;
 use base qw(Pogo::Object::Event);
 
-use Pogo::Util qw( make_accessor );
+use Pogo::Util qw( make_accessor id_gen );
 __PACKAGE__->make_accessor( $_ ) for qw( id );
 
 use overload ( 'fallback' => 1, '""' => 'as_string' );
@@ -17,18 +16,58 @@ use overload ( 'fallback' => 1, '""' => 'as_string' );
 ###########################################
 sub new {
 ###########################################
-    my($class, %options) = @_;
+    my( $class, %options ) = @_;
 
     my $self = {
-        constraint_cfg => undef,
-        task_next      => undef,
-        constraint     => {},
+        max_parallel => undef,
+        tasks_active => 0,
         %options,
     };
 
-    $self->{ id } = id_gen( "constraint" ) if ! defined $self->{ id };
+    if( ! defined $self->{ max_parallel } ) {
+        LOGDIE "mandatory parameter max_parallel not set";
+    }
 
     bless $self, $class;
+
+    $self->reg_cb( "task_mark_done", sub {
+        $self->task_mark_done();
+    } );
+
+    $self->{ id } = id_gen( "constraint" ) if ! defined $self->{ id };
+
+    return $self;
+}
+
+###########################################
+sub kick {
+###########################################
+    my( $self ) = @_;
+
+    if( $self->{ tasks_active } < $self->{ max_parallel } ) {
+        $self->{ tasks_active }++;
+        DEBUG "Emitting task_next";
+        $self->event( "task_next" );
+        return 1;
+    }
+
+    return 0;
+}
+
+###########################################
+sub task_mark_done {
+###########################################
+    my( $self ) = @_;
+
+    $self->{ tasks_active }--;
+}
+
+###########################################
+sub as_string {
+###########################################
+    my( $self ) = @_;
+
+    return $self->{ id };
 }
 
 1;
@@ -41,15 +80,23 @@ Pogo::Scheduler::Constraint - Pogo Scheduler Constraint Handler
 
 =head1 SYNOPSIS
 
-    use Pogo::Scheduler::Slot;
+    use Pogo::Scheduler::Constraint;
 
-    my $task = Pogo::Scheduler::Slot->new();
+    my $constraint = Pogo::Scheduler::Constraint->new(
+       max_parallel => 3,
+    );
+
+    $constraint->reg_cb( "task_next", sub {
+           # ... run next task
+           # ... when done:
+           $constraint->event( "task_mark_done" );
+    } );
+
+    $constraint->start();
 
 =head1 DESCRIPTION
 
-Pogo::Scheduler::Slot abstraction. A slot consists of a queue of
-tasks. The queue is processed in sequence, but the slot can process
-as many items in parallel as it wishes.
+Pogo::Scheduler::Constraint abstraction. 
 
 =head2 METHODS
 
@@ -64,7 +111,7 @@ Emitted when the next task in a slot can be scheduled.
 =item C<task_mark_done>
 
 Consumed. Sent by the component user when the task, previously emitted
-by C<task_next> is complete. Refills the slot.
+by C<task_next> is complete. Refills the constraint slot.
 
 =back
 

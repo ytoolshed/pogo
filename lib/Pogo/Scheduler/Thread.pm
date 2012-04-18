@@ -78,7 +78,7 @@ sub kick {
 
     my $slot = $self->slot_next();
 
-    DEBUG "Thread $self: Next slot is $slot";
+    DEBUG "Thread $self: Next slot is '$slot'";
 
     $self->event_forward( { forward_from => $slot }, 
         "task_run" );

@@ -71,16 +71,36 @@ sub start {
 
     if( $self->is_constrained() ) {
 
-        $self->{ constraint } = Pogo::Scheduler::Constraint->new(
-            constraint_cfg => $self->{ constraint_cfg },
-            task_next      => sub {
-                my( $c ) = @_;
+        my $max_parallel = $self->{ constraint_cfg }->{ max_parallel };
 
-                $self->task_next();
-            },
+        DEBUG "Slot '$self' is constrained (max_parallel=$max_parallel)";
+
+        $self->{ constraint } = Pogo::Scheduler::Constraint->new(
+            max_parallel => $max_parallel,
         );
 
+        $self->{ constraint }->reg_cb( "task_next", sub {
+            my( $c ) = @_;
+
+              # schedule next slot task
+            if( $self->task_next() ) {
+                  # we scheduled a task, ask the constraints engine to 
+                  # push the next one if we're not at max yet
+                $c->kick();
+            }
+        } );
+
+        $self->reg_cb( "task_mark_done", sub {
+            my( $c, $task ) = @_;
+    
+            $self->{ constraint }->task_mark_done();
+            $self->{ constraint }->kick();
+        });
+
+        $self->{ constraint }->kick();
     } else {
+        DEBUG "Slot '$self' is unconstrained";
+
           # unconstrained, schedule all tasks
         while( my $task = $self->task_next() ) {
             # nothing to do here, task_next does everything
