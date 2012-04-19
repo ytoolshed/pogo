@@ -79,6 +79,13 @@ sub start {
             max_parallel => $max_parallel,
         );
 
+        $self->{ constraint }->reg_cb( "waiting", sub {
+            my( $c ) = @_;
+
+              # Let consumers know that we're blocked on constraints
+            $self->event( "waiting" );
+        });
+
         $self->{ constraint }->reg_cb( "task_next", sub {
             my( $c ) = @_;
 

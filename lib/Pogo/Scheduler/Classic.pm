@@ -52,11 +52,15 @@ sub config_load {
         $self->{ config } = LoadFile( $yaml );
     }
 
-    for my $field ( qw( sequence tag ) ) {
+    for my $field ( qw( tag ) ) {
         if( !exists $self->{ config }->{ $field } ) {
             ERROR "Improper config file: No $field";
             return undef;
         }
+    }
+
+    if( !exists $self->{ config }->{ sequence } ) {
+        $self->{ config }->{ sequence } = {};
     }
 
     $self->{ slots } = [];
@@ -151,6 +155,8 @@ sub thread_setup {
           my( $sequence, $path ) = @_;
 
           my $thread = Pogo::Scheduler::Thread->new();
+
+          $self->event_forward( { forward_from => $thread }, qw( waiting ) );
 
             # for quick lookup later when tasks come back
           $self->{ thread_by_id }->{ $thread->id() } = $thread;

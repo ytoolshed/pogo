@@ -78,16 +78,20 @@ sub kick {
 
     my $slot = $self->slot_next();
 
+    $slot->reg_cb( "waiting", sub {
+          # let thread subscribers know about blocked slot
+        $self->event( "waiting", $self, $slot );
+    } );
+
     DEBUG "Thread $self: Next slot is '$slot'";
 
     $self->event_forward( { forward_from => $slot }, 
         "task_run" );
 
     $slot->reg_cb( "slot_done", sub {
-            my( $c, $slot ) = @_;
-            DEBUG "Thread $self received slot_done from slot $slot";
-            $self->kick();
-        });
+        DEBUG "Thread $self received slot_done from slot $slot";
+        $self->kick();
+    });
 
     $slot->start();
 }

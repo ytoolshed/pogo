@@ -51,6 +51,8 @@ sub kick {
         return 1;
     }
 
+      # We're blocked, let consumers know
+    $self->event( "waiting" );
     return 0;
 }
 
