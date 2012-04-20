@@ -63,7 +63,7 @@ sub config_load {
         $self->{ config }->{ sequence } = {};
     }
 
-    $self->{ slots } = [];
+    $self->{ sequence_slots } = [];
 
       # The full path to every leaf node in the 'sequence' definition, 
       # separated by dots, constitutes a slot.
@@ -76,7 +76,7 @@ sub config_load {
             my $slot = Pogo::Scheduler::Slot->new(
                 id         => $slotname,
             );
-            push @{ $self->{ slots } }, $slot;
+            push @{ $self->{ sequence_slots } }, $slot;
         } 
     } );
 
@@ -106,7 +106,7 @@ sub slot_setup {
 
     my $all_hosts = $self->config_hosts_hash();
 
-    for my $slot ( @{ $self->{ slots } } ) {
+    for my $slot ( @{ $self->{ sequence_slots } } ) {
         my @parts = ();
 
         my $slot_id = $slot->id();
@@ -202,6 +202,8 @@ sub schedule {
 ###########################################
     my( $self, $hosts ) = @_;
 
+    $DB::single = 1;
+
     $hosts = [] if !defined $hosts;
 
     DEBUG "Scheduling hosts ",
@@ -234,7 +236,7 @@ sub schedule {
             $self->event( "task_run", $task );
         } );
 
-        for my $slot ( @{ $thread->{ slots } } ) {
+        for my $slot ( @{ $thread->slots() } ) {
             for my $host ( 
                 @{ $self->{ hosts_by_slot }->{ $slot->id() } } ) {
     
@@ -319,11 +321,32 @@ sub as_ascii {
         $maxcols = scalar @$slots if scalar @$slots > $maxcols;
     }
 
-    $t->setCols( "Thread", map { "slot-$_" } ( 1 .. $maxcols ) );
+    my @colnames = ();
+
+    for my $colnum ( 1 .. $maxcols ) {
+        push @colnames, "slot-$colnum";
+    }
+
+    $t->setCols( "Thread", @colnames );
+
+    for my $colname ( @colnames ) {
+        $t->setColWidth( $colname, 50 );
+    }
 
     for my $thread ( @{ $self->{ threads } } ) {
         my $slots = $thread->slots();
-        $t->addRow( "$thread", map { "$_" } @$slots );
+
+        my @slot_row = ();
+        my @host_row = ();
+
+        for my $slot ( @$slots ) {
+            push @slot_row, "$slot";
+            push @host_row, 
+              join(", ", @{ $self->{ hosts_by_slot }->{ "$slot" } } );
+        }
+
+        $t->addRow( "$thread", @slot_row );
+        $t->addRow( "",        @host_row );
     }
 
     return "$t";

@@ -26,11 +26,19 @@ tag:
       - host4
       - host5
       - host6
+      - host7
+      - host8
+      - host9
+      - host10
+      - host11
+      - host12
 
 constraint:
     $colo.north_america: 
        max_parallel: 1
 EOT
+
+print $scheduler->as_ascii(), "\n";
  
 my $max = 1;
 my $hosts_scheduled = 0;
