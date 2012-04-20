@@ -89,7 +89,8 @@ sub config_load {
 
             my $host = $node;
             my $slot = join '.', @$path;
-            push @{ $self->{ host_slots }->{ $slot } }, $host;
+            push @{ $self->{ slot_hosts }->{ $slot } }, $host;
+            push @{ $self->{ host_slots }->{ $host } }, "$slot";
         }
     } );
 
@@ -118,13 +119,13 @@ sub slot_setup {
             push @parts, $part;
         }
 
-        my $found = $self->{ host_slots }->{ shift @parts };
+        my $found = $self->{ slot_hosts }->{ shift @parts };
         my @hosts = ();
         @hosts = @$found if defined $found;
 
         for my $part ( @parts ) {
             @hosts = array_intersection( \@hosts, 
-                       $self->{ host_slots }->{ $part } );
+                       $self->{ slot_hosts }->{ $part } );
         }
 
         for my $host ( @hosts ) {
@@ -170,8 +171,6 @@ sub thread_setup {
                   $constraint_cfg = 
                     $self->{ config }->{ constraint }->{ $slotname };
               }
-
-              $DB::single = 1;
 
               my $slot = Pogo::Scheduler::Slot->new(
                   id             => $slotname,
@@ -429,9 +428,10 @@ To limit the number of hosts handled in parallel, constraints can be put in
 place. For example, 
 
     constraint:
-      max_parallel:
-        $colo.north_america: 3
-        $colo.south_east_asia: 15%
+      $colo.north_america:
+        max_parallel: 3
+      $colo.south_east_asia:
+        max_parallel: 15%
 
 limits the number of hosts processed in parallel in the C<north_america> 
 colocation to 3, and in the C<south_east_asia> colo to 15%. To apply a 
@@ -439,8 +439,8 @@ constraint evenly on all hosts carrying a specific tag, grouped by tag value,
 use
 
     constraint:
-      max_parallel:
-        $colo: 3
+      $colo:
+        max_parallel: 3
 
 This will allow Pogo to process up to 3 hosts of both the C<north_america> and
 C<south_east_asia> colos in parallel.
@@ -467,8 +467,8 @@ Let's take a look at the following configuration and how pogo will handle it:
       - $colo.south_east_asia
 
     constraint:
-      max_parallel:
-        $colo: 2
+      $colo:
+        max_parallel: 2
 
 Now if you ask Pogo to process all hosts carrying the C<colo> tag (or
 specify C<host[1-6]>), the following will happen ("|" indicates that the
@@ -513,9 +513,9 @@ For example, if a constraint applies to all hosts tagged C<frontend>
 (regardless of value) in colo C<north_america>, use
 
     constraint:
-      max_parallel:
-        frontend:
-           $colo.north_america: 2
+        $frontend:
+           $colo.north_america:
+               max_parallel: 2
 
 =head2 External Tag Resolvers
 
@@ -530,7 +530,8 @@ try to load a Plugin with the tag's name.
 For example, with
 
     constraint:
-      $_MyRules[my_db_server]: 2
+      $_MyRules[my_db_server]: 
+          max_parallel: 2
 
 and no tag C<_MyRules> defined anywhere in the configuration file, the
 scheduler will look for C<MyRules.pm> in
@@ -693,6 +694,31 @@ next slot's hosts are all put into the run queue.
 If there are no more slots in the thread, the thread gets deleted. 
 
 If there are no more threads in the job, the job is finished.
+
+=head2 Constraints
+
+In addition to sequencing requirements, the classic Pogo scheduler
+supports C<max_parallel> constraints. Any tag combination given to a host
+can be assigned a numerical or percentage value, indicating how many
+hosts with these tags can be run in parallel.
+
+For example, to allow only two hosts to be processed in parallel in the
+C<north_america> colo, use
+
+    tag:
+      colo:
+        north_america:
+          - host1
+          - host2
+          - host3
+
+    constraint:
+      $colo.north_america:
+        max_parallel: 2
+
+Note that while the above configuration does not use a C<sequence>
+definition for simplicity, combining C<sequence> and C<constraint> 
+settings is well supported, even for the same tag.
 
 =head1 LICENSE
 
