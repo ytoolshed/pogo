@@ -26,12 +26,6 @@ tag:
       - host4
       - host5
       - host6
-      - host7
-      - host8
-      - host9
-      - host10
-      - host11
-      - host12
 
 constraint:
     $colo.north_america: 
