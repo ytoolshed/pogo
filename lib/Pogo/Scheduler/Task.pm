@@ -21,6 +21,7 @@ sub new {
     my $self = {
         thread_id => "no_thread_defined",
         slot_id   => "no_slot_defined",
+        env_slots => {},
         %options,
     };
 
