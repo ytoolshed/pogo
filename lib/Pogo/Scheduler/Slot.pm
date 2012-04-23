@@ -20,11 +20,12 @@ sub new {
     my($class, %options) = @_;
 
     my $self = {
-        tasks             => [],
-        task_by_id        => {},
-        next_task_idx     => 0,
-        active_task_by_id => {},
-        constraint_cfg    => undef,
+        tasks              => [],
+        task_by_id         => {},
+        next_task_idx      => 0,
+        active_task_by_id  => {},
+        constraint_cfg     => undef,
+        slot_done_notified => 0,
         %options,
     };
 
@@ -93,7 +94,7 @@ sub start {
             if( $self->task_next() ) {
                   # we scheduled a task, ask the constraints engine to 
                   # push the next one if we're not at max yet
-                $c->kick();
+                $self->{ constraint }->kick();
             }
         } );
 
@@ -104,6 +105,7 @@ sub start {
             $self->{ constraint }->kick();
         });
 
+          # initial kick of constraint engine
         $self->{ constraint }->kick();
     } else {
         DEBUG "Slot '$self' is unconstrained";
@@ -159,7 +161,11 @@ sub tasks_active {
 ###########################################
     my( $self ) = @_;
 
-    return scalar keys %{ $self->{ active_task_by_id } };
+    my $nof_active_tasks = scalar keys %{ $self->{ active_task_by_id } };
+
+    DEBUG "$nof_active_tasks active tasks in $self";
+
+    return $nof_active_tasks;
 }
 
 ###########################################
@@ -188,7 +194,11 @@ sub slot_done_notify {
 ###########################################
     my( $self ) = @_;
 
-    if( !$self->{ slot_done_notified }++ ) {
+    DEBUG "slot_done_notify: $self->{ slot_done_notified }";
+
+    if( !$self->{ slot_done_notified } ) {
+        DEBUG "Sending slot_done event for $self";
+        $self->{ slot_done_notified }++;
         $self->event( "slot_done", $self );
     }
 }
@@ -220,8 +230,26 @@ Pogo::Scheduler::Slot - Pogo Scheduler Slot Abstraction
 =head1 SYNOPSIS
 
     use Pogo::Scheduler::Slot;
+    use Pogo::Scheduler::Task;
+    
+    my $slot = Pogo::Scheduler::Slot->new(
+        constraint_cfg => {
+            max_parallel => 2
+        }
+    );
+    
+    $slot->task_add( Pogo::Scheduler::Task->new() );
+    $slot->task_add( Pogo::Scheduler::Task->new() );
+    
+    $slot->reg_cb( "task_run", sub {
+        my( $c, $task ) = @_;
+    
+          # report back that task is done, which will cause the slot
+          # to schedule the next task if there are any left due to constraints
+        $slot->event( "task_mark_done", $task );
+    } );
 
-    my $task = Pogo::Scheduler::Slot->new();
+    $slot->start();
 
 =head1 DESCRIPTION
 
@@ -232,6 +260,14 @@ as many items in parallel as it wishes.
 =head2 METHODS
 
 =over 4
+
+=item C<task_add()>
+
+Add a Pogo::Scheduler::Task object to the slot.
+
+=item C<start()>
+
+Schedule as many tasks as possible, given constraints.
 
 =item C<task_next()>
 
@@ -244,7 +280,7 @@ non-scheduled tasks in the queue.
 
 =over 4
 
-=item C<task_run>
+=item C<task_run [ $task ]>
 
 Emitted when a task is scheduled to run.
 
@@ -252,10 +288,11 @@ Emitted when a task is scheduled to run.
 
 Emitted when all tasks in the slot are marked done.
 
-=item C<task_mark_done>
+=item C<task_mark_done [ $task ]>
 
 Consumed. Sent by the component user when the task, previously emitted
-by C<task_run> is complete. Marks the task as done internally.
+by C<task_run>, is complete. Marks the task as done internally and kicks
+the constraints engine to schedule more tasks if possible.
 
 =back
 
