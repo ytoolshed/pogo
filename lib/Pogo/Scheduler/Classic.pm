@@ -123,6 +123,8 @@ sub constraint_setup {
 
             for my $host ( keys %{ $self->{ host_slots } } ) {
                 for my $slot_name ( @{ $self->{ host_slots }->{ $host } } ) {
+                    next if !exists 
+                      $self->{ constraints_by_slot }->{ $slot_name };
                     push @{ $self->{ constraints_by_host }->{ $host } }, 
                          $self->{ constraints_by_slot }->{ $slot_name };
                 }
