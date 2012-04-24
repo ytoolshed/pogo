@@ -4,7 +4,7 @@ use strict;
 use Test::More;
 use Log::Log4perl qw(:easy);
 
-my $nof_tests = 2;
+my $nof_tests = 3;
 
 plan tests => $nof_tests;
 
@@ -32,9 +32,9 @@ constraint:
        max_parallel: 1
 EOT
 
-print $scheduler->as_ascii(), "\n";
-use Data::Dumper;
-print Dumper( $scheduler );
+#print $scheduler->as_ascii(), "\n";
+#use Data::Dumper;
+#print Dumper( $scheduler );
  
 my $max = 1;
 my $hosts_scheduled = 0;
@@ -42,7 +42,9 @@ my $hosts_scheduled = 0;
 $scheduler->reg_cb( "task_run", sub {
     my( $c, $task ) = @_;
 
-    my $host = $task->{ host };
+    DEBUG "Received task_run for task $task";
+
+    my $host = $task->host();
 
     $hosts_scheduled++;
 

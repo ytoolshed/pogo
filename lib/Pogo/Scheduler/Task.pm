@@ -52,6 +52,8 @@ sub run {
         for my $constraint ( @{ $self->{ constraints } } ) {
             if( $constraint->blocked() ) {
                 DEBUG "Can't run host $self->{ host } because of $constraint";
+                DEBUG "Slot $self->{ slot_id } sends out waiting event";
+                $self->{ slot_id }->event( "waiting" );
                 return 0;
             }
         }
@@ -60,10 +62,9 @@ sub run {
         for my $constraint ( @{ $self->{ constraints } } ) {
             $constraint->kick();
         }
-
-    } else {
-        $self->{ slot_id }->event("task_run", $self );
-    }
+    } 
+    
+    $self->{ slot_id }->event("task_run", $self );
 }
 
 1;

@@ -17,14 +17,18 @@ BEGIN {
 use Pogo::Scheduler::Slot;
 use Pogo::Scheduler::Task;
 
-my $slot = Pogo::Scheduler::Slot->new(
-    constraint_cfg => {
-        max_parallel => 2
-    }
+my $slot = Pogo::Scheduler::Slot->new();
+
+my $constraint = Pogo::Scheduler::Constraint->new(
+    max_parallel => 1
 );
 
-$slot->task_add( Pogo::Scheduler::Task->new() );
-$slot->task_add( Pogo::Scheduler::Task->new() );
+$slot->task_add( Pogo::Scheduler::Task->new(
+    constraints => [ $constraint ],
+) );
+$slot->task_add( Pogo::Scheduler::Task->new(
+    constraints => [ $constraint ],
+) );
 
 $slot->reg_cb( "task_run", sub {
     my( $c, $task ) = @_;

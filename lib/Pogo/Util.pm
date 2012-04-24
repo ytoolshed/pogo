@@ -57,8 +57,8 @@ sub struct_traverse {
 ############################################################
     my ( $root, $callbacks ) = @_;
 
-    use Data::Dumper;
-    DEBUG "struct_traverse: ", Dumper( \@_ );
+    # use Data::Dumper;
+    # DEBUG "struct_traverse: ", Dumper( \@_ );
 
       # Transforms a nested hash/array data structure depth-first and 
       # executes defined callbacks.
@@ -79,7 +79,7 @@ sub struct_traverse {
     push @stack, [ $root, [] ];
 
     while( @stack ) {
-        DEBUG "stack is [", Dumper( \@stack ), "]";
+        # DEBUG "stack is [", Dumper( \@stack ), "]";
 
         my $item = pop @stack;
 

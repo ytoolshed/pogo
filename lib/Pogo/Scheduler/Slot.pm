@@ -80,7 +80,7 @@ sub start {
             max_parallel => $max_parallel,
         );
 
-        $self->{ constraint }->reg_cb( "waiting", sub {
+        $self->reg_cb( "waiting", sub {
             my( $c ) = @_;
 
               # Let consumers know that we're blocked on constraints
@@ -151,7 +151,7 @@ sub task_next {
     $self->{ next_task_idx }++;
 
     DEBUG "Slot $self scheduled task $task";
-    $self->event( "task_run", $task );
+    $task->run( );
 
     return $task;
 }

@@ -225,6 +225,8 @@ sub thread_setup {
     );
 
     my $thread = Pogo::Scheduler::Thread->new();
+    $self->event_forward( { forward_from => $thread }, qw( waiting ) );
+
     $thread->slot_add( $slot );
 
     push @{ $self->{ threads } }, $thread;
