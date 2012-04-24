@@ -94,6 +94,7 @@ sub config_load {
         }
     } );
 
+    $self->constraint_setup();
     $self->slot_setup();
     $self->thread_setup();
 
@@ -112,7 +113,7 @@ sub constraint_setup {
             my $field     = pop @$path;
             my $slot_name = pop @$path;
 
-            $self->{ constraints_by_name } = 
+            $self->{ constraints_by_slot }->{ $slot_name } = 
                 Pogo::Scheduler::Constraint->new( $field => $value );
 
         }
@@ -259,23 +260,11 @@ sub schedule {
     
                 if( exists $host_lookup{ $host } ) {
 
-                    my @constraints = ();
-                   
-                    if( exists $self->{ host_slots }->{ $host } ) {
-
-                        for my $constraint ( 
-                          @{ $self->{ host_slots }->{ $host } ) {
-                            push @constraints, 
-                                Pogo::Scheduler::Constraint->new();
-                        }
-                    }
-
                     my $task = Pogo::Scheduler::Task->new( 
-                        id         => $host,
-                        slot_id    => $slot,
-                        thread_id  => $thread,
-                        host       => $host,
-                        constraint => $constraints,
+                        id          => $host,
+                        slot_id     => $slot,
+                        thread_id   => $thread,
+                        host        => $host,
                     );
                     $slot->task_add( $task );
                 }
