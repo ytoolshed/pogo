@@ -49,6 +49,9 @@ User to run the job as on the target.
 State of job ("gathering", "running", "deadlocked", "finished", 
 "unreachable", "halted", "offline", "ready", "waiting").
 
+A job is considered "active" if it's in state "ready", "running", 
+"waiting", or "gathering".
+
 =item C<posthook>
 
 Flag set to "1" if Pogo needs to run posthook scripts on the target after
