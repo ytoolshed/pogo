@@ -33,6 +33,8 @@ constraint:
 EOT
 
 print $scheduler->as_ascii(), "\n";
+use Data::Dumper;
+print Dumper( $scheduler );
  
 my $max = 1;
 my $hosts_scheduled = 0;

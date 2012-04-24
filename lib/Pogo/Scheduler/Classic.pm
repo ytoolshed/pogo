@@ -89,6 +89,8 @@ sub config_load {
 
             my $host = $node;
             my $slot = join '.', @$path;
+            $slot =~ s/^\$//;
+
             push @{ $self->{ slot_hosts }->{ $slot } }, $host;
             push @{ $self->{ host_slots }->{ $host } }, "$slot";
         }
@@ -112,10 +114,19 @@ sub constraint_setup {
 
             my $field     = pop @$path;
             my $slot_name = pop @$path;
+            $slot_name =~ s/^\$//;
 
             $self->{ constraints_by_slot }->{ $slot_name } = 
                 Pogo::Scheduler::Constraint->new( $field => $value );
 
+            $DB::single = 1;
+
+            for my $host ( keys %{ $self->{ host_slots } } ) {
+                for my $slot_name ( @{ $self->{ host_slots }->{ $host } } ) {
+                    push @{ $self->{ constraints_by_host }->{ $host } }, 
+                         $self->{ constraints_by_slot }->{ $slot_name };
+                }
+            }
         }
     } );
 }
@@ -241,6 +252,16 @@ sub schedule {
         } else {
             ERROR "Received task with unknown thread id: $task";
         }
+
+        my $host = $task->host();
+
+        if( exists $self->{ constraints_by_host }->{ $host } ) {
+            DEBUG "Forwarding task_mark_done to host $host constraint";
+            for my $constraint ( 
+                @{ $self->{ constraints_by_host }->{ $host } } ) {
+                $constraint->event( "task_mark_done" );
+            }
+        }
     } );
 
     for my $thread ( @{ $self->{ threads } } ) {
@@ -260,12 +281,22 @@ sub schedule {
     
                 if( exists $host_lookup{ $host } ) {
 
+                    my @constraints = ();
+
+                    if( exists $self->{ constraints_by_host }->{ $host } ) {
+                        @constraints = 
+                          ( constraints => 
+                              $self->{ constraints_by_host }->{ $host } );
+                    }
+
                     my $task = Pogo::Scheduler::Task->new( 
                         id          => $host,
                         slot_id     => $slot,
                         thread_id   => $thread,
                         host        => $host,
+                        @constraints
                     );
+
                     $slot->task_add( $task );
                 }
             }
