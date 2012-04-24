@@ -30,26 +30,28 @@ tag:
 constraint:
     $colo.north_america: 
        max_parallel: 1
-
-sequence:
-    - $colo.north_america
 EOT
- 
-#print $scheduler->as_ascii();
 
-my $max_hosts = 1;
-my $nof_hosts = 0;
+#print $scheduler->as_ascii(), "\n";
+#use Data::Dumper;
+#print Dumper( $scheduler );
+ 
+my $max = 1;
+my $hosts_scheduled = 0;
 
 $scheduler->reg_cb( "task_run", sub {
     my( $c, $task ) = @_;
 
-    $nof_hosts++;
+    DEBUG "Received task_run for task $task";
 
-    if( $nof_hosts > $max_hosts ) {
-        die "Whoa! Violated max_parallel:1 setting";
+    my $host = $task->host();
+
+    $hosts_scheduled++;
+
+    if( $hosts_scheduled > $max ) {
+        die "Constraint violated, $hosts_scheduled hosts scheduled but ",
+            "only $max allowed.";
     }
-
-    my $host = $task->{ host };
 
     ok 1, "got host $task";
 } );

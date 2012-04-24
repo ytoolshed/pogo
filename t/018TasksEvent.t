@@ -30,7 +30,9 @@ $slot->reg_cb( "slot_done", sub {
 } );
 
 for( 1..4 ) {
-    my $task = Pogo::Scheduler::Task->new();
+    my $task = Pogo::Scheduler::Task->new(
+        slot_id => $slot,
+    );
     push @tasks, $task;
     $slot->task_add( $task );
 }

@@ -57,6 +57,9 @@ sub struct_traverse {
 ############################################################
     my ( $root, $callbacks ) = @_;
 
+    # use Data::Dumper;
+    # DEBUG "struct_traverse: ", Dumper( \@_ );
+
       # Transforms a nested hash/array data structure depth-first and 
       # executes defined callbacks.
 
@@ -76,13 +79,19 @@ sub struct_traverse {
     push @stack, [ $root, [] ];
 
     while( @stack ) {
+        # DEBUG "stack is [", Dumper( \@stack ), "]";
+
         my $item = pop @stack;
 
         my($node, $path) = @$item;
 
+        last if !defined $node;
+
         if(ref($node) eq "HASH") {
             for my $part (keys %$node) {
-                push @stack, [ $node->{$part}, [@$path, $part] ];
+                my $path = [ @$path, $part ];
+                push @$path, $node->{$part} if !ref( $node->{$part} );
+                push @stack, [ $node->{$part}, $path ];
             }
         } elsif( ref($node) eq "ARRAY") {
             if( exists $callbacks->{ array } ) {

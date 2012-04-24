@@ -14,8 +14,6 @@ use base qw(Pogo::Object::Event);
 my $ZK_CLASS;
 
 BEGIN {
-    $DB::single = 1;
-
     ($ZK_CLASS) = __PACKAGE__->plugins();
     eval "require $ZK_CLASS";
     if( $@ ) {

@@ -80,6 +80,7 @@ sub kick {
 
     $slot->reg_cb( "waiting", sub {
           # let thread subscribers know about blocked slot
+        DEBUG "Thread $self noticed waiting event by slot $slot";
         $self->event( "waiting", $self, $slot );
     } );
 

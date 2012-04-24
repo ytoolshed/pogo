@@ -44,7 +44,7 @@ sub kick {
 ###########################################
     my( $self ) = @_;
 
-    if( $self->{ tasks_active } < $self->{ max_parallel } ) {
+    if( !$self->blocked() ) {
         $self->{ tasks_active }++;
         DEBUG "Emitting task_next";
         $self->event( "task_next" );
@@ -62,6 +62,14 @@ sub task_mark_done {
     my( $self ) = @_;
 
     $self->{ tasks_active }--;
+}
+
+###########################################
+sub blocked {
+###########################################
+    my( $self ) = @_;
+
+    return $self->{ tasks_active } >= $self->{ max_parallel };
 }
 
 ###########################################
@@ -94,7 +102,8 @@ Pogo::Scheduler::Constraint - Pogo Scheduler Constraint Handler
            $constraint->event( "task_mark_done" );
     } );
 
-    $constraint->start();
+      # Kick off the first task
+    $constraint->kick();
 
 =head1 DESCRIPTION
 

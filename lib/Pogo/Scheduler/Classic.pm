@@ -63,7 +63,7 @@ sub config_load {
         $self->{ config }->{ sequence } = {};
     }
 
-    $self->{ slots } = [];
+    $self->{ sequence_slots } = [];
 
       # The full path to every leaf node in the 'sequence' definition, 
       # separated by dots, constitutes a slot.
@@ -76,7 +76,7 @@ sub config_load {
             my $slot = Pogo::Scheduler::Slot->new(
                 id         => $slotname,
             );
-            push @{ $self->{ slots } }, $slot;
+            push @{ $self->{ sequence_slots } }, $slot;
         } 
     } );
 
@@ -89,14 +89,48 @@ sub config_load {
 
             my $host = $node;
             my $slot = join '.', @$path;
-            push @{ $self->{ host_slots }->{ $slot } }, $host;
+            $slot =~ s/^\$//;
+
+            push @{ $self->{ slot_hosts }->{ $slot } }, $host;
+            push @{ $self->{ host_slots }->{ $host } }, "$slot";
         }
     } );
 
+    $self->constraint_setup();
     $self->slot_setup();
     $self->thread_setup();
 
     return 1;
+}
+
+###########################################
+sub constraint_setup {
+###########################################
+    my( $self ) = @_;
+
+    Pogo::Util::struct_traverse( $self->{ config }->{ constraint }, {
+        leaf => sub {
+            my( $value, $path ) = @_; 
+
+            my $field     = pop @$path;
+            my $slot_name = pop @$path;
+            $slot_name =~ s/^\$//;
+
+            $self->{ constraints_by_slot }->{ $slot_name } = 
+                Pogo::Scheduler::Constraint->new( $field => $value );
+
+            $DB::single = 1;
+
+            for my $host ( keys %{ $self->{ host_slots } } ) {
+                for my $slot_name ( @{ $self->{ host_slots }->{ $host } } ) {
+                    next if !exists 
+                      $self->{ constraints_by_slot }->{ $slot_name };
+                    push @{ $self->{ constraints_by_host }->{ $host } }, 
+                         $self->{ constraints_by_slot }->{ $slot_name };
+                }
+            }
+        }
+    } );
 }
 
 ###########################################
@@ -106,7 +140,7 @@ sub slot_setup {
 
     my $all_hosts = $self->config_hosts_hash();
 
-    for my $slot ( @{ $self->{ slots } } ) {
+    for my $slot ( @{ $self->{ sequence_slots } } ) {
         my @parts = ();
 
         my $slot_id = $slot->id();
@@ -118,17 +152,18 @@ sub slot_setup {
             push @parts, $part;
         }
 
-        my $found = $self->{ host_slots }->{ shift @parts };
+        my $found = $self->{ slot_hosts }->{ shift @parts };
         my @hosts = ();
         @hosts = @$found if defined $found;
 
         for my $part ( @parts ) {
             @hosts = array_intersection( \@hosts, 
-                       $self->{ host_slots }->{ $part } );
+                       $self->{ slot_hosts }->{ $part } );
         }
 
         for my $host ( @hosts ) {
             delete $all_hosts->{ $host };
+            push @{ $self->{ slots_by_host }->{ $host } }, $slot;
         }
 
         $self->{ hosts_by_slot }->{ $slot->id() } = \@hosts;
@@ -171,8 +206,6 @@ sub thread_setup {
                     $self->{ config }->{ constraint }->{ $slotname };
               }
 
-              $DB::single = 1;
-
               my $slot = Pogo::Scheduler::Slot->new(
                   id             => $slotname,
                   (defined $constraint_cfg ? 
@@ -192,6 +225,8 @@ sub thread_setup {
     );
 
     my $thread = Pogo::Scheduler::Thread->new();
+    $self->event_forward( { forward_from => $thread }, qw( waiting ) );
+
     $thread->slot_add( $slot );
 
     push @{ $self->{ threads } }, $thread;
@@ -221,6 +256,16 @@ sub schedule {
         } else {
             ERROR "Received task with unknown thread id: $task";
         }
+
+        my $host = $task->host();
+
+        if( exists $self->{ constraints_by_host }->{ $host } ) {
+            DEBUG "Forwarding task_mark_done to host $host constraint";
+            for my $constraint ( 
+                @{ $self->{ constraints_by_host }->{ $host } } ) {
+                $constraint->event( "task_mark_done" );
+            }
+        }
     } );
 
     for my $thread ( @{ $self->{ threads } } ) {
@@ -234,17 +279,28 @@ sub schedule {
             $self->event( "task_run", $task );
         } );
 
-        for my $slot ( @{ $thread->{ slots } } ) {
+        for my $slot ( @{ $thread->slots() } ) {
             for my $host ( 
                 @{ $self->{ hosts_by_slot }->{ $slot->id() } } ) {
     
                 if( exists $host_lookup{ $host } ) {
+
+                    my @constraints = ();
+
+                    if( exists $self->{ constraints_by_host }->{ $host } ) {
+                        @constraints = 
+                          ( constraints => 
+                              $self->{ constraints_by_host }->{ $host } );
+                    }
+
                     my $task = Pogo::Scheduler::Task->new( 
-                        id        => $host,
-                        slot_id   => $slot,
-                        thread_id => $thread,
-                        host      => $host,
+                        id          => $host,
+                        slot_id     => $slot,
+                        thread_id   => $thread,
+                        host        => $host,
+                        @constraints
                     );
+
                     $slot->task_add( $task );
                 }
             }
@@ -319,11 +375,32 @@ sub as_ascii {
         $maxcols = scalar @$slots if scalar @$slots > $maxcols;
     }
 
-    $t->setCols( "Thread", map { "slot-$_" } ( 1 .. $maxcols ) );
+    my @colnames = ();
+
+    for my $colnum ( 1 .. $maxcols ) {
+        push @colnames, "slot-$colnum";
+    }
+
+    $t->setCols( "Thread", @colnames );
+
+    for my $colname ( @colnames ) {
+        $t->setColWidth( $colname, 50 );
+    }
 
     for my $thread ( @{ $self->{ threads } } ) {
         my $slots = $thread->slots();
-        $t->addRow( "$thread", map { "$_" } @$slots );
+
+        my @slot_row = ();
+        my @host_row = ();
+
+        for my $slot ( @$slots ) {
+            push @slot_row, "$slot";
+            push @host_row, 
+              join(", ", @{ $self->{ hosts_by_slot }->{ "$slot" } } );
+        }
+
+        $t->addRow( "$thread", @slot_row );
+        $t->addRow( "",        @host_row );
     }
 
     return "$t";
@@ -367,7 +444,7 @@ C<north_america>.
 All hosts carrying a specific tag value can be referred to later on with
 the following notation:
 
-    $tagname.colo.tag_value
+    $tag_name.tag_value
 
 For example, to refer to all hosts carrying the tag C<colo> with a value
 C<north_america>, use C<$colo.north_america>.
@@ -375,7 +452,7 @@ C<north_america>, use C<$colo.north_america>.
 To refer to all hosts carrying a specific tag, regardless of its value,
 use the
 
-    $tagname
+    $tag_name
 
 notation. For example, to refer to all hosts carrying a C<colo> tag, 
 regardless of its value, use C<$colo>.
@@ -406,9 +483,10 @@ To limit the number of hosts handled in parallel, constraints can be put in
 place. For example, 
 
     constraint:
-      max_parallel:
-        $colo.north_america: 3
-        $colo.south_east_asia: 15%
+      $colo.north_america:
+        max_parallel: 3
+      $colo.south_east_asia:
+        max_parallel: 15%
 
 limits the number of hosts processed in parallel in the C<north_america> 
 colocation to 3, and in the C<south_east_asia> colo to 15%. To apply a 
@@ -416,8 +494,8 @@ constraint evenly on all hosts carrying a specific tag, grouped by tag value,
 use
 
     constraint:
-      max_parallel:
-        $colo: 3
+      $colo:
+        max_parallel: 3
 
 This will allow Pogo to process up to 3 hosts of both the C<north_america> and
 C<south_east_asia> colos in parallel.
@@ -444,8 +522,8 @@ Let's take a look at the following configuration and how pogo will handle it:
       - $colo.south_east_asia
 
     constraint:
-      max_parallel:
-        $colo: 2
+      $colo:
+        max_parallel: 2
 
 Now if you ask Pogo to process all hosts carrying the C<colo> tag (or
 specify C<host[1-6]>), the following will happen ("|" indicates that the
@@ -490,9 +568,9 @@ For example, if a constraint applies to all hosts tagged C<frontend>
 (regardless of value) in colo C<north_america>, use
 
     constraint:
-      max_parallel:
-        frontend:
-           $colo.north_america: 2
+        $frontend:
+           $colo.north_america:
+               max_parallel: 2
 
 =head2 External Tag Resolvers
 
@@ -507,7 +585,8 @@ try to load a Plugin with the tag's name.
 For example, with
 
     constraint:
-      $_MyRules[my_db_server]: 2
+      $_MyRules[my_db_server]: 
+          max_parallel: 2
 
 and no tag C<_MyRules> defined anywhere in the configuration file, the
 scheduler will look for C<MyRules.pm> in
@@ -670,6 +749,31 @@ next slot's hosts are all put into the run queue.
 If there are no more slots in the thread, the thread gets deleted. 
 
 If there are no more threads in the job, the job is finished.
+
+=head2 Constraints
+
+In addition to sequencing requirements, the classic Pogo scheduler
+supports C<max_parallel> constraints. Any tag combination given to a host
+can be assigned a numerical or percentage value, indicating how many
+hosts with these tags can be run in parallel.
+
+For example, to allow only two hosts to be processed in parallel in the
+C<north_america> colo, use
+
+    tag:
+      colo:
+        north_america:
+          - host1
+          - host2
+          - host3
+
+    constraint:
+      $colo.north_america:
+        max_parallel: 2
+
+Note that while the above configuration does not use a C<sequence>
+definition for simplicity, combining C<sequence> and C<constraint> 
+settings is well supported, even for the same tag.
 
 =head1 LICENSE
 
