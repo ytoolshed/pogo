@@ -101,6 +101,25 @@ sub config_load {
 }
 
 ###########################################
+sub constraint_setup {
+###########################################
+    my( $self ) = @_;
+
+    Pogo::Util::struct_traverse( $self->{ config }->{ constraint }, {
+        leaf => sub {
+            my( $value, $path ) = @_; 
+
+            my $field     = pop @$path;
+            my $slot_name = pop @$path;
+
+            $self->{ constraints_by_name } = 
+                Pogo::Scheduler::Constraint->new( $field => $value );
+
+        }
+    } );
+}
+
+###########################################
 sub slot_setup {
 ###########################################
     my( $self ) = @_;
@@ -130,6 +149,7 @@ sub slot_setup {
 
         for my $host ( @hosts ) {
             delete $all_hosts->{ $host };
+            push @{ $self->{ slots_by_host }->{ $host } }, $slot;
         }
 
         $self->{ hosts_by_slot }->{ $slot->id() } = \@hosts;
@@ -201,8 +221,6 @@ sub schedule {
 ###########################################
     my( $self, $hosts ) = @_;
 
-    $DB::single = 1;
-
     $hosts = [] if !defined $hosts;
 
     DEBUG "Scheduling hosts ",
@@ -240,11 +258,24 @@ sub schedule {
                 @{ $self->{ hosts_by_slot }->{ $slot->id() } } ) {
     
                 if( exists $host_lookup{ $host } ) {
+
+                    my @constraints = ();
+                   
+                    if( exists $self->{ host_slots }->{ $host } ) {
+
+                        for my $constraint ( 
+                          @{ $self->{ host_slots }->{ $host } ) {
+                            push @constraints, 
+                                Pogo::Scheduler::Constraint->new();
+                        }
+                    }
+
                     my $task = Pogo::Scheduler::Task->new( 
-                        id        => $host,
-                        slot_id   => $slot,
-                        thread_id => $thread,
-                        host      => $host,
+                        id         => $host,
+                        slot_id    => $slot,
+                        thread_id  => $thread,
+                        host       => $host,
+                        constraint => $constraints,
                     );
                     $slot->task_add( $task );
                 }
@@ -389,7 +420,7 @@ C<north_america>.
 All hosts carrying a specific tag value can be referred to later on with
 the following notation:
 
-    $tagname.colo.tag_value
+    $tag_name.tag_value
 
 For example, to refer to all hosts carrying the tag C<colo> with a value
 C<north_america>, use C<$colo.north_america>.
@@ -397,7 +428,7 @@ C<north_america>, use C<$colo.north_america>.
 To refer to all hosts carrying a specific tag, regardless of its value,
 use the
 
-    $tagname
+    $tag_name
 
 notation. For example, to refer to all hosts carrying a C<colo> tag, 
 regardless of its value, use C<$colo>.
