@@ -25,9 +25,13 @@ my $constraint = Pogo::Scheduler::Constraint->new(
 
 $slot->task_add( Pogo::Scheduler::Task->new(
     constraints => [ $constraint ],
+    slot_id     => $slot,
+    host        => "foo",
 ) );
 $slot->task_add( Pogo::Scheduler::Task->new(
     constraints => [ $constraint ],
+    slot_id     => $slot,
+    host        => "bar",
 ) );
 
 $slot->reg_cb( "task_run", sub {

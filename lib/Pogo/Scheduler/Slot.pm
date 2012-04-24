@@ -70,50 +70,9 @@ sub start {
         $self->task_mark_done( $task );
     });
 
-    if( $self->is_constrained() ) {
-
-        my $max_parallel = $self->{ constraint_cfg }->{ max_parallel };
-
-        DEBUG "Slot '$self' is constrained (max_parallel=$max_parallel)";
-
-        $self->{ constraint } = Pogo::Scheduler::Constraint->new(
-            max_parallel => $max_parallel,
-        );
-
-        $self->reg_cb( "waiting", sub {
-            my( $c ) = @_;
-
-              # Let consumers know that we're blocked on constraints
-            $self->event( "waiting" );
-        });
-
-        $self->{ constraint }->reg_cb( "task_next", sub {
-            my( $c ) = @_;
-
-              # schedule next slot task
-            if( $self->task_next() ) {
-                  # we scheduled a task, ask the constraints engine to 
-                  # push the next one if we're not at max yet
-                $self->{ constraint }->kick();
-            }
-        } );
-
-        $self->reg_cb( "task_mark_done", sub {
-            my( $c, $task ) = @_;
-    
-            $self->{ constraint }->task_mark_done();
-            $self->{ constraint }->kick();
-        });
-
-          # initial kick of constraint engine
-        $self->{ constraint }->kick();
-    } else {
-        DEBUG "Slot '$self' is unconstrained";
-
-          # unconstrained, schedule all tasks
-        while( my $task = $self->task_next() ) {
-            # nothing to do here, task_next does everything
-        }
+      # Schedule all tasks. Tasks control constraints themselves.
+    while( my $task = $self->task_next() ) {
+        # nothing to do here, task_next does everything
     }
 }
 
@@ -175,6 +134,7 @@ sub task_mark_done {
 
     if( exists $self->{ active_task_by_id }->{ $task->id() } ) {
         DEBUG "Marking task ", $task->id(), " done";
+        $self->{ active_task_by_id }->{ $task->id() }->mark_done();
         delete $self->{ active_task_by_id }->{ $task->id() };
 
         if( $self->{ next_task_idx } > $#{ $self->{ tasks } } and

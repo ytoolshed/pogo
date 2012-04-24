@@ -4,7 +4,7 @@ use strict;
 use Test::More;
 use Log::Log4perl qw(:easy);
 
-my $nof_tests = 2;
+my $nof_tests = 3;
 
 plan tests => $nof_tests;
 
@@ -35,8 +35,19 @@ sequence:
     - $colo.north_america
 EOT
  
+#print $scheduler->as_ascii();
+
+my $max_hosts = 1;
+my $nof_hosts = 0;
+
 $scheduler->reg_cb( "task_run", sub {
     my( $c, $task ) = @_;
+
+    $nof_hosts++;
+
+    if( $nof_hosts > $max_hosts ) {
+        die "Whoa! Violated max_parallel:1 setting";
+    }
 
     my $host = $task->{ host };
 

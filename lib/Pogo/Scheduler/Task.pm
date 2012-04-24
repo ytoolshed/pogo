@@ -44,6 +44,18 @@ sub as_string {
 }
 
 ###########################################
+sub mark_done {
+###########################################
+    my( $self ) = @_;
+
+    if( exists $self->{ constraints } ) {
+        for my $constraint ( @{ $self->{ constraints } } ) {
+            $constraint->task_mark_done();
+        }
+    }
+}
+
+###########################################
 sub run {
 ###########################################
     my( $self ) = @_;
