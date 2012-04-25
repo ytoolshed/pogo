@@ -249,9 +249,9 @@ sub schedule {
 
         DEBUG "Scheduler received task_mark_done for task $task";
 
-        DEBUG "Forwarding 'task_mark_done' to thread ", $task->thread_id();
-        if( exists $self->{ thread_by_id }->{ $task->thread_id() } ) {
-            $self->{ thread_by_id }->{ $task->thread_id() }->event(
+        DEBUG "Forwarding 'task_mark_done' to thread ", $task->thread();
+        if( exists $self->{ thread_by_id }->{ $task->thread() } ) {
+            $self->{ thread_by_id }->{ $task->thread() }->event(
                 "task_mark_done", $task );
         } else {
             ERROR "Received task with unknown thread id: $task";
@@ -296,7 +296,7 @@ sub schedule {
                     my $task = Pogo::Scheduler::Task->new( 
                         id          => $host,
                         slot        => $slot,
-                        thread_id   => $thread,
+                        thread      => $thread,
                         host        => $host,
                         @constraints
                     );
