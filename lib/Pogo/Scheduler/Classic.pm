@@ -295,7 +295,7 @@ sub schedule {
 
                     my $task = Pogo::Scheduler::Task->new( 
                         id          => $host,
-                        slot_id     => $slot,
+                        slot        => $slot,
                         thread_id   => $thread,
                         host        => $host,
                         @constraints

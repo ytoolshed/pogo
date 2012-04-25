@@ -9,7 +9,7 @@ use AnyEvent::Strict;
 use base qw(Pogo::Object::Event);
 
 use Pogo::Util qw( make_accessor id_gen );
-__PACKAGE__->make_accessor( $_ ) for qw( id slot_id thread_id host);
+__PACKAGE__->make_accessor( $_ ) for qw( id slot thread_id host);
 
 use overload ( 'fallback' => 1, '""' => 'as_string' );
 
@@ -20,7 +20,7 @@ sub new {
 
     my $self = {
         thread_id => "no_thread_defined",
-        slot_id   => "no_slot_defined",
+        slot      => "no_slot_defined",
         env_slots => {},
         host      => undef,
         %options,
@@ -40,7 +40,7 @@ sub as_string {
 ###########################################
     my( $self ) = @_;
 
-    return "$self->{ id }:$self->{ slot_id }:$self->{ thread_id }";
+    return "$self->{ id }:$self->{ slot }:$self->{ thread_id }";
 }
 
 ###########################################
@@ -64,8 +64,8 @@ sub run {
         for my $constraint ( @{ $self->{ constraints } } ) {
             if( $constraint->blocked() ) {
                 DEBUG "Can't run host $self->{ host } because of $constraint";
-                DEBUG "Slot $self->{ slot_id } sends out waiting event";
-                $self->{ slot_id }->event( "waiting" );
+                DEBUG "Slot $self->{ slot } sends out waiting event";
+                $self->{ slot }->event( "waiting" );
                 return 0;
             }
         }
@@ -76,7 +76,7 @@ sub run {
         }
     } 
     
-    $self->{ slot_id }->event("task_run", $self );
+    $self->{ slot }->event("task_run", $self );
 }
 
 1;

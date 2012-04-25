@@ -40,7 +40,7 @@ $thread->reg_cb( "thread_done", sub {
 
 for( 1..4 ) {
     my $task = Pogo::Scheduler::Task->new(
-        slot_id => $slot,
+        slot => $slot,
     );
     push @tasks, $task;
     DEBUG "Adding task $task";

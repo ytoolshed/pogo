@@ -25,12 +25,12 @@ my $constraint = Pogo::Scheduler::Constraint->new(
 
 $slot->task_add( Pogo::Scheduler::Task->new(
     constraints => [ $constraint ],
-    slot_id     => $slot,
+    slot        => $slot,
     host        => "foo",
 ) );
 $slot->task_add( Pogo::Scheduler::Task->new(
     constraints => [ $constraint ],
-    slot_id     => $slot,
+    slot        => $slot,
     host        => "bar",
 ) );
 
