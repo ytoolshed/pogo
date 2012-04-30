@@ -63,12 +63,12 @@ my $api = Plack::Handler::AnyEvent::HTTPD->new(
     host => $POGO_API_TEST_HOST,
     port => $POGO_API_TEST_PORT,
     server_ready => 
-      tests( "http://$POGO_API_TEST_HOST:$POGO_API_TEST_PORT/status" ),
+      tests( "http://$POGO_API_TEST_HOST:$POGO_API_TEST_PORT" ),
 );
 
 $api->register_service( Pogo::API->app() );
 
-plan tests => 5;
+plan tests => 6;
 
 $pogo->start();
 
@@ -77,10 +77,16 @@ sub tests {
     my( $base_url ) = @_;
 
     return sub {
-        http_get $base_url, sub {
+        http_get "$base_url/status", sub {
            my( $html ) = @_;
            my $data = from_json( $html );
            is $data->{ pogo_version }, $Pogo::VERSION, "pogo version \#5";
+        };
+
+        http_get "$base_url/v1/ping", sub {
+           my( $html ) = @_;
+           my $data = from_json( $html );
+           is $data->{ message }, 'pong', "ping ponged \#6";
         };
     };
 }

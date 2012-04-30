@@ -29,7 +29,7 @@ sub app {
         my $path = $env->{ PATH_INFO };
         ( my $command = $path ) =~ s#^/##;
 
-        my %commands = map { $_ => 1 } qw( jobinfo jobsubmit );
+        my %commands = map { $_ => 1 } qw( ping jobinfo jobsubmit );
 
         if ( exists $commands{ $command } ) {
             no strict 'refs';
@@ -40,6 +40,17 @@ sub app {
         return http_response_json( { error => [ "unknown request: '$path'" ] },
             HTTP_BAD_REQUEST, );
     };
+}
+
+###########################################
+sub ping {
+###########################################
+    # bare-bones "yes, the API is up" response
+    return http_response_json(
+        {   rc      => "ok",
+            message => 'pong',
+        }
+    );
 }
 
 ###########################################
