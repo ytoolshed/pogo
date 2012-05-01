@@ -79,7 +79,7 @@ sub run_tests {
     use AnyEvent::HTTP;
     my $base_url = $api_server->base_url();
     use URI;
-    my $uri = URI->new( "$base_url/jobs/" );
+    my $uri = URI->new( "$base_url/jobs" );
     $uri->query_form( cmd => $cmdline );
 
     DEBUG "uri=$uri";
@@ -96,11 +96,11 @@ sub run_tests {
         my( $body, $hdr ) = @_;
 
         isnt $hdr->{ Status }, 200,
-           'non-200 return for GET /jobs/';
+           'non-200 return for GET /jobs';
 
         my $data = from_json( $body );
         ok defined $data->{ error },
-           "some kind of error message returned for GET /jobs/ #9";
+           "some kind of error message returned for GET /jobs #9";
     };
 
     $pogo->reg_cb( dispatcher_task_done  => sub {

@@ -40,9 +40,10 @@ sub app {
               method  => 'GET',
               handler => \&jobinfo },
 
-            { pattern => qr{^/jobs/$},
+            { pattern => qr{^/jobs$},
               method  => 'POST',
               handler => \&jobsubmit },
+
             );
 
         foreach my $command ( @commands ) {
