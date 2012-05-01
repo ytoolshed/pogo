@@ -40,7 +40,7 @@ sub app {
               method  => 'GET',
               handler => \&jobinfo },
 
-            { pattern => qr{^/jobsubmit$},
+            { pattern => qr{^/jobs/$},
               method  => 'POST',
               handler => \&jobsubmit },
             );
