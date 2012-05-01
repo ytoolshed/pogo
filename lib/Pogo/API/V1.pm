@@ -24,20 +24,36 @@ sub app {
     return sub {
         my ( $env ) = @_;
 
-        DEBUG "Got v1 request";
+        my $path   = $env->{ PATH_INFO };
+        my $method = $env->{ REQUEST_METHOD };
 
-        my $path = $env->{ PATH_INFO };
-        ( my $command = $path ) =~ s#^/##;
+        DEBUG "Got v1 request for $method $path";
 
-        my %commands = map { $_ => 1 } qw( ping jobinfo jobsubmit );
+        # list these in order of precedence
+        my @commands = (
 
-        if ( exists $commands{ $command } ) {
-            no strict 'refs';
-            DEBUG "Calling $command";
-            return $command->( $env );
+            { pattern => qr{^/ping$},
+              method  => 'GET',
+              handler => \&ping,      },
+
+            { pattern => qr{^/jobinfo$},
+              method  => 'GET',
+              handler => \&jobinfo },
+
+            { pattern => qr{^/jobsubmit$},
+              method  => 'POST',
+              handler => \&jobsubmit },
+            );
+
+        foreach my $command ( @commands ) {
+            if ( $method eq $command->{method}
+             and $path   =~ $command->{pattern} ) {
+                DEBUG "$path matched pattern $command->{pattern}, dispatching";
+                return $command->{handler}->( $env );
+            }
         }
 
-        return http_response_json( { error => [ "unknown request: '$path'" ] },
+        return http_response_json( { error => [ "unknown request: $method '$path'" ] },
             HTTP_BAD_REQUEST, );
     };
 }
