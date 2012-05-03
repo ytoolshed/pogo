@@ -24,6 +24,8 @@ sub app {
     return sub {
         my ( $env ) = @_;
 
+        my $jobid_pattern = '[a-z]{1,3}\d{10}';
+
         my $path   = $env->{ PATH_INFO };
         my $method = $env->{ REQUEST_METHOD };
 
@@ -36,13 +38,79 @@ sub app {
               method  => 'GET',
               handler => \&ping,      },
 
-            { pattern => qr{^/jobinfo$},
+
+            # /jobs* handlers
+
+            { pattern => qr{^/jobs$},
+              method  => 'GET',
+              handler => \&not_implemented },
+
+            { pattern => qr{^/jobs/$jobid_pattern$},
               method  => 'GET',
               handler => \&jobinfo },
+
+            { pattern => qr{^/jobs/$jobid_pattern/log$},
+              method  => 'GET',
+              handler => \&not_implemented },
+
+            { pattern => qr{^/jobs/$jobid_pattern/hosts$},
+              method  => 'GET',
+              handler => \&not_implemented },
+
+            { pattern => qr{^/jobs/$jobid_pattern/hosts/[^/]+$},
+              method  => 'GET',
+              handler => \&not_implemented },
+
+            { pattern => qr{^/jobs/last/[^/]+$},
+              method  => 'GET',
+              handler => \&not_implemented },
 
             { pattern => qr{^/jobs$},
               method  => 'POST',
               handler => \&jobsubmit },
+
+            # PUT /jobs/[jobid] takes care of:
+            # - jobhalt
+            # - jobretry
+            # - jobresume
+            # - jobskip
+            # - jobalter
+            { pattern => qr{^/jobs/$jobid_pattern$},
+              method  => 'PUT',
+              handler => \&not_implemented },
+
+
+
+            # /namespaces* handlers
+
+            { pattern => qr{^/namespaces$},
+              method  => 'GET',
+              handler => \&not_implemented },
+
+            { pattern => qr{^/namespaces/[^/]+$},
+              method  => 'GET',
+              handler => \&not_implemented },
+
+            { pattern => qr{^/namespaces/[^/]+/locks$},
+              method  => 'GET',
+              handler => \&not_implemented },
+
+            { pattern => qr{^/namespaces/[^/]+/hosts/[^/]+/tags$},
+              method  => 'GET',
+              handler => \&not_implemented },
+
+            # loads constraints configuration for a namespace
+            { pattern => qr{^/namespaces/[^/]+/constraints$},
+              method  => 'POST',
+              handler => \&not_implemented },
+
+
+
+            # /admin* handlers
+
+            { pattern => qr{^/admin/nomas$},
+              method  => 'PUT',
+              handler => \&not_implemented },
 
             );
 
@@ -167,6 +235,18 @@ sub job_post_to_dispatcher {
             )
         );
         };
+}
+
+###########################################
+sub not_implemented {
+###########################################
+    my ( $env ) = @_;
+
+    my $path   = $env->{ PATH_INFO };
+    my $method = $env->{ REQUEST_METHOD };
+
+    return http_response_json( { error => [ "not implemented yet: $method '$path'" ] },
+                               HTTP_NOT_IMPLEMENTED, );
 }
 
 1;
