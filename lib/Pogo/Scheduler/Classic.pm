@@ -239,17 +239,14 @@ sub schedule {
 
     $hosts = [] if !defined $hosts;
 
-    DEBUG "Scheduling hosts ",
-      join( ", ", @$hosts );
-
-    my %host_lookup = map { $_ => 1 } @$hosts; # for faster lookups
+    DEBUG "Scheduling hosts ", join( ", ", @$hosts );
 
     $self->reg_cb( "task_mark_done", sub {
         my( $c, $task ) = @_;
 
         DEBUG "Scheduler received task_mark_done for task $task";
-
         DEBUG "Forwarding 'task_mark_done' to thread ", $task->thread();
+
         if( exists $self->{ thread_by_id }->{ $task->thread() } ) {
             $self->{ thread_by_id }->{ $task->thread() }->event(
                 "task_mark_done", $task );
@@ -267,6 +264,8 @@ sub schedule {
             }
         }
     } );
+
+    my %host_lookup = map { $_ => 1 } @$hosts; # for faster lookups
 
     for my $thread ( @{ $self->{ threads } } ) {
 
@@ -309,6 +308,60 @@ sub schedule {
           # start thread in parallel with other threads
         $thread->start();
     }
+}
+
+###########################################
+sub schedule_zknodes {
+###########################################
+    my( $self, $hosts ) = @_;
+
+    my @nodes                  = ();
+    my %schedule               = ();
+    my %constraints            = ();
+    my %constraint_ids_by_host = ();
+
+    my %host_lookup = map { $_ => 1 } @$hosts; # for faster lookups
+
+    for my $thread ( @{ $self->{ threads } } ) {
+        for my $slot ( @{ $thread->slots() } ) {
+            for my $host ( 
+                @{ $self->{ hosts_by_slot }->{ $slot->id() } } ) {
+    
+                next if ! exists $host_lookup{ $host };
+
+                $schedule{ $thread }->{ $slot }->{ $host } = 1;
+
+                if( exists $self->{ constraints_by_host }->{ $host } ) {
+
+                    my $constraint = $self->{ constraints_by_host }->{ $host };
+
+                    $constraints{ $constraint->id() } = 
+                        $self->{ constraints_by_host }->{ $host };
+
+                    $constraint_ids_by_host{ $host } = $constraint->id();
+                }
+            }
+        }
+    }
+
+    for my $thread ( sort keys %schedule ) {
+        for my $slot ( sort keys %$thread ) {
+            for my $host ( sort keys %$slot ) {
+                push @nodes, "/schedule/$thread/$slot/$host";
+            }
+        }
+    }
+
+    for my $constraint_id ( sort keys %constraints ) {
+        push @nodes, "/constraints/$constraint_id/" .
+          "max_parallel=$constraints{ $constraint_id }->{ max_parallel }";
+    }
+
+    for my $host ( sort keys %constraint_ids_by_host ) {
+        push @nodes, "/constraints_by_host/$host/" .
+          "$constraint_ids_by_host{ $host }";
+    }
+
 }
 
 ###########################################
@@ -404,6 +457,24 @@ sub as_ascii {
     }
 
     return "$t";
+}
+
+###########################################
+sub nodes {
+###########################################
+    my( $self ) = @_;
+
+    my @nodes = ();
+
+    for my $thread ( @{ $self->{ threads } } ) {
+        my $slots = $thread->slots();
+        for my $slot ( @$slots ) {
+            push @nodes, join ( '/', $thread, $slot, 
+                                @{ $self->{ hosts_by_slot } } );
+        }
+    }
+
+    return \@nodes;
 }
 
 1;
@@ -774,6 +845,29 @@ C<north_america> colo, use
 Note that while the above configuration does not use a C<sequence>
 definition for simplicity, combining C<sequence> and C<constraint> 
 settings is well supported, even for the same tag.
+
+=head2 Schedule ZooKeeper Layout
+
+To store the schedule in a node/directory structure in ZooKeeper, it
+is transformed into this data structure:
+
+   /job/[jobid]/
+       schedule/
+           thread-001/
+             slot-001/
+               host-001
+               host-002
+             slot-002/
+               host-003
+           thread-002/
+             slot-003/
+               host-004
+       constraints_by_host/
+           host-001:constraint-001
+           host-002:constraint-001:constraint-002
+       constraints/
+           constraint-001:max_parallel=3
+           constraint-002:max_parallel=2
 
 =head1 LICENSE
 
