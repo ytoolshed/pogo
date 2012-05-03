@@ -23,17 +23,13 @@ my $cv = AnyEvent->condvar();
 $scheduler->config_load( \ <<'EOT' );
 tag:
   north:
-      - host1
-      - host2
+      - host[1-2]
   south:
-      - host3
-      - host4
+      - host[3-4]
   east:
-      - host5
-      - host6
+      - host[5-6]
   west:
-      - host7
-      - host8
+      - host{7,8}
 
 sequence:
   horizontal:

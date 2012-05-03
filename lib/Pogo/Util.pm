@@ -8,7 +8,7 @@ use JSON qw( to_json );
 
 require Exporter;
 our @EXPORT_OK = qw( http_response_json make_accessor struct_traverse
-                     array_intersection id_gen);
+                     array_intersection id_gen struct_locate );
 our @ISA       = qw( Exporter );
 
 ###########################################
@@ -53,6 +53,20 @@ EOT
 }
 
 ############################################################
+sub struct_locate {
+############################################################
+    my ( $root, $path ) = @_;
+
+    my $ref = $root;
+
+    for my $part ( @$path ) {
+        $ref = $ref->{ $part };
+    }
+
+    return $ref;
+}
+
+############################################################
 sub struct_traverse {
 ############################################################
     my ( $root, $callbacks ) = @_;
@@ -83,7 +97,8 @@ sub struct_traverse {
 
         my $item = pop @stack;
 
-        my($node, $path) = @$item;
+        my($node, $path, $opts) = @$item;
+        $opts = {} if ! defined $opts;
 
         last if !defined $node;
 
@@ -95,17 +110,19 @@ sub struct_traverse {
             }
         } elsif( ref($node) eq "ARRAY") {
             if( exists $callbacks->{ array } ) {
-                $callbacks->{ array }->( $node, $path );
+                $callbacks->{ array }->( $node, $path, $opts );
             }
+            my $idx = 0;
             for my $part ( @$node ) {
-                push @stack, [ $part, [@$path, $part]];
+                push @stack, [ $part, [@$path, $part], { array_idx => $idx } ];
+                $idx++;
             }
         } else {
             if( exists $callbacks->{ leaf } ) {
                   # Remove one item from path
                 my @dir_path = @$path;
                 pop @dir_path;
-                $callbacks->{ leaf }->( $node, \@dir_path );
+                $callbacks->{ leaf }->( $node, \@dir_path, $opts );
             }
         }
     }

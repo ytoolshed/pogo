@@ -69,6 +69,7 @@ requires 'Template';
 requires 'Plack::Handler::AnyEvent::HTTPD';
 requires 'YAML::LibYAML';
 requires 'AnyEvent::HTTP';
+requires 'String::Glob::Permute';
 
 test_requires 'Test::Harness';
 test_requires 'Test';

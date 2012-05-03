@@ -9,6 +9,7 @@ use Pogo::Util qw( array_intersection struct_traverse );
 use Pogo::Scheduler::Thread;
 use Pogo::Scheduler::Slot;
 use Pogo::Scheduler::Task;
+use String::Glob::Permute qw( string_glob_permute );
 use base qw( Pogo::Scheduler );
 
 ###########################################
@@ -78,6 +79,23 @@ sub config_load {
             );
             push @{ $self->{ sequence_slots } }, $slot;
         } 
+    } );
+
+      # Expand tagged globs
+    Pogo::Util::struct_traverse( $self->{ config }->{ tag }, {
+        leaf => sub {
+            my( $glob, $path, $opts ) = @_; 
+            
+            my @hosts = string_glob_permute( $glob );
+
+            $DB::single = 1;
+
+            if( @hosts > 1 ) {
+                my $parent = Pogo::Util::struct_locate( 
+                    $self->{ config }->{ tag }, $path );
+                splice @$parent, $opts->{ array_idx }, 1, @hosts;
+            }
+        }
     } );
 
       # Traverse the configuration's "tag" structure and map hosts
