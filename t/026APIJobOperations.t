@@ -75,7 +75,7 @@ sub tests {
             my( $html, $hdr ) = @_;
             my $data = from_json( $html );
           TODO: {
-              local $TODO = "/jobs yet implemented";
+              local $TODO = "/jobs not yet implemented";
               is $data->{ jobs }->[0]->{ jobid }, 'p0000000010',
               "latest job is p0000000010 \#5";
             }
