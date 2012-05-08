@@ -43,7 +43,7 @@ sub app {
 
             { pattern => qr{^/jobs$},
               method  => 'GET',
-              handler => \&not_implemented },
+              handler => \&listjobs },
 
             { pattern => qr{^/jobs/$jobid_pattern$},
               method  => 'GET',
@@ -134,6 +134,24 @@ sub ping {
     return http_response_json(
         {   rc      => "ok",
             message => 'pong',
+        }
+    );
+}
+
+###########################################
+sub listjobs {
+###########################################
+    my ( $env ) = @_;
+
+    my $req = Plack::Request->new( $env );
+
+    my $params = $req->parameters();
+
+    my $data = from_json( join( '', map { $_ } ( <DATA> ) ) );
+
+    return http_response_json(
+        {   rc      => "ok",
+            jobs    => $data->{jobs},
         }
     );
 }
@@ -251,8 +269,6 @@ sub not_implemented {
 
 1;
 
-__END__
-
 =head1 NAME
 
 Pogo::API::V1 - Pogo API Handlers
@@ -294,4 +310,124 @@ Nick Purvis <nep@noisetu.be>,
 Robert Phan <robert.phan@gmail.com>,
 Srini Singanallur <ssingan@yahoo.com>,
 Yogesh Natarajan <yogesh_ny@yahoo.co.in>
+
+=cut
+
+__DATA__
+
+{
+  "jobs" : [
+      {
+          "jobid"       : "p0000000008",
+          "command"     : "uptime",
+          "range"       : "[\"host2.example.com\"]",
+          "namespace"   : "example",
+          "user"        : "sallyfoo",
+          "run_as"      : "sallyfoo",
+          "state"       : "finished",
+          "concurrent"  : "1",
+          "host_count"  : "1",
+          "job_timeout" : "15000",
+          "timeout"     : "1200",
+          "prehook"     : "0",
+          "posthook"    : "0",
+          "retry"       : "0",
+          "requesthost" : "clienthost.example.com",
+          "invoked_as"  : "/usr/bin/pogo run -h host2.example.com --concurrent 4 uptime",
+          "start_time"  : 1336094397.8485,
+          "client"      : "4.0.0"
+      },
+
+      {
+          "jobid"       : "p0000000007",
+          "command"     : "sudo apachectl -k graceful-stop; rpm -iv  SomePkg.3.11.i386.rpm; sudo apachectl -k start; sudo apachectl -k status",
+          "range"       : "[\"host1.example.com\"]",
+          "namespace"   : "crawler",
+          "user"        : "johnqdoe",
+          "run_as"      : "johnqdoe",
+          "state"       : "finished",
+          "concurrent"  : "1",
+          "host_count"  : "1",
+          "job_timeout" : "15000",
+          "timeout"     : "15000",
+          "prehook"     : "0",
+          "posthook"    : "0",
+          "retry"       : "0",
+          "requesthost" : "clienthost.example.com",
+          "invoked_as"  : "/usr/bin/pogo run -h host2.example.com --concurrent 4 'sudo apachectl -k graceful-stop; rpm -iv  SomePkg.3.11.i386.rpm; sudo apachectl -k start; sudo apachectl -k status'",
+          "start_time"  : 1336095397.412,
+          "client"      : "4.0.0"
+      },
+
+      {
+        "jobid"       : "p0000000006",
+        "command"     : "sudo apachectl -k restart",
+        "range"       : "[\"host2.example.com\"]",
+        "namespace"   : "example",
+        "user"        : "johnqdoe",
+        "run_as"      : "johnqdoe",
+        "state"       : "finished",
+        "concurrent"  : "1",
+        "host_count"  : "1",
+        "job_timeout" : "15000",
+        "timeout"     : "15000",
+        "prehook"     : "0",
+        "posthook"    : "0",
+        "retry"       : "0",
+        "requesthost" : "clienthost.example.com",
+        "invoked_as"  : "/usr/bin/pogo run -h host2.example.com --concurrent 4 'sudo apachectl -k restart'",
+        "start_time"  : 1336096997.32125,
+        "client"      : "4.0.0"
+      },
+
+      {
+        "jobid"       : "p0000000005",
+        "command"     : "whoami; uptime",
+        "range"       : "[\"host1.example.com\"]",
+        "namespace"   : "crawler",
+        "user"        : "sallyfoo",
+        "run_as"      : "robotuser",
+        "state"       : "finished",
+        "concurrent"  : "1",
+        "host_count"  : "1",
+        "job_timeout" : "15000",
+        "timeout"     : "15000",
+        "prehook"     : "0",
+        "posthook"    : "0",
+        "retry"       : "0",
+        "requesthost" : "clienthost.example.com",
+        "invoked_as"  : "/usr/bin/pogo run -h host2.example.com --concurrent 4 'whoami; uptime'",
+        "start_time"  : 1336098399.00825,
+        "client"      : "4.0.0"
+      },
+
+      {
+        "jobid"       : "p0000000004",
+        "command"     : "find /some/directory -type f -mmin -20",
+        "range"       : "[\"host[1-4].pub.example.com\"]",
+        "namespace"   : "publisher",
+        "user"        : "sallyfoo",
+        "run_as"      : "sallyfoo",
+        "state"       : "finished",
+        "host_count"  : "1",
+        "job_timeout" : "15000",
+        "timeout"     : "15000",
+        "prehook"     : "0",
+        "posthook"    : "0",
+        "retry"       : "0",
+        "requesthost" : "clienthost.example.com",
+        "invoked_as"  : "/usr/bin/pogo run -h host2.example.com --concurrent 4 'find /some/directory -type f -mmin -20'",
+        "start_time"  : 1336197397.19378,
+        "client"      : "4.0.0"
+      }
+           ],
+
+
+  "namespaces" : [
+      { "crawler"   : {} },
+      { "example"   : {} },
+      { "publisher" : {} },
+      { "web"       : {} }
+                 ]
+}
 

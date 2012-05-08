@@ -71,14 +71,11 @@ sub tests {
     return sub {
 
         http_get "$base_url/v1/jobs", sub {
-
             my( $html, $hdr ) = @_;
             my $data = from_json( $html );
-          TODO: {
-              local $TODO = "/jobs not yet implemented";
-              is $data->{ jobs }->[0]->{ jobid }, 'p0000000010',
-              "latest job is p0000000010 \#5";
-            }
+
+            is $data->{ jobs }->[0]->{ jobid }, 'p0000000008',
+            "first job returned from 'GET /jobs' is p0000000008 \#5";
         };
 
         http_get "$base_url/v1/jobs/p0000000001", sub {
