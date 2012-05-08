@@ -148,19 +148,19 @@ sub jobinfo {
     my $params = $req->parameters();
 
     if ( exists $params->{ jobid } ) {
-
         return http_response_json(
             {   rc      => "ok",
                 message => "jobid $params->{ jobid }",
             }
         );
-    }
 
-    return http_response_json(
-        {   rc      => "error",
-            message => "jobid missing",
-        }
-    );
+    } else {
+        return http_response_json(
+            {   rc      => "error",
+                message => "jobid missing",
+            }
+        );
+    }
 }
 
 ###########################################
