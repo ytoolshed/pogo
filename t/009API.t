@@ -15,7 +15,7 @@ use JSON qw(from_json);
 
 #$Object::Event::DEBUG = 2;
 
-plan tests => 9;
+plan tests => 7;
 
   # dispatcher/worker
 my $pogo = PogoOne->new();
@@ -90,17 +90,6 @@ sub run_tests {
         my $data = from_json( $body );
         is $data->{ message }, "dispatcher CP: job received", 
             "received ack from dispatcher CP #2";
-    };
-
-    http_get $uri, sub {
-        my( $body, $hdr ) = @_;
-
-        isnt $hdr->{ Status }, 200,
-           'non-200 return for GET /jobs';
-
-        my $data = from_json( $body );
-        ok defined $data->{ error },
-           "some kind of error message returned for GET /jobs #9";
     };
 
     $pogo->reg_cb( dispatcher_task_done  => sub {
