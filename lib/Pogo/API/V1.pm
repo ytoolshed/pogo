@@ -24,12 +24,13 @@ sub app {
     return sub {
         my ( $env ) = @_;
 
-        my $jobid_pattern = '[a-z]{1,3}\d{10}';
-
-        my $path   = $env->{ PATH_INFO };
-        my $method = $env->{ REQUEST_METHOD };
+        my $req = Plack::Request->new( $env );
+        my $path   = $req->path;
+        my $method = $req->method;
 
         DEBUG "Got v1 request for $method $path";
+
+        my $jobid_pattern = '[a-z]{1,3}\d{10}';
 
         # list these in order of precedence
         my @commands = (
@@ -118,7 +119,7 @@ sub app {
             if ( $method eq $command->{method}
              and $path   =~ $command->{pattern} ) {
                 DEBUG "$path matched pattern $command->{pattern}, dispatching";
-                return $command->{handler}->( $env );
+                return $command->{handler}->( $req );
             }
         }
 
@@ -141,9 +142,7 @@ sub ping {
 ###########################################
 sub listjobs {
 ###########################################
-    my ( $env ) = @_;
-
-    my $req = Plack::Request->new( $env );
+    my ( $req ) = @_;
 
     my $params = $req->parameters();
 
@@ -159,9 +158,7 @@ sub listjobs {
 ###########################################
 sub jobinfo {
 ###########################################
-    my ( $env ) = @_;
-
-    my $req = Plack::Request->new( $env );
+    my ( $req ) = @_;
 
     my $params = $req->parameters();
 
@@ -184,11 +181,9 @@ sub jobinfo {
 ###########################################
 sub jobsubmit {
 ###########################################
-    my ( $env ) = @_;
+    my ( $req ) = @_;
 
     DEBUG "Handling jobsubmit request";
-
-    my $req = Plack::Request->new( $env );
 
     my $params = $req->parameters();
 
@@ -258,10 +253,10 @@ sub job_post_to_dispatcher {
 ###########################################
 sub not_implemented {
 ###########################################
-    my ( $env ) = @_;
+    my ( $req ) = @_;
 
-    my $path   = $env->{ PATH_INFO };
-    my $method = $env->{ REQUEST_METHOD };
+    my $path   = $req->path;
+    my $method = $req->method;
 
     return http_response_json( { error => [ "not implemented yet: $method '$path'" ] },
                                HTTP_NOT_IMPLEMENTED, );
