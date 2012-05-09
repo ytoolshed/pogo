@@ -146,7 +146,7 @@ sub listjobs {
 
     DEBUG "handling listjobs request";
 
-    my $data = from_json( join( '', map { $_ } ( <DATA> ) ) );
+    my $data = from_json( _TEST_DATA() );
 
     return http_response_json(
         {   rc      => "ok",
@@ -162,25 +162,44 @@ sub jobinfo {
 
     DEBUG "handling jobinfo request";
 
-    my $jobid = $req->param( 'jobid' );
+    my $jobid;
 
-    if ( defined $jobid ) {
-        return http_response_json(
-            {   rc      => "ok",
-                message => "jobid $jobid",
-            }
-        );
-
-    } else {
-
-        ERROR "No jobid defined";
-
+    unless ( $req->path =~ m{/([^/]+)$}o ) {
+        ERROR "Couldn't find job id in path: " . $req->path;
         return http_response_json(
             {   rc      => "error",
-                message => "jobid missing",
+                message => "jobid missing from request path " . $req->path,
             }
         );
     }
+
+    $jobid = $1;
+    my $job;
+
+    DEBUG "looking up jobinfo for $jobid";
+
+    my $data = from_json( _TEST_DATA() );
+    foreach ( @{ $data->{jobs} } ) {
+        if ( $jobid eq $_->{jobid} ) {
+            $job = $_;
+            last;
+        }
+    }
+
+    unless ( $job ) {
+        ERROR "no such job $job";
+        return http_response_json(
+            {   rc      => "error",
+                message => "no such job $jobid",
+            }
+        );
+    }
+
+    return http_response_json(
+        {   rc      => "ok",
+            job     => $job,
+        }
+    );
 }
 
 ###########################################
@@ -203,7 +222,6 @@ sub jobsubmit {
     } else {
 
         ERROR "No cmd defined";
-
         return http_response_json(
             {   rc      => "error",
                 message => "cmd missing",
@@ -268,7 +286,6 @@ sub not_implemented {
                                HTTP_NOT_IMPLEMENTED, );
 }
 
-1;
 
 =head1 NAME
 
@@ -314,8 +331,9 @@ Yogesh Natarajan <yogesh_ny@yahoo.co.in>
 
 =cut
 
-__DATA__
+sub _TEST_DATA {
 
+return <<'END_YAML'
 {
   "jobs" : [
       {
@@ -432,3 +450,7 @@ __DATA__
                  ]
 }
 
+END_YAML
+};
+
+1;

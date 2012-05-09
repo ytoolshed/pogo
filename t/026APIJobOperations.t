@@ -78,15 +78,12 @@ sub tests {
             "first job returned from 'GET /jobs' is p0000000008 \#5";
         };
 
-        http_get "$base_url/v1/jobs/p0000000001", sub {
+        http_get "$base_url/v1/jobs/p0000000006", sub {
             my( $html, $hdr ) = @_;
             my $data = from_json( $html );
 
-          TODO: {
-              local $TODO = "/jobs/[jobid] not yet implemented";
-              is $data->{ command }, 'date; whoami;',
-              "command for p0000000001 reported correctly \#6";
-            }
+            is $data->{ job }->{ command }, 'sudo apachectl -k restart',
+            "command for p0000000006 reported correctly \#6";
         };
 
 
