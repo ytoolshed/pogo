@@ -144,7 +144,7 @@ sub listjobs {
 ###########################################
     my ( $req ) = @_;
 
-    my $params = $req->parameters();
+    DEBUG "handling listjobs request";
 
     my $data = from_json( join( '', map { $_ } ( <DATA> ) ) );
 
@@ -160,16 +160,21 @@ sub jobinfo {
 ###########################################
     my ( $req ) = @_;
 
-    my $params = $req->parameters();
+    DEBUG "handling jobinfo request";
 
-    if ( exists $params->{ jobid } ) {
+    my $jobid = $req->param( 'jobid' );
+
+    if ( defined $jobid ) {
         return http_response_json(
             {   rc      => "ok",
-                message => "jobid $params->{ jobid }",
+                message => "jobid $jobid",
             }
         );
 
     } else {
+
+        ERROR "No jobid defined";
+
         return http_response_json(
             {   rc      => "error",
                 message => "jobid missing",
@@ -185,25 +190,26 @@ sub jobsubmit {
 
     DEBUG "Handling jobsubmit request";
 
-    my $params = $req->parameters();
+    my $cmd = $req->param( 'cmd' );
 
-    if ( exists $params->{ cmd } ) {
-        DEBUG "cmd is $params->{ cmd }";
+    if ( defined $cmd ) {
+        DEBUG "cmd is $cmd";
         return sub {
             my ( $response ) = @_;
 
             # Tell the dispatcher about it (just testing)
-            job_post_to_dispatcher( $params->{ cmd }, $response );
+            job_post_to_dispatcher( $cmd, $response );
         };
+    } else {
+
+        ERROR "No cmd defined";
+
+        return http_response_json(
+            {   rc      => "error",
+                message => "cmd missing",
+            }
+        );
     }
-
-    ERROR "No cmd defined";
-
-    return http_response_json(
-        {   rc      => "error",
-            message => "cmd missing",
-        }
-    );
 }
 
 ###########################################
