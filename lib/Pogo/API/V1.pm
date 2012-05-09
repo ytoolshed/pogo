@@ -16,6 +16,40 @@ use Plack::Request;
 use Data::Dumper;
 use HTTP::Request::Common;
 
+=head1 NAME
+
+Pogo::API::V1 - Pogo API Handlers
+
+=head1 SYNOPSIS
+
+=over 4
+
+=item C<GET /v1/jobs?max=10&offset=30>
+
+get 10 jobs, starting at the 31st most recent
+
+=item C<GET /v1/jobs/p0000000012>
+
+get data for job id p0000000012
+
+=item C<POST /v1/jobs>
+
+submit a new job
+
+=item C<PUT /v1/jobs/p0000000007>
+
+alter job id p0000000007
+
+=back
+
+...etc
+
+=head1 DESCRIPTION
+
+Handles URLs like C<GET /v1/jobs/p0000000011>, C<POST /v1/jobs>, etc.
+
+=cut
+
 ###########################################
 sub app {
 ###########################################
@@ -127,6 +161,109 @@ sub app {
             HTTP_BAD_REQUEST, );
     };
 }
+
+=pod
+
+=head1 HTTP METHODS
+
+=over 4
+
+=item C<GET /v1/jobs>
+
+List Pogo jobs.
+
+
+=item C<GET /v1/jobs/:jobid>
+
+Get basic information for a Pogo job.
+
+
+=item C<GET /v1/jobs/:jobid/log>
+
+Get log for a Pogo job.
+
+
+=item C<GET /v1/jobs/:jobid/hosts>
+
+Get the target hosts for a Pogo job.
+
+
+=item C<GET /v1/jobs/:jobid/hosts/:host>
+
+Get the output for a target host in a Pogo job.
+
+
+=item C<GET /v1/jobs/last/:userid>
+
+Get the last job submitted by a given user.
+
+
+=item C<POST /v1/jobs>
+
+Submit a new job.
+
+
+=item C<PUT /v1/jobs/:jobid>
+
+Alter a job. Possible actions are:
+
+=over 4
+
+=item jobhalt
+
+=item jobretry
+
+=item jobresume
+
+=item jobskip
+
+=item jobalter
+
+=back
+
+
+=item C<GET /v1/namespaces>
+
+List Pogo namespaces.
+
+
+=item C<GET /v1/namespaces/:namespace>
+
+Get basic information for a namespace.
+
+
+=item C<GET /v1/namespaces/:namespace/locks>
+
+Get current locks within a namespace.
+
+
+=item C<GET /v1/namespaces/:namespace/tags>
+
+Get all configured tags for a namespace.
+
+
+=item C<GET /v1/namespaces/:namespace/constraints>
+
+Get all configured constraints for a namespace.
+
+
+=item C<POST /v1/namespaces/:namespace/constraints>
+
+Set constraints for a namespace.
+
+
+
+=item C<PUT /v1/admin/nomas>
+
+Toggle Pogo API's ability to accept new jobs.
+
+=back
+
+=cut
+
+
+
+
 
 ###########################################
 sub ping {
@@ -287,15 +424,6 @@ sub not_implemented {
 }
 
 
-=head1 NAME
-
-Pogo::API::V1 - Pogo API Handlers
-
-=head1 SYNOPSIS
-
-=head1 DESCRIPTION
-
-Handles URLs like C</v1/jobstatus>, C</v1/jobsubmit>, etc.
 
 =head1 LICENSE
 
