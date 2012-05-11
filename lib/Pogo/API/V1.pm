@@ -36,7 +36,7 @@ get data for job id p0000000012
 
 submit a new job
 
-=item C<PUT /v1/jobs/p0000000007>
+=item C<POST /v1/jobs/p0000000007>
 
 alter job id p0000000007
 
@@ -104,14 +104,14 @@ sub app {
               method  => 'POST',
               handler => \&jobsubmit },
 
-            # PUT /jobs/[jobid] takes care of:
+            # POST /jobs/[jobid] takes care of:
             # - jobhalt
             # - jobretry
             # - jobresume
             # - jobskip
             # - jobalter
             { pattern => qr{^/jobs/$jobid_pattern$},
-              method  => 'PUT',
+              method  => 'POST',
               handler => \&not_implemented },
 
 
@@ -144,7 +144,7 @@ sub app {
             # /admin* handlers
 
             { pattern => qr{^/admin/nomas$},
-              method  => 'PUT',
+              method  => 'POST',
               handler => \&not_implemented },
 
             );
@@ -172,54 +172,244 @@ sub app {
 
 List Pogo jobs.
 
+Parameters:
+
+=over 2
+
+=item C<max>
+
+=item C<offset>
+
+=back
+
+Example Request:
+
+C<GET http://pogo.example.com/v1/jobs?max=3&offset=20>
+
+
+
 
 =item C<GET /v1/jobs/:jobid>
 
 Get basic information for a Pogo job.
 
+Parameters: (none)
+
+Example Request:
+
+C<GET http://pogo.example.com/v1/jobs/p0000000003>
+
+
+
 
 =item C<GET /v1/jobs/:jobid/log>
 
-Get log for a Pogo job.
+Get log entries for a Pogo job.
+
+Parameters:
+
+=over 2
+
+=item C<max>
+
+=item C<offset>
+
+=back
+
+Example Request:
+
+C<GET http://pogo.example.com/v1/jobs/p0000000003/log?max=100>
+
+
 
 
 =item C<GET /v1/jobs/:jobid/hosts>
 
-Get the target hosts for a Pogo job.
+Get a list of target hosts and their statuses for a Pogo job.
+
+Parameters:
+
+=over 2
+
+=item C<max>
+
+=item C<offset>
+
+=back
+
+Example Request:
+
+C<GET http://pogo.example.com/v1/jobs/p0000000003/hosts?max=80>
+
+
 
 
 =item C<GET /v1/jobs/:jobid/hosts/:host>
 
 Get the output for a target host in a Pogo job.
 
+Parameters:
+
+=over 2
+
+=item C<max>
+
+=item C<offset>
+
+=back
+
+Example Request:
+
+C<GET http://pogo.example.com/v1/jobs/p0000000003/hosts/a.target.host.example.com?max=500&offset=1000>
+
+
+
 
 =item C<GET /v1/jobs/last/:userid>
 
 Get the last job submitted by a given user.
+
+Parameters: (none)
+
+Example Request:
+
+C<GET http://pogo.example.com/v1/jobs/last/johnqdoe>
+
+
 
 
 =item C<POST /v1/jobs>
 
 Submit a new job.
 
+Parameters:
 
-=item C<PUT /v1/jobs/:jobid>
+=over 2
 
-Alter a job. Possible actions are:
+=item C<range> (required)
 
-=over 4
+Range expression specifying the hosts on which to execute the command.
 
-=item jobhalt
+=item C<namespace> (required)
 
-=item jobretry
+Namespace for the job.
 
-=item jobresume
+=item C<command> (required)
 
-=item jobskip
+Command to execute on the target hosts.
 
-=item jobalter
+=item C<user> (required)
+
+User who submitted the job. If C<run_as> is not specified, it will default to this value.
+
+=item C<password>
+
+SSH password for the user. Either C<password> or C<client_private_key> must be provided.
+
+=item C<client_private_key>
+
+User's ssh private key. Either C<client_private_key> or C<password> must be provided.
+
+=item C<pvt_key_passphrase>
+
+Private key passphrase, if applicable.
+
+=item C<run_as>
+
+Username to use to connect to and execute commands on the target hosts.
+
+=item C<timeout>
+
+Timeout for each host command.
+
+=item C<job_timeout>
+
+Timeout for the overall job.
+
+=item C<prehook>
+
+Indicates whether or not to run prehook commands.
+
+=item C<posthook>
+
+Indicates whether or not to run posthook commands.
+
+=item C<retry>
+
+Indicates whether to retry the command if it fails.
+
+=item C<requesthost>
+
+The host from which the request was submitted.
+
+=item C<email>
+
+User's email address.
+
+=item C<im_handle>
+
+User's IM handle.
+
+=item C<message>
+
+Message describing the job.
+
+=item C<invoked_as>
+
+Command line used to invoke the Pogo request.
+
+=item C<client>
+
+Client version.
 
 =back
+
+Example Request:
+
+C<POST http://pogo.example.com/v1/jobs>
+
+C<POST Data: range=targethost1.example.com,targethost2.example.com&namespace=front_end_web&command=sudo%20shutdown%20-f%20-r%20NOW&user=janeqdoe&password=J4n3spw&client=1.0>
+
+
+
+
+=item C<POST /v1/jobs/:jobid>
+
+Alter a job. A job can be altered in five basic ways: jobhalt, jobretry, jobresume, jobskip, jobalter
+
+Parameters:
+
+=over 2
+
+=item C<command> (required)
+
+How to alter the job. Valid values are: jobhalt, jobretry, jobresume, jobskip, jobalter
+
+=over 2
+
+=item B<jobhalt> stops a job in progress
+
+=item B<jobretry> retries a failed target host
+
+=item B<jobskip> skips a target host when doing constraints calculations
+
+=item B<jobalter> alters one or more attributes of an existing job
+
+E<10>
+
+=back
+
+=item C<SOMETHING>
+
+=back
+
+Example Request:
+
+C<POST http://pogo.example.com/v1/jobs/p0000000007>
+
+C<POST http://pogo.example.com/v1/jobs/p0000000007>
+
+
 
 
 =item C<GET /v1/namespaces>
@@ -253,7 +443,7 @@ Set constraints for a namespace.
 
 
 
-=item C<PUT /v1/admin/nomas>
+=item C<POST /v1/admin/nomas>
 
 Toggle Pogo API's ability to accept new jobs.
 
