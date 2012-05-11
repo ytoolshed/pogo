@@ -362,44 +362,33 @@ Command line used to invoke the Pogo request.
 
 Client version.
 
-=back
-
 Example Request:
 
 C<POST http://pogo.example.com/v1/jobs>
 
 C<POST Data: range=targethost1.example.com,targethost2.example.com&namespace=front_end_web&command=sudo%20shutdown%20-f%20-r%20NOW&user=janeqdoe&password=J4n3spw&client=1.0>
 
-
-
-
-=item C<POST /v1/jobs/:jobid>
-
-Alter a job. A job can be altered in five basic ways: jobhalt, jobretry, jobresume, jobskip, jobalter
-
-Parameters:
-
-=over 2
-
-=item C<command> (required)
-
-How to alter the job. Valid values are: jobhalt, jobretry, jobresume, jobskip, jobalter
-
-=over 2
-
-=item B<jobhalt> stops a job in progress
-
-=item B<jobretry> retries a failed target host
-
-=item B<jobskip> skips a target host when doing constraints calculations
-
-=item B<jobalter> alters one or more attributes of an existing job
-
-E<10>
-
 =back
 
-=item C<SOMETHING>
+
+
+C<POST /v1/jobs/:jobid>
+
+Alter a job. A job can be altered in four basic ways: jobhalt, jobretry, jobskip, jobalter. The type of alteration is specified by the C<command> parameter. Additional required and optional parameters depend on which command is issued.
+
+=over 2
+
+=item command: C<jobhalt>
+
+Stops a job in progress.
+
+Other Parameters:
+
+=over 2
+
+=item C<reason>
+
+Description of why the job was halted.
 
 =back
 
@@ -407,7 +396,84 @@ Example Request:
 
 C<POST http://pogo.example.com/v1/jobs/p0000000007>
 
+C<POST Data: command=jobhalt&reason=Decided%20I%20didn%27t%20want%20to%20continue>
+
+
+
+=item command: C<jobretry>
+
+Retries a failed target host.
+
+Other Parameters:
+
+=over 2
+
+=item C<host> (required)
+
+The host to retry the command on.
+
+=back
+
+Example Request:
+
 C<POST http://pogo.example.com/v1/jobs/p0000000007>
+
+C<POST Data: command=jobretry&host=some.host.example.com>
+
+
+
+=item command: C<jobskip>
+
+Skips a target host when doing constraints calculations.
+
+Other Parameters:
+
+=over 2
+
+=item C<host> (required)
+
+Host to ignore.
+
+=back
+
+Example Request:
+
+C<POST http://pogo.example.com/v1/jobs/p0000000007>
+
+C<POST Data: command=jobskip&some.ignoreable.host.example.com>
+
+
+
+=item command: C<jobalter>
+
+Alters one or more attributes of an existing job.
+
+Other Parameters:
+
+=over 2
+
+=item C<attribute> (required)
+
+=item C<value> (required)
+
+=back
+
+Example Requests:
+
+C<POST http://pogo.example.com/v1/jobs/p0000000007>
+
+C<POST Data: command=jobalter&attribute=timeout&value=36000>
+
+C<POST http://pogo.example.com/v1/jobs/p0000000007>
+
+C<POST Data: command=jobalter&attribute=retry&value=1&attribute=message&value=hosts%20will%20now%20retry%20one%20time>
+
+
+C<POST http://pogo.example.com/v1/jobs/p0000000007>
+
+C<POST Data: command=jobalter&attribute=command&value=sudo%20apachectl%20-k%20restart>
+
+=back
 
 
 
