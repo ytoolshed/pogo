@@ -60,7 +60,7 @@ my $api = Plack::Handler::AnyEvent::HTTPD->new(
 
 $api->register_service( Pogo::API->app() );
 
-plan tests => 10;
+plan tests => 16;
 
 $pogo->start();
 
@@ -86,19 +86,22 @@ sub tests {
             "command for p0000000006 reported correctly \#6";
         };
 
-
-        http_get "$base_url/v1/jobs/p0000000001/log", sub {
+        http_get "$base_url/v1/jobs/p0000000008/log", sub {
             my( $html, $hdr ) = @_;
             my $data = from_json( $html );
 
-          TODO: {
-              local $TODO = "/jobs/[jobid]/log not yet implemented";
-              is $data->{ entries }->[0], 'first line of the job log',
-              "job log returned as expected \#7";
-            }
+            my $first_log_entry = $data->{ joblog }->[0];
+            my $last_log_entry = $data->{ joblog }->[-1];
+
+            ok $first_log_entry->{range},               "first log entry range exists \#7";
+            is $first_log_entry->{type},    'jobstate', "first log entry type is 'jobstate' \#8";
+            is $first_log_entry->{state},  'gathering', "first log entry state is 'gathering' \#9";
+            ok $first_log_entry->{message},             "first log entry message exists \#10";
+
+            is $last_log_entry->{type},   'jobstate',  "last log entry type is 'jobstate' \#11";
+            is $last_log_entry->{state},  'finished',  "last log entry state is 'finished' \#12";
+            ok $last_log_entry->{message},             "last log entry message exists \#13";
         };
-
-
 
         http_get "$base_url/v1/jobs/p0000000001/hosts", sub {
             my( $html, $hdr ) = @_;
@@ -107,7 +110,7 @@ sub tests {
           TODO: {
               local $TODO = "/jobs/[jobid]/hosts not yet implemented";
               is $data->{ hosts }->[0], 'some.host.example.com',
-              "some.host.example.com returned as one of the target hosts \#8";
+              "some.host.example.com returned as one of the target hosts \#14";
             }
         };
 
@@ -120,7 +123,7 @@ sub tests {
           TODO: {
               local $TODO = "/jobs/[jobid]/hosts/[hostname] not yet implemented";
               is $data->{ output }->[0], 'expected host output',
-              "output of command to some.host.example.com as expected \#9";
+              "output of command to some.host.example.com as expected \#15";
             }
         };
 
@@ -133,14 +136,8 @@ sub tests {
           TODO: {
               local $TODO = "/jobs/last/[user] not yet implemented";
               is $data->{ command }, 'whoami',
-              "find correct last job by gandalf \#10";
+              "find correct last job by gandalf \#16";
             }
         };
-
-
-
-
-
-
     };
 }

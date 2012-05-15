@@ -86,7 +86,7 @@ sub app {
 
             { pattern => qr{^/jobs/$jobid_pattern/log$},
               method  => 'GET',
-              handler => \&not_implemented },
+              handler => \&joblog },
 
             { pattern => qr{^/jobs/$jobid_pattern/hosts$},
               method  => 'GET',
@@ -596,6 +596,53 @@ sub jobinfo {
 }
 
 ###########################################
+sub joblog {
+###########################################
+    my ( $req ) = @_;
+
+    DEBUG "handling joblog request";
+
+    my $jobid;
+
+    unless ( $req->path =~ m{/([^/]+)/log$}o ) {
+        ERROR "Couldn't find job id in path: " . $req->path;
+        return http_response_json(
+            {   rc      => "error",
+                message => "jobid missing from request path " . $req->path,
+            }
+        );
+    }
+
+    $jobid = $1;
+    my $joblog;
+
+    DEBUG "looking up joblog for $jobid";
+
+    my $data = from_json( _TEST_DATA() );
+    foreach ( @{ $data->{jobs} } ) {
+        if ( $jobid eq $_->{jobid} ) {
+            $joblog = $_->{log};
+            last;
+        }
+    }
+
+    unless ( $joblog ) {
+        ERROR "no such job $jobid";
+        return http_response_json(
+            {   rc      => "error",
+                message => "no such job $jobid",
+            }
+        );
+    }
+
+    return http_response_json(
+        {   rc      => "ok",
+            joblog  => $joblog,
+        }
+    );
+}
+
+###########################################
 sub jobsubmit {
 ###########################################
     my ( $req ) = @_;
@@ -738,19 +785,85 @@ return <<'END_YAML'
           "requesthost" : "clienthost.example.com",
           "invoked_as"  : "/usr/bin/pogo run -h host2.example.com --concurrent 4 uptime",
           "start_time"  : 1336094397.8485,
-          "client"      : "4.0.0"
+          "client"      : "4.0.0",
+          "log" : [
+              {
+                  "time": 1336094397.8485,
+                  "type": "jobstate",
+                  "range": "host2.example.com",
+                  "state": "gathering",
+                  "message": "job created; fetching hostinfo"
+              },
+              {
+                  "time": 1336094398,
+                  "type": "jobstate",
+                  "range": "host2.example.com",
+                  "state": "gathering",
+                  "message": "job created; finished fetching hostinfo"
+              },
+              {
+                  "time": 1336094399,
+                  "type": "jobstate",
+                  "range": "host2.example.com",
+                  "state": "running",
+                  "message": "constraints computed"
+              },
+              {
+                  "time": 1336094400,
+                  "type": "hoststate",
+                  "host": "host2.example.com",
+                  "state": "waiting",
+                  "message": "determining run order..."
+              },
+              {
+                  "time": 1336094405,
+                  "type": "hoststate",
+                  "host": "host2.example.com",
+                  "state": "waiting",
+                  "message": "waiting for (SOME CONSTRAINT)"
+              },
+              {
+                  "time": 1336094410,
+                  "type": "hoststate",
+                  "host": "host2.example.com",
+                  "state": "ready",
+                  "message": "connecting to host..."
+              },
+              {
+                  "time": 1336094415,
+                  "type": "hoststate",
+                  "host": "host2.example.com",
+                  "state": "running",
+                  "output": "http://pogo-worker1.example.com/pogo_output/p0000000008/host2.example.com.txt",
+                  "message": "started"
+              },
+              {
+                  "time": 1336094420,
+                  "type": "hoststate",
+                  "host": "host2.example.com",
+                  "state": "finished",
+                  "exitstatus" : "0",
+                  "message": "0"
+              },
+              {
+                  "time": 1336094421,
+                  "type": "jobstate",
+                  "state": "finished",
+                  "message": "no more hosts to run"
+              }
+              ]
       },
 
       {
           "jobid"       : "p0000000007",
           "command"     : "sudo apachectl -k graceful-stop; rpm -iv  SomePkg.3.11.i386.rpm; sudo apachectl -k start; sudo apachectl -k status",
-          "range"       : "[\"host1.example.com\"]",
+          "range"       : "[\"host[1-4].example.com\"]",
           "namespace"   : "crawler",
           "user"        : "johnqdoe",
           "run_as"      : "johnqdoe",
           "state"       : "finished",
           "concurrent"  : "1",
-          "host_count"  : "1",
+          "host_count"  : "4",
           "job_timeout" : "15000",
           "timeout"     : "15000",
           "prehook"     : "0",
@@ -759,7 +872,154 @@ return <<'END_YAML'
           "requesthost" : "clienthost.example.com",
           "invoked_as"  : "/usr/bin/pogo run -h host2.example.com --concurrent 4 'sudo apachectl -k graceful-stop; rpm -iv  SomePkg.3.11.i386.rpm; sudo apachectl -k start; sudo apachectl -k status'",
           "start_time"  : 1336095397.412,
-          "client"      : "4.0.0"
+          "client"      : "4.0.0",
+          "log" : [
+              {
+                  "time": 1336095397.412,
+                  "type": "jobstate",
+                  "range": "host[1-4].example.com",
+                  "state": "gathering",
+                  "message": "job created; fetching hostinfo"
+              },
+              {
+                  "time": 1336095400,
+                  "type": "jobstate",
+                  "range": "host[1-4].example.com",
+                  "state": "gathering",
+                  "message": "job created; finished fetching hostinfo"
+              },
+              {
+                  "time": 1336095403,
+                  "type": "jobstate",
+                  "range": "host[1-4].example.com",
+                  "state": "running",
+                  "message": "constraints computed"
+              },
+              {
+                  "time": 1336095405,
+                  "type": "hoststate",
+                  "host": "host1.example.com",
+                  "state": "waiting",
+                  "message": "determining run order..."
+              },
+              {
+                  "time": 1336095406,
+                  "type": "hoststate",
+                  "host": "host3.example.com",
+                  "state": "waiting",
+                  "message": "determining run order..."
+              },
+              {
+                  "time": 1336095407,
+                  "type": "hoststate",
+                  "host": "host2.example.com",
+                  "state": "waiting",
+                  "message": "determining run order..."
+              },
+              {
+                  "time": 1336095408,
+                  "type": "hoststate",
+                  "host": "host4.example.com",
+                  "state": "waiting",
+                  "message": "determining run order..."
+              },
+              {
+                  "time": 1336095409,
+                  "type": "hoststate",
+                  "host": "host1.example.com",
+                  "state": "ready",
+                  "message": "connecting to host..."
+              },
+              {
+                  "time": 1336095410,
+                  "type": "hoststate",
+                  "host": "host2.example.com",
+                  "state": "waiting",
+                  "message": "waiting for (SOME CONSTRAINT)"
+              },
+              {
+                  "time": 1336095411,
+                  "type": "hoststate",
+                  "host": "host4.example.com",
+                  "state": "waiting",
+                  "message": "waiting for (SOME CONSTRAINT)"
+              },
+              {
+                  "time": 1336095414,
+                  "type": "hoststate",
+                  "host": "host3.example.com",
+                  "state": "waiting",
+                  "message": "waiting for (SOME CONSTRAINT)"
+              },
+              {
+                  "time": 1336095414,
+                  "type": "hoststate",
+                  "host": "host1.example.com",
+                  "state": "running",
+                  "output": "http://pogo-worker1.example.com/pogo_output/p0000000007/host1.example.com.txt",
+                  "message": "started"
+              },
+              {
+                  "time": 1336095416,
+                  "type": "hoststate",
+                  "host": "<<HOST>>",
+                  "state": "host1.example.com",
+                  "exitstatus" : "0",
+                  "message": "0"
+              },
+              {
+                  "time": 1336095417,
+                  "type": "hoststate",
+                  "host": "host2.example.com",
+                  "state": "ready",
+                  "message": "connecting to host..."
+              },
+              {
+                  "time": 1336095418,
+                  "type": "hoststate",
+                  "host": "host2.example.com",
+                  "state": "running",
+                  "output": "http://pogo-worker1.example.com/pogo_output/p0000000007/host2.example.com.txt",
+                  "message": "started"
+              },
+              {
+                  "time": 1336095419,
+                  "type": "hoststate",
+                  "host": "host2.example.com",
+                  "state": "finished",
+                  "exitstatus" : "0",
+                  "message": "0"
+              },
+              {
+                  "time": 1336095420,
+                  "type": "hoststate",
+                  "host": "host3.example.com",
+                  "state": "ready",
+                  "message": "connecting to host..."
+              },
+              {
+                  "time": 1336095421,
+                  "type": "hoststate",
+                  "host": "host3.example.com",
+                  "state": "running",
+                  "output": "http://pogo-worker1.example.com/pogo_output/p0000000007/host3.example.com.txt",
+                  "message": "started"
+              },
+              {
+                  "time": 1336095422,
+                  "type": "hoststate",
+                  "host": "host3.example.com",
+                  "state": "finished",
+                  "exitstatus" : "0",
+                  "message": "0"
+              },
+              {
+                  "time": 1336095425,
+                  "type": "jobstate",
+                  "state": "finished",
+                  "message": "no more hosts to run"
+              }
+              ]
       },
 
       {
@@ -780,19 +1040,42 @@ return <<'END_YAML'
         "requesthost" : "clienthost.example.com",
         "invoked_as"  : "/usr/bin/pogo run -h host2.example.com --concurrent 4 'sudo apachectl -k restart'",
         "start_time"  : 1336096997.32125,
-        "client"      : "4.0.0"
+        "client"      : "4.0.0",
+          "log" : [
+              {
+                  "time": 1336096997.32125,
+                  "type": "jobstate",
+                  "range": "host2.example.com",
+                  "state": "gathering",
+                  "message": "TEST JOB LOG MESSAGE"
+              },
+              {
+                  "time": 1336097000,
+                  "type": "hoststate",
+                  "host": "host7.example.com",
+                  "state": "running",
+                  "output": "http://pogo-worker1.example.com/pogo_output/p0000000006/host2.example.com.txt",
+                  "message": "TEST HOST LOG MESSAGE"
+              },
+              {
+                  "time": 1336097007,
+                  "type": "jobstate",
+                  "state": "finished",
+                  "message": "TEST JOB LOG MESSAGE"
+              }
+              ]
       },
 
       {
         "jobid"       : "p0000000005",
         "command"     : "whoami; uptime",
-        "range"       : "[\"host1.example.com\"]",
+        "range"       : "[\"host[6-8].example.com\"]",
         "namespace"   : "crawler",
         "user"        : "sallyfoo",
         "run_as"      : "robotuser",
         "state"       : "finished",
         "concurrent"  : "1",
-        "host_count"  : "1",
+        "host_count"  : "3",
         "job_timeout" : "15000",
         "timeout"     : "15000",
         "prehook"     : "0",
@@ -801,7 +1084,30 @@ return <<'END_YAML'
         "requesthost" : "clienthost.example.com",
         "invoked_as"  : "/usr/bin/pogo run -h host2.example.com --concurrent 4 'whoami; uptime'",
         "start_time"  : 1336098399.00825,
-        "client"      : "4.0.0"
+        "client"      : "4.0.0",
+          "log" : [
+              {
+                  "time": 1336098399.00825,
+                  "type": "jobstate",
+                  "range": "host[6-8].example.com",
+                  "state": "gathering",
+                  "message": "TEST JOB LOG MESSAGE"
+              },
+              {
+                  "time":  1336098400,
+                  "type": "hoststate",
+                  "host": "host7.example.com",
+                  "state": "running",
+                  "output": "http://pogo-worker1.example.com/pogo_output/p0000000005/host7.example.com.txt",
+                  "message": "TEST HOST LOG MESSAGE"
+              },
+              {
+                  "time":  1336098403,
+                  "type": "jobstate",
+                  "state": "finished",
+                  "message": "TEST JOB LOG MESSAGE"
+              }
+              ]
       },
 
       {
@@ -812,7 +1118,7 @@ return <<'END_YAML'
         "user"        : "sallyfoo",
         "run_as"      : "sallyfoo",
         "state"       : "finished",
-        "host_count"  : "1",
+        "host_count"  : "4",
         "job_timeout" : "15000",
         "timeout"     : "15000",
         "prehook"     : "0",
@@ -821,7 +1127,29 @@ return <<'END_YAML'
         "requesthost" : "clienthost.example.com",
         "invoked_as"  : "/usr/bin/pogo run -h host2.example.com --concurrent 4 'find /some/directory -type f -mmin -20'",
         "start_time"  : 1336197397.19378,
-        "client"      : "4.0.0"
+        "client"      : "4.0.0",
+          "log" : [
+              {
+                  "time": 1336197397.19378,
+                  "type": "jobstate",
+                  "range": "host[1-4].pub.example.com",
+                  "state": "gathering",
+                  "message": "TEST JOB LOG MESSAGE"
+              },
+              {
+                  "time": 1336197403,
+                  "type": "hoststate",
+                  "host": "host2.pub.example.com",
+                  "state": "waiting",
+                  "message": "SOME HOST MESSAGE"
+              },
+              {
+                  "time": 1336197406,
+                  "type": "jobstate",
+                  "state": "finished",
+                  "message": "no more hosts to run"
+              }
+              ]
       }
            ],
 
