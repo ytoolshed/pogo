@@ -60,7 +60,7 @@ my $api = Plack::Handler::AnyEvent::HTTPD->new(
 
 $api->register_service( Pogo::API->app() );
 
-plan tests => 16;
+plan tests => 18;
 
 $pogo->start();
 
@@ -103,15 +103,18 @@ sub tests {
             ok $last_log_entry->{message},             "last log entry message exists \#13";
         };
 
-        http_get "$base_url/v1/jobs/p0000000001/hosts", sub {
+        http_get "$base_url/v1/jobs/p0000000004/hosts", sub {
             my( $html, $hdr ) = @_;
             my $data = from_json( $html );
 
-          TODO: {
-              local $TODO = "/jobs/[jobid]/hosts not yet implemented";
-              is $data->{ hosts }->[0], 'some.host.example.com',
-              "some.host.example.com returned as one of the target hosts \#14";
-            }
+            ok $data->{ hosts }->{ 'host3.pub.example.com' },
+            "host3.pub.example.com returned as one of the target hosts \#14";
+
+            is scalar ( keys %{ $data->{ hosts } } ), 4,
+            "job p0000000004 has 4 hosts \#15";
+
+            is $data->{ hosts }->{ 'host2.pub.example.com' }->{ state }, 'finished',
+            "job p0000000004, host host2.pub.example.com has status 'finished' \#16";
         };
 
 
@@ -123,7 +126,7 @@ sub tests {
           TODO: {
               local $TODO = "/jobs/[jobid]/hosts/[hostname] not yet implemented";
               is $data->{ output }->[0], 'expected host output',
-              "output of command to some.host.example.com as expected \#15";
+              "output of command to some.host.example.com as expected \#17";
             }
         };
 
@@ -136,7 +139,7 @@ sub tests {
           TODO: {
               local $TODO = "/jobs/last/[user] not yet implemented";
               is $data->{ command }, 'whoami',
-              "find correct last job by gandalf \#16";
+              "find correct last job by gandalf \#18";
             }
         };
     };

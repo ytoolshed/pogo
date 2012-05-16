@@ -90,7 +90,7 @@ sub app {
 
             { pattern => qr{^/jobs/$jobid_pattern/hosts$},
               method  => 'GET',
-              handler => \&not_implemented },
+              handler => \&jobhosts },
 
             { pattern => qr{^/jobs/$jobid_pattern/hosts/[^/]+$},
               method  => 'GET',
@@ -643,6 +643,54 @@ sub joblog {
 }
 
 ###########################################
+sub jobhosts {
+###########################################
+    my ( $req ) = @_;
+
+    DEBUG "handling jobhosts request";
+
+    my $jobid;
+
+    unless ( $req->path =~ m{/([^/]+)/hosts$}o ) {
+        ERROR "Couldn't find job id in path: " . $req->path;
+        return http_response_json(
+            {   rc      => "error",
+                message => "jobid missing from request path " . $req->path,
+            }
+        );
+    }
+
+    $jobid = $1;
+    my $hosts;
+
+    DEBUG "looking up jobhosts for $jobid";
+
+    my $data = from_json( _TEST_DATA() );
+    foreach ( @{ $data->{jobs} } ) {
+        if ( $jobid eq $_->{jobid} ) {
+            $hosts = $_->{hosts};
+            last;
+        }
+    }
+
+    unless ( $hosts ) {
+        ERROR "no such job $jobid";
+        return http_response_json(
+            {   rc      => "error",
+                message => "no such job $jobid",
+            }
+        );
+    }
+
+    return http_response_json(
+        {   rc      => "ok",
+            hosts  => $hosts,
+        }
+    );
+}
+
+
+###########################################
 sub jobsubmit {
 ###########################################
     my ( $req ) = @_;
@@ -786,6 +834,8 @@ return <<'END_YAML'
           "invoked_as"  : "/usr/bin/pogo run -h host2.example.com --concurrent 4 uptime",
           "start_time"  : 1336094397.8485,
           "client"      : "4.0.0",
+          "hosts" : { "host2.example.com": { "state": "finished", "start_time": 1336094410, "finish_time": 1336094420, "output": "http://pogo-worker1.example.com/pogo_output/p0000000008/host2.example.com.txt" } },
+
           "log" : [
               {
                   "time": 1336094397.8485,
@@ -873,6 +923,12 @@ return <<'END_YAML'
           "invoked_as"  : "/usr/bin/pogo run -h host2.example.com --concurrent 4 'sudo apachectl -k graceful-stop; rpm -iv  SomePkg.3.11.i386.rpm; sudo apachectl -k start; sudo apachectl -k status'",
           "start_time"  : 1336095397.412,
           "client"      : "4.0.0",
+
+          "hosts" : { "host1.example.com": { "state": "finished", "start_time": 1336095409, "finish_time": 1336095416, "output": "http://pogo-worker1.example.com/pogo_output/p0000000007/host1.example.com.txt" },
+                      "host2.example.com": { "state": "finished", "start_time": 1336095417, "finish_time": 1336095419, "output": "http://pogo-worker1.example.com/pogo_output/p0000000007/host2.example.com.txt" },
+                      "host3.example.com": { "state": "finished", "start_time": 1336095420, "finish_time": 1336095422, "output": "http://pogo-worker1.example.com/pogo_output/p0000000007/host3.example.com.txt" },
+                      "host4.example.com": { "state": "finished", "start_time": 1336095424, "finish_time": 1336095427, "output": "http://pogo-worker1.example.com/pogo_output/p0000000007/host4.example.com.txt" } },
+
           "log" : [
               {
                   "time": 1336095397.412,
@@ -962,8 +1018,8 @@ return <<'END_YAML'
               {
                   "time": 1336095416,
                   "type": "hoststate",
-                  "host": "<<HOST>>",
-                  "state": "host1.example.com",
+                  "host": "host1.example.com",
+                  "state": "finished",
                   "exitstatus" : "0",
                   "message": "0"
               },
@@ -1014,7 +1070,30 @@ return <<'END_YAML'
                   "message": "0"
               },
               {
+                  "time": 1336095424,
+                  "type": "hoststate",
+                  "host": "host4.example.com",
+                  "state": "ready",
+                  "message": "connecting to host..."
+              },
+              {
                   "time": 1336095425,
+                  "type": "hoststate",
+                  "host": "host4.example.com",
+                  "state": "running",
+                  "output": "http://pogo-worker1.example.com/pogo_output/p0000000007/host4.example.com.txt",
+                  "message": "started"
+              },
+              {
+                  "time": 1336095427,
+                  "type": "hoststate",
+                  "host": "host4.example.com",
+                  "state": "finished",
+                  "exitstatus" : "0",
+                  "message": "0"
+              },
+              {
+                  "time": 1336095429,
                   "type": "jobstate",
                   "state": "finished",
                   "message": "no more hosts to run"
@@ -1041,6 +1120,9 @@ return <<'END_YAML'
         "invoked_as"  : "/usr/bin/pogo run -h host2.example.com --concurrent 4 'sudo apachectl -k restart'",
         "start_time"  : 1336096997.32125,
         "client"      : "4.0.0",
+
+          "hosts" : { "host2.example.com": { "state": "finished", "start_time": 1336097000, "finish_time": 1336097000, "output": "http://pogo-worker1.example.com/pogo_output/p0000000006/host2.example.com.txt" } },
+
           "log" : [
               {
                   "time": 1336096997.32125,
@@ -1085,6 +1167,11 @@ return <<'END_YAML'
         "invoked_as"  : "/usr/bin/pogo run -h host2.example.com --concurrent 4 'whoami; uptime'",
         "start_time"  : 1336098399.00825,
         "client"      : "4.0.0",
+
+        "hosts" : { "host6.example.com": { "state": "finished", "start_time": 1336098400, "finish_time": 1336098401, "output": "http://pogo-worker1.example.com/pogo_output/p0000000005/host6.example.com.txt" },
+                    "host7.example.com": { "state": "finished", "start_time": 1336098402, "finish_time": 1336098403, "output": "http://pogo-worker1.example.com/pogo_output/p0000000005/host7.example.com.txt" },
+                    "host8.example.com": { "state": "finished", "start_time": 1336098404, "finish_time": 1336098405, "output": "http://pogo-worker1.example.com/pogo_output/p0000000005/host8.example.com.txt" } },
+
           "log" : [
               {
                   "time": 1336098399.00825,
@@ -1098,11 +1185,11 @@ return <<'END_YAML'
                   "type": "hoststate",
                   "host": "host7.example.com",
                   "state": "running",
-                  "output": "http://pogo-worker1.example.com/pogo_output/p0000000005/host7.example.com.txt",
+                  "output": "http://somehost.example.com/someurl.txt",
                   "message": "TEST HOST LOG MESSAGE"
               },
               {
-                  "time":  1336098403,
+                  "time":  1336098410,
                   "type": "jobstate",
                   "state": "finished",
                   "message": "TEST JOB LOG MESSAGE"
@@ -1128,6 +1215,12 @@ return <<'END_YAML'
         "invoked_as"  : "/usr/bin/pogo run -h host2.example.com --concurrent 4 'find /some/directory -type f -mmin -20'",
         "start_time"  : 1336197397.19378,
         "client"      : "4.0.0",
+
+          "hosts" : { "host1.pub.example.com": { "state": "finished", "start_time": 1336197403, "finish_time": 1336197404, "output": "http://somehost/some.directory/" },
+                      "host2.pub.example.com": { "state": "finished", "start_time": 1336197403, "finish_time": 1336197404, "output": "http://somehost/some.directory/" },
+                      "host3.pub.example.com": { "state": "finished", "start_time": 1336197403, "finish_time": 1336197404, "output": "http://somehost/some.directory/" },
+                      "host4.pub.example.com": { "state": "finished", "start_time": 1336197403, "finish_time": 1336197405, "output": "http://somehost/some.directory/" } },
+
           "log" : [
               {
                   "time": 1336197397.19378,
