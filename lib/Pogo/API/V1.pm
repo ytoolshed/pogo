@@ -476,37 +476,81 @@ C<POST Data: command=jobalter&attribute=command&value=sudo%20apachectl%20-k%20re
 =back
 
 
-
-
 =item C<GET /v1/namespaces>
 
 List Pogo namespaces.
+
+Parameters:
+
+=over 2
+
+=item C<max>
+
+=item C<offset>
+
+=back
+
+Example Request:
+
+C<GET http://pogo.example.com/v1/namespaces?offset=10&max=10>
+
 
 
 =item C<GET /v1/namespaces/:namespace>
 
 Get basic information for a namespace.
 
+Parameters: (none)
+
+Example Request:
+
+C<GET http://pogo.example.com/v1/namespaces/webfrontend>
+
+
 
 =item C<GET /v1/namespaces/:namespace/locks>
 
-Get current locks within a namespace.
+Get current "locks" for a given namespace. Locks are constraints for active jobs that may be preventing other hosts within the same job -- or others within the same namespace -- from running.
+
+Example Request:
+
+C<GET http://pogo.example.com/v1/namespaces/webfrontend/locks>
+
 
 
 =item C<GET /v1/namespaces/:namespace/tags>
 
 Get all configured tags for a namespace.
 
+Parameters: (none)
+
+Example Request:
+
+C<GET http://pogo.example.com/v1/namespaces/databases/tags>
+
+
 
 =item C<GET /v1/namespaces/:namespace/constraints>
 
 Get all configured constraints for a namespace.
+
+Parameters: (none)
+
+Example Request:
+
+C<GET http://pogo.example.com/v1/namespaces/japanfe/constraints>
+
 
 
 =item C<POST /v1/namespaces/:namespace/constraints>
 
 Set constraints for a namespace.
 
+Parameters: (none)
+
+Example Request:
+
+C<POST http://pogo.example.com/v1/namespaces/japanfe/constraints>
 
 
 =item C<POST /v1/admin/nomas>
