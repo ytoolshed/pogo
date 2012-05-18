@@ -743,7 +743,15 @@ sub jobsubmit {
 
     my $cmd = $req->param( 'cmd' );
 
-    if ( defined $cmd ) {
+    if ( ! defined $cmd ) {
+        ERROR "No cmd defined";
+        return http_response_json(
+            {   rc      => "error",
+                message => "cmd missing",
+            }
+        );
+
+    } else {
         DEBUG "cmd is $cmd";
         return sub {
             my ( $response ) = @_;
@@ -751,14 +759,6 @@ sub jobsubmit {
             # Tell the dispatcher about it (just testing)
             job_post_to_dispatcher( $cmd, $response );
         };
-    } else {
-
-        ERROR "No cmd defined";
-        return http_response_json(
-            {   rc      => "error",
-                message => "cmd missing",
-            }
-        );
     }
 }
 
