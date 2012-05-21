@@ -20,7 +20,10 @@ sub http_any {
         return $cb->( $data, $hdr );
     }
 
-    AnyEvent::HTTP::http_$method( $url, @args );
+    my $ae_method = "AnyEvent::HTTP::http_$method";
+
+    no strict 'refs';
+    $ae_method->( $url, @args, $cb );
 }
 
 ###########################################
@@ -57,6 +60,10 @@ sub file_url_read {
     my( $url ) = @_;
 
     my $file = file_url( $url );
+
+    if( !defined $file ) {
+        return undef;
+    }
 
     while( ! -f $file ) {
         $file = dirname $file;
