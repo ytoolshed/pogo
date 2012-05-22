@@ -572,11 +572,7 @@ Toggle Pogo API's ability to accept new jobs.
 sub ping {
 ###########################################
     # bare-bones "yes, the API is up" response
-    return http_response_json(
-        {   rc      => "ok",
-            message => 'pong',
-        }
-    );
+    return psgi_response( { data => { ping => 'pong' } } );
 }
 
 ###########################################
@@ -791,21 +787,16 @@ sub job_post_to_dispatcher {
         eval { $data = from_json( $data ); };
 
         if ( $@ ) {
-            $rc      = "fail";
-            $message = "invalid json: $@";
+            ERROR "invalid response received from dispatcher: $@";
+            $response_cb->( psgi_response( { code   => HTTP_INTERNAL_SERVER_ERROR,
+                                             meta   => { rc     => 'fail',
+                                                         status => $hdr->{ Status } },
+                                             errors => [ "problem in communication with dispatcher: $@" ] } ) );
         } else {
-            $rc      = $data->{ rc };
-            $message = $data->{ message };
+            $response_cb->( psgi_response( { meta => { rc     => $data->{ rc },
+                                                       status => $hdr->{ Status } },
+                                             data => { message => $data->{ message } } } ) );
         }
-
-        $response_cb->(
-            http_response_json(
-                {   rc      => $rc,
-                    message => $message,
-                    status  => $hdr->{ Status },
-                }
-            )
-        );
         };
 }
 
@@ -817,8 +808,8 @@ sub not_implemented {
     my $path   = $req->path;
     my $method = $req->method;
 
-    return http_response_json( { error => [ "not implemented yet: $method '$path'" ] },
-                               HTTP_NOT_IMPLEMENTED, );
+    return psgi_response( { code   => HTTP_NOT_IMPLEMENTED,
+                            errors => [ "not implemented yet: $method '$path'" ] } )
 }
 
 ###########################################

@@ -84,9 +84,9 @@ sub tests {
         };
 
         http_get "$base_url/v1/ping", sub {
-           my( $html ) = @_;
-           my $data = from_json( $html );
-           is $data->{ message }, 'pong', "ping ponged \#6";
+           my( $body ) = @_;
+           my $data = from_json( $body );
+           is $data->{ response }->{ ping }, 'pong', "ping ponged \#6";
         };
     };
 }

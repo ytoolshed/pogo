@@ -86,9 +86,8 @@ sub run_tests {
 
     http_post $uri, sub {
         my( $body, $hdr ) = @_;
-
         my $data = from_json( $body );
-        is $data->{ message }, "dispatcher CP: job received", 
+        is $data->{ response }->{ message }, "dispatcher CP: job received",
             "received ack from dispatcher CP #2";
     };
 
