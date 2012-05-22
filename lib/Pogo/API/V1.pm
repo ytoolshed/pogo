@@ -160,8 +160,8 @@ sub app {
             }
         }
 
-        return http_response_json( { error => [ "unknown request: $method '$path'" ] },
-            HTTP_BAD_REQUEST, );
+        return psgi_response( { code  => HTTP_BAD_REQUEST,
+                                error => [ "unknown request: $method '$path'" ] } );
     };
 }
 
@@ -584,11 +584,7 @@ sub listjobs {
 
     my $data = from_json( _TEST_DATA() );
 
-    return http_response_json(
-        {   rc      => "ok",
-            jobs    => $data->{jobs},
-        }
-    );
+    return psgi_response( { data => { jobs => $data->{jobs} } } );
 }
 
 ###########################################
@@ -602,11 +598,8 @@ sub jobinfo {
 
     unless ( $req->path =~ m{/([^/]+)$}o ) {
         ERROR "Couldn't find job id in path: " . $req->path;
-        return http_response_json(
-            {   rc      => "error",
-                message => "jobid missing from request path " . $req->path,
-            }
-        );
+        return psgi_response( { code  => HTTP_BAD_REQUEST,
+                                error => [ "jobid missing from request path " . $req->path ] } );
     }
 
     $jobid = $1;
@@ -624,18 +617,11 @@ sub jobinfo {
 
     unless ( $job ) {
         ERROR "no such job $job";
-        return http_response_json(
-            {   rc      => "error",
-                message => "no such job $jobid",
-            }
-        );
+        return psgi_response( { code  => HTTP_NOT_FOUND,
+                                error => [ "no such job $jobid" ] } );
     }
 
-    return http_response_json(
-        {   rc      => "ok",
-            job     => $job,
-        }
-    );
+    return psgi_response( { data => { job => $job } } );
 }
 
 ###########################################
@@ -649,11 +635,8 @@ sub joblog {
 
     unless ( $req->path =~ m{/([^/]+)/log$}o ) {
         ERROR "Couldn't find job id in path: " . $req->path;
-        return http_response_json(
-            {   rc      => "error",
-                message => "jobid missing from request path " . $req->path,
-            }
-        );
+        return psgi_response( { code  => HTTP_BAD_REQUEST,
+                                error => [ "jobid missing from request path " . $req->path ] } );
     }
 
     $jobid = $1;
@@ -671,18 +654,11 @@ sub joblog {
 
     unless ( $joblog ) {
         ERROR "no such job $jobid";
-        return http_response_json(
-            {   rc      => "error",
-                message => "no such job $jobid",
-            }
-        );
+        return psgi_response( { code  => HTTP_NOT_FOUND,
+                                error => [ "no such job $jobid" ] } );
     }
 
-    return http_response_json(
-        {   rc      => "ok",
-            joblog  => $joblog,
-        }
-    );
+    return psgi_response( { data => { joblog => $joblog } } );
 }
 
 ###########################################
@@ -696,11 +672,8 @@ sub jobhosts {
 
     unless ( $req->path =~ m{/([^/]+)/hosts$}o ) {
         ERROR "Couldn't find job id in path: " . $req->path;
-        return http_response_json(
-            {   rc      => "error",
-                message => "jobid missing from request path " . $req->path,
-            }
-        );
+        return psgi_response( { code  => HTTP_BAD_REQUEST,
+                                error => [ "jobid missing from request path " . $req->path ] } );
     }
 
     $jobid = $1;
@@ -718,18 +691,11 @@ sub jobhosts {
 
     unless ( $hosts ) {
         ERROR "no such job $jobid";
-        return http_response_json(
-            {   rc      => "error",
-                message => "no such job $jobid",
-            }
-        );
+        return psgi_response( { code  => HTTP_NOT_FOUND,
+                                error => [ "no such job $jobid" ] } );
     }
 
-    return http_response_json(
-        {   rc      => "ok",
-            hosts  => $hosts,
-        }
-    );
+    return psgi_response( { data => { hosts => $hosts } } );
 }
 
 
@@ -744,11 +710,7 @@ sub jobsubmit {
 
     if ( ! defined $cmd ) {
         ERROR "No cmd defined";
-        return http_response_json(
-            {   rc      => "error",
-                message => "cmd missing",
-            }
-        );
+        return psgi_response( { code => HTTP_BAD_REQUEST, error => [ 'cmd missing' ] } );
 
     } else {
         DEBUG "cmd is $cmd";

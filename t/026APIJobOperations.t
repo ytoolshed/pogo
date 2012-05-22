@@ -70,28 +70,31 @@ sub tests {
 
     return sub {
 
+        # GET /v1/jobs (list jobs)
         http_get "$base_url/v1/jobs", sub {
             my( $html, $hdr ) = @_;
             my $data = from_json( $html );
 
-            is $data->{ jobs }->[0]->{ jobid }, 'p0000000008',
+            is $data->{ response }->{ jobs }->[0]->{ jobid }, 'p0000000008',
             "first job returned from 'GET /jobs' is p0000000008 \#5";
         };
 
+        # GET /v1/jobs/:jobid (get job info)
         http_get "$base_url/v1/jobs/p0000000006", sub {
             my( $html, $hdr ) = @_;
             my $data = from_json( $html );
 
-            is $data->{ job }->{ command }, 'sudo apachectl -k restart',
+            is $data->{ response }->{ job }->{ command }, 'sudo apachectl -k restart',
             "command for p0000000006 reported correctly \#6";
         };
 
+        # GET /v1/jobs/:jobid/log (get job log)
         http_get "$base_url/v1/jobs/p0000000008/log", sub {
             my( $html, $hdr ) = @_;
             my $data = from_json( $html );
 
-            my $first_log_entry = $data->{ joblog }->[0];
-            my $last_log_entry = $data->{ joblog }->[-1];
+            my $first_log_entry = $data->{ response }->{ joblog }->[0];
+            my $last_log_entry = $data->{ response }->{ joblog }->[-1];
 
             ok $first_log_entry->{range},               "first log entry range exists \#7";
             is $first_log_entry->{type},    'jobstate', "first log entry type is 'jobstate' \#8";
@@ -103,22 +106,22 @@ sub tests {
             ok $last_log_entry->{message},             "last log entry message exists \#13";
         };
 
+        # GET /v1/jobs/:jobid/hosts (get hosts for job)
         http_get "$base_url/v1/jobs/p0000000004/hosts", sub {
             my( $html, $hdr ) = @_;
             my $data = from_json( $html );
 
-            ok $data->{ hosts }->{ 'host3.pub.example.com' },
+            ok $data->{ response }->{ hosts }->{ 'host3.pub.example.com' },
             "host3.pub.example.com returned as one of the target hosts \#14";
 
-            is scalar ( keys %{ $data->{ hosts } } ), 4,
+            is scalar ( keys %{ $data->{ response }->{ hosts } } ), 4,
             "job p0000000004 has 4 hosts \#15";
 
-            is $data->{ hosts }->{ 'host2.pub.example.com' }->{ state }, 'finished',
+            is $data->{ response }->{ hosts }->{ 'host2.pub.example.com' }->{ state }, 'finished',
             "job p0000000004, host host2.pub.example.com has status 'finished' \#16";
         };
 
-
-
+        # GET /v1/jobs/:jobid/hosts/:host (get host output)
         http_get "$base_url/v1/jobs/p0000000001/hosts/some.host.example.com", sub {
             my( $html, $hdr ) = @_;
             my $data = from_json( $html );
@@ -130,8 +133,7 @@ sub tests {
             }
         };
 
-
-
+        # GET /v1/jobs/last/:username (get most recent job for a given user)
         http_get "$base_url/v1/jobs/last/gandalf", sub {
             my( $html, $hdr ) = @_;
             my $data = from_json( $html );
