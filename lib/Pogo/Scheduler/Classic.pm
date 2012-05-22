@@ -176,20 +176,28 @@ sub slot_setup {
 
         my $slot_id = $slot->id();
 
-        while ( $slot_id =~ /(\$[^\$]*)/g ) {
-            my $part = $1;
-            $part =~ s/^\$//;
-            $part =~ s/\.$//;
-            push @parts, $part;
-        }
-
-        my $found = $self->{ slot_hosts }->{ shift @parts };
         my @hosts = ();
-        @hosts = @$found if defined $found;
 
-        for my $part ( @parts ) {
-            @hosts =
-                array_intersection( \@hosts, $self->{ slot_hosts }->{ $part } );
+        if( $slot_id =~ /\$/ ) {
+            while ( $slot_id =~ /(\$[^\$]*)/g ) {
+                my $part = $1;
+                $part =~ s/^\$//;
+                $part =~ s/\.$//;
+                push @parts, $part;
+            }
+
+            my $found = $self->{ slot_hosts }->{ shift @parts };
+            @hosts = @$found if defined $found;
+
+            for my $part ( @parts ) {
+                @hosts = array_intersection( \@hosts, 
+                           $self->{ slot_hosts }->{ $part } );
+            }
+
+        } else {
+            # we have real hosts
+            push @parts, $slot_id;
+            @hosts = $slot_id;
         }
 
         for my $host ( @hosts ) {

@@ -45,6 +45,8 @@ $scheduler->reg_cb( "task_run", sub {
 
     my $host = $task->{ host };
 
+    DEBUG "Running host $host";
+
     ok $bck->item( $host ), "host $host in seq";
 
     my $w = AnyEvent->timer( after => 0.1, cb => sub {
