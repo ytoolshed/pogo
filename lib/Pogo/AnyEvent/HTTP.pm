@@ -11,11 +11,11 @@ use File::Basename;
 ###########################################
 sub http_any {
 ###########################################
-    my( $method, $url, @args ) = @_;
+    my ( $method, $url, @args ) = @_;
 
     my $cb = pop @args;
 
-    if( my $data = file_url_read( $url ) ) {
+    if ( my $data = file_url_read( $url ) ) {
         my $hdr = { Status => "200" };
         return $cb->( $data, $hdr );
     }
@@ -29,7 +29,7 @@ sub http_any {
 ###########################################
 sub http_get {
 ###########################################
-    my( @args ) = @_;
+    my ( @args ) = @_;
 
     return http_any( "get", @args );
 }
@@ -37,7 +37,7 @@ sub http_get {
 ###########################################
 sub http_post {
 ###########################################
-    my( @args ) = @_;
+    my ( @args ) = @_;
 
     return http_any( "post", @args );
 }
@@ -45,9 +45,9 @@ sub http_post {
 ###########################################
 sub file_url {
 ###########################################
-    my( $url ) = @_;
+    my ( $url ) = @_;
 
-    if( $url =~ m#^file://(.*)# ) {
+    if ( $url =~ m#^file://(.*)# ) {
         return $1;
     }
 
@@ -57,19 +57,19 @@ sub file_url {
 ###########################################
 sub file_url_read {
 ###########################################
-    my( $url ) = @_;
+    my ( $url ) = @_;
 
     my $file = file_url( $url );
 
-    if( !defined $file ) {
+    if ( !defined $file ) {
         return undef;
     }
 
-    while( ! -f $file ) {
+    while ( !-f $file ) {
         $file = dirname $file;
     }
 
-    if( -f $file ) {
+    if ( -f $file ) {
         return slurp $file;
     }
 

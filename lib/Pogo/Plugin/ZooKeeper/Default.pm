@@ -5,17 +5,15 @@ use strict;
 use warnings;
 use Net::ZooKeeper;
 use Exporter qw( import );
-our @ISA = qw( Exporter Net::ZooKeeper );
+our @ISA       = qw( Exporter Net::ZooKeeper );
 our @EXPORT_OK = qw( ZOK ZINVALIDSTATE ZCONNECTIONLOSS );
 
 ###########################################
 sub new {
 ###########################################
-    my($class, %options) = @_;
+    my ( $class, %options ) = @_;
 
-    my $self = {
-        %options,
-    };
+    my $self = { %options, };
 
     bless $self, $class;
 }
@@ -23,7 +21,7 @@ sub new {
 ###########################################
 sub priority {
 ###########################################
-    my($self) = @_;
+    my ( $self ) = @_;
 
     return 10;
 }

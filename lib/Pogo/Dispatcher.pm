@@ -86,11 +86,10 @@ sub start {
         sub {
             my ( $c, $data ) = @_;
 
-              # if a completed task report comes back from a worker
-            if( $data->{ cmd } eq "task_done" ) {
+            # if a completed task report comes back from a worker
+            if ( $data->{ cmd } eq "task_done" ) {
                 DEBUG "Worker reported task $data->{ task_id } done";
-                $self->event( "dispatcher_task_done", 
-                    $data->{ task_id } );
+                $self->event( "dispatcher_task_done", $data->{ task_id } );
             }
         }
     );

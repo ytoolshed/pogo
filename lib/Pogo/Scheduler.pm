@@ -11,17 +11,18 @@ use base qw( Pogo::Object::Event );
 ###########################################
 sub new {
 ###########################################
-    my( $class, %options ) = @_;
+    my ( $class, %options ) = @_;
 
-    my $self = {
-        %options,
-    };
+    my $self = { %options, };
 
     bless $self, $class;
 
-    $self->reg_cb( "task_finished", sub {
-      # just ignore
-    } );
+    $self->reg_cb(
+        "task_finished",
+        sub {
+            # just ignore
+        }
+    );
 
     return $self;
 }
@@ -29,9 +30,9 @@ sub new {
 ###########################################
 sub task_add {
 ###########################################
-    my( $self, $task ) = @_;
+    my ( $self, $task ) = @_;
 
-      # trivial scheduler, just run the task
+    # trivial scheduler, just run the task
     DEBUG "Running task $task";
     $self->event( "task_run", $task );
 }
@@ -39,7 +40,7 @@ sub task_add {
 ###########################################
 sub run {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 }
 
 ###########################################

@@ -61,7 +61,7 @@ sub app {
     return sub {
         my ( $env ) = @_;
 
-        my $req = Plack::Request->new( $env );
+        my $req    = Plack::Request->new( $env );
         my $path   = $req->path;
         my $method = $req->method;
 
@@ -72,40 +72,47 @@ sub app {
         # list these in order of precedence
         my @commands = (
 
-            { pattern => qr{^/ping$},
-              method  => 'GET',
-              handler => \&ping,      },
-
+            {   pattern => qr{^/ping$},
+                method  => 'GET',
+                handler => \&ping,
+            },
 
             # /jobs* handlers
 
-            { pattern => qr{^/jobs$},
-              method  => 'GET',
-              handler => \&listjobs },
+            {   pattern => qr{^/jobs$},
+                method  => 'GET',
+                handler => \&listjobs
+            },
 
-            { pattern => qr{^/jobs/$jobid_pattern$},
-              method  => 'GET',
-              handler => \&jobinfo },
+            {   pattern => qr{^/jobs/$jobid_pattern$},
+                method  => 'GET',
+                handler => \&jobinfo
+            },
 
-            { pattern => qr{^/jobs/$jobid_pattern/log$},
-              method  => 'GET',
-              handler => \&joblog },
+            {   pattern => qr{^/jobs/$jobid_pattern/log$},
+                method  => 'GET',
+                handler => \&joblog
+            },
 
-            { pattern => qr{^/jobs/$jobid_pattern/hosts$},
-              method  => 'GET',
-              handler => \&jobhosts },
+            {   pattern => qr{^/jobs/$jobid_pattern/hosts$},
+                method  => 'GET',
+                handler => \&jobhosts
+            },
 
-            { pattern => qr{^/jobs/$jobid_pattern/hosts/[^/]+$},
-              method  => 'GET',
-              handler => \&not_implemented },
+            {   pattern => qr{^/jobs/$jobid_pattern/hosts/[^/]+$},
+                method  => 'GET',
+                handler => \&not_implemented
+            },
 
-            { pattern => qr{^/jobs/last/[^/]+$},
-              method  => 'GET',
-              handler => \&not_implemented },
+            {   pattern => qr{^/jobs/last/[^/]+$},
+                method  => 'GET',
+                handler => \&not_implemented
+            },
 
-            { pattern => qr{^/jobs$},
-              method  => 'POST',
-              handler => \&jobsubmit },
+            {   pattern => qr{^/jobs$},
+                method  => 'POST',
+                handler => \&jobsubmit
+            },
 
             # POST /jobs/[jobid] takes care of:
             # - jobhalt
@@ -113,55 +120,62 @@ sub app {
             # - jobresume
             # - jobskip
             # - jobalter
-            { pattern => qr{^/jobs/$jobid_pattern$},
-              method  => 'POST',
-              handler => \&not_implemented },
-
-
+            {   pattern => qr{^/jobs/$jobid_pattern$},
+                method  => 'POST',
+                handler => \&not_implemented
+            },
 
             # /namespaces* handlers
 
-            { pattern => qr{^/namespaces$},
-              method  => 'GET',
-              handler => \&not_implemented },
+            {   pattern => qr{^/namespaces$},
+                method  => 'GET',
+                handler => \&not_implemented
+            },
 
-            { pattern => qr{^/namespaces/[^/]+$},
-              method  => 'GET',
-              handler => \&not_implemented },
+            {   pattern => qr{^/namespaces/[^/]+$},
+                method  => 'GET',
+                handler => \&not_implemented
+            },
 
-            { pattern => qr{^/namespaces/[^/]+/locks$},
-              method  => 'GET',
-              handler => \&not_implemented },
+            {   pattern => qr{^/namespaces/[^/]+/locks$},
+                method  => 'GET',
+                handler => \&not_implemented
+            },
 
-            { pattern => qr{^/namespaces/[^/]+/hosts/[^/]+/tags$},
-              method  => 'GET',
-              handler => \&not_implemented },
+            {   pattern => qr{^/namespaces/[^/]+/hosts/[^/]+/tags$},
+                method  => 'GET',
+                handler => \&not_implemented
+            },
 
             # loads constraints configuration for a namespace
-            { pattern => qr{^/namespaces/[^/]+/constraints$},
-              method  => 'POST',
-              handler => \&not_implemented },
-
-
+            {   pattern => qr{^/namespaces/[^/]+/constraints$},
+                method  => 'POST',
+                handler => \&not_implemented
+            },
 
             # /admin* handlers
 
-            { pattern => qr{^/admin/nomas$},
-              method  => 'POST',
-              handler => \&not_implemented },
+            {   pattern => qr{^/admin/nomas$},
+                method  => 'POST',
+                handler => \&not_implemented
+            },
 
-            );
+        );
 
         foreach my $command ( @commands ) {
-            if ( $method eq $command->{method}
-             and $path   =~ $command->{pattern} ) {
+            if (    $method eq $command->{ method }
+                and $path =~ $command->{ pattern } )
+            {
                 DEBUG "$path matched pattern $command->{pattern}, dispatching";
-                return $command->{handler}->( $req );
+                return $command->{ handler }->( $req );
             }
         }
 
-        return psgi_response( { code  => HTTP_BAD_REQUEST,
-                                error => [ "unknown request: $method '$path'" ] } );
+        return psgi_response(
+            {   code  => HTTP_BAD_REQUEST,
+                error => [ "unknown request: $method '$path'" ]
+            }
+        );
     };
 }
 
@@ -564,10 +578,6 @@ Toggle Pogo API's ability to accept new jobs.
 
 =cut
 
-
-
-
-
 ###########################################
 sub ping {
 ###########################################
@@ -584,7 +594,7 @@ sub listjobs {
 
     my $data = from_json( _TEST_DATA() );
 
-    return psgi_response( { data => { jobs => $data->{jobs} } } );
+    return psgi_response( { data => { jobs => $data->{ jobs } } } );
 }
 
 ###########################################
@@ -598,8 +608,11 @@ sub jobinfo {
 
     unless ( $req->path =~ m{/([^/]+)$}o ) {
         ERROR "Couldn't find job id in path: " . $req->path;
-        return psgi_response( { code  => HTTP_BAD_REQUEST,
-                                error => [ "jobid missing from request path " . $req->path ] } );
+        return psgi_response(
+            {   code  => HTTP_BAD_REQUEST,
+                error => [ "jobid missing from request path " . $req->path ]
+            }
+        );
     }
 
     $jobid = $1;
@@ -608,8 +621,8 @@ sub jobinfo {
     DEBUG "looking up jobinfo for $jobid";
 
     my $data = from_json( _TEST_DATA() );
-    foreach ( @{ $data->{jobs} } ) {
-        if ( $jobid eq $_->{jobid} ) {
+    foreach ( @{ $data->{ jobs } } ) {
+        if ( $jobid eq $_->{ jobid } ) {
             $job = $_;
             last;
         }
@@ -617,8 +630,11 @@ sub jobinfo {
 
     unless ( $job ) {
         ERROR "no such job $job";
-        return psgi_response( { code  => HTTP_NOT_FOUND,
-                                error => [ "no such job $jobid" ] } );
+        return psgi_response(
+            {   code  => HTTP_NOT_FOUND,
+                error => [ "no such job $jobid" ]
+            }
+        );
     }
 
     return psgi_response( { data => { job => $job } } );
@@ -635,8 +651,11 @@ sub joblog {
 
     unless ( $req->path =~ m{/([^/]+)/log$}o ) {
         ERROR "Couldn't find job id in path: " . $req->path;
-        return psgi_response( { code  => HTTP_BAD_REQUEST,
-                                error => [ "jobid missing from request path " . $req->path ] } );
+        return psgi_response(
+            {   code  => HTTP_BAD_REQUEST,
+                error => [ "jobid missing from request path " . $req->path ]
+            }
+        );
     }
 
     $jobid = $1;
@@ -645,17 +664,20 @@ sub joblog {
     DEBUG "looking up joblog for $jobid";
 
     my $data = from_json( _TEST_DATA() );
-    foreach ( @{ $data->{jobs} } ) {
-        if ( $jobid eq $_->{jobid} ) {
-            $joblog = $_->{log};
+    foreach ( @{ $data->{ jobs } } ) {
+        if ( $jobid eq $_->{ jobid } ) {
+            $joblog = $_->{ log };
             last;
         }
     }
 
     unless ( $joblog ) {
         ERROR "no such job $jobid";
-        return psgi_response( { code  => HTTP_NOT_FOUND,
-                                error => [ "no such job $jobid" ] } );
+        return psgi_response(
+            {   code  => HTTP_NOT_FOUND,
+                error => [ "no such job $jobid" ]
+            }
+        );
     }
 
     return psgi_response( { data => { joblog => $joblog } } );
@@ -672,8 +694,11 @@ sub jobhosts {
 
     unless ( $req->path =~ m{/([^/]+)/hosts$}o ) {
         ERROR "Couldn't find job id in path: " . $req->path;
-        return psgi_response( { code  => HTTP_BAD_REQUEST,
-                                error => [ "jobid missing from request path " . $req->path ] } );
+        return psgi_response(
+            {   code  => HTTP_BAD_REQUEST,
+                error => [ "jobid missing from request path " . $req->path ]
+            }
+        );
     }
 
     $jobid = $1;
@@ -682,22 +707,24 @@ sub jobhosts {
     DEBUG "looking up jobhosts for $jobid";
 
     my $data = from_json( _TEST_DATA() );
-    foreach ( @{ $data->{jobs} } ) {
-        if ( $jobid eq $_->{jobid} ) {
-            $hosts = $_->{hosts};
+    foreach ( @{ $data->{ jobs } } ) {
+        if ( $jobid eq $_->{ jobid } ) {
+            $hosts = $_->{ hosts };
             last;
         }
     }
 
     unless ( $hosts ) {
         ERROR "no such job $jobid";
-        return psgi_response( { code  => HTTP_NOT_FOUND,
-                                error => [ "no such job $jobid" ] } );
+        return psgi_response(
+            {   code  => HTTP_NOT_FOUND,
+                error => [ "no such job $jobid" ]
+            }
+        );
     }
 
     return psgi_response( { data => { hosts => $hosts } } );
 }
-
 
 ###########################################
 sub jobsubmit {
@@ -708,9 +735,10 @@ sub jobsubmit {
 
     my $cmd = $req->param( 'cmd' );
 
-    if ( ! defined $cmd ) {
+    if ( !defined $cmd ) {
         ERROR "No cmd defined";
-        return psgi_response( { code => HTTP_BAD_REQUEST, error => [ 'cmd missing' ] } );
+        return psgi_response(
+            { code => HTTP_BAD_REQUEST, error => [ 'cmd missing' ] } );
 
     } else {
         DEBUG "cmd is $cmd";
@@ -750,14 +778,29 @@ sub job_post_to_dispatcher {
 
         if ( $@ ) {
             ERROR "invalid response received from dispatcher: $@";
-            $response_cb->( psgi_response( { code   => HTTP_INTERNAL_SERVER_ERROR,
-                                             meta   => { rc     => 'fail',
-                                                         status => $hdr->{ Status } },
-                                             errors => [ "problem in communication with dispatcher: $@" ] } ) );
+            $response_cb->(
+                psgi_response(
+                    {   code => HTTP_INTERNAL_SERVER_ERROR,
+                        meta => {
+                            rc     => 'fail',
+                            status => $hdr->{ Status }
+                        },
+                        errors =>
+                            [ "problem in communication with dispatcher: $@" ]
+                    }
+                )
+            );
         } else {
-            $response_cb->( psgi_response( { meta => { rc     => $data->{ rc },
-                                                       status => $hdr->{ Status } },
-                                             data => { message => $data->{ message } } } ) );
+            $response_cb->(
+                psgi_response(
+                    {   meta => {
+                            rc     => $data->{ rc },
+                            status => $hdr->{ Status }
+                        },
+                        data => { message => $data->{ message } }
+                    }
+                )
+            );
         }
         };
 }
@@ -770,38 +813,44 @@ sub not_implemented {
     my $path   = $req->path;
     my $method = $req->method;
 
-    return psgi_response( { code   => HTTP_NOT_IMPLEMENTED,
-                            errors => [ "not implemented yet: $method '$path'" ] } )
+    return psgi_response(
+        {   code   => HTTP_NOT_IMPLEMENTED,
+            errors => [ "not implemented yet: $method '$path'" ]
+        }
+    );
 }
 
 ###########################################
 sub psgi_response {
 ###########################################
-    my ($args) = @_;
+    my ( $args ) = @_;
 
-    my $code   = $args->{code}   || HTTP_OK; # (200)
-    my $meta   = $args->{meta};
-    my $data   = $args->{data};
-    my $errors = $args->{errors};
-    my $format = $args->{format} || 'json';
+    my $code   = $args->{ code } || HTTP_OK;    # (200)
+    my $meta   = $args->{ meta };
+    my $data   = $args->{ data };
+    my $errors = $args->{ errors };
+    my $format = $args->{ format } || 'json';
 
-    my %content_type_headers = ( 'json'        => 'application/json',
-                                 'json-pretty' => 'application/json', );
-                                 #'yaml'        => 'text/plain; charset=utf-8'
+    my %content_type_headers = (
+        'json'        => 'application/json',
+        'json-pretty' => 'application/json',
+    );
+    #'yaml'        => 'text/plain; charset=utf-8'
 
-    return response( { code => HTTP_BAD_REQUEST, error => [ "format '$format' not known" ] } )
-        unless $content_type_headers{ $format };
+    return response(
+        { code => HTTP_BAD_REQUEST, error => [ "format '$format' not known" ] }
+    ) unless $content_type_headers{ $format };
 
     $meta->{ hostname } = hostname();
 
-
     # construct body for PSGI response
-    my $body = { 'meta'     => $meta,
-                 'response' => $data };
+    my $body = {
+        'meta'     => $meta,
+        'response' => $data
+    };
 
     $body->{ errors } = $errors
         if defined $errors;
-
 
     # format body appropriately
     if ( 'json' eq $format ) {
@@ -817,12 +866,10 @@ sub psgi_response {
     }
 
     return [
-        $code,
-        [ 'Content-Type' => $content_type_headers{ $format } ],
+        $code, [ 'Content-Type' => $content_type_headers{ $format } ],
         [ $body ]
-        ];
+    ];
 }
-
 
 =head1 LICENSE
 
@@ -860,7 +907,7 @@ Yogesh Natarajan <yogesh_ny@yahoo.co.in>
 
 sub _TEST_DATA {
 
-return <<'END_YAML'
+    return <<'END_YAML'
 {
   "jobs" : [
       {
@@ -1304,6 +1351,6 @@ return <<'END_YAML'
 }
 
 END_YAML
-};
+}
 
 1;

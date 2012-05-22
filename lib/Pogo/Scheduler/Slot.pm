@@ -17,7 +17,7 @@ use overload ( 'fallback' => 1, '""' => 'as_string' );
 ###########################################
 sub new {
 ###########################################
-    my($class, %options) = @_;
+    my ( $class, %options ) = @_;
 
     my $self = {
         tasks              => [],
@@ -29,7 +29,7 @@ sub new {
         %options,
     };
 
-    $self->{ id } = id_gen( "slot" ) if ! defined $self->{ id };
+    $self->{ id } = id_gen( "slot" ) if !defined $self->{ id };
 
     bless $self, $class;
 }
@@ -37,7 +37,7 @@ sub new {
 ###########################################
 sub task_add {
 ###########################################
-    my( $self, $task ) = @_;
+    my ( $self, $task ) = @_;
 
     DEBUG "Adding task $task to slot $self";
 
@@ -51,7 +51,7 @@ sub task_add {
 ###########################################
 sub is_constrained {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     return defined $self->{ constraint_cfg };
 }
@@ -59,19 +59,22 @@ sub is_constrained {
 ###########################################
 sub start {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     DEBUG "Starting slot $self with tasks [",
-      join( ", ", @{ $self->{ tasks } } ), "]";
+        join( ", ", @{ $self->{ tasks } } ), "]";
 
-    $self->reg_cb( "task_mark_done", sub {
-        my( $c, $task ) = @_;
+    $self->reg_cb(
+        "task_mark_done",
+        sub {
+            my ( $c, $task ) = @_;
 
-        $self->task_mark_done( $task );
-    });
+            $self->task_mark_done( $task );
+        }
+    );
 
-      # Schedule all tasks. Tasks control constraints themselves.
-    while( my $task = $self->task_next() ) {
+    # Schedule all tasks. Tasks control constraints themselves.
+    while ( my $task = $self->task_next() ) {
         # nothing to do here, task_next does everything
     }
 }
@@ -79,9 +82,9 @@ sub start {
 ###########################################
 sub tasks_left {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
-    if( $self->{ next_task_idx } <= $#{ $self->{ tasks } } ) {
+    if ( $self->{ next_task_idx } <= $#{ $self->{ tasks } } ) {
         return 1;
     }
 
@@ -91,14 +94,14 @@ sub tasks_left {
 ###########################################
 sub task_next {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     DEBUG "Slot $self: Determine next task";
 
-    if( ! $self->tasks_left() ) {
+    if ( !$self->tasks_left() ) {
         DEBUG "Slot $self: No more tasks";
-          # if this slot has no more active tasks (e.g. because
-          # it started without tasks in the first place), we're done
+        # if this slot has no more active tasks (e.g. because
+        # it started without tasks in the first place), we're done
         $self->slot_done_notify() if !$self->tasks_active();
         return undef;
     }
@@ -110,7 +113,7 @@ sub task_next {
     $self->{ next_task_idx }++;
 
     DEBUG "Slot $self scheduled task $task";
-    $task->run( );
+    $task->run();
 
     return $task;
 }
@@ -118,7 +121,7 @@ sub task_next {
 ###########################################
 sub tasks_active {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     my $nof_active_tasks = scalar keys %{ $self->{ active_task_by_id } };
 
@@ -130,15 +133,16 @@ sub tasks_active {
 ###########################################
 sub task_mark_done {
 ###########################################
-    my( $self, $task ) = @_;
+    my ( $self, $task ) = @_;
 
-    if( exists $self->{ active_task_by_id }->{ $task->id() } ) {
+    if ( exists $self->{ active_task_by_id }->{ $task->id() } ) {
         DEBUG "Marking task ", $task->id(), " done";
         $self->{ active_task_by_id }->{ $task->id() }->mark_done();
         delete $self->{ active_task_by_id }->{ $task->id() };
 
-        if( $self->{ next_task_idx } > $#{ $self->{ tasks } } and
-            !$self->tasks_active() ) {
+        if ( $self->{ next_task_idx } > $#{ $self->{ tasks } }
+            and !$self->tasks_active() )
+        {
             DEBUG "Slot $self is complete";
             $self->slot_done_notify();
         }
@@ -152,11 +156,11 @@ sub task_mark_done {
 ###########################################
 sub slot_done_notify {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     DEBUG "slot_done_notify: $self->{ slot_done_notified }";
 
-    if( !$self->{ slot_done_notified } ) {
+    if ( !$self->{ slot_done_notified } ) {
         DEBUG "Sending slot_done event for $self";
         $self->{ slot_done_notified }++;
         $self->event( "slot_done", $self );
@@ -166,7 +170,7 @@ sub slot_done_notify {
 ###########################################
 sub tasks {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     return @{ $self->{ tasks } };
 }
@@ -174,7 +178,7 @@ sub tasks {
 ###########################################
 sub as_string {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     return "$self->{ id }";
 }

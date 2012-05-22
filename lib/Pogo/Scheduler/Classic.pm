@@ -15,7 +15,7 @@ use base qw( Pogo::Scheduler );
 ###########################################
 sub new {
 ###########################################
-    my( $class, %options ) = @_;
+    my ( $class, %options ) = @_;
 
     my $self = {
         thread_by_id => {},
@@ -26,10 +26,13 @@ sub new {
 
     bless $self, $class;
 
-    $self->reg_cb( "task_finished", sub {
-      my( $c, @params ) = @_;
-      $self->task_finished( @params );
-    } );
+    $self->reg_cb(
+        "task_finished",
+        sub {
+            my ( $c, @params ) = @_;
+            $self->task_finished( @params );
+        }
+    );
 
     return $self;
 }
@@ -37,7 +40,7 @@ sub new {
 ###########################################
 sub config {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     return $self->{ config };
 }
@@ -45,74 +48,79 @@ sub config {
 ###########################################
 sub config_load {
 ###########################################
-    my( $self, $yaml ) = @_;
+    my ( $self, $yaml ) = @_;
 
-    if( ref $yaml eq "SCALAR" ) {
+    if ( ref $yaml eq "SCALAR" ) {
         $self->{ config } = Load( $$yaml );
     } else {
         $self->{ config } = LoadFile( $yaml );
     }
 
     for my $field ( qw( tag ) ) {
-        if( !exists $self->{ config }->{ $field } ) {
+        if ( !exists $self->{ config }->{ $field } ) {
             ERROR "Improper config file: No $field";
             return undef;
         }
     }
 
-    if( !exists $self->{ config }->{ sequence } ) {
+    if ( !exists $self->{ config }->{ sequence } ) {
         $self->{ config }->{ sequence } = {};
     }
 
     $self->{ sequence_slots } = [];
 
-      # The full path to every leaf node in the 'sequence' definition, 
-      # separated by dots, constitutes a slot.
-    Pogo::Util::struct_traverse( $self->{ config }->{ sequence }, { 
-        leaf => sub {
-            my( $node, $path ) = @_; 
+    # The full path to every leaf node in the 'sequence' definition,
+    # separated by dots, constitutes a slot.
+    Pogo::Util::struct_traverse(
+        $self->{ config }->{ sequence },
+        {   leaf => sub {
+                my ( $node, $path ) = @_;
 
-            my $slotname = join(".", @$path, $node);
+                my $slotname = join( ".", @$path, $node );
 
-            my $slot = Pogo::Scheduler::Slot->new(
-                id         => $slotname,
-            );
-            push @{ $self->{ sequence_slots } }, $slot;
-        } 
-    } );
-
-      # Expand tagged globs
-    Pogo::Util::struct_traverse( $self->{ config }->{ tag }, {
-        leaf => sub {
-            my( $glob, $path, $opts ) = @_; 
-            
-            my @hosts = string_glob_permute( $glob );
-
-            $DB::single = 1;
-
-            if( @hosts > 1 ) {
-                my $parent = Pogo::Util::struct_locate( 
-                    $self->{ config }->{ tag }, $path );
-                splice @$parent, $opts->{ array_idx }, 1, @hosts;
-            }
+                my $slot = Pogo::Scheduler::Slot->new( id => $slotname, );
+                push @{ $self->{ sequence_slots } }, $slot;
+                }
         }
-    } );
+    );
 
-      # Traverse the configuration's "tag" structure and map hosts
-      # to slots (host slots constitute of the full path to the leaf nodes
-      # in the "tag" configuration).
-    Pogo::Util::struct_traverse( $self->{ config }->{ tag }, {
-        leaf => sub {
-            my( $node, $path ) = @_; 
+    # Expand tagged globs
+    Pogo::Util::struct_traverse(
+        $self->{ config }->{ tag },
+        {   leaf => sub {
+                my ( $glob, $path, $opts ) = @_;
 
-            my $host = $node;
-            my $slot = join '.', @$path;
-            $slot =~ s/^\$//;
+                my @hosts = string_glob_permute( $glob );
 
-            push @{ $self->{ slot_hosts }->{ $slot } }, $host;
-            push @{ $self->{ host_slots }->{ $host } }, "$slot";
+                $DB::single = 1;
+
+                if ( @hosts > 1 ) {
+                    my $parent =
+                        Pogo::Util::struct_locate( $self->{ config }->{ tag },
+                        $path );
+                    splice @$parent, $opts->{ array_idx }, 1, @hosts;
+                }
+                }
         }
-    } );
+    );
+
+    # Traverse the configuration's "tag" structure and map hosts
+    # to slots (host slots constitute of the full path to the leaf nodes
+    # in the "tag" configuration).
+    Pogo::Util::struct_traverse(
+        $self->{ config }->{ tag },
+        {   leaf => sub {
+                my ( $node, $path ) = @_;
+
+                my $host = $node;
+                my $slot = join '.', @$path;
+                $slot =~ s/^\$//;
+
+                push @{ $self->{ slot_hosts }->{ $slot } }, $host;
+                push @{ $self->{ host_slots }->{ $host } }, "$slot";
+                }
+        }
+    );
 
     $self->constraint_setup();
     $self->slot_setup();
@@ -124,37 +132,42 @@ sub config_load {
 ###########################################
 sub constraint_setup {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
-    Pogo::Util::struct_traverse( $self->{ config }->{ constraint }, {
-        leaf => sub {
-            my( $value, $path ) = @_; 
+    Pogo::Util::struct_traverse(
+        $self->{ config }->{ constraint },
+        {   leaf => sub {
+                my ( $value, $path ) = @_;
 
-            my $field     = pop @$path;
-            my $slot_name = pop @$path;
-            $slot_name =~ s/^\$//;
+                my $field     = pop @$path;
+                my $slot_name = pop @$path;
+                $slot_name =~ s/^\$//;
 
-            $self->{ constraints_by_slot }->{ $slot_name } = 
-                Pogo::Scheduler::Constraint->new( $field => $value );
+                $self->{ constraints_by_slot }->{ $slot_name } =
+                    Pogo::Scheduler::Constraint->new( $field => $value );
 
-            $DB::single = 1;
+                $DB::single = 1;
 
-            for my $host ( keys %{ $self->{ host_slots } } ) {
-                for my $slot_name ( @{ $self->{ host_slots }->{ $host } } ) {
-                    next if !exists 
-                      $self->{ constraints_by_slot }->{ $slot_name };
-                    push @{ $self->{ constraints_by_host }->{ $host } }, 
-                         $self->{ constraints_by_slot }->{ $slot_name };
+                for my $host ( keys %{ $self->{ host_slots } } ) {
+                    for my $slot_name ( @{ $self->{ host_slots }->{ $host } } )
+                    {
+                        next
+                            if !
+                                exists $self->{ constraints_by_slot }
+                                ->{ $slot_name };
+                        push @{ $self->{ constraints_by_host }->{ $host } },
+                            $self->{ constraints_by_slot }->{ $slot_name };
+                    }
                 }
-            }
+                }
         }
-    } );
+    );
 }
 
 ###########################################
 sub slot_setup {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     my $all_hosts = $self->config_hosts_hash();
 
@@ -163,7 +176,7 @@ sub slot_setup {
 
         my $slot_id = $slot->id();
 
-        while( $slot_id =~ /(\$[^\$]*)/g ) {
+        while ( $slot_id =~ /(\$[^\$]*)/g ) {
             my $part = $1;
             $part =~ s/^\$//;
             $part =~ s/\.$//;
@@ -175,8 +188,8 @@ sub slot_setup {
         @hosts = @$found if defined $found;
 
         for my $part ( @parts ) {
-            @hosts = array_intersection( \@hosts, 
-                       $self->{ slot_hosts }->{ $part } );
+            @hosts =
+                array_intersection( \@hosts, $self->{ slot_hosts }->{ $part } );
         }
 
         for my $host ( @hosts ) {
@@ -187,60 +200,66 @@ sub slot_setup {
         $self->{ hosts_by_slot }->{ $slot->id() } = \@hosts;
     }
 
-      # what's left over is unconstrained
+    # what's left over is unconstrained
     $self->{ hosts_by_slot }->{ unconstrained } = [ keys %{ $all_hosts } ];
 
     for my $slot ( keys %{ $self->{ hosts_by_slot } } ) {
-        DEBUG "Slot $slot: [", 
-              join( ", ", @{ $self->{ hosts_by_slot }->{ $slot } } ), "]";
+        DEBUG "Slot $slot: [",
+            join( ", ", @{ $self->{ hosts_by_slot }->{ $slot } } ), "]";
     }
 }
 
 ###########################################
 sub thread_setup {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     $self->{ threads } = [];
 
-    Pogo::Util::struct_traverse( $self->{ config }->{ sequence }, {
-      array => sub {
-          my( $sequence, $path ) = @_;
+    Pogo::Util::struct_traverse(
+        $self->{ config }->{ sequence },
+        {   array => sub {
+                my ( $sequence, $path ) = @_;
 
-          my $thread = Pogo::Scheduler::Thread->new();
+                my $thread = Pogo::Scheduler::Thread->new();
 
-          $self->event_forward( { forward_from => $thread }, qw( waiting ) );
+                $self->event_forward( { forward_from => $thread },
+                    qw( waiting ) );
 
-            # for quick lookup later when tasks come back
-          $self->{ thread_by_id }->{ $thread->id() } = $thread;
+                # for quick lookup later when tasks come back
+                $self->{ thread_by_id }->{ $thread->id() } = $thread;
 
-          for my $seq ( @$sequence ) {
-              my $slotname = join( '.', @$path, $seq );
+                for my $seq ( @$sequence ) {
+                    my $slotname = join( '.', @$path, $seq );
 
-              my $constraint_cfg;
+                    my $constraint_cfg;
 
-              if( exists $self->{ config }->{ constraint }->{ $slotname } ) {
-                  $constraint_cfg = 
-                    $self->{ config }->{ constraint }->{ $slotname };
-              }
+                    if (exists $self->{ config }->{ constraint }
+                        ->{ $slotname } )
+                    {
+                        $constraint_cfg =
+                            $self->{ config }->{ constraint }->{ $slotname };
+                    }
 
-              my $slot = Pogo::Scheduler::Slot->new(
-                  id             => $slotname,
-                  (defined $constraint_cfg ? 
-                     ( constraint_cfg => $constraint_cfg ) : () ),
-              );
-              $thread->slot_add( $slot );
-          }
+                    my $slot = Pogo::Scheduler::Slot->new(
+                        id => $slotname,
+                        (   defined $constraint_cfg
+                            ? ( constraint_cfg => $constraint_cfg )
+                            : ()
+                        ),
+                    );
+                    $thread->slot_add( $slot );
+                }
 
-          DEBUG "Thread $thread: [", join( ", ", @{ $thread->slots() } ), "]";
+                DEBUG "Thread $thread: [", join( ", ", @{ $thread->slots() } ),
+                    "]";
 
-          push @{ $self->{ threads } }, $thread;
-      } 
-    } );
-
-    my $slot = Pogo::Scheduler::Slot->new(
-        id => "unconstrained",
+                push @{ $self->{ threads } }, $thread;
+                }
+        }
     );
+
+    my $slot = Pogo::Scheduler::Slot->new( id => "unconstrained", );
 
     my $thread = Pogo::Scheduler::Thread->new();
     $self->event_forward( { forward_from => $thread }, qw( waiting ) );
@@ -253,68 +272,74 @@ sub thread_setup {
 ###########################################
 sub schedule {
 ###########################################
-    my( $self, $hosts ) = @_;
+    my ( $self, $hosts ) = @_;
 
     $hosts = [] if !defined $hosts;
 
     DEBUG "Scheduling hosts ", join( ", ", @$hosts );
 
-    $self->reg_cb( "task_mark_done", sub {
-        my( $c, $task ) = @_;
+    $self->reg_cb(
+        "task_mark_done",
+        sub {
+            my ( $c, $task ) = @_;
 
-        DEBUG "Scheduler received task_mark_done for task $task";
-        DEBUG "Forwarding 'task_mark_done' to thread ", $task->thread();
+            DEBUG "Scheduler received task_mark_done for task $task";
+            DEBUG "Forwarding 'task_mark_done' to thread ", $task->thread();
 
-        if( exists $self->{ thread_by_id }->{ $task->thread() } ) {
-            $self->{ thread_by_id }->{ $task->thread() }->event(
-                "task_mark_done", $task );
-        } else {
-            ERROR "Received task with unknown thread id: $task";
-        }
+            if ( exists $self->{ thread_by_id }->{ $task->thread() } ) {
+                $self->{ thread_by_id }->{ $task->thread() }
+                    ->event( "task_mark_done", $task );
+            } else {
+                ERROR "Received task with unknown thread id: $task";
+            }
 
-        my $host = $task->host();
+            my $host = $task->host();
 
-        if( exists $self->{ constraints_by_host }->{ $host } ) {
-            DEBUG "Forwarding task_mark_done to host $host constraint";
-            for my $constraint ( 
-                @{ $self->{ constraints_by_host }->{ $host } } ) {
-                $constraint->event( "task_mark_done" );
+            if ( exists $self->{ constraints_by_host }->{ $host } ) {
+                DEBUG "Forwarding task_mark_done to host $host constraint";
+                for my $constraint (
+                    @{ $self->{ constraints_by_host }->{ $host } } )
+                {
+                    $constraint->event( "task_mark_done" );
+                }
             }
         }
-    } );
+    );
 
-    my %host_lookup = map { $_ => 1 } @$hosts; # for faster lookups
+    my %host_lookup = map { $_ => 1 } @$hosts;    # for faster lookups
 
     for my $thread ( @{ $self->{ threads } } ) {
 
         next if $thread->is_done();
 
-        $thread->reg_cb( "task_run", sub {
-            my( $c, $task ) = @_;
+        $thread->reg_cb(
+            "task_run",
+            sub {
+                my ( $c, $task ) = @_;
 
-            DEBUG "Classic running task $task";
-            $self->event( "task_run", $task );
-        } );
+                DEBUG "Classic running task $task";
+                $self->event( "task_run", $task );
+            }
+        );
 
         for my $slot ( @{ $thread->slots() } ) {
-            for my $host ( 
-                @{ $self->{ hosts_by_slot }->{ $slot->id() } } ) {
-    
-                if( exists $host_lookup{ $host } ) {
+            for my $host ( @{ $self->{ hosts_by_slot }->{ $slot->id() } } ) {
+
+                if ( exists $host_lookup{ $host } ) {
 
                     my @constraints = ();
 
-                    if( exists $self->{ constraints_by_host }->{ $host } ) {
-                        @constraints = 
-                          ( constraints => 
-                              $self->{ constraints_by_host }->{ $host } );
+                    if ( exists $self->{ constraints_by_host }->{ $host } ) {
+                        @constraints =
+                            ( constraints =>
+                                $self->{ constraints_by_host }->{ $host } );
                     }
 
-                    my $task = Pogo::Scheduler::Task->new( 
-                        id          => $host,
-                        slot        => $slot,
-                        thread      => $thread,
-                        host        => $host,
+                    my $task = Pogo::Scheduler::Task->new(
+                        id     => $host,
+                        slot   => $slot,
+                        thread => $thread,
+                        host   => $host,
                         @constraints
                     );
 
@@ -323,7 +348,7 @@ sub schedule {
             }
         }
 
-          # start thread in parallel with other threads
+        # start thread in parallel with other threads
         $thread->start();
     }
 }
@@ -331,29 +356,28 @@ sub schedule {
 ###########################################
 sub schedule_zknodes {
 ###########################################
-    my( $self, $hosts ) = @_;
+    my ( $self, $hosts ) = @_;
 
     my @nodes                  = ();
     my %schedule               = ();
     my %constraints            = ();
     my %constraint_ids_by_host = ();
 
-    my %host_lookup = map { $_ => 1 } @$hosts; # for faster lookups
+    my %host_lookup = map { $_ => 1 } @$hosts;    # for faster lookups
 
     for my $thread ( @{ $self->{ threads } } ) {
         for my $slot ( @{ $thread->slots() } ) {
-            for my $host ( 
-                @{ $self->{ hosts_by_slot }->{ $slot->id() } } ) {
-    
-                next if ! exists $host_lookup{ $host };
+            for my $host ( @{ $self->{ hosts_by_slot }->{ $slot->id() } } ) {
+
+                next if !exists $host_lookup{ $host };
 
                 $schedule{ $thread }->{ $slot }->{ $host } = 1;
 
-                if( exists $self->{ constraints_by_host }->{ $host } ) {
+                if ( exists $self->{ constraints_by_host }->{ $host } ) {
 
                     my $constraint = $self->{ constraints_by_host }->{ $host };
 
-                    $constraints{ $constraint->id() } = 
+                    $constraints{ $constraint->id() } =
                         $self->{ constraints_by_host }->{ $host };
 
                     $constraint_ids_by_host{ $host } = $constraint->id();
@@ -371,13 +395,13 @@ sub schedule_zknodes {
     }
 
     for my $constraint_id ( sort keys %constraints ) {
-        push @nodes, "/constraints/$constraint_id/" .
-          "max_parallel=$constraints{ $constraint_id }->{ max_parallel }";
+        push @nodes, "/constraints/$constraint_id/"
+            . "max_parallel=$constraints{ $constraint_id }->{ max_parallel }";
     }
 
     for my $host ( sort keys %constraint_ids_by_host ) {
-        push @nodes, "/constraints_by_host/$host/" .
-          "$constraint_ids_by_host{ $host }";
+        push @nodes,
+            "/constraints_by_host/$host/" . "$constraint_ids_by_host{ $host }";
     }
 
 }
@@ -385,21 +409,23 @@ sub schedule_zknodes {
 ###########################################
 sub config_hosts_hash {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     # extract all the hosts defined in the config file (might include
     # custom tag resolvers).
     my $hosts = {};
 
     for my $key ( qw( tag sequence ) ) {
-        my $root =  $self->{ config }->{ $key };
-        Pogo::Util::struct_traverse( $root, {
-            leaf => sub {
-                my( $node, $path ) = @_;
+        my $root = $self->{ config }->{ $key };
+        Pogo::Util::struct_traverse(
+            $root,
+            {   leaf => sub {
+                    my ( $node, $path ) = @_;
 
-                $hosts->{ $node } = 1 if $node !~ /^\$/;
+                    $hosts->{ $node } = 1 if $node !~ /^\$/;
+                    }
             }
-        } );
+        );
     }
 
     return $hosts;
@@ -408,7 +434,7 @@ sub config_hosts_hash {
 ###########################################
 sub config_hosts {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     return keys %{ $self->config_hosts_hash() };
 }
@@ -416,7 +442,7 @@ sub config_hosts {
 ###########################################
 sub task_run {
 ###########################################
-    my( $self, $task ) = @_;
+    my ( $self, $task ) = @_;
 
     $self->event( "task_run", $task );
 }
@@ -424,16 +450,16 @@ sub task_run {
 ###########################################
 sub task_finished {
 ###########################################
-    my( $self, $task ) = @_;
+    my ( $self, $task ) = @_;
 
-      # when all is done
+    # when all is done
     $self->event( "job_done" );
 }
 
 ###########################################
 sub as_ascii {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     require Text::ASCIITable;
 
@@ -466,8 +492,8 @@ sub as_ascii {
 
         for my $slot ( @$slots ) {
             push @slot_row, "$slot";
-            push @host_row, 
-              join(", ", @{ $self->{ hosts_by_slot }->{ "$slot" } } );
+            push @host_row,
+                join( ", ", @{ $self->{ hosts_by_slot }->{ "$slot" } } );
         }
 
         $t->addRow( "$thread", @slot_row );
@@ -480,15 +506,15 @@ sub as_ascii {
 ###########################################
 sub nodes {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     my @nodes = ();
 
     for my $thread ( @{ $self->{ threads } } ) {
         my $slots = $thread->slots();
         for my $slot ( @$slots ) {
-            push @nodes, join ( '/', $thread, $slot, 
-                                @{ $self->{ hosts_by_slot } } );
+            push @nodes,
+                join( '/', $thread, $slot, @{ $self->{ hosts_by_slot } } );
         }
     }
 

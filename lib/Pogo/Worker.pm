@@ -107,10 +107,11 @@ sub start {
             my ( $c, $task_id, $rc ) = @_;
 
             $self->to_dispatcher(
-                { cmd     => "task_done",
-                  task_id => $task_id,
-                  rc      => $rc,
-            } );
+                {   cmd     => "task_done",
+                    task_id => $task_id,
+                    rc      => $rc,
+                }
+            );
         }
     );
 }
@@ -120,10 +121,9 @@ sub cmd_handler {
 ###########################################
     my ( $self, $task_id, $cmd ) = @_;
 
-    my %commands = map { $_ => 1 } 
-      qw( test );
-    
-    if( exists $commands{ $cmd } ) {
+    my %commands = map { $_ => 1 } qw( test );
+
+    if ( exists $commands{ $cmd } ) {
         my $method = $cmd . "_cmd";
         no strict 'refs';
         $self->$method( $task_id );

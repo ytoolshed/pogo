@@ -16,7 +16,7 @@ use overload ( 'fallback' => 1, '""' => 'as_string' );
 ###########################################
 sub new {
 ###########################################
-    my( $class, %options ) = @_;
+    my ( $class, %options ) = @_;
 
     my $self = {
         thread    => "no_thread_defined",
@@ -26,7 +26,7 @@ sub new {
         %options,
     };
 
-    $self->{ id } = id_gen( "task" ) if ! defined $self->{ id };
+    $self->{ id } = id_gen( "task" ) if !defined $self->{ id };
 
     bless $self, $class;
 
@@ -38,7 +38,7 @@ sub new {
 ###########################################
 sub as_string {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     return "$self->{ id }:$self->{ slot }:$self->{ thread }";
 }
@@ -46,9 +46,9 @@ sub as_string {
 ###########################################
 sub mark_done {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
-    if( exists $self->{ constraints } ) {
+    if ( exists $self->{ constraints } ) {
         for my $constraint ( @{ $self->{ constraints } } ) {
             $constraint->task_mark_done();
         }
@@ -58,11 +58,11 @@ sub mark_done {
 ###########################################
 sub run {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
-    if( exists $self->{ constraints } ) {
+    if ( exists $self->{ constraints } ) {
         for my $constraint ( @{ $self->{ constraints } } ) {
-            if( $constraint->blocked() ) {
+            if ( $constraint->blocked() ) {
                 DEBUG "Can't run host $self->{ host } because of $constraint";
                 DEBUG "Slot $self->{ slot } sends out waiting event";
                 $self->{ slot }->event( "waiting" );
@@ -70,13 +70,13 @@ sub run {
             }
         }
 
-          # we're good to go
+        # we're good to go
         for my $constraint ( @{ $self->{ constraints } } ) {
             $constraint->kick();
         }
-    } 
-    
-    $self->{ slot }->event("task_run", $self );
+    }
+
+    $self->{ slot }->event( "task_run", $self );
 }
 
 1;

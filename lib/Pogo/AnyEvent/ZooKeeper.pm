@@ -8,15 +8,15 @@ use AnyEvent;
 use AnyEvent::Strict;
 use Data::Dumper;
 use Pogo::Util::QP;
-use Module::Pluggable search_path => ['Pogo::Plugin::ZooKeeper'];
+use Module::Pluggable search_path => [ 'Pogo::Plugin::ZooKeeper' ];
 use base qw(Pogo::Object::Event);
 
 my $ZK_CLASS;
 
 BEGIN {
-    ($ZK_CLASS) = __PACKAGE__->plugins();
+    ( $ZK_CLASS ) = __PACKAGE__->plugins();
     eval "require $ZK_CLASS";
-    if( $@ ) {
+    if ( $@ ) {
         die "$@";
     }
     $ZK_CLASS->import( qw( ZOK ZINVALIDSTATE ZCONNECTIONLOSS ) );

@@ -9,7 +9,7 @@ use Module::Pluggable search_path => [ 'Pogo::Plugin' ], instantiate => 'new';
 
 my $instance;
 
-  # returns highest-priority plugin
+# returns highest-priority plugin
 ###########################################
 sub load {
 ###########################################
@@ -38,24 +38,24 @@ sub load {
 
         # priority() method is always required
         unless ( $plugin_obj->can( 'priority' ) ) {
-            LOGDIE "$plugin_name is missing the required method " .
-                   "'priority()'. Fix the associated .pm file or remove it.";
+            LOGDIE "$plugin_name is missing the required method "
+                . "'priority()'. Fix the associated .pm file or remove it.";
         }
 
         # check that other specified methods are present
         foreach my $required_method ( @required_methods ) {
             unless ( $plugin_obj->can( $required_method ) ) {
-                LOGDIE "$plugin_name is missing the required method " .
-                       "'$required_method()'. Fix the associated .pm file " .
-                       "or remove it.";
+                LOGDIE "$plugin_name is missing the required method "
+                    . "'$required_method()'. Fix the associated .pm file "
+                    . "or remove it.";
             }
         }
 
         DEBUG "found valid '$type' plugin: $plugin_name, priority: "
             . $plugin_obj->priority;
 
-          # if we're loading multiple plugins of this type, add this 
-          # plugin to the list regardless of priority
+        # if we're loading multiple plugins of this type, add this
+        # plugin to the list regardless of priority
         if ( $args->{ multiple } ) {
             DEBUG "adding instance of $plugin_name to list of plugins";
             if ( exists $instance->{ _lists }->{ $type } ) {
@@ -65,8 +65,8 @@ sub load {
             }
         }
 
-          # compare to other loaded plugins of this type to determine 
-          # highest priority
+        # compare to other loaded plugins of this type to determine
+        # highest priority
         if ( !defined $instance->{ $type } ) {
             $instance->{ $type } = $plugin_obj;
         } elsif ( $plugin_obj->priority > $instance->{ $type }->priority ) {
@@ -75,7 +75,7 @@ sub load {
     }    # end foreach $plugin_obj
 
     LOGDIE "No appropriate '$type' plugin found. The original installation ",
-           "should include a default plugin module in lib/Pogo/Plugin/$type/"
+        "should include a default plugin module in lib/Pogo/Plugin/$type/"
         unless $instance->{ $type };
 
     DEBUG 'using ' . ref( $instance->{ $type } ) . " for '$type' plugin";
@@ -83,7 +83,7 @@ sub load {
     return $instance->{ $type };
 }
 
-  # loads all available plugins, returning them as a list of objects
+# loads all available plugins, returning them as a list of objects
 ###########################################
 sub load_multiple {
 ###########################################
@@ -96,7 +96,7 @@ sub load_multiple {
     return @{ $instance->{ _lists }->{ $type } };
 }
 
-  # makes sure $instance is initialized
+# makes sure $instance is initialized
 ###########################################
 sub _init {
 ###########################################

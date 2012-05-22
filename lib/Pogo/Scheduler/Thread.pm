@@ -16,25 +16,28 @@ use overload ( 'fallback' => 1, '""' => 'as_string' );
 ###########################################
 sub new {
 ###########################################
-    my($class, %options) = @_;
+    my ( $class, %options ) = @_;
 
     my $self = {
-        slots => [],
+        slots         => [],
         next_slot_idx => 0,
         active_slot   => undef,
         is_done       => 0,
         %options,
     };
 
-    $self->{ id } = id_gen( "thread" ) if ! defined $self->{ id };
+    $self->{ id } = id_gen( "thread" ) if !defined $self->{ id };
 
     bless $self, $class;
 
-    $self->reg_cb( "task_mark_done", sub {
-        my( $c, $task ) = @_;
+    $self->reg_cb(
+        "task_mark_done",
+        sub {
+            my ( $c, $task ) = @_;
 
-        $self->task_mark_done( $task );
-    } );
+            $self->task_mark_done( $task );
+        }
+    );
 
     return $self;
 }
@@ -42,7 +45,7 @@ sub new {
 ###########################################
 sub slots {
 ###########################################
-    my( $self, $slot ) = @_;
+    my ( $self, $slot ) = @_;
 
     return $self->{ slots };
 }
@@ -50,7 +53,7 @@ sub slots {
 ###########################################
 sub slot_add {
 ###########################################
-    my( $self, $slot ) = @_;
+    my ( $self, $slot ) = @_;
 
     push @{ $self->{ slots } }, $slot;
 }
@@ -58,16 +61,18 @@ sub slot_add {
 ###########################################
 sub kick {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     DEBUG "Thread $self kick";
 
     # There could be either more tasks in the current slot (because
     # we were limited by constraints) or subsequent slots.
-    if( $self->slots_left() or
-        ( defined $self->{ active_slot } and
-          $self->{ active_slot }->tasks_left() ) ) {
-      DEBUG "Still tasks left in thread.";
+    if ($self->slots_left()
+        or ( defined $self->{ active_slot }
+            and $self->{ active_slot }->tasks_left() )
+        )
+    {
+        DEBUG "Still tasks left in thread.";
     } else {
 
         DEBUG "No more slots, thread $self done";
@@ -78,21 +83,26 @@ sub kick {
 
     my $slot = $self->slot_next();
 
-    $slot->reg_cb( "waiting", sub {
-          # let thread subscribers know about blocked slot
-        DEBUG "Thread $self noticed waiting event by slot $slot";
-        $self->event( "waiting", $self, $slot );
-    } );
+    $slot->reg_cb(
+        "waiting",
+        sub {
+            # let thread subscribers know about blocked slot
+            DEBUG "Thread $self noticed waiting event by slot $slot";
+            $self->event( "waiting", $self, $slot );
+        }
+    );
 
     DEBUG "Thread $self: Next slot is '$slot'";
 
-    $self->event_forward( { forward_from => $slot }, 
-        "task_run" );
+    $self->event_forward( { forward_from => $slot }, "task_run" );
 
-    $slot->reg_cb( "slot_done", sub {
-        DEBUG "Thread $self received slot_done from slot $slot";
-        $self->kick();
-    });
+    $slot->reg_cb(
+        "slot_done",
+        sub {
+            DEBUG "Thread $self received slot_done from slot $slot";
+            $self->kick();
+        }
+    );
 
     $slot->start();
 }
@@ -100,10 +110,10 @@ sub kick {
 ###########################################
 sub start {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     DEBUG "Starting thread $self with slots ",
-      join( ", ", @{ $self->{ slots } } );
+        join( ", ", @{ $self->{ slots } } );
 
     $self->kick();
 }
@@ -111,9 +121,9 @@ sub start {
 ###########################################
 sub slot_next {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
-    if( ! $self->slots_left() ) {
+    if ( !$self->slots_left() ) {
         $self->{ active_slot } = undef;
         $self->event( "thread_done", $self );
         DEBUG "No more slots left in thread $self";
@@ -131,7 +141,7 @@ sub slot_next {
 ###########################################
 sub slots_left {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     return $self->{ next_slot_idx } <= $#{ $self->{ slots } };
 }
@@ -139,9 +149,9 @@ sub slots_left {
 ###########################################
 sub task_mark_done {
 ###########################################
-    my( $self, $task ) = @_;
+    my ( $self, $task ) = @_;
 
-    if( $self->{ active_slot }->task_mark_done( $task ) ) {
+    if ( $self->{ active_slot }->task_mark_done( $task ) ) {
         return 1;
     }
 }
@@ -149,7 +159,7 @@ sub task_mark_done {
 ###########################################
 sub as_string {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     return "$self->{ id }";
 }

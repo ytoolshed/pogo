@@ -16,7 +16,7 @@ use overload ( 'fallback' => 1, '""' => 'as_string' );
 ###########################################
 sub new {
 ###########################################
-    my( $class, %options ) = @_;
+    my ( $class, %options ) = @_;
 
     my $self = {
         max_parallel => undef,
@@ -24,17 +24,20 @@ sub new {
         %options,
     };
 
-    if( ! defined $self->{ max_parallel } ) {
+    if ( !defined $self->{ max_parallel } ) {
         LOGDIE "mandatory parameter max_parallel not set";
     }
 
     bless $self, $class;
 
-    $self->reg_cb( "task_mark_done", sub {
-        $self->task_mark_done();
-    } );
+    $self->reg_cb(
+        "task_mark_done",
+        sub {
+            $self->task_mark_done();
+        }
+    );
 
-    $self->{ id } = id_gen( "constraint" ) if ! defined $self->{ id };
+    $self->{ id } = id_gen( "constraint" ) if !defined $self->{ id };
 
     return $self;
 }
@@ -42,16 +45,16 @@ sub new {
 ###########################################
 sub kick {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
-    if( !$self->blocked() ) {
+    if ( !$self->blocked() ) {
         $self->{ tasks_active }++;
         DEBUG "Emitting task_next";
         $self->event( "task_next" );
         return 1;
     }
 
-      # We're blocked, let consumers know
+    # We're blocked, let consumers know
     $self->event( "waiting" );
     return 0;
 }
@@ -59,7 +62,7 @@ sub kick {
 ###########################################
 sub task_mark_done {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     $self->{ tasks_active }--;
 }
@@ -67,7 +70,7 @@ sub task_mark_done {
 ###########################################
 sub blocked {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     return $self->{ tasks_active } >= $self->{ max_parallel };
 }
@@ -75,7 +78,7 @@ sub blocked {
 ###########################################
 sub as_string {
 ###########################################
-    my( $self ) = @_;
+    my ( $self ) = @_;
 
     return $self->{ id };
 }
