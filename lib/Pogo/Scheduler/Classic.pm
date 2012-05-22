@@ -92,8 +92,6 @@ sub config_load {
 
                 my @hosts = string_glob_permute( $glob );
 
-                $DB::single = 1;
-
                 if ( @hosts > 1 ) {
                     my $parent =
                         Pogo::Util::struct_locate( $self->{ config }->{ tag },
@@ -145,8 +143,6 @@ sub constraint_setup {
 
                 $self->{ constraints_by_slot }->{ $slot_name } =
                     Pogo::Scheduler::Constraint->new( $field => $value );
-
-                $DB::single = 1;
 
                 for my $host ( keys %{ $self->{ host_slots } } ) {
                     for my $slot_name ( @{ $self->{ host_slots }->{ $host } } )
