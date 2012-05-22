@@ -15,6 +15,9 @@ use HTTP::Status qw( :constants );
 use Plack::Request;
 use Data::Dumper;
 use HTTP::Request::Common;
+use Sys::Hostname qw(hostname);
+
+our $JSON = JSON->new->allow_nonref;
 
 =head1 NAME
 
@@ -818,6 +821,54 @@ sub not_implemented {
                                HTTP_NOT_IMPLEMENTED, );
 }
 
+###########################################
+sub psgi_response {
+###########################################
+    my ($args) = @_;
+
+    my $code   = $args->{code}   || HTTP_OK; # (200)
+    my $meta   = $args->{meta};
+    my $data   = $args->{data};
+    my $errors = $args->{errors};
+    my $format = $args->{format} || 'json';
+
+    my %content_type_headers = ( 'json'        => 'application/json',
+                                 'json-pretty' => 'application/json', );
+                                 #'yaml'        => 'text/plain; charset=utf-8'
+
+    return response( { code => HTTP_BAD_REQUEST, error => [ "format '$format' not known" ] } )
+        unless $content_type_headers{ $format };
+
+    $meta->{ hostname } = hostname();
+
+
+    # construct body for PSGI response
+    my $body = { 'meta'     => $meta,
+                 'response' => $data };
+
+    $body->{ errors } = $errors
+        if defined $errors;
+
+
+    # format body appropriately
+    if ( 'json' eq $format ) {
+
+        $body = to_json( $body );
+
+    } elsif ( 'json-pretty' eq $format ) {
+
+        $body = $JSON->pretty->encode( $body );
+
+    } else {
+        LOGDIE "unexpected format error for format '$format'";
+    }
+
+    return [
+        $code,
+        [ 'Content-Type' => $content_type_headers{ $format } ],
+        [ $body ]
+        ];
+}
 
 
 =head1 LICENSE
