@@ -4,6 +4,7 @@ package Pogo::API;
 use strict;
 use warnings;
 use Plack::App::URLMap;
+use Plack::Handler::AnyEvent::HTTPD;
 use Pogo::Defaults qw(
     $POGO_API_TEST_PORT
     $POGO_API_TEST_HOST
@@ -14,9 +15,15 @@ use base qw(Pogo::Object::Event);
 ###########################################
 sub new {
 ###########################################
-    my ( $class ) = @_;
+    my ( $class, $opts ) = @_;
+
+    # host:port to listen on
+    my $host = exists $opts->{host} ? $opts->{host} : $POGO_API_TEST_HOST;
+    my $port = exists $opts->{port} ? $opts->{port} : $POGO_API_TEST_PORT;
 
     my $self = {
+        host             => $host,
+        port             => $port,
         netloc           => "[no netloc]",
         protocol_version => "v1",
     };
@@ -40,19 +47,19 @@ sub standalone {
     my ( $self ) = @_;
 
     DEBUG "Starting standalone API server on ",
-        "$POGO_API_TEST_HOST:$POGO_API_TEST_PORT";
+        "$self->{host}:$self->{port}";
 
     $self->{ api_server } = Plack::Handler::AnyEvent::HTTPD->new(
-        host => $POGO_API_TEST_HOST,
-        port => $POGO_API_TEST_PORT,
+        host => $self->{host},
+        port => $self->{port},
     );
 
-    $self->{ netloc } = "http://$POGO_API_TEST_HOST:$POGO_API_TEST_PORT";
+    $self->{ netloc } = "http://$self->{host}:$self->{port}";
 
     $self->{ api_server }->register_service( Pogo::API->app() );
 
     DEBUG "Standalone server ready";
-    $self->event( "api_server_up", $POGO_API_TEST_HOST, $POGO_API_TEST_PORT );
+    $self->event( "api_server_up", $self->{host}, $self->{port} );
 }
 
 ###########################################
