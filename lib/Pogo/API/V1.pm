@@ -64,6 +64,7 @@ sub app {
         my $req    = Plack::Request->new( $env );
         my $path   = $req->path;
         my $method = $req->method;
+        my $format = $req->param( 'format' ) || '';
 
         DEBUG "Got v1 request for $method $path";
 
@@ -172,8 +173,9 @@ sub app {
         }
 
         return psgi_response(
-            {   code  => HTTP_BAD_REQUEST,
-                error => [ "unknown request: $method '$path'" ]
+            {   code   => HTTP_BAD_REQUEST,
+                errors => [ "unknown request: $method '$path'" ],
+                format => $format
             }
         );
     };
@@ -581,8 +583,15 @@ Toggle Pogo API's ability to accept new jobs.
 ###########################################
 sub ping {
 ###########################################
+    my ( $req ) = @_;
+
+    DEBUG "handling ping request";
+
+    my $format = $req->param( 'format' ) || '';
+
     # bare-bones "yes, the API is up" response
-    return psgi_response( { data => { ping => 'pong' } } );
+    return psgi_response( { data   => { ping => 'pong' },
+                            format => $format } );
 }
 
 ###########################################
@@ -592,9 +601,12 @@ sub listjobs {
 
     DEBUG "handling listjobs request";
 
+    my $format = $req->param( 'format' ) || '';
+
     my $data = from_json( _TEST_DATA() );
 
-    return psgi_response( { data => { jobs => $data->{ jobs } } } );
+    return psgi_response( { data   => { jobs => $data->{ jobs } },
+                            format => $format } );
 }
 
 ###########################################
@@ -604,13 +616,15 @@ sub jobinfo {
 
     DEBUG "handling jobinfo request";
 
+    my $format = $req->param( 'format' ) || '';
     my $jobid;
 
     unless ( $req->path =~ m{/([^/]+)$}o ) {
         ERROR "Couldn't find job id in path: " . $req->path;
         return psgi_response(
             {   code  => HTTP_BAD_REQUEST,
-                error => [ "jobid missing from request path " . $req->path ]
+                errors => [ "jobid missing from request path " . $req->path ],
+                format => $format
             }
         );
     }
@@ -631,13 +645,15 @@ sub jobinfo {
     unless ( $job ) {
         ERROR "no such job $job";
         return psgi_response(
-            {   code  => HTTP_NOT_FOUND,
-                error => [ "no such job $jobid" ]
+            {   code   => HTTP_NOT_FOUND,
+                errors  => [ "no such job $jobid" ],
+                format => $format
             }
         );
     }
 
-    return psgi_response( { data => { job => $job } } );
+    return psgi_response( { data => { job => $job },
+                            format => $format } );
 }
 
 ###########################################
@@ -647,13 +663,15 @@ sub joblog {
 
     DEBUG "handling joblog request";
 
+    my $format = $req->param( 'format' ) || '';
     my $jobid;
 
     unless ( $req->path =~ m{/([^/]+)/log$}o ) {
         ERROR "Couldn't find job id in path: " . $req->path;
         return psgi_response(
             {   code  => HTTP_BAD_REQUEST,
-                error => [ "jobid missing from request path " . $req->path ]
+                errors => [ "jobid missing from request path " . $req->path ],
+                format => $format
             }
         );
     }
@@ -675,12 +693,14 @@ sub joblog {
         ERROR "no such job $jobid";
         return psgi_response(
             {   code  => HTTP_NOT_FOUND,
-                error => [ "no such job $jobid" ]
+                errors => [ "no such job $jobid" ],
+                format => $format
             }
         );
     }
 
-    return psgi_response( { data => { joblog => $joblog } } );
+    return psgi_response( { data   => { joblog => $joblog },
+                            format => $format } );
 }
 
 ###########################################
@@ -690,13 +710,15 @@ sub jobhosts {
 
     DEBUG "handling jobhosts request";
 
+    my $format = $req->param( 'format' ) || '';
     my $jobid;
 
     unless ( $req->path =~ m{/([^/]+)/hosts$}o ) {
         ERROR "Couldn't find job id in path: " . $req->path;
         return psgi_response(
             {   code  => HTTP_BAD_REQUEST,
-                error => [ "jobid missing from request path " . $req->path ]
+                errors => [ "jobid missing from request path " . $req->path ],
+                format => $format
             }
         );
     }
@@ -718,12 +740,14 @@ sub jobhosts {
         ERROR "no such job $jobid";
         return psgi_response(
             {   code  => HTTP_NOT_FOUND,
-                error => [ "no such job $jobid" ]
+                errors => [ "no such job $jobid" ],
+                format => $format
             }
         );
     }
 
-    return psgi_response( { data => { hosts => $hosts } } );
+    return psgi_response( { data   => { hosts => $hosts },
+                            format => $format } );
 }
 
 ###########################################
@@ -733,12 +757,15 @@ sub jobsubmit {
 
     DEBUG "Handling jobsubmit request";
 
-    my $cmd = $req->param( 'cmd' );
+    my $cmd    = $req->param( 'cmd' );
+    my $format = $req->param( 'format' );
 
     if ( !defined $cmd ) {
         ERROR "No cmd defined";
         return psgi_response(
-            { code => HTTP_BAD_REQUEST, error => [ 'cmd missing' ] } );
+            { code   => HTTP_BAD_REQUEST,
+              errors  => [ 'cmd missing' ],
+              format => $format } );
 
     } else {
         DEBUG "cmd is $cmd";
@@ -746,7 +773,7 @@ sub jobsubmit {
             my ( $response ) = @_;
 
             # Tell the dispatcher about it (just testing)
-            job_post_to_dispatcher( $cmd, $response );
+            job_post_to_dispatcher( $cmd, $response, $format );
         };
     }
 }
@@ -754,17 +781,19 @@ sub jobsubmit {
 ###########################################
 sub job_post_to_dispatcher {
 ###########################################
-    my ( $cmd, $response_cb ) = @_;
+    my ( $cmd, $response_cb, $format ) = @_;
+
+    $format ||= '';
 
     my $cp          = Pogo::Dispatcher::ControlPort->new();
     my $cp_base_url = $cp->base_url();
 
     DEBUG "Submitting job to $cp_base_url (cmd=$cmd)";
 
-    my $req = POST "$cp_base_url/jobsubmit", [ cmd => $cmd ];
+    my $http_req = POST "$cp_base_url/jobsubmit", [ cmd => $cmd ];
 
-    http_post $req->url(), $req->content(),
-        headers => $req->headers(),
+    http_post $http_req->url(), $http_req->content(),
+        headers => $http_req->headers(),
         sub {
         my ( $data, $hdr ) = @_;
 
@@ -786,7 +815,8 @@ sub job_post_to_dispatcher {
                             status => $hdr->{ Status }
                         },
                         errors =>
-                            [ "problem in communication with dispatcher: $@" ]
+                            [ "problem in communication with dispatcher: $@" ],
+                        format => $format
                     }
                 )
             );
@@ -797,7 +827,8 @@ sub job_post_to_dispatcher {
                             rc     => $data->{ rc },
                             status => $hdr->{ Status }
                         },
-                        data => { message => $data->{ message } }
+                        data   => { message => $data->{ message } },
+                        format => $format
                     }
                 )
             );
@@ -812,10 +843,12 @@ sub not_implemented {
 
     my $path   = $req->path;
     my $method = $req->method;
+    my $format = $req->param( 'format' ) || '';
 
     return psgi_response(
         {   code   => HTTP_NOT_IMPLEMENTED,
-            errors => [ "not implemented yet: $method '$path'" ]
+            errors => [ "not implemented yet: $method '$path'" ],
+            format => $format
         }
     );
 }
@@ -825,7 +858,7 @@ sub psgi_response {
 ###########################################
     my ( $args ) = @_;
 
-    my $code   = $args->{ code } || HTTP_OK;    # (200)
+    my $code   = $args->{ code } || HTTP_OK;  # has to be Perl boolean true
     my $meta   = $args->{ meta };
     my $data   = $args->{ data };
     my $errors = $args->{ errors };
@@ -837,8 +870,8 @@ sub psgi_response {
     );
     #'yaml'        => 'text/plain; charset=utf-8'
 
-    return response(
-        { code => HTTP_BAD_REQUEST, error => [ "format '$format' not known" ] }
+    return psgi_response(
+        { code => HTTP_BAD_REQUEST, errors => [ "format '$format' not known" ] }
     ) unless $content_type_headers{ $format };
 
     $meta->{ hostname } = hostname();
