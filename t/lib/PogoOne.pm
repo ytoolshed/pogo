@@ -215,6 +215,8 @@ Worker connected to the dispatcher.
 
 Dispatcher is ready to bind.
 
+=back
+
 =head1 LICENSE
 
 Copyright (c) 2010-2012 Yahoo! Inc. All rights reserved.
