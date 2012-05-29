@@ -10,7 +10,7 @@ use AnyEvent::HTTPD;
 use JSON qw(from_json to_json);
 use Data::Dumper;
 use Template;
-use Plack::Handler::AnyEvent::HTTPD;
+use Pogo::Plack::Handler::AnyEvent::HTTPD;
 use Pogo::Defaults qw(
     $POGO_DISPATCHER_CONTROLPORT_HOST
     $POGO_DISPATCHER_CONTROLPORT_PORT

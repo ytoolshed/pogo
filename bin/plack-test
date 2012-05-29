@@ -1,6 +1,6 @@
 #!/usr/local/bin/perl -w
 use strict;
-use Plack::Handler::AnyEvent::HTTPD;
+use Pogo::Plack::Handler::AnyEvent::HTTPD;
 use AnyEvent::HTTP;
 
 my $port = 9090;

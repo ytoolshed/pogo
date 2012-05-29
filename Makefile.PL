@@ -66,7 +66,10 @@ requires 'Proc::Simple';
 requires 'Set::Scalar';
 requires 'String::Glob::Permute';
 requires 'Template';
-requires 'Plack::Handler::AnyEvent::HTTPD';
+
+# until bug gets fixed, use included Pogo::..."
+# requires 'Plack::Handler::AnyEvent::HTTPD';
+
 requires 'YAML::LibYAML';
 requires 'AnyEvent::HTTP';
 requires 'String::Glob::Permute';

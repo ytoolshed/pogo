@@ -4,7 +4,7 @@ package Pogo::API;
 use strict;
 use warnings;
 use Plack::App::URLMap;
-use Plack::Handler::AnyEvent::HTTPD;
+use Pogo::Plack::Handler::AnyEvent::HTTPD;
 use Pogo::Defaults qw(
     $POGO_API_TEST_PORT
     $POGO_API_TEST_HOST
