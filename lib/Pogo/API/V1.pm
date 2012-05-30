@@ -781,7 +781,7 @@ sub jobsubmit {
     return sub {
         my ( $response_cb ) = @_;
 
-        # Tell the dispatcher about it (just testing)
+        # Submit job to dispatcher
         job_post_to_dispatcher( $cmd, $response_cb, $format );
     };
 }
