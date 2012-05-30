@@ -98,10 +98,11 @@ sub job_submit {
 
     my $request = POST $uri, [%params];
     my $content = $request->content();
+    my @headers = ( "headers" => $request->headers() );
 
-    DEBUG "Posting job submit request to uri=$uri content=$content";
+    DEBUG "Posting job submit request to uri=$uri";
 
-    http_post $uri, $content, sub {
+    http_post $uri, $content, @headers, sub {
         my( $body, $hdr ) = @_;
         my $data = from_json( $body );
 

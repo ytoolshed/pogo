@@ -755,9 +755,6 @@ sub jobsubmit {
 ###########################################
     my ( $req ) = @_;
 
-    use Data::Dumper;
-    DEBUG "Handling jobsubmit request: ", Dumper( $req );
-
     my $cmd     = $req->param( 'cmd' );
     my $config  = $req->param( 'config' );
     $config     = "" if !defined $config;
@@ -782,10 +779,10 @@ sub jobsubmit {
     DEBUG "jobsubmit: targets: '@targets'";
 
     return sub {
-        my ( $response ) = @_;
+        my ( $response_cb ) = @_;
 
         # Tell the dispatcher about it (just testing)
-        job_post_to_dispatcher( $cmd, $response, $format );
+        job_post_to_dispatcher( $cmd, $response_cb, $format );
     };
 }
 
