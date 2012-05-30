@@ -13,6 +13,9 @@ sub new {
     my($class, %options) = @_;
 
     my $self = {
+        cmd     => undef,
+        targets => [],
+        config  => undef,
         %options,
     };
 
@@ -31,21 +34,12 @@ Pogo::Job - Pogo Job
 
     use Pogo::Job;
 
-    my $xxx = Pogo::Job->new();
+    my $job = Pogo::Job->new();
 
 =head1 DESCRIPTION
 
-Job does this and that.
-
-=head1 METHODS
-
-=over 4
-
-=item C<new()>
-
-Constructor.
-
-=back
+Pogo::Job holds parameters for a job, including the target hosts, the
+command, and the configuration.
 
 =head1 LICENSE
 

@@ -3,6 +3,7 @@ package Pogo::One;
 ###########################################
 use warnings;
 use strict;
+use JSON qw( from_json );
 use Log::Log4perl qw(:easy);
 use Pogo::Defaults qw(
   $POGO_DISPATCHER_WORKERCONN_HOST
@@ -12,6 +13,9 @@ use Pogo::Defaults qw(
 use Pogo::Dispatcher;
 use Pogo::Worker;
 use Pogo::API;
+use AnyEvent::HTTP;
+use Data::Dumper;
+use URI;
 use base qw(Pogo::Object::Event);
 
 ###########################################
@@ -54,18 +58,24 @@ sub start {
             $self->{ worker }->start();
     });
 
-     $self->{ dispatcher }->start();
+    $self->{ dispatcher }->reg_cb( dispatcher_task_done  => sub {
+        my( $c, $task_id ) = @_;
+
+        DEBUG "dispatcher_task_done: $task_id";
+    });
+
+    $self->{ dispatcher }->start();
 
      # api server
-   my $api_server = Pogo::API->new();
-   $api_server->reg_cb( api_server_up  => sub {
+   $self->{ api_server } = Pogo::API->new();
+   $self->{ api_server }->reg_cb( api_server_up  => sub {
        my( $c ) = @_;
        DEBUG "api ready";
 
        $self->event( "pogo_one_ready" );
    });
 
-   $api_server->standalone();
+   $self->{ api_server }->standalone();
 }
 
 ###########################################
@@ -73,10 +83,33 @@ sub job_submit {
 ###########################################
     my( $self, $job ) = @_;
 
-    DEBUG "Job submitted";
+    my $base_url = $self->{ api_server }->base_url();
 
-    DEBUG "Job done";
-    $self->event( "job_done", $job );
+    my $cmdline = "test";
+
+    my $uri = URI->new( "$base_url/jobs" );
+
+    $uri->query_form( 
+        cmd    => $job->{ cmd },
+        hosts  => $job->{ hosts },
+        config => $job->{ config },
+    );
+
+    DEBUG "uri=$uri";
+
+    http_post $uri, sub {
+        my( $body, $hdr ) = @_;
+        my $data = from_json( $body );
+
+        if( $data->{ rc } eq 0 ) {
+            DEBUG "Command $cmdline submitted to Web API";
+        } else {
+            ERROR "$data->{ message }";
+        }
+    };
+
+#    DEBUG "Job done";
+#    $self->event( "job_done", $job );
 }
 
 1;

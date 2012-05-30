@@ -12,7 +12,7 @@ pod2usage() if $opts{h};
 use Log::Log4perl qw(:easy);
 
 if( $opts{ v } ) {
-    Log::Log4perl->easy_init($DEBUG);
+    Log::Log4perl->easy_init( { level => $DEBUG, layout => "%F{1}:%L> %m%n" } );
 }
 
 use Pogo::One;
@@ -21,7 +21,7 @@ use Pogo::Job;
 my $pogo = Pogo::One->new();
 
 my $job = Pogo::Job->new(
-    command => "/bin/ls /",
+    cmd     => "/bin/ls /",
     targets => [ qw(host1 host2) ],
     config  => "myconfig.yaml",
 );
@@ -38,7 +38,7 @@ $pogo->reg_cb( "job_done", sub {
 $pogo->reg_cb( "pogo_one_ready", sub {
 
     $pogo->job_submit( 
-        job => $job,
+        $job,
     );
 } );
 
