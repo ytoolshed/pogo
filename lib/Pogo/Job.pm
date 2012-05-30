@@ -6,6 +6,34 @@ use warnings;
 use Log::Log4perl qw(:easy);
 use AnyEvent;
 use AnyEvent::Strict;
+use Pogo::Util qw( make_accessor );
+use URI;
+
+my @FIELDS = qw(
+range
+namespace
+command
+user
+password
+client_private_key
+pvt_key_passphrase
+run_as
+timeout
+job_timeout
+prehook
+posthook
+retry
+requesthost
+email
+im_handle
+message
+invoked_as
+client
+);
+
+for my $field ( @FIELDS ) {
+    make_accessor __PACKAGE__, $field;
+}
 
 ###########################################
 sub new {
@@ -13,13 +41,29 @@ sub new {
     my($class, %options) = @_;
 
     my $self = {
-        cmd     => undef,
-        targets => [],
-        config  => undef,
+        map( { $_ => undef } @FIELDS ),
         %options,
     };
 
     bless $self, $class;
+}
+
+###########################################
+sub urlencode {
+###########################################
+    my( $self ) = @_;
+
+    my @keyvalues = ();
+
+    for my $field ( @FIELDS ) {
+        next if !defined $self->{ $field };
+        push @keyvalues, $field, $self->{ $field };
+    }
+
+    my $uri = URI->new();
+    $uri->query_form( @keyvalues );
+
+    return $uri->query();
 }
 
 1;
@@ -39,7 +83,8 @@ Pogo::Job - Pogo Job
 =head1 DESCRIPTION
 
 Pogo::Job holds parameters for a job, including the target hosts, the
-command, and the configuration.
+command, and the configuration. See C<Pogo::API::V1> for a description
+of all parameters and their corresponding accessors (section C<POST /v1/jobs>).
 
 =head1 LICENSE
 
