@@ -11,6 +11,7 @@ use Pogo::Defaults qw(
 
 use Pogo::Dispatcher;
 use Pogo::Worker;
+use Pogo::API;
 use base qw(Pogo::Object::Event);
 
 ###########################################
@@ -54,14 +55,28 @@ sub start {
     });
 
      $self->{ dispatcher }->start();
+
+     # api server
+   my $api_server = Pogo::API->new();
+   $api_server->reg_cb( api_server_up  => sub {
+       my( $c ) = @_;
+       DEBUG "api ready";
+
+       $self->event( "pogo_one_ready" );
+   });
+
+   $api_server->standalone();
 }
 
 ###########################################
 sub job_submit {
 ###########################################
-    my( $self ) = @_;
+    my( $self, $job ) = @_;
 
     DEBUG "Job submitted";
+
+    DEBUG "Job done";
+    $self->event( "job_done", $job );
 }
 
 1;

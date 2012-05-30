@@ -5,9 +5,15 @@ use warnings;
 use Getopt::Std;
 use Pod::Usage;
 
-getopts("h", \my %opts);
+getopts("hv", \my %opts);
 
 pod2usage() if $opts{h};
+
+use Log::Log4perl qw(:easy);
+
+if( $opts{ v } ) {
+    Log::Log4perl->easy_init($DEBUG);
+}
 
 use Pogo::One;
 use Pogo::Job;
@@ -22,12 +28,21 @@ my $job = Pogo::Job->new(
 
 my $main = AnyEvent->condvar();
 
-$pogo->job_submit( 
-    job      => $job,
-    job_done => sub {
-        $main->send();
-    }
-);
+$pogo->reg_cb( "job_done", sub {
+    my( $c, $job ) = @_;
+
+    # We've accomplished our only job, we're done. Exit.
+    $main->send();
+} );
+
+$pogo->reg_cb( "pogo_one_ready", sub {
+
+    $pogo->job_submit( 
+        job => $job,
+    );
+} );
+
+$pogo->start();
 
 $main->recv();
 
