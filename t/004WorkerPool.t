@@ -5,7 +5,7 @@ use FindBin qw($Bin);
 use lib "$Bin/../lib";
 use lib "$Bin/lib";
 
-use PogoOne;
+use PogoFake;
 use PogoTest;
 use Test::More;
 use Data::Dumper;
@@ -17,7 +17,7 @@ use Pogo::Defaults qw(
 
 my $pogo;
 
-$pogo = PogoOne->new();
+$pogo = PogoFake->new();
 
   # second worker
 my $worker2 = Pogo::Worker->new(

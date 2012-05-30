@@ -5,7 +5,7 @@ use FindBin qw($Bin);
 use lib "$Bin/../lib";
 use lib "$Bin/lib";
 
-use PogoOne;
+use PogoFake;
 use PogoTest;
 use Test::More;
 use Log::Log4perl qw(:easy);
@@ -21,7 +21,7 @@ my $cdir = "$Bin/certs";
 
 # $Object::Event::DEBUG = 2;
 
-$pogo = PogoOne->new(
+$pogo = PogoFake->new(
     ssl              => 1,
     worker_key       => "$cdir/worker.key",
     worker_cert      => "$cdir/worker.crt",

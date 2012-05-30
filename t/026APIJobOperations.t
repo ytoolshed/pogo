@@ -6,7 +6,7 @@ use lib "$Bin/../lib";
 use lib "$Bin/lib";
 use JSON qw( from_json );
 use Pogo::API;
-use PogoOne;
+use PogoFake;
 use PogoTest;
 use AnyEvent::HTTP;
 use Test::More;
@@ -19,7 +19,7 @@ use Pogo::Defaults qw(
   $POGO_API_TEST_HOST
 );
 
-my $pogo = PogoOne->new();
+my $pogo = PogoFake->new();
 
 $pogo->reg_cb( dispatcher_controlport_up  => sub {
     my( $c ) = @_;

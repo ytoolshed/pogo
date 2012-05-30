@@ -6,7 +6,7 @@ use lib "$Bin/../lib";
 use lib "$Bin/lib";
 
 use PogoTest;
-use PogoOne;
+use PogoFake;
 use Test::More;
 use Log::Log4perl qw(:easy);
 use Getopt::Std;
@@ -18,7 +18,7 @@ use JSON qw(from_json);
 plan tests => 7;
 
   # dispatcher/worker
-my $pogo = PogoOne->new();
+my $pogo = PogoFake->new();
 
   # api server
 my $api_server = Pogo::API->new();

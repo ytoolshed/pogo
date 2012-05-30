@@ -7,7 +7,7 @@ use lib "$Bin/lib";
 use Pogo::Worker::Task::Command;
 
 use PogoTest;
-use PogoOne;
+use PogoFake;
 use Test::More;
 use Log::Log4perl qw(:easy);
 use Getopt::Std;

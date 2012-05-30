@@ -5,7 +5,7 @@ use FindBin qw($Bin);
 use lib "$Bin/../lib";
 use lib "$Bin/lib";
 
-use PogoOne;
+use PogoFake;
 use PogoTest;
 use Test::More;
 use Log::Log4perl qw(:easy);
@@ -17,7 +17,7 @@ use Pogo::Defaults qw(
 
 my $pogo;
 
-$pogo = PogoOne->new();
+$pogo = PogoFake->new();
 
 $pogo->reg_cb( dispatcher_wconn_worker_connect  => sub {
     my( $c, $worker ) = @_;

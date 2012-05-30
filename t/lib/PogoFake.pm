@@ -1,5 +1,5 @@
 ###########################################
-package PogoOne;
+package PogoFake;
 ###########################################
 use warnings;
 use strict;
@@ -163,15 +163,15 @@ __END__
 
 =head1 NAME
 
-PogoOne - Pogo in a Single Process for Testing
+PogoFake - Pogo in a Single Process for Testing
 
 =head1 SYNOPSIS
 
-    use PogoOne;
+    use PogoFake;
 
     my $pogo;
 
-    $pogo = PogoOne->new(
+    $pogo = PogoFake->new(
       worker_connect  => sub {
           print "Worker $_[0] connected\n";
           $pogo->quit();

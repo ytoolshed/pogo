@@ -12,7 +12,7 @@ BEGIN {
     chdir $Bin;
 }
 
-use PogoOne;
+use PogoFake;
 use PogoTest;
 use AnyEvent::HTTP;
 use Test::More;
@@ -27,7 +27,7 @@ use Pogo::Defaults qw(
 
 my $pogo;
 
-$pogo = PogoOne->new();
+$pogo = PogoFake->new();
 
 $pogo->reg_cb( dispatcher_controlport_up  => sub {
     my( $c ) = @_;
