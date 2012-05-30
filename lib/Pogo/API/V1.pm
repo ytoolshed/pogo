@@ -755,10 +755,18 @@ sub jobsubmit {
 ###########################################
     my ( $req ) = @_;
 
-    DEBUG "Handling jobsubmit request";
+    use Data::Dumper;
+    DEBUG "Handling jobsubmit request: ", Dumper( $req );
 
-    my $cmd    = $req->param( 'cmd' );
-    my $format = $req->param( 'format' );
+    my $cmd     = $req->param( 'cmd' );
+    my $config  = $req->param( 'config' );
+    $config     = "" if !defined $config;
+
+    my $targets = $req->param( 'targets' );
+    $targets    = '' if !defined $targets;
+    my @targets = split ',', $targets;
+
+    my $format  = $req->param( 'format' );
 
     if ( !defined $cmd ) {
         ERROR "No cmd defined";
@@ -767,15 +775,18 @@ sub jobsubmit {
               errors  => [ 'cmd missing' ],
               format => $format } );
 
-    } else {
-        DEBUG "cmd is $cmd";
-        return sub {
-            my ( $response ) = @_;
-
-            # Tell the dispatcher about it (just testing)
-            job_post_to_dispatcher( $cmd, $response, $format );
-        };
     }
+
+    DEBUG "jobsubmit: cmd is $cmd";
+    DEBUG "jobsubmit: config is $config";
+    DEBUG "jobsubmit: targets: '@targets'";
+
+    return sub {
+        my ( $response ) = @_;
+
+        # Tell the dispatcher about it (just testing)
+        job_post_to_dispatcher( $cmd, $response, $format );
+    };
 }
 
 ###########################################

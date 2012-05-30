@@ -5,6 +5,7 @@ use warnings;
 use strict;
 use JSON qw( from_json );
 use Log::Log4perl qw(:easy);
+use HTTP::Request::Common;
 use Pogo::Defaults qw(
   $POGO_DISPATCHER_WORKERCONN_HOST
   $POGO_DISPATCHER_WORKERCONN_PORT
@@ -89,17 +90,25 @@ sub job_submit {
 
     my $uri = URI->new( "$base_url/jobs" );
 
-    $uri->query_form( 
-        cmd    => $job->{ cmd },
-        hosts  => $job->{ hosts },
-        config => $job->{ config },
+    my %params = (
+        cmd     => $job->{ cmd },
+        targets => $job->{ targets },
+        config  => $job->{ config },
     );
 
-    DEBUG "uri=$uri";
+    my $request = POST $uri, [%params];
+    my $content = $request->content();
 
-    http_post $uri, sub {
+    DEBUG "Posting job submit request to uri=$uri content=$content";
+
+    http_post $uri, $content, sub {
         my( $body, $hdr ) = @_;
         my $data = from_json( $body );
+
+        if( !exists $data->{ rc } ) {
+            ERROR "Invalid json: from $uri: [$body]";
+            return;
+        }
 
         if( $data->{ rc } eq 0 ) {
             DEBUG "Command $cmdline submitted to Web API";
