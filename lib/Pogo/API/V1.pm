@@ -916,7 +916,7 @@ sub psgi_response {
 
     return [
         $code, [ 'Content-Type' => $content_type_headers{ $format } ],
-        [ $body ]
+        [ $body, "\n" ]
     ];
 }
 
