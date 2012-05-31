@@ -59,7 +59,7 @@ sub run_tests {
 
     my $cmdline = "test";
 
-    $pogo->reg_cb( dispatcher_job_received => sub {
+    $pogo->reg_cb( dispatcher_task_received => sub {
         my( $c, $cmd ) = @_;
         is $cmd, $cmdline, "dispatcher job received event #3";
     });
@@ -82,9 +82,14 @@ sub run_tests {
     use URI;
     my $uri = URI->new( "$base_url/jobs" );
 
-    $DB::single = 1;
-
-    my $job     = Pogo::Job->new( command => $cmdline );
+    my $job     = Pogo::Job->new( command => $cmdline, 
+        range => [ "host1" ], config => <<'EOT' );
+tag:
+sequence:
+  - host3
+  - host2
+  - host1
+EOT
     my $req     = POST $uri, [ %{ $job->as_hash() } ];
     my $content = $req->content();
 

@@ -10,6 +10,7 @@ use Pogo::Util qw( make_accessor );
 use URI;
 
 my @FIELDS = qw(
+config
 range
 namespace
 command

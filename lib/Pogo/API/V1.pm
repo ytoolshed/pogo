@@ -790,23 +790,23 @@ sub jobsubmit {
         my ( $response_cb ) = @_;
 
         # Submit job to dispatcher
-        job_post_to_dispatcher( $job->command(), $response_cb, $format );
+        job_post_to_dispatcher( $job, $response_cb, $format );
     };
 }
 
 ###########################################
 sub job_post_to_dispatcher {
 ###########################################
-    my ( $cmd, $response_cb, $format ) = @_;
+    my ( $job, $response_cb, $format ) = @_;
 
     $format ||= '';
 
     my $cp          = Pogo::Dispatcher::ControlPort->new();
     my $cp_base_url = $cp->base_url();
 
-    DEBUG "Submitting job to $cp_base_url (cmd=$cmd)";
+    DEBUG "Submitting job to $cp_base_url (cmd=", $job->command(), ")";
 
-    my $http_req = POST "$cp_base_url/jobsubmit", [ command => $cmd ];
+    my $http_req = POST "$cp_base_url/jobsubmit", [ %{ $job->as_hash() } ];
 
     http_post $http_req->url(), $http_req->content(),
         headers => $http_req->headers(),
