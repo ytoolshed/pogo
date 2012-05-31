@@ -66,6 +66,7 @@ requires 'Proc::Simple';
 requires 'Set::Scalar';
 requires 'String::Glob::Permute';
 requires 'Template';
+requires 'Text::ASCIITable';
 
 # until bug gets fixed, use included Pogo::..."
 # requires 'Plack::Handler::AnyEvent::HTTPD';
