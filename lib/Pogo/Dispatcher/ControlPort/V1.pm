@@ -20,7 +20,7 @@ sub app {
     return sub {
         my ( $env ) = @_;
 
-        DEBUG "Got v1 request";
+        DEBUG "Got CP v1 request";
 
         my $path = $env->{ PATH_INFO };
         ( my $command = $path ) =~ s#^/##;
@@ -82,9 +82,40 @@ sub jobsubmit {
         );
     }
 
-    INFO "Dispatcher received job cmd: $params->{ command }";
+    use Pogo::Scheduler::Classic;
+    my $scheduler = Pogo::Scheduler::Classic->new();
 
-    $dispatcher->event( "dispatcher_job_received", $params->{ command } );
+    $DB::single = 1;
+
+    for my $param_name ( qw( command range config ) ) {
+        if( !defined $params->{ $param_name } ) {
+            return http_response_json(
+                {   rc      => "nok",
+                    message => "Parameter $param_name missing",
+                }
+            );
+        }
+    }
+
+    my $command = $params->{ command };
+    my @range   = $params->{ range };
+
+    $scheduler->config_load( \ $params->{ config } );
+
+    $scheduler->reg_cb( "task_run", sub {
+        my( $c, $task ) = @_;
+
+        my $host = $task->{ host };
+
+        INFO "Running Task. Target: $host Command: $command";
+        $dispatcher->event( "dispatcher_task_received", 
+            $command, $host );
+    } );
+
+    DEBUG "Schedule complete: ", $scheduler->as_ascii();
+
+    DEBUG "Scheduling range $params->{ range }";
+    $scheduler->schedule( [ $params->{ range } ] );
 
     return http_response_json(
         {   rc      => "ok",

@@ -61,7 +61,7 @@ sub start {
 
     # if a job comes in ...
     $self->reg_cb(
-        "dispatcher_job_received",
+        "dispatcher_task_received",
         sub {
             my ( $c, $cmd ) = @_;
 

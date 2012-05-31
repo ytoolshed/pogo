@@ -495,7 +495,7 @@ sub as_ascii {
         my @host_row = ();
 
         for my $slot ( @$slots ) {
-            push @slot_row, "$slot";
+            push @slot_row, "[$slot]";
             push @host_row,
                 join( ", ", @{ $self->{ hosts_by_slot }->{ "$slot" } } );
         }

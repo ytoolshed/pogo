@@ -23,7 +23,13 @@ my $pogo = Pogo::One->new();
 my $job = Pogo::Job->new(
     command  => "test",
     range    => [ qw(host1 host2) ],
-    config   => "foo: bar\n",
+    config   => <<'EOT',
+tag:
+sequence:
+  - host3
+  - host2
+  - host1
+EOT
 );
 
 my $main = AnyEvent->condvar();
