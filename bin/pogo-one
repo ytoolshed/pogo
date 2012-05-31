@@ -21,9 +21,9 @@ use Pogo::Job;
 my $pogo = Pogo::One->new();
 
 my $job = Pogo::Job->new(
-    cmd     => "/bin/ls /",
-    targets => [ qw(host1 host2) ],
-    config  => "myconfig.yaml",
+    command  => "test",
+    range    => [ qw(host1 host2) ],
+    config   => "foo: bar\n",
 );
 
 my $main = AnyEvent->condvar();

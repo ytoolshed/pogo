@@ -11,6 +11,7 @@ use Test::More;
 use Log::Log4perl qw(:easy);
 use Getopt::Std;
 use Pogo::API;
+use HTTP::Request::Common;
 use JSON qw(from_json);
 
 #$Object::Event::DEBUG = 2;
@@ -80,11 +81,16 @@ sub run_tests {
     my $base_url = $api_server->base_url();
     use URI;
     my $uri = URI->new( "$base_url/jobs" );
-    $uri->query_form( cmd => $cmdline );
+
+    $DB::single = 1;
+
+    my $job     = Pogo::Job->new( command => $cmdline );
+    my $req     = POST $uri, [ %{ $job->as_hash() } ];
+    my $content = $req->content();
 
     DEBUG "uri=$uri";
 
-    http_post $uri, sub {
+    http_post $uri, $content, headers => $req->headers(), sub {
         my( $body, $hdr ) = @_;
         my $data = from_json( $body );
         is $data->{ response }->{ message }, "dispatcher CP: job received",

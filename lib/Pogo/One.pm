@@ -86,17 +86,11 @@ sub job_submit {
 
     my $base_url = $self->{ api_server }->base_url();
 
-    my $cmdline = "test";
-
     my $uri = URI->new( "$base_url/jobs" );
 
-    my %params = (
-        cmd     => $job->{ cmd },
-        targets => $job->{ targets },
-        config  => $job->{ config },
-    );
+    $DB::single = 1;
 
-    my $request = POST $uri, [%params];
+    my $request = POST $uri, [ %{ $job->as_hash() } ];
     my $content = $request->content();
     my @headers = ( "headers" => $request->headers() );
 
@@ -112,7 +106,7 @@ sub job_submit {
         }
 
         if( $data->{ rc } eq 0 ) {
-            DEBUG "Command $cmdline submitted to Web API";
+            DEBUG "Command $job->{ command } submitted to Web API";
         } else {
             ERROR "$data->{ message }";
         }

@@ -6,6 +6,7 @@ use warnings;
 use Log::Log4perl qw(:easy);
 use JSON qw( from_json to_json );
 use Pogo::Util qw( http_response_json );
+use Pogo::Job;
 use Pogo::Defaults qw(
     $POGO_DISPATCHER_CONTROLPORT_HOST
     $POGO_DISPATCHER_CONTROLPORT_PORT
@@ -755,34 +756,41 @@ sub jobsubmit {
 ###########################################
     my ( $req ) = @_;
 
-    my $cmd     = $req->param( 'cmd' );
-    my $config  = $req->param( 'config' );
-    $config     = "" if !defined $config;
+#    my $cmd     = $req->param( 'cmd' );
+#    my $config  = $req->param( 'config' );
+#    $config     = "" if !defined $config;
 
-    my $targets = $req->param( 'targets' );
-    $targets    = '' if !defined $targets;
-    my @targets = split ',', $targets;
+#    my $targets = $req->param( 'targets' );
+#    $targets    = '' if !defined $targets;
+#    my @targets = split ',', $targets;
+
+#    if ( !defined $cmd ) {
+#        ERROR "No cmd defined";
+#        return psgi_response(
+#            { code   => HTTP_BAD_REQUEST,
+#              errors  => [ 'cmd missing' ],
+#              format => $format } );
+#
+#    }
+
+
+#    DEBUG "jobsubmit: cmd is $cmd";
+#    DEBUG "jobsubmit: config is $config";
+#    DEBUG "jobsubmit: targets: '@targets'";
+
+    $DB::single = 1;
 
     my $format  = $req->param( 'format' );
 
-    if ( !defined $cmd ) {
-        ERROR "No cmd defined";
-        return psgi_response(
-            { code   => HTTP_BAD_REQUEST,
-              errors  => [ 'cmd missing' ],
-              format => $format } );
+    my $job = Pogo::Job->from_query( $req->content() );
 
-    }
-
-    DEBUG "jobsubmit: cmd is $cmd";
-    DEBUG "jobsubmit: config is $config";
-    DEBUG "jobsubmit: targets: '@targets'";
+    DEBUG "Received job: ", $job->as_string();
 
     return sub {
         my ( $response_cb ) = @_;
 
         # Submit job to dispatcher
-        job_post_to_dispatcher( $cmd, $response_cb, $format );
+        job_post_to_dispatcher( $job->command(), $response_cb, $format );
     };
 }
 
@@ -798,7 +806,7 @@ sub job_post_to_dispatcher {
 
     DEBUG "Submitting job to $cp_base_url (cmd=$cmd)";
 
-    my $http_req = POST "$cp_base_url/jobsubmit", [ cmd => $cmd ];
+    my $http_req = POST "$cp_base_url/jobsubmit", [ command => $cmd ];
 
     http_post $http_req->url(), $http_req->content(),
         headers => $http_req->headers(),

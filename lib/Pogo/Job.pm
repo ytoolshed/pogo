@@ -49,6 +49,17 @@ sub new {
 }
 
 ###########################################
+sub from_query {
+###########################################
+    my( $class, $url_encoded ) = @_;
+
+    my $uri = URI->new();
+    $uri->query( $url_encoded );
+
+    return $class->new( $uri->query_form() );
+}
+
+###########################################
 sub urlencode {
 ###########################################
     my( $self ) = @_;
@@ -64,6 +75,37 @@ sub urlencode {
     $uri->query_form( @keyvalues );
 
     return $uri->query();
+}
+
+###########################################
+sub as_hash {
+###########################################
+    my( $self ) = @_;
+
+    my $hash = {};
+
+    for my $field ( @FIELDS ) {
+        next if !defined $self->{ $field };
+        $hash->{ $field } = $self->{ $field };
+    }
+
+    return $hash;
+}
+    
+###########################################
+sub as_string {
+###########################################
+    my( $self ) = @_;
+    
+    my $string = "";
+
+    for my $field ( @FIELDS ) {
+        next if !defined $self->{ $field };
+        $string .= ", " if length $string;
+        $string .= "$field: $self->{ $field }";
+    }
+
+    return $string;
 }
 
 1;

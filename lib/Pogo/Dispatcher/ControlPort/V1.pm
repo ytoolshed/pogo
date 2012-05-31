@@ -67,22 +67,24 @@ sub jobsubmit {
 ###########################################
     my ( $env, $dispatcher ) = @_;
 
+    $DB::single = 1;
+
     my $req = Plack::Request->new( $env );
 
     my $params = $req->parameters();
 
-    if ( !exists $params->{ cmd } ) {
+    if ( !exists $params->{ command } ) {
         INFO "No cmd found";
         return http_response_json(
             {   rc      => "fail",
-                message => "No cmd given",
+                message => "No command given",
             }
         );
     }
 
-    INFO "Dispatcher received job cmd: $params->{ cmd }";
+    INFO "Dispatcher received job cmd: $params->{ command }";
 
-    $dispatcher->event( "dispatcher_job_received", $params->{ cmd } );
+    $dispatcher->event( "dispatcher_job_received", $params->{ command } );
 
     return http_response_json(
         {   rc      => "ok",
