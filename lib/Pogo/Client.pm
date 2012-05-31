@@ -10,52 +10,55 @@ use Log::Log4perl qw(:easy);
 our $VERSION = '0.0.1';
 
 sub new {
-  my ( $class, $url ) = @_;
+    my ( $class, $url ) = @_;
 
-  LOGDIE 'no API URL specified'
-      unless defined $url;
+    LOGDIE 'no API URL specified'
+        unless defined $url;
 
-  my $self = { api => $url,
-               ua  => LWP::UserAgent->new( timeout => 65,
-                                           agent   => "Pogo/$VERSION", )
+    my $self = {
+        api => $url,
+        ua  => LWP::UserAgent->new(
+            timeout => 65,
+            agent   => "Pogo/$VERSION",
+            )
 
-  };
+    };
 
-  DEBUG "api = $url";
-  bless $self, $class;
-  return $self;
+    DEBUG "api = $url";
+    bless $self, $class;
+    return $self;
 }
 
 sub ping {
     my ( $self ) = @_;
 
     # GET /v1/ping
-    my $uri = $self->{api} . '/v1/ping';
-    return $self->{ua}->request( GET $uri );
+    my $uri = $self->{ api } . '/v1/ping';
+    return $self->{ ua }->request( GET $uri );
 }
 
 sub listjobs {
     my ( $self ) = @_;
 
     # GET /v1/jobs
-    my $uri = $self->{api} . '/v1/jobs';
-    return $self->{ua}->request( GET $uri );
+    my $uri = $self->{ api } . '/v1/jobs';
+    return $self->{ ua }->request( GET $uri );
 }
 
 sub get_job {
     my ( $self, $jobid ) = @_;
 
     # GET /v1/jobs/:jobid
-    my $uri = $self->{api} . "/v1/jobs/$jobid";
-    return $self->{ua}->request( GET $uri );
+    my $uri = $self->{ api } . "/v1/jobs/$jobid";
+    return $self->{ ua }->request( GET $uri );
 }
 
 sub submit_job {
     my ( $self, $args ) = @_;
 
     # POST /v1/jobs
-    my $uri = $self->{api} . '/v1/jobs';
-    return $self->{ua}->request( POST $uri, $args );
+    my $uri = $self->{ api } . '/v1/jobs';
+    return $self->{ ua }->request( POST $uri, $args );
 }
 
 1;
