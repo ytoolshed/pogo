@@ -6,6 +6,7 @@ use JSON qw(encode_json);
 use LWP::UserAgent;
 use HTTP::Request::Common qw(GET POST);
 use Log::Log4perl qw(:easy);
+use Pogo::Job;
 
 our $VERSION = '0.0.1';
 
@@ -38,15 +39,23 @@ sub ping {
 }
 
 sub listjobs {
-    my ( $self ) = @_;
+    my ( $self, $args ) = @_;
+
+    # TODO: validate arguments
+
+    my $uri = URI->new();
+    $uri->query_form( $args );
 
     # GET /v1/jobs
-    my $uri = $self->{ api } . '/v1/jobs';
+    my $uri = $self->{ api } . '/v1/jobs' . ( defined $uri->query() ? "?".$uri->query() : ''  );
     return $self->{ ua }->request( GET $uri );
 }
 
 sub get_job {
     my ( $self, $jobid ) = @_;
+
+    LOGDIE 'no jobid specified'
+        unless $jobid;
 
     # GET /v1/jobs/:jobid
     my $uri = $self->{ api } . "/v1/jobs/$jobid";
@@ -56,9 +65,24 @@ sub get_job {
 sub submit_job {
     my ( $self, $args ) = @_;
 
+    # TODO validate arguments
+
+
     # POST /v1/jobs
     my $uri = $self->{ api } . '/v1/jobs';
     return $self->{ ua }->request( POST $uri, $args );
+}
+
+sub check_arguments {
+    my ( $args, $checks ) = @_;
+
+    foreach my $arg ( keys %$args ) {
+        LOGDIE "invalid argument '$arg'"
+            unless $checks->{ $arg };
+
+        LOGDIE "bad value '$args->{ $arg }' for argument '$arg'"
+            unless $checks->{ $arg }->( $args->{ $arg } );
+    }
 }
 
 1;

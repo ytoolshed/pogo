@@ -35,10 +35,11 @@ sub run_from_commandline {
     my $cmd = $self->process_options
         or $self->cmd_usage;
 
-    $self->{ api } = delete $self->{ opts }->{ api };
-
     DEBUG 'API: ' . $self->{ api };
     DEBUG "command: $cmd";
+    DEBUG "global options set:\n\t" . join("\n\t", map { "$_: " . $self->{opts}->{$_} } keys %{ $self->{opts} } );
+
+    $self->{ api } = delete $self->{ opts }->{ api };
 
     my $method = 'cmd_' . $cmd;
     if ( !$self->can( $method ) ) {
@@ -49,29 +50,15 @@ sub run_from_commandline {
 }
 
 sub cmd_ping {
-    my $self = shift;
-    my $res;
+    my ( $self ) = @_;
 
     my $resp = $self->_client()->ping( 'pong' );
     my $elapsed = tv_interval( $self->{ epoch }, [ gettimeofday ] );
+    my $decoded_data = $self->decode_api_response( $resp );
 
-    my $decoded_data;
-    eval '$decoded_data = decode_json $resp->content()';
-
-    if ( $@ ) {
-        # problem decoding JSON
-        printf "ERROR %s: %s\n", $self->{ api }, $resp->status_line;
+    if ( ! defined $decoded_data ) {
         return 1;
-
-    } elsif ( !$resp->is_success ) {
-        # JSON was returned, but the API responded with error(s)
-        my $errors = join( "\n\t", @{ $decoded_data->{ errors } } );
-        printf "ERROR(S) %s: %s\n\t%s\n", $self->{ api }, $resp->status_line,
-            $errors;
-        return 1;
-    }
-
-    if ( !$decoded_data->{ response } ) {
+    } elsif ( !$decoded_data->{ response } ) {
         printf "ERROR %s: no 'response' element in HTTP Response\n",
             $self->{ api };
         return 1;
@@ -89,15 +76,42 @@ sub cmd_ping {
 }
 
 sub cmd_status {
+    my ( $self ) = @_;
+    my $jobid = shift @ARGV;
 
+    my $resp = $self->_client()->get_job( $jobid );
+    my $decoded_data = $self->decode_api_response( $resp );
+
+    if ( ! defined $decoded_data ) {
+        return 1;
+    }
+
+    print Dumper($decoded_data); # TODO figure out actual format for status command
+    return 0;
 }
 
 sub cmd_jobs {
+    my ( $self, $args ) = @_;
 
+    GetOptions( my $cmdline_opts = {},
+                'max=i',
+                'offset=i' );
+
+    DEBUG "'jobs' command options:\n\t" . join("\n\t", map { "$_: " . $cmdline_opts->{$_}  } keys %{ $cmdline_opts } );
+
+    my $resp = $self->_client()->listjobs( $cmdline_opts );
+    my $decoded_data = $self->decode_api_response( $resp );
+
+    if ( ! defined $decoded_data ) {
+        return 1;
+    }
+
+    print Dumper($resp); # TODO: figure out actual format for jobs command
+    return 0;
 }
 
 sub process_options {
-    my $self = shift;
+    my ( $self ) = @_;
 
     my $command;
     my $opts         = {};
@@ -134,7 +148,7 @@ sub process_options {
 }
 
 sub cmd_help {
-    return $_[ 0 ]->cmd_man;
+    return cmd_man();
 }
 
 sub cmd_man {
@@ -153,6 +167,27 @@ sub cmd_usage {
         -sections => 'USAGE|MORE INFO',
         -input    => pod_where( { -inc => 1 }, __PACKAGE__ ),
     );
+}
+
+sub decode_api_response {
+    my ( $self, $http_response ) = @_;
+
+    my $decoded_data = eval 'decode_json $http_response->content';
+
+    if ( $@ ) {
+        # problem decoding JSON
+        printf "ERROR %s: %s HTTP status: %s\n", $self->{ api }, $@, $http_response->status_line;
+        return undef;
+
+    } elsif ( !$http_response->is_success ) {
+        # JSON was returned, but the API responded with error(s)
+        my $errors = join( "\n\t", @{ $decoded_data->{ errors } } );
+        printf "ERROR(S) %s: %s\n\t%s\n", $self->{ api }, $http_response->status_line,
+            $errors;
+        return undef;
+    }
+
+    return $decoded_data;
 }
 
 sub quote_array {
@@ -182,7 +217,7 @@ sub merge_hash {
 }
 
 sub _client {
-    my $self = shift;
+    my ( $self ) = @_;
     if ( !defined $self->{ pogoclient } ) {
         $self->{ pogoclient } = Pogo::Client->new( $self->{ api } );
         Log::Log4perl->get_logger( "Pogo::Client" )->level( $DEBUG )
