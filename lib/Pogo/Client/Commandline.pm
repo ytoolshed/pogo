@@ -37,7 +37,9 @@ sub run_from_commandline {
 
     DEBUG 'API: ' . $self->{ api };
     DEBUG "command: $cmd";
-    DEBUG "global options set:\n\t" . join("\n\t", map { "$_: " . $self->{opts}->{$_} } keys %{ $self->{opts} } );
+    DEBUG "global options set:\n\t"
+        . join( "\n\t",
+        map { "$_: " . $self->{ opts }->{ $_ } } keys %{ $self->{ opts } } );
 
     $self->{ api } = delete $self->{ opts }->{ api };
 
@@ -52,11 +54,12 @@ sub run_from_commandline {
 sub cmd_ping {
     my ( $self ) = @_;
 
-    my $resp = $self->_client()->ping( 'pong' );
     my $elapsed = tv_interval( $self->{ epoch }, [ gettimeofday ] );
+
+    my $resp         = $self->_client()->ping( 'pong' );
     my $decoded_data = $self->decode_api_response( $resp );
 
-    if ( ! defined $decoded_data ) {
+    if ( !defined $decoded_data ) {
         return 1;
     } elsif ( !$decoded_data->{ response } ) {
         printf "ERROR %s: no 'response' element in HTTP Response\n",
@@ -79,34 +82,35 @@ sub cmd_status {
     my ( $self ) = @_;
     my $jobid = shift @ARGV;
 
-    my $resp = $self->_client()->get_job( $jobid );
+    my $resp         = $self->_client()->get_job( $jobid );
     my $decoded_data = $self->decode_api_response( $resp );
 
-    if ( ! defined $decoded_data ) {
+    if ( !defined $decoded_data ) {
         return 1;
     }
 
-    print Dumper($decoded_data); # TODO figure out actual format for status command
+    print Dumper( $decoded_data )
+        ;    # TODO figure out actual format for status command
     return 0;
 }
 
 sub cmd_jobs {
     my ( $self, $args ) = @_;
 
-    GetOptions( my $cmdline_opts = {},
-                'max=i',
-                'offset=i' );
+    GetOptions( my $cmdline_opts = {}, 'max=i', 'offset=i' );
 
-    DEBUG "'jobs' command options:\n\t" . join("\n\t", map { "$_: " . $cmdline_opts->{$_}  } keys %{ $cmdline_opts } );
+    DEBUG "'jobs' command options:\n\t"
+        . join( "\n\t",
+        map { "$_: " . $cmdline_opts->{ $_ } } keys %{ $cmdline_opts } );
 
-    my $resp = $self->_client()->listjobs( $cmdline_opts );
+    my $resp         = $self->_client()->listjobs( $cmdline_opts );
     my $decoded_data = $self->decode_api_response( $resp );
 
-    if ( ! defined $decoded_data ) {
+    if ( !defined $decoded_data ) {
         return 1;
     }
 
-    print Dumper($resp); # TODO: figure out actual format for jobs command
+    print Dumper( $resp );    # TODO: figure out actual format for jobs command
     return 0;
 }
 
@@ -176,13 +180,15 @@ sub decode_api_response {
 
     if ( $@ ) {
         # problem decoding JSON
-        printf "ERROR %s: %s HTTP status: %s\n", $self->{ api }, $@, $http_response->status_line;
+        printf "ERROR %s: %s HTTP status: %s\n", $self->{ api }, $@,
+            $http_response->status_line;
         return undef;
 
     } elsif ( !$http_response->is_success ) {
         # JSON was returned, but the API responded with error(s)
         my $errors = join( "\n\t", @{ $decoded_data->{ errors } } );
-        printf "ERROR(S) %s: %s\n\t%s\n", $self->{ api }, $http_response->status_line,
+        printf "ERROR(S) %s: %s\n\t%s\n", $self->{ api },
+            $http_response->status_line,
             $errors;
         return undef;
     }
