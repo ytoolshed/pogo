@@ -100,15 +100,19 @@ sub job_submit {
         my( $body, $hdr ) = @_;
         my $data = from_json( $body );
 
-        if( !exists $data->{ rc } ) {
+        if( !exists $data->{ meta }->{ rc } ) {
             ERROR "Invalid json: from $uri: [$body]";
             return;
         }
 
-        if( $data->{ rc } eq 0 ) {
-            DEBUG "Command $job->{ command } submitted to Web API";
+        $DB::single = 1;
+
+        if( $data->{ meta }->{ rc } eq "ok" ) {
+            DEBUG "Command $job->{ command } for hosts ",
+                $job->field_as_string( "range" ), " submitted to Web API";
+            DEBUG "Response: $data->{ response }->{ message }";
         } else {
-            ERROR "$data->{ message }";
+            ERROR "rc=$data->{ meta }->{ rc }: $data->{ meta }->{ status }";
         }
     };
 

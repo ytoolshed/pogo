@@ -60,7 +60,7 @@ sub run_tests {
     my $cmdline = "test";
 
     $pogo->reg_cb( dispatcher_task_received => sub {
-        my( $c, $cmd ) = @_;
+        my( $c, $host, $cmd ) = @_;
         is $cmd, $cmdline, "dispatcher job received event #3";
     });
 

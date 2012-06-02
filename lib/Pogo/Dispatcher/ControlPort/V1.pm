@@ -11,6 +11,7 @@ use Pogo::Util qw( http_response_json );
 use HTTP::Status qw( :constants );
 use Plack::Request;
 use Data::Dumper;
+use Pogo::Scheduler::Classic;
 
 ###########################################
 sub app {
@@ -70,52 +71,37 @@ sub jobsubmit {
     $DB::single = 1;
 
     my $req = Plack::Request->new( $env );
+    my $job = Pogo::Job->from_query( $req->content() );
 
-    my $params = $req->parameters();
-
-    if ( !exists $params->{ command } ) {
-        INFO "No cmd found";
+    if ( ! $job->valid() ) {
         return http_response_json(
-            {   rc      => "fail",
-                message => "No command given",
+            {   rc      => "nok",
+                message => $job->error(),
             }
         );
     }
 
-    use Pogo::Scheduler::Classic;
     my $scheduler = Pogo::Scheduler::Classic->new();
+    $scheduler->config_load( \ $job->config() );
 
-    $DB::single = 1;
-
-    for my $param_name ( qw( command range config ) ) {
-        if( !defined $params->{ $param_name } ) {
-            return http_response_json(
-                {   rc      => "nok",
-                    message => "Parameter $param_name missing",
-                }
-            );
-        }
-    }
-
-    my $command = $params->{ command };
-    my @range   = $params->{ range };
-
-    $scheduler->config_load( \ $params->{ config } );
+    my $command = $job->command();
 
     $scheduler->reg_cb( "task_run", sub {
         my( $c, $task ) = @_;
 
+        $DB::single = 1;
         my $host = $task->{ host };
 
         INFO "Running Task. Target: $host Command: $command";
+
         $dispatcher->event( "dispatcher_task_received", 
-            $command, $host );
+            $task, $command, $scheduler );
     } );
 
     DEBUG "Schedule complete: ", $scheduler->as_ascii();
+    DEBUG "Scheduling range ", $job->field_as_string( "range" );
 
-    DEBUG "Scheduling range $params->{ range }";
-    $scheduler->schedule( [ $params->{ range } ] );
+    $scheduler->schedule( $job->range );
 
     return http_response_json(
         {   rc      => "ok",

@@ -222,7 +222,7 @@ sub _protocol_handler {
                 $channel = 0;    # control channel
             }
 
-            DEBUG "*** Received message on channel $channel";
+            DEBUG "Received message on channel $channel";
 
             if ( !exists $self->{ channels }->{ $channel } ) {
                 # ignore traffic on unsupported channels

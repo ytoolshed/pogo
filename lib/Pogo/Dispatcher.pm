@@ -63,21 +63,31 @@ sub start {
     $self->reg_cb(
         "dispatcher_task_received",
         sub {
-            my ( $c, $cmd ) = @_;
+            my ( $c, $slot_task, $cmd, $scheduler ) = @_;
 
             # Assign it a dispatcher task ID
             my $id = $self->next_task_id();
 
             my $task = {
-                cmd     => $cmd,
-                task_id => $id,
+                slot_task => $slot_task,
+                host      => $slot_task->{ host },
+                cmd       => $cmd,
+                task_id   => $id,
+                scheduler => $scheduler,
             };
 
             $self->{ tasks_in_progress }->{ $id } = $task;
 
             # ... send it to a worker
-            DEBUG "Sending cmd $cmd to a worker";
-            $self->to_worker( $task );
+            DEBUG "Sending cmd $task->{ host }:$cmd to a worker";
+
+            my $worker_task_data = {
+                host      => $slot_task->{ host },
+                cmd       => $cmd,
+                task_id   => $id,
+            };
+
+            $self->to_worker( $worker_task_data );
         }
     );
 
@@ -90,6 +100,23 @@ sub start {
             if ( $data->{ cmd } eq "task_done" ) {
                 DEBUG "Worker reported task $data->{ task_id } done";
                 $self->event( "dispatcher_task_done", $data->{ task_id } );
+
+                  # tell the scheduler that the task is done
+                  my $task = 
+                    $self->{ tasks_in_progress }->{ $data->{ task_id } };
+              
+                  my $slot_task = $task->{ slot_task };
+
+                  if( $task->{ scheduler } ) {
+                      DEBUG "Telling scheduler about task ",
+                        "$data->{ task_id } completion";
+
+                      $task->{ scheduler }->event( "task_mark_done", 
+                          $slot_task );
+                  }
+
+                    # task no longer in progress
+                  delete $self->{ tasks_in_progress }->{ $data->{ task_id } };
             }
         }
     );

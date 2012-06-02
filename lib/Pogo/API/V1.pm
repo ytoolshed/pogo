@@ -813,7 +813,7 @@ sub job_post_to_dispatcher {
         sub {
         my ( $data, $hdr ) = @_;
 
-        DEBUG "Received $hdr->{ Status } response from $cp_base_url: ",
+        DEBUG "API received $hdr->{ Status } response from $cp_base_url: ",
             "[$data]";
 
         my $rc;

@@ -9,9 +9,14 @@ use AnyEvent::Strict;
 use Pogo::Util qw( make_accessor );
 use URI;
 
-my @FIELDS = qw(
-config
+my @MANDATORY_FIELDS = qw(
+command
 range
+);
+
+my @SCALAR_FIELDS = qw(
+error
+config
 namespace
 command
 user
@@ -32,6 +37,12 @@ invoked_as
 client
 );
 
+my @ARRAY_FIELDS = qw(
+range
+);
+
+my @FIELDS = ( @SCALAR_FIELDS, @ARRAY_FIELDS );
+
 for my $field ( @FIELDS ) {
     make_accessor __PACKAGE__, $field;
 }
@@ -50,6 +61,13 @@ sub new {
 }
 
 ###########################################
+sub array_fields {
+###########################################
+
+    return @ARRAY_FIELDS;
+}
+
+###########################################
 sub from_query {
 ###########################################
     my( $class, $url_encoded ) = @_;
@@ -57,25 +75,46 @@ sub from_query {
     my $uri = URI->new();
     $uri->query( $url_encoded );
 
-    return $class->new( $uri->query_form() );
+    my $obj = $class->new( $uri->query_form() );
+
+    for my $field ( $class->array_fields() ) {
+        $obj->{ $field } = [ split /,/, $obj->{ $field } ];
+    }
+
+    return $obj;
 }
 
 ###########################################
-sub urlencode {
+sub field_as_string {
+###########################################
+    my( $self, $field ) = @_;
+
+    my $value = $self->{ $field };
+
+    if( !defined $value ) {
+        return undef;
+    }
+
+    if( ref $value eq "ARRAY" ) {
+        $value = join ",", @$value;
+    }
+
+    return $value;
+}
+
+###########################################
+sub valid {
 ###########################################
     my( $self ) = @_;
 
-    my @keyvalues = ();
-
-    for my $field ( @FIELDS ) {
-        next if !defined $self->{ $field };
-        push @keyvalues, $field, $self->{ $field };
+    for my $field ( @MANDATORY_FIELDS ) {
+        if( !defined $self->{ $field } ) {
+            $self->error( "Mandatory field '$field' missing" );
+            return 0;
+        }
     }
 
-    my $uri = URI->new();
-    $uri->query_form( @keyvalues );
-
-    return $uri->query();
+    return 1;
 }
 
 ###########################################
@@ -87,7 +126,14 @@ sub as_hash {
 
     for my $field ( @FIELDS ) {
         next if !defined $self->{ $field };
-        $hash->{ $field } = $self->{ $field };
+
+        my $value = $self->{ $field };
+
+        if( ref $value eq "ARRAY" ) {
+            $value = join ",", @$value;
+        }
+
+        $hash->{ $field } = $value;
     }
 
     return $hash;
