@@ -66,6 +66,7 @@ sub app {
         my $path   = $req->path;
         my $method = $req->method;
         my $format = $req->param( 'format' ) || '';
+        my $cb     = $req->param( 'cb' ) || '';
 
         DEBUG "Got v1 request for $method $path";
 
@@ -176,7 +177,8 @@ sub app {
         return psgi_response(
             {   code   => HTTP_BAD_REQUEST,
                 errors => [ "unknown request: $method '$path'" ],
-                format => $format
+                format => $format,
+                cb     =>  $cb
             }
         );
     };
@@ -589,10 +591,12 @@ sub ping {
     DEBUG "handling ping request";
 
     my $format = $req->param( 'format' ) || '';
+    my $cb     = $req->param( 'cb' ) || '';
 
     # bare-bones "yes, the API is up" response
     return psgi_response( { data   => { ping => 'pong' },
-                            format => $format } );
+                            format => $format,
+                            cb     => $cb } );
 }
 
 ###########################################
@@ -603,11 +607,13 @@ sub listjobs {
     DEBUG "handling listjobs request";
 
     my $format = $req->param( 'format' ) || '';
+    my $cb     = $req->param( 'cb' ) || '';
 
     my $data = from_json( _TEST_DATA() );
 
     return psgi_response( { data   => { jobs => $data->{ jobs } },
-                            format => $format } );
+                            format => $format,
+                            cb     => $cb } );
 }
 
 ###########################################
@@ -618,6 +624,8 @@ sub jobinfo {
     DEBUG "handling jobinfo request";
 
     my $format = $req->param( 'format' ) || '';
+    my $cb     = $req->param( 'cb' ) || '';
+
     my $jobid;
 
     unless ( $req->path =~ m{/([^/]+)$}o ) {
@@ -625,7 +633,8 @@ sub jobinfo {
         return psgi_response(
             {   code  => HTTP_BAD_REQUEST,
                 errors => [ "jobid missing from request path " . $req->path ],
-                format => $format
+                format => $format,
+                cb     => $cb
             }
         );
     }
@@ -648,13 +657,15 @@ sub jobinfo {
         return psgi_response(
             {   code   => HTTP_NOT_FOUND,
                 errors  => [ "no such job $jobid" ],
-                format => $format
+                format => $format,
+                cb     => $cb
             }
         );
     }
 
     return psgi_response( { data => { job => $job },
-                            format => $format } );
+                            format => $format,
+                            cb     => $cb } );
 }
 
 ###########################################
@@ -665,6 +676,8 @@ sub joblog {
     DEBUG "handling joblog request";
 
     my $format = $req->param( 'format' ) || '';
+    my $cb     = $req->param( 'cb' ) || '';
+
     my $jobid;
 
     unless ( $req->path =~ m{/([^/]+)/log$}o ) {
@@ -672,7 +685,8 @@ sub joblog {
         return psgi_response(
             {   code  => HTTP_BAD_REQUEST,
                 errors => [ "jobid missing from request path " . $req->path ],
-                format => $format
+                format => $format,
+                cb     => $cb
             }
         );
     }
@@ -695,13 +709,15 @@ sub joblog {
         return psgi_response(
             {   code  => HTTP_NOT_FOUND,
                 errors => [ "no such job $jobid" ],
-                format => $format
+                format => $format,
+                cb     => $cb
             }
         );
     }
 
     return psgi_response( { data   => { joblog => $joblog },
-                            format => $format } );
+                            format => $format,
+                            cb     => $cb } );
 }
 
 ###########################################
@@ -712,6 +728,8 @@ sub jobhosts {
     DEBUG "handling jobhosts request";
 
     my $format = $req->param( 'format' ) || '';
+    my $cb     = $req->param( 'cb' ) || '';
+
     my $jobid;
 
     unless ( $req->path =~ m{/([^/]+)/hosts$}o ) {
@@ -719,7 +737,8 @@ sub jobhosts {
         return psgi_response(
             {   code  => HTTP_BAD_REQUEST,
                 errors => [ "jobid missing from request path " . $req->path ],
-                format => $format
+                format => $format,
+                cb     => $cb
             }
         );
     }
@@ -742,13 +761,15 @@ sub jobhosts {
         return psgi_response(
             {   code  => HTTP_NOT_FOUND,
                 errors => [ "no such job $jobid" ],
-                format => $format
+                format => $format,
+                cb     => $cb
             }
         );
     }
 
     return psgi_response( { data   => { hosts => $hosts },
-                            format => $format } );
+                            format => $format,
+                            cb     => $cb } );
 }
 
 ###########################################
@@ -781,7 +802,6 @@ sub jobsubmit {
     $DB::single = 1;
 
     my $format  = $req->param( 'format' );
-
     my $job = Pogo::Job->from_query( $req->content() );
 
     DEBUG "Received job: ", $job->as_string();
@@ -860,11 +880,13 @@ sub not_implemented {
     my $path   = $req->path;
     my $method = $req->method;
     my $format = $req->param( 'format' ) || '';
+    my $cb     = $req->param( 'cb' ) || '';
 
     return psgi_response(
         {   code   => HTTP_NOT_IMPLEMENTED,
             errors => [ "not implemented yet: $method '$path'" ],
-            format => $format
+            format => $format,
+            cb     => $cb
         }
     );
 }
@@ -879,6 +901,7 @@ sub psgi_response {
     my $data   = $args->{ data };
     my $errors = $args->{ errors };
     my $format = $args->{ format } || 'json';
+    my $cb     = $args->{ cb } || '';
 
     my %content_type_headers = (
         'json'        => 'application/json',
@@ -886,8 +909,10 @@ sub psgi_response {
     );
     #'yaml'        => 'text/plain; charset=utf-8'
 
+    my %cb_formats = map { $_ => 1 } ( 'json', 'json-pretty' );
+
     return psgi_response(
-        { code => HTTP_BAD_REQUEST, errors => [ "format '$format' not known" ] }
+        { code => HTTP_BAD_REQUEST, errors => [ "format '$format' not known" ], cb => $cb }
     ) unless $content_type_headers{ $format };
 
     $meta->{ hostname } = hostname();
@@ -912,6 +937,18 @@ sub psgi_response {
 
     } else {
         LOGDIE "unexpected format error for format '$format'";
+    }
+
+    # add wrapping JSON callback if requested
+    if ( $cb ) {
+
+        return psgi_response(
+            { code   => HTTP_BAD_REQUEST,
+              errors => [ "format '$format' can't be wrapped in a JSON callback" ],
+              format => $format }
+        ) unless $cb_formats{ $format };
+
+        $body = "$cb($body)";
     }
 
     return [
