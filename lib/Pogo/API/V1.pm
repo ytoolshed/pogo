@@ -956,7 +956,7 @@ Yogesh Natarajan <yogesh_ny@yahoo.co.in>
 
 sub _TEST_DATA {
 
-    return <<'END_YAML'
+    return <<'END_JSON'
 {
   "jobs" : [
       {
@@ -1399,7 +1399,7 @@ sub _TEST_DATA {
                  ]
 }
 
-END_YAML
+END_JSON
 }
 
 1;
