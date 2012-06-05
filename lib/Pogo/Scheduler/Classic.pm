@@ -279,8 +279,6 @@ sub schedule {
     my ( $self, $hosts ) = @_;
 
     # schedule
-    $DB::single = 1;
-
     $hosts = [] if !defined $hosts;
 
     DEBUG "Scheduling hosts ", join( ", ", @$hosts );

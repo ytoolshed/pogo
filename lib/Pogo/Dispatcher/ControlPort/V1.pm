@@ -68,8 +68,6 @@ sub jobsubmit {
 ###########################################
     my ( $env, $dispatcher ) = @_;
 
-    $DB::single = 1;
-
     my $req = Plack::Request->new( $env );
     my $job = Pogo::Job->from_query( $req->content() );
 
@@ -89,7 +87,6 @@ sub jobsubmit {
     $scheduler->reg_cb( "task_run", sub {
         my( $c, $task ) = @_;
 
-        $DB::single = 1;
         my $host = $task->{ host };
 
         INFO "Running Task. Target: $host Command: $command";

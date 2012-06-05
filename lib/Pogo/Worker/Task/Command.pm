@@ -15,7 +15,8 @@ sub new {
     my ( $class, %options ) = @_;
 
     my $self = {
-        cmd => undef,
+        cmd  => undef,
+        host => undef,
         %options,
     };
 
@@ -30,6 +31,8 @@ sub new {
 sub start {
 ###########################################
     my ( $self ) = @_;
+
+    $DB::single = 1;
 
     DEBUG "Starting command $self->{ cmd }";
 
@@ -81,6 +84,14 @@ sub on_stderr {
         DEBUG "Stderr event: [$data]";
         $self->event( "on_stderr", $data );
     };
+}
+
+###########################################
+sub as_string {
+###########################################
+    my ( $self ) = @_;
+
+    return "$self: cmd=$self->{ cmd } host=$self->{ host }";
 }
 
 1;

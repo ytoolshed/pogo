@@ -45,6 +45,12 @@ sub start {
             LOGDIE "Worker died.";
     } );
 
+    $self->event_forward(
+            { forward_from => $self->{ worker } }, qw(
+                worker_task_done
+                worker_task_active )
+    );
+
     $self->{ dispatcher } = Pogo::Dispatcher->new( );
     $self->{ dispatcher }->set_exception_cb ( sub { 
             LOGDIE "Dispatcher died.";
@@ -88,8 +94,6 @@ sub job_submit {
 
     my $uri = URI->new( "$base_url/jobs" );
 
-    $DB::single = 1;
-
     my $request = POST $uri, [ %{ $job->as_hash() } ];
     my $content = $request->content();
     my @headers = ( "headers" => $request->headers() );
@@ -116,8 +120,8 @@ sub job_submit {
         }
     };
 
-#    DEBUG "Job done";
-#    $self->event( "job_done", $job );
+    DEBUG "Job done";
+    $self->event( "pogo_one_job_submitted", $job );
 }
 
 1;
@@ -140,15 +144,11 @@ Pogo::One - All-in-one component for running Pogo in a single process
         config  => $config_file,
     );
 
-    my $main = AnyEvent->condvar();
-
     $pogo->job_submit( 
-        job      => $job,
-        job_done => sub {
-            $main->send();
-        }
+        job => $job,
     );
 
+    my $main = AnyEvent->condvar();
     $main->recv();
 
 =head1 DESCRIPTION
@@ -175,7 +175,7 @@ Takes a Pogo::Job object and schedules it.
 
 =back
 
-=head2 OUTGOING EVENTS
+=head2 INCOMING EVENTS
 
 =over 4
 
@@ -189,7 +189,7 @@ Submit Pogo::Job object to be scheduled and executed.
 
 =over 4
 
-=item C<job_done [$job]>
+=item C<pogo_one_job_submitted [$job]>
 
 Job completed.
 

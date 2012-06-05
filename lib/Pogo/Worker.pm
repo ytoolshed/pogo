@@ -85,9 +85,9 @@ sub start {
     $self->reg_cb(
         "worker_task_start",
         sub {
-            my ( $c, $task_id, $cmd ) = @_;
+            my ( $c, $task_id, $cmd, $host ) = @_;
 
-            my $task = $self->task_start( $task_id, $cmd );
+            my $task = $self->task_start( $task_id, $cmd, $host );
             $self->event( "worker_task_active", $task );
         }
     );
@@ -95,9 +95,9 @@ sub start {
     $self->reg_cb(
         "worker_dconn_cmd_recv",
         sub {
-            my ( $c, $task_id, $cmd ) = @_;
+            my ( $c, $task_id, $cmd, $host ) = @_;
 
-            $self->cmd_handler( $task_id, $cmd );
+            $self->cmd_handler( $task_id, $cmd, $host );
         }
     );
 
@@ -119,14 +119,14 @@ sub start {
 ###########################################
 sub cmd_handler {
 ###########################################
-    my ( $self, $task_id, $cmd ) = @_;
+    my ( $self, $task_id, $cmd, $host ) = @_;
 
     my %commands = map { $_ => 1 } qw( test );
 
     if ( exists $commands{ $cmd } ) {
         my $method = $cmd . "_cmd";
         no strict 'refs';
-        $self->$method( $task_id );
+        $self->$method( $task_id, $host );
         return;
     }
 
@@ -138,9 +138,11 @@ sub cmd_handler {
 ###########################################
 sub test_cmd {
 ###########################################
-    my ( $self, $task_id ) = @_;
+    my ( $self, $task_id, $host ) = @_;
 
-    $self->event( "worker_task_start", $task_id, "sleep 1" );
+    $DB::single = 1;
+
+    $self->event( "worker_task_start", $task_id, "sleep 1", $host );
 }
 
 ###########################################
@@ -156,11 +158,9 @@ sub to_dispatcher {
 ###########################################
 sub task_start {
 ###########################################
-    my ( $self, $task_id, $cmd ) = @_;
+    my ( $self, $task_id, $cmd, $host ) = @_;
 
-    DEBUG "Worker running cmd $cmd";
-
-    my $task = Pogo::Worker::Task::Command->new( cmd => $cmd, );
+    my $task = Pogo::Worker::Task::Command->new( cmd => $cmd, host => $host );
     $task->id( $task_id );
 
     my $stdout = "";
@@ -183,14 +183,14 @@ sub task_start {
             DEBUG "Task ", $task->id(), " ended (rc=$rc)";
 
             $self->event( "worker_task_done", $task->id(), $rc, $stdout,
-                $stderr, $cmd );
+                $stderr, $cmd, $host );
 
             # remove task from tracker hash
             delete $self->{ tasks }->{ $task->id() };
         },
     );
 
-    DEBUG "Starting task ", $task->id(), " (cmd=$cmd)";
+    DEBUG "Worker starting task ", $task->id(), " (cmd=$cmd host=$host)";
     $task->start();
 
     # save it in the task tracker by its unique id to keep it running
@@ -255,7 +255,13 @@ message to the dispatcher, which sends back and ACK.
 
 =over 4
 
-=item C<worker_running_cmd_done( $task_id, $rc, $stdout, $stderr, $cmd >>
+=item C<worker_task_active $task >
+
+A task has started.
+
+=item C<worker_task_done $task >
+
+A task is complete.
 
 =back
 

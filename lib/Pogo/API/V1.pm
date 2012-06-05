@@ -799,8 +799,6 @@ sub jobsubmit {
 #    DEBUG "jobsubmit: config is $config";
 #    DEBUG "jobsubmit: targets: '@targets'";
 
-    $DB::single = 1;
-
     my $format  = $req->param( 'format' );
     my $job = Pogo::Job->from_query( $req->content() );
 
