@@ -1300,7 +1300,7 @@ sub _TEST_DATA {
         "start_time"  : 1336096997.32125,
         "client"      : "4.0.0",
 
-          "hosts" : { "host2.example.com": { "state": "finished", "start_time": 1336097000, "finish_time": 1336097000, "output": "http://pogo-worker1.example.com/pogo_output/p0000000006/host2.example.com.txt" } },
+          "hosts" : { "host2.example.com": { "state": "finished", "start_time": 1336097000, "finish_time": 1336097006, "output": "http://pogo-worker1.example.com/pogo_output/p0000000006/host2.example.com.txt" } },
 
           "log" : [
               {
@@ -1425,6 +1425,111 @@ sub _TEST_DATA {
       }
            ],
 
+  "output" : {
+      "p0000000008" : { "host2.example.com" : [
+                            { "ts": 1336094410, "type": "STDOUT", "task":"p0000000008/host2.example.com", "data": "sallyfoo@host2.example.com's password:" },
+                            { "ts": 1336094412, "type": "STDERR", "task":"p0000000008/host2.example.com", "data": "an error occurred" },
+                            { "ts": 1336094415, "type": "STDOUT", "task":"p0000000008/host2.example.com", "data": "some command output" },
+                            { "ts": 1336094420, "type": "STDOUT", "task":"p0000000008/host2.example.com", "data": "more command output..." },
+                            { "ts": 1336094420.5, "type": "EXIT", "task":"p0000000008/host2.example.com", "data": "0" }
+                                              ] },
+
+      "p0000000007" : { "host4.example.com" : [
+                            { "ts": 1336095424, "type": "STDOUT", "task":"p0000000007/host4.example.com", "data": "johnqdoe@host4.example.com's password:" },
+                            { "ts": 1336095425, "type": "STDERR", "task":"p0000000007/host4.example.com", "data": "an error occurred" },
+                            { "ts": 1336095425.5, "type": "STDOUT", "task":"p0000000007/host4.example.com", "data": "some command output" },
+                            { "ts": 1336095427, "type": "STDOUT", "task":"p0000000007/host4.example.com", "data": "more command output..." },
+                            { "ts": 1336095427.5, "type": "EXIT", "task":"p0000000007/host4.example.com", "data": "0" }
+                                              ],
+
+                        "host3.example.com" : [
+                            { "ts": 1336095420, "type": "STDOUT", "task":"p0000000007/host3.example.com", "data": "johnqdoe@host3.example.com's password:" },
+                            { "ts": 1336095421, "type": "STDERR", "task":"p0000000007/host3.example.com", "data": "an error occurred" },
+                            { "ts": 1336095421.23, "type": "STDOUT", "task":"p0000000007/host3.example.com", "data": "some command output" },
+                            { "ts": 1336095422, "type": "STDOUT", "task":"p0000000007/host3.example.com", "data": "more command output..." },
+                            { "ts": 1336095422.5, "type": "EXIT", "task":"p0000000007/host3.example.com", "data": "0" }
+                                              ],
+
+                        "host2.example.com" : [
+                            { "ts": 1336095417, "type": "STDOUT", "task":"p0000000007/host2.example.com", "data": "johnqdoe@host2.example.com's password:" },
+                            { "ts": 1336095417.9, "type": "STDERR", "task":"p0000000007/host2.example.com", "data": "an error occurred" },
+                            { "ts": 1336095418, "type": "STDOUT", "task":"p0000000007/host2.example.com", "data": "some command output" },
+                            { "ts": 1336095419, "type": "STDOUT", "task":"p0000000007/host2.example.com", "data": "more command output..." },
+                            { "ts": 1336095419.5, "type": "EXIT", "task":"p0000000007/host2.example.com", "data": "0" }
+                                              ],
+
+                        "host1.example.com" : [
+                            { "ts": 1336095409, "type": "STDOUT", "task":"p0000000007/host1.example.com", "data": "johnqdoe@host1.example.com's password:" },
+                            { "ts": 1336095413, "type": "STDERR", "task":"p0000000007/host1.example.com", "data": "an error occurred" },
+                            { "ts": 1336095413.23, "type": "STDOUT", "task":"p0000000007/host1.example.com", "data": "some command output" },
+                            { "ts": 1336095416, "type": "STDOUT", "task":"p0000000007/host1.example.com", "data": "more command output..." },
+                            { "ts": 1336095416.5, "type": "EXIT", "task":"p0000000007/host1.example.com", "data": "0" }
+                                              ] },
+
+      "p0000000006" : { "host2.example.com" : [
+                            { "ts": 1336097000, "type": "STDOUT", "task":"p0000000006/host2.example.com", "data": "johnqdoe@host2.example.com's password:" },
+                            { "ts": 1336097003, "type": "STDERR", "task":"p0000000006/host2.example.com", "data": "an error occurred" },
+                            { "ts": 1336097004.45, "type": "STDOUT", "task":"p0000000006/host2.example.com", "data": "some command output" },
+                            { "ts": 1336097006, "type": "STDOUT", "task":"p0000000006/host2.example.com", "data": "more command output..." },
+                            { "ts": 1336097006.5, "type": "EXIT", "task":"p0000000006/host2.example.com", "data": "0" }
+                                              ] },
+
+      "p0000000005" : { "host8.example.com" : [
+                            { "ts": 1336098404, "type": "STDOUT", "task":"p0000000005/host8.example.com", "data": "robotuser@host8.example.com's password:" },
+                            { "ts": 1336098404.234, "type": "STDERR", "task":"p0000000005/host8.example.com", "data": "an error occurred" },
+                            { "ts": 1336098404.45345, "type": "STDOUT", "task":"p0000000005/host8.example.com", "data": "some command output" },
+                            { "ts": 1336098405, "type": "STDOUT", "task":"p0000000005/host8.example.com", "data": "more command output..." },
+                            { "ts": 1336098405.5, "type": "EXIT", "task":"p0000000005/host8.example.com", "data": "0" }
+                                              ],
+
+                        "host7.example.com" : [
+                            { "ts": 1336098402, "type": "STDOUT", "task":"p0000000005/host7.example.com", "data": "robotuser@host7.example.com's password:" },
+                            { "ts": 1336098402.2, "type": "STDERR", "task":"p0000000005/host7.example.com", "data": "an error occurred" },
+                            { "ts": 1336098402.4567, "type": "STDOUT", "task":"p0000000005/host7.example.com", "data": "some command output" },
+                            { "ts": 1336098403, "type": "STDOUT", "task":"p0000000005/host7.example.com", "data": "more command output..." },
+                            { "ts": 1336098403.5, "type": "EXIT", "task":"p0000000005/host7.example.com", "data": "0" }
+                                              ],
+
+                        "host6.example.com" : [
+                            { "ts": 1336098400, "type": "STDOUT", "task":"p0000000005/host6.example.com", "data": "robotuser@host6.example.com's password:" },
+                            { "ts": 1336098400.9, "type": "STDERR", "task":"p0000000005/host6.example.com", "data": "an error occurred" },
+                            { "ts": 1336098400.98, "type": "STDOUT", "task":"p0000000005/host6.example.com", "data": "some command output" },
+                            { "ts": 1336098401, "type": "STDOUT", "task":"p0000000005/host6.example.com", "data": "more command output..." },
+                            { "ts": 1336098401.5, "type": "EXIT", "task":"p0000000005/host6.example.com", "data": "0" }
+                                              ] },
+
+      "p0000000004" : { "host3.pub.example.com" : [
+                            { "ts": 1336197403, "type": "STDOUT", "task":"p0000000004/host3.pub.example.com", "data": "sallyfoo@host3.pub.example.com's password:" },
+                            { "ts": 1336197403.2, "type": "STDERR", "task":"p0000000004/host3.pub.example.com", "data": "an error occurred" },
+                            { "ts": 1336197403.56, "type": "STDOUT", "task":"p0000000004/host3.pub.example.com", "data": "some command output" },
+                            { "ts": 1336197404, "type": "STDOUT", "task":"p0000000004/host3.pub.example.com", "data": "more command output..." },
+                            { "ts": 1336197404.5, "type": "EXIT", "task":"p0000000004/host3.pub.example.com", "data": "0" }
+                                                  ],
+
+                        "host4.pub.example.com" : [
+                            { "ts": 1336197403, "type": "STDOUT", "task":"p0000000004/host4.pub.example.com", "data": "sallyfoo@host4.pub.example.com's password:" },
+                            { "ts": 1336197403.4, "type": "STDERR", "task":"p0000000004/host4.pub.example.com", "data": "an error occurred" },
+                            { "ts": 1336197404.234, "type": "STDOUT", "task":"p0000000004/host4.pub.example.com", "data": "some command output" },
+                            { "ts": 1336197405, "type": "STDOUT", "task":"p0000000004/host4.pub.example.com", "data": "more command output..." },
+                            { "ts": 1336197405.5, "type": "EXIT", "task":"p0000000004/host4.pub.example.com", "data": "0" }
+                                                  ],
+
+                        "host2.pub.example.com" : [
+                            { "ts": 1336197403, "type": "STDOUT", "task":"p0000000004/host2.pub.example.com", "data": "sallyfoo@host2.pub.example.com's password:" },
+                            { "ts": 1336197403.3, "type": "STDERR", "task":"p0000000004/host2.pub.example.com", "data": "an error occurred" },
+                            { "ts": 1336197403.5696, "type": "STDOUT", "task":"p0000000004/host2.pub.example.com", "data": "some command output" },
+                            { "ts": 1336197404, "type": "STDOUT", "task":"p0000000004/host2.pub.example.com", "data": "more command output..." },
+                            { "ts": 1336197404.5, "type": "EXIT", "task":"p0000000004/host2.pub.example.com", "data": "0" }
+                                                  ],
+
+                        "host1.pub.example.com" : [
+                            { "ts": 1336197403, "type": "STDOUT", "task":"p0000000004/host1.pub.example.com", "data": "sallyfoo@host1.pub.example.com's password:" },
+                            { "ts": 1336197403.0476, "type": "STDERR", "task":"p0000000004/host1.pub.example.com", "data": "an error occurred" },
+                            { "ts": 1336197403.957, "type": "STDOUT", "task":"p0000000004/host1.pub.example.com", "data": "some command output" },
+                            { "ts": 1336197404, "type": "STDOUT", "task":"p0000000004/host1.pub.example.com", "data": "more command output..." },
+                            { "ts": 1336197404.5, "type": "EXIT", "task":"p0000000004/host1.pub.example.com", "data": "0" }
+                                                  ]  }
+   },
 
   "namespaces" : [
       { "crawler"   : {} },
