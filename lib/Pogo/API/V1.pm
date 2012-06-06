@@ -104,7 +104,7 @@ sub app {
 
             {   pattern => qr{^/jobs/$jobid_pattern/hosts/[^/]+$},
                 method  => 'GET',
-                handler => \&not_implemented
+                handler => \&host_output
             },
 
             {   pattern => qr{^/jobs/last/[^/]+$},
@@ -730,8 +730,6 @@ sub jobhosts {
     my $format = $req->param( 'format' ) || '';
     my $cb     = $req->param( 'cb' ) || '';
 
-    my $jobid;
-
     unless ( $req->path =~ m{/([^/]+)/hosts$}o ) {
         ERROR "Couldn't find job id in path: " . $req->path;
         return psgi_response(
@@ -743,7 +741,7 @@ sub jobhosts {
         );
     }
 
-    $jobid = $1;
+    my $jobid = $1;
     my $hosts;
 
     DEBUG "looking up jobhosts for $jobid";
@@ -768,6 +766,51 @@ sub jobhosts {
     }
 
     return psgi_response( { data   => { hosts => $hosts },
+                            format => $format,
+                            cb     => $cb } );
+}
+
+###########################################
+sub host_output {
+###########################################
+    my ( $req ) = @_;
+
+    DEBUG "handling host_output request";
+
+    my $format = $req->param( 'format' ) || '';
+    my $cb     = $req->param( 'cb' ) || '';
+
+    unless ( $req->path =~ m{/([^/]+)/hosts/([^/]+)$}o ) {
+        ERROR "Couldn't find job id and/or hostname in path: " . $req->path;
+        return psgi_response(
+            {   code   => HTTP_BAD_REQUEST,
+                errors => [ "jobid and/or hostname missing from request path " . $req->path ],
+                format => $format,
+                cb     => $cb
+            }
+        );
+    }
+
+    my ( $jobid, $host ) = ( $1, $2 );
+    my $output;
+
+    DEBUG "getting command output for jobid $jobid on host $host";
+
+    my $data = from_json( _TEST_DATA() );
+    $output = $data->{ output }->{ $jobid }->{ $host };
+
+    unless ( $output ) {
+        ERROR "no such job/host combination $jobid/$host";
+        return psgi_response(
+            {   code  => HTTP_NOT_FOUND,
+                errors => [ "no such job/host combination $jobid/$host" ],
+                format => $format,
+                cb     => $cb
+            }
+        );
+    }
+
+    return psgi_response( { data   => { output => $output },
                             format => $format,
                             cb     => $cb } );
 }
