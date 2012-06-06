@@ -60,7 +60,7 @@ my $api = Plack::Handler::AnyEvent::HTTPD->new(
 
 $api->register_service( Pogo::API->app() );
 
-plan tests => 18;
+plan tests => 19;
 
 $pogo->start();
 
@@ -122,15 +122,15 @@ sub tests {
         };
 
         # GET /v1/jobs/:jobid/hosts/:host (get host output)
-        http_get "$base_url/v1/jobs/p0000000001/hosts/some.host.example.com", sub {
+        http_get "$base_url/v1/jobs/p0000000005/hosts/host8.example.com", sub {
             my( $html, $hdr ) = @_;
             my $data = from_json( $html );
 
-          TODO: {
-              local $TODO = "/jobs/[jobid]/hosts/[hostname] not yet implemented";
-              is $data->{ output }->[0], 'expected host output',
-              "output of command to some.host.example.com as expected \#17";
-            }
+            is $data->{ response }->{ output }->[ -1 ]->{ type }, 'EXIT',
+            'last host output line is of type "EXIT" #17';
+
+            is $data->{ response }->{ output }->[ -1 ]->{ data }, '0',
+            'exit status was 0 #18';
         };
 
         # GET /v1/jobs/last/:username (get most recent job for a given user)
@@ -141,7 +141,7 @@ sub tests {
           TODO: {
               local $TODO = "/jobs/last/[user] not yet implemented";
               is $data->{ command }, 'whoami',
-              "find correct last job by gandalf \#18";
+              "find correct last job by gandalf \#19";
             }
         };
     };
