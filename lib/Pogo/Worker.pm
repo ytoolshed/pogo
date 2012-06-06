@@ -83,7 +83,7 @@ sub start {
     }
 
     $self->reg_cb(
-        "worker_task_start",
+        "worker_task_request",
         sub {
             my ( $c, $task_id, $cmd, $host ) = @_;
 
@@ -92,6 +92,8 @@ sub start {
         }
     );
 
+      # if we receive a command over the wire, forward it to
+      # the command handler
     $self->reg_cb(
         "worker_dconn_cmd_recv",
         sub {
@@ -104,12 +106,12 @@ sub start {
     $self->reg_cb(
         "worker_task_done",
         sub {
-            my ( $c, $task_id, $rc ) = @_;
+            my ( $c, $task ) = @_;
 
             $self->to_dispatcher(
-                {   cmd     => "task_done",
-                    task_id => $task_id,
-                    rc      => $rc,
+                {   command => "task_done",
+                    task_id => $task->id(),
+                    rc      => $task->rc(),
                 }
             );
         }
@@ -132,7 +134,12 @@ sub cmd_handler {
 
     ERROR "Invalid command: $cmd";
 
-    $self->event( "worker_task_done", $task_id, -1, "", "", $cmd );
+    my $task = Pogo::Worker::Task->new(
+        rc      => -1,
+        message => "Invalid command $cmd",
+    );
+
+    $self->event( "worker_task_done", $task );
 }
 
 ###########################################
@@ -140,9 +147,7 @@ sub test_cmd {
 ###########################################
     my ( $self, $task_id, $host ) = @_;
 
-    $DB::single = 1;
-
-    $self->event( "worker_task_start", $task_id, "sleep 1", $host );
+    $self->event( "worker_task_request", $task_id, "sleep 1", $host );
 }
 
 ###########################################
@@ -160,30 +165,19 @@ sub task_start {
 ###########################################
     my ( $self, $task_id, $cmd, $host ) = @_;
 
-    my $task = Pogo::Worker::Task::Command->new( cmd => $cmd, host => $host );
+    # TODO: start task timeout timer
+
+    my $task = Pogo::Worker::Task::Command->new( 
+        command => $cmd, host => $host );
     $task->id( $task_id );
 
-    my $stdout = "";
-    my $stderr = "";
-
     $task->reg_cb(
-        on_stdout => sub {
-            my ( $c, $stdout_chunk ) = @_;
-
-            $stdout .= $stdout_chunk;
-        },
-        on_stderr => sub {
-            my ( $c, $stderr_chunk ) = @_;
-
-            $stderr .= $stderr_chunk;
-        },
         on_finish => sub {
             my ( $c, $rc ) = @_;
 
             DEBUG "Task ", $task->id(), " ended (rc=$rc)";
 
-            $self->event( "worker_task_done", $task->id(), $rc, $stdout,
-                $stderr, $cmd, $host );
+            $self->event( "worker_task_done", $task );
 
             # remove task from tracker hash
             delete $self->{ tasks }->{ $task->id() };
@@ -195,6 +189,8 @@ sub task_start {
 
     # save it in the task tracker by its unique id to keep it running
     $self->{ tasks }->{ $task->id() } = $task;
+
+    return $task;
 }
 
 1;

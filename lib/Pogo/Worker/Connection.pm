@@ -275,11 +275,11 @@ sub channel_dispatcher_to_worker {
 ###########################################
     my ( $self, $data ) = @_;
 
-    DEBUG "Received dispatcher command: $data->{ cmd }";
+    DEBUG "Received dispatcher command: $data->{ command }";
 
       # Forward event to worker's command handler
     $self->event( "worker_dconn_cmd_recv", 
-        $data->{ task_id }, $data->{ cmd }, $data->{ host } );
+        $data->{ task_id }, $data->{ command }, $data->{ host } );
 
     my $ack = {
         channel => 2,

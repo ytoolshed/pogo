@@ -29,9 +29,12 @@ $pogo->reg_cb( dispatcher_wconn_cmd_recv  => sub {
 
     DEBUG "Dispatcher received command";
 
-    return if $data->{ cmd } ne "command-by-worker";
+    $DB::single = 1;
 
-    is( $data->{ cmd }, "command-by-worker", "received worker command #2" );
+    return if $data->{ command } ne "command-by-worker";
+
+    is( $data->{ command }, 
+        "command-by-worker", "received worker command #2" );
 });
 
 plan tests => 5;
@@ -39,7 +42,7 @@ plan tests => 5;
 $pogo->reg_cb( worker_dconn_listening => sub {
       
     DEBUG "Dispatcher listening, triggering worker command";
-    $pogo->{ worker }->to_dispatcher( { cmd     => "command-by-worker",
+    $pogo->{ worker }->to_dispatcher( { command => "command-by-worker",
                                         task_id => "123" } );
 });
 
@@ -68,7 +71,7 @@ $pogo->reg_cb( worker_dconn_qp_idle => sub {
 $pogo->reg_cb( dispatcher_wconn_worker_connect => sub {
       
     DEBUG "Connection up, dispatcher sending command to worker";
-    $pogo->{ dispatcher }->to_worker( { cmd => "command-by-dispatcher",
+    $pogo->{ dispatcher }->to_worker( { command => "command-by-dispatcher",
                                         task_id => "123" } );
 });
 

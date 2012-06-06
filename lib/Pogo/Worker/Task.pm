@@ -6,10 +6,10 @@ use warnings;
 use Log::Log4perl qw(:easy);
 use AnyEvent;
 use AnyEvent::Strict;
-use Pogo::Util qw( make_accessor );
+use Pogo::Util qw( make_accessor required_params_check id_gen );
 use base 'Object::Event';
 
-__PACKAGE__->make_accessor( $_ ) for qw( id );
+__PACKAGE__->make_accessor( $_ ) for qw( id rc message );
 
 ###########################################
 sub new {
@@ -17,11 +17,29 @@ sub new {
     my ( $class, %options ) = @_;
 
     my $self = {
-        id => undef,
+        required_params_check( \%options, [ qw( rc message ) ] ),
         %options,
     };
 
+    if( !defined $self->{ id } ) {
+        $self->{ id } = id_gen( "generic-task" );
+    }
+
     bless $self, $class;
+
+    return $self;
+}
+
+###########################################
+sub ran_ok {
+###########################################
+    my( $self ) = @_;
+
+    if( $self->{ rc } == 0 ) {
+        return 1;
+    }
+
+    return 0;
 }
 
 1;

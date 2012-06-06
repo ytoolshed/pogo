@@ -71,10 +71,11 @@ sub run_tests {
     });
 
     $pogo->reg_cb( worker_task_done => sub {
-        my( $c, $task_id, $rc, $stdout, $stderr, $cmd ) = @_;
-        is $task_id, $pogo->{ dispatcher }->next_task_id_base() . "-1", 
+        my( $c, $task ) = @_;
+        is $task->id(), 
+           $pogo->{ dispatcher }->next_task_id_base() . "-1", 
            "worker task 1 done #5";
-        is $rc, 0, "worker command succeeded #6";
+        is $task->rc(), 0, "worker command succeeded #6";
     });
 
     use AnyEvent::HTTP;
@@ -107,6 +108,6 @@ EOT
 
         is $task_id, $pogo->{ dispatcher }->next_task_id_base() . "-1", 
            "dispatcher: worker task 1 done #8";
-});
+    });
 
 }

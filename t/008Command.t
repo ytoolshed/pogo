@@ -5,6 +5,7 @@ use FindBin qw($Bin);
 use lib "$Bin/../lib";
 use lib "$Bin/lib";
 use Pogo::Worker::Task::Command;
+use Sysadm::Install qw( bin_find );
 
 use PogoTest;
 use PogoFake;
@@ -12,27 +13,39 @@ use Test::More;
 use Log::Log4perl qw(:easy);
 use Getopt::Std;
 
-plan tests => 2;
+my $echo = bin_find( "echo" );
+
+plan tests => 4;
 
 my $cv = AnyEvent->condvar;
 
-my $cmd = Pogo::Worker::Task::Command->new(
-    cmd => "echo meh; sleep 2; echo bah",
+my $TEST_ID = "some-id";
+
+my $task = Pogo::Worker::Task::Command->new(
+    command => "$echo foo; $echo bar",
+    id      => $TEST_ID,
 );
 
-my @exp = ( "meh\n", "bah\n" );
-$cmd->reg_cb( "on_stdout", sub {
+my $gobbled_up = "";
+
+$task->reg_cb( "on_stdout", sub {
     my( $c, $data ) = @_;
-    
-    DEBUG "received: $_[1]";
 
-    my $exp = shift @exp;
-    is( $data, $exp, "expected stdout data" );
-
-    if( !@exp ) {
-        $cv->send();
-    }
+    $gobbled_up .= $data;
 });
 
-$cmd->start();
+$task->reg_cb( "on_finish", sub {
+    my( $c ) = @_;
+
+    is $c->rc(), 0, "success";
+
+    my $expected = "foo\nbar\n";
+    is $gobbled_up, $expected, "expected stdout data";
+    is $c->stdout(), $expected, "stdout() call";
+
+    is $c->id(), $TEST_ID, "task id ok";
+    $cv->send();
+});
+
+$task->start();
 $cv->recv();

@@ -32,7 +32,7 @@ Pogo::Worker::Task::Command::Remote - Pogo Remote Command Executor
 
     my $cmd = Pogo::Worker::Task::Command::Remote->new(
       host => "localhost",
-      cmd  => [ 'ls', '-l' ],
+      command  => [ 'ls', '-l' ],
     };
 
     $cmd->reg_cb(

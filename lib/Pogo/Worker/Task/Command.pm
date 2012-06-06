@@ -7,7 +7,13 @@ use Log::Log4perl qw(:easy);
 use AnyEvent;
 use AnyEvent::Strict;
 use AnyEvent::Util qw( run_cmd );
+use Pogo::Util qw( make_accessor required_params_check id_gen );
 use base qw(Pogo::Worker::Task);
+
+__PACKAGE__->make_accessor( $_ ) for qw( 
+id command host
+stdout stderr rc
+);
 
 ###########################################
 sub new {
@@ -15,16 +21,16 @@ sub new {
     my ( $class, %options ) = @_;
 
     my $self = {
-        cmd  => undef,
-        host => undef,
+        required_params_check( \%options, [ qw( command ) ] ),
         %options,
     };
 
-    if ( !defined $self->{ cmd } ) {
-        LOGDIE "parameter 'cmd' missing";
+    if( !defined $self->{ id } ) {
+        $self->{ id } = id_gen( "generic-task-command" );
     }
 
     bless $self, $class;
+    return $self;
 }
 
 ###########################################
@@ -32,11 +38,9 @@ sub start {
 ###########################################
     my ( $self ) = @_;
 
-    $DB::single = 1;
+    DEBUG "Starting command $self->{ command }";
 
-    DEBUG "Starting command $self->{ cmd }";
-
-    $self->{ guard } = run_cmd $self->{ cmd },
+    $self->{ guard } = run_cmd $self->{ command },
         "<",  "/dev/null",
         ">",  $self->on_stdout(),
         "2>", $self->on_stderr(),
@@ -45,6 +49,8 @@ sub start {
     $self->{ guard }->cb(
         sub {
             my $rc = shift->recv;
+
+            $self->{ rc } = $rc;
             $self->event( "on_finish", $rc );
         }
     );
@@ -65,6 +71,7 @@ sub on_stdout {
         }
 
         DEBUG "Stdout event: [$data]";
+        $self->{ stdout } .= $data;
         $self->event( "on_stdout", $data );
     };
 }
@@ -82,6 +89,7 @@ sub on_stderr {
         }
 
         DEBUG "Stderr event: [$data]";
+        $self->{ stderr } .= $data;
         $self->event( "on_stderr", $data );
     };
 }
@@ -91,7 +99,16 @@ sub as_string {
 ###########################################
     my ( $self ) = @_;
 
-    return "$self: cmd=$self->{ cmd } host=$self->{ host }";
+    return "$self: command=$self->{ command }";
+}
+
+###########################################
+sub DESTROY {
+###########################################
+    my ( $self ) = @_;
+
+      # help GC by deleting circular ref
+    delete $self->{ guard };
 }
 
 1;
@@ -106,11 +123,12 @@ Pogo::Worker::Task::Command - Pogo Command Executor
 
     use Pogo::Worker::Task::Command;
 
-    my $cmd = Pogo::Worker::Task::Command->new(
-      cmd  => [ 'ls', '-l' ],
+    my $task = Pogo::Worker::Task::Command->new(
+      command  => "ls -l",
+      id       => "123",
     };
 
-    $cmd->reg_cb(
+    $task->reg_cb(
       on_stdout => sub {
         my($c, $stdout) = @_;
       },
@@ -119,15 +137,67 @@ Pogo::Worker::Task::Command - Pogo Command Executor
       }
       on_finish => sub {
         my($c) = @_;
+
+        if( $c->rc() ) {
+            print "Failure\n";
+            return 1;
+        }
+
+        print "Task ", $c->id(), " which ran ",
+              $c->command(), " finished.\n";
       }
     );
           
-    $cmd->start();
+    $task->start();
 
 =head1 DESCRIPTION
 
 Pogo::Worker::Task::Command is an AnyEvent component for 
-running commands.
+running shell command line commands.
+
+=head1 METHODS
+
+=over 4
+
+=item id()
+
+The task ID.
+
+=item command()
+
+The shell command line to be executed.
+
+=item stdout()
+
+Text that appeared on stdout.
+
+=item stderr()
+
+Text that appeared on stderr.
+
+=item rc()
+
+The return code of the command after completion.
+
+=back
+
+=head1 INCOMING EVENTS
+
+=head1 OUTGOING EVENTS
+
+=over 4
+
+=item C<on_finish $c>
+
+Upon command completion.
+
+=item C<on_stdout $c $lines>
+
+Text appeared on stdout.
+
+=item C<on_stderr $c $lines>
+
+Text appeared on stderr.
 
 =back
 

@@ -63,10 +63,11 @@ $pogo->reg_cb( "worker_task_active", sub {
 my $seq = 0;
 
 $pogo->reg_cb( "worker_task_done", sub {
-        my( $c, $task_id, $rc, $stdout, $stderr, $cmd, $host ) = @_;
+        my( $c, $task) = @_;
 
-        DEBUG "Worker done with task ", $task_id;
+        DEBUG "Worker done with task ", $task->id();
         $seq++;
+        my $host = $task->host();
         ok $bck->item( $host ), "host $host in seq #$seq";
 
         if( $seq == 2 ) {

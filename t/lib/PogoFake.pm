@@ -43,12 +43,12 @@ sub new {
         auto_reconnect => 0,
         @ssl,
     );
-    $self->{ worker }->set_exception_cb ( sub { exit 1; } );
+    $self->{ worker }->set_exception_cb ( sub { LOGDIE @_; } );
 
     $self->{ dispatcher } = Pogo::Dispatcher->new( 
         @ssl 
     );
-    $self->{ dispatcher }->set_exception_cb ( sub { exit 1; } );
+    $self->{ dispatcher }->set_exception_cb ( sub { LOGDIE @_; } );
 
     return $self;
 }

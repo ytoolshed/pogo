@@ -8,7 +8,7 @@ use JSON qw( to_json );
 
 require Exporter;
 our @EXPORT_OK = qw( http_response_json make_accessor struct_traverse
-    array_intersection id_gen struct_locate );
+    array_intersection id_gen struct_locate required_params_check );
 our @ISA = qw( Exporter );
 
 ###########################################
@@ -23,6 +23,22 @@ sub http_response_json {
         [ 'Content-Type' => 'application/json' ],
         [ to_json( $data ) ],
     ];
+}
+
+##################################################
+sub required_params_check {
+##################################################
+    my ( $hash, $params ) = @_;
+
+    for my $param ( @$params ) {
+        if( !exists $hash->{ $param } or
+            !defined $hash->{ $param } ) {
+            LOGCROAK "Mandatory parameter $param missing";
+        }
+    }
+
+      # can be used to initialize the $self hash
+    return map { $_ => undef } @$params;
 }
 
 ##################################################
