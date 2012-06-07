@@ -611,9 +611,11 @@ sub listjobs {
 
     my $data = from_json( _TEST_DATA() );
     my $jobs = $data->{ jobs };
+    my $job_count = scalar @$jobs;
 
     return psgi_response( { data   => { jobs => $jobs },
                             format => $format,
+                            meta   => { count => $job_count },
                             cb     => $cb } );
 }
 
@@ -716,8 +718,11 @@ sub joblog {
         );
     }
 
+    my $log_entries = scalar @$joblog;
+
     return psgi_response( { data   => { joblog => $joblog },
                             format => $format,
+                            meta   => { count  => $log_entries },
                             cb     => $cb } );
 }
 
@@ -766,8 +771,11 @@ sub jobhosts {
         );
     }
 
+    my $host_count = scalar keys %$hosts;
+
     return psgi_response( { data   => { hosts => $hosts },
                             format => $format,
+                            meta   => { count => $host_count },
                             cb     => $cb } );
 }
 
@@ -811,8 +819,11 @@ sub host_output {
         );
     }
 
+    my $output_lines = scalar @$output;
+
     return psgi_response( { data   => { output => $output },
                             format => $format,
+                            meta   => { count => $output_lines },
                             cb     => $cb } );
 }
 
