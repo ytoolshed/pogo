@@ -610,8 +610,9 @@ sub listjobs {
     my $cb     = $req->param( 'cb' ) || '';
 
     my $data = from_json( _TEST_DATA() );
+    my $jobs = $data->{ jobs };
 
-    return psgi_response( { data   => { jobs => $data->{ jobs } },
+    return psgi_response( { data   => { jobs => $jobs },
                             format => $format,
                             cb     => $cb } );
 }
