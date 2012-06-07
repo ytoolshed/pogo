@@ -6,16 +6,58 @@ use warnings;
 use Log::Log4perl qw(:easy);
 use AnyEvent;
 use AnyEvent::Strict;
+use Sysadm::Install qw(:all);
+use Pogo::Util qw( make_accessor required_params_check id_gen );
 use base qw(Pogo::Worker::Task::Command);
+
+__PACKAGE__->make_accessor( $_ ) for qw( 
+id command host
+user password privkey
+stdout stderr rc
+);
 
 ###########################################
 sub new {
 ###########################################
     my ( $class, %options ) = @_;
 
-    my $self = { %options, };
+    my $self = {
+        required_params_check( \%options, [ qw( command host user) ] ),
+        %options,
+    };
+
+    if( !defined $self->{ ssh } ) {
+        $self->{ ssh } = bin_find( "ssh" );
+    }
+
+    if( !defined $self->{ id } ) {
+        $self->{ id } = id_gen( "generic-task-command" );
+    }
 
     bless $self, $class;
+
+    $self->remote_command_fixup();
+
+    return $self;
+}
+
+###########################################
+sub remote_command_fixup {
+###########################################
+    my( $self ) = @_;
+
+    my $cmd = "$self->{ ssh } $self->{ host } " . 
+              qquote( $self->{ command } );
+    
+    $self->{ command } = $cmd;
+}
+
+###########################################
+sub start {
+###########################################
+    my( $self ) = @_;
+
+    return $self->SUPER::start( $self->command() );
 }
 
 1;
@@ -30,38 +72,28 @@ Pogo::Worker::Task::Command::Remote - Pogo Remote Command Executor
 
     use Pogo::Worker::Task::Command::Remote;
 
-    my $cmd = Pogo::Worker::Task::Command::Remote->new(
-      host => "localhost",
-      command  => [ 'ls', '-l' ],
+    my $task = Pogo::Worker::Task::Command::Remote->new(
+      host     => "localhost",
+      user     => "someuser",
+      password => "topsecret",
+      command  => "ls -l",
     };
 
-    $cmd->reg_cb(
-      on_stdout => sub {
-        my($c, $stdout) = @_;
-      },
-      on_stderr => sub {
-        my($c, $stderr) = @_;
-      }
-      on_eof => sub {
-        my($c) = @_;
-      }
-    );
-          
-    $cmd->run();
-
-      # Send data to the process's STDIN
-    $cmd->stdin($data);
+    $task->start();
 
 =head1 DESCRIPTION
 
 Pogo::Worker::Task::Command::Remote is an AnyEvent component for 
-running commands on remote hosts.
+running commands on remote hosts via ssh.
 
 It extends C<Pogo::Worker::Task::Command> and takes an extra argument
 C<host> to run the given command on the target host.
 
 See the base class C<Pogo::Worker::Task::Command> documentation for how to 
 register callbacks.
+
+To authenticate the user on the target system, either a password or a
+private key can be provided.
 
 =back
 
