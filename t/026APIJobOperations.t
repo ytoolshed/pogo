@@ -75,8 +75,8 @@ sub tests {
             my( $html, $hdr ) = @_;
             my $data = from_json( $html );
 
-            is $data->{ response }->{ jobs }->[0]->{ jobid }, 'p0000000008',
-            "first job returned from 'GET /jobs' is p0000000008 \#5";
+            is $data->{ response }->{ jobs }->[0]->{ jobid }, 'p0000000009',
+            "first job returned from 'GET /jobs' is p0000000009 \#5";
         };
 
         # GET /v1/jobs/:jobid (get job info)

@@ -1050,6 +1050,116 @@ sub _TEST_DATA {
 {
   "jobs" : [
       {
+          "jobid"       : "p0000000009",
+          "command"     : "df -h",
+          "range"       : "[\"storehost[8-9].example.com\"]",
+          "namespace"   : "example",
+          "user"        : "joebob",
+          "run_as"      : "joebob",
+          "state"       : "running",
+          "concurrent"  : "1",
+          "host_count"  : "2",
+          "job_timeout" : "15000",
+          "timeout"     : "1200",
+          "prehook"     : "0",
+          "posthook"    : "0",
+          "retry"       : "0",
+          "requesthost" : "desktop.example.com",
+          "invoked_as"  : "/usr/bin/pogo run -h host2.example.com --concurrent 4 'df -h'",
+          "start_time"  : 1336094404.363,
+          "client"      : "4.0.0",
+
+          "hosts" : { "storehost8.example.com" : { "state": "finished",
+                                                   "start_time" : 1336094406,
+                                                   "finish_time" : 1336094408,
+                                                   "output": "http://pogo-worker1.example.com/pogo_output/p0000000009/storehost8.example.com.txt" },
+                      "storehost9.example.com" : { "state": "running",
+                                                   "start_time" : 1336094410,
+                                                   "output": "http://pogo-worker1.example.com/pogo_output/p0000000009/storehost9.example.com.txt" } },
+          "log" : [
+              {
+                  "time": 1336094405,
+                  "type": "jobstate",
+                  "range": "[\"storehost[8-9].example.com\"]",
+                  "state": "gathering",
+                  "message": "job created; fetching hostinfo"
+              },
+              {
+                  "time": 1336094405.33,
+                  "type": "jobstate",
+                  "range": "[\"storehost[8-9].example.com\"]",
+                  "state": "gathering",
+                  "message": "job created; finished fetching hostinfo"
+              },
+              {
+                  "time": 1336094405.4523,
+                  "type": "jobstate",
+                  "range": "[\"storehost[8-9].example.com\"]",
+                  "state": "running",
+                  "message": "constraints computed"
+              },
+              {
+                  "time": 1336094405.466,
+                  "type": "hoststate",
+                  "host": "storehost8.example.com",
+                  "state": "waiting",
+                  "message": "determining run order..."
+              },
+              {
+                  "time": 1336094405.87,
+                  "type": "hoststate",
+                  "host": "storehost9.example.com",
+                  "state": "waiting",
+                  "message": "determining run order..."
+              },
+              {
+                  "time": 1336094405.909,
+                  "type": "hoststate",
+                  "host": "storehost8.example.com",
+                  "state": "ready",
+                  "message": "connecting to host..."
+              },
+              {
+                  "time": 1336094406.0035,
+                  "type": "hoststate",
+                  "host": "storehost9.example.com",
+                  "state": "waiting",
+                  "message": "waiting for (SOME CONSTRAINT)"
+              },
+              {
+                  "time": 1336094406.11,
+                  "type": "hoststate",
+                  "host": "storehost8.example.com",
+                  "state": "running",
+                  "output": "http://pogo-worker1.example.com/pogo_output/p0000000009/storehost8.example.com.txt",
+                  "message": "started"
+              },
+              {
+                  "time": 1336094408.35,
+                  "type": "hoststate",
+                  "host": "storehost8.example.com",
+                  "state": "finished",
+                  "exitstatus" : "0",
+                  "message": "0"
+              },
+              {
+                  "time": 1336094409.34,
+                  "type": "hoststate",
+                  "host": "storehost9.example.com",
+                  "state": "ready",
+                  "message": "connecting to host..."
+              },
+              {
+                  "time": 1336094410.575,
+                  "type": "hoststate",
+                  "host": "storehost9.example.com",
+                  "state": "running",
+                  "output": "http://pogo-worker1.example.com/pogo_output/p0000000009/storehost8.example.com.txt",
+                  "message": "started"
+              }
+                 ]
+      },
+      {
           "jobid"       : "p0000000008",
           "command"     : "uptime",
           "range"       : "[\"host2.example.com\"]",
@@ -1334,7 +1444,6 @@ sub _TEST_DATA {
               }
               ]
       },
-
       {
         "jobid"       : "p0000000006",
         "command"     : "sudo apachectl -k restart",
@@ -1430,7 +1539,6 @@ sub _TEST_DATA {
               }
               ]
       },
-
       {
         "jobid"       : "p0000000004",
         "command"     : "find /some/directory -type f -mmin -20",
@@ -1481,6 +1589,31 @@ sub _TEST_DATA {
            ],
 
   "output" : {
+      "p0000000009" : { "storehost8.example.com" : [
+                            { "ts": 1336094406.003, "type": "STDOUT", "task":"p0000000009/storehost8.example.com", "data": "joebob@storehost8.example.com's password: \r\n" },
+                            { "ts": 1336094406.02, "type": "STDOUT", "task":"p0000000009/storehost8.example.com", "data": "joebob@storehost8.example.com's password: \r\n" },
+                            { "ts": 1336094406.229, "type": "STDOUT", "task":"p0000000009/storehost8.example.com", "data": "Password:\r\n" },
+                            { "ts": 1336094406.231, "type": "STDOUT", "task":"p0000000009/storehost8.example.com", "data": "\r\n" },
+                            { "ts": 1336094406.2356, "type": "STDOUT", "task":"p0000000009/storehost8.example.com", "data": "pogo-worker: loaded; command='df -h', retry=0, timeout=1200\r\n" },
+                            { "ts": 1336094406.3, "type": "STDOUT", "task":"p0000000009/storehost8.example.com", "data": "pogo-worker: running command 'df -h'\r\n" },
+                            { "ts": 1336094406.45, "type": "STDOUT", "task":"p0000000009/storehost8.example.com", "data": "Filesystem            Size  Used Avail Use% Mounted on\r\n/dev/sda2              30G   19G   10G  65% /\r\n/dev/sda1              30G   19G   10G  65% /boot\r\n" },
+                            { "ts": 1336094406.567, "type": "STDOUT", "task":"p0000000009/storehost8.example.com", "data": "/dev/hdc               30G   19G   10G  65% /mnt\r\npogo-worker: command exit 0\r\nRemoved the stub /tmp/N6OwBasJjC \r\n\r\n" },
+                            { "ts": 1336094406.82, "type": "STDOUT", "task":"p0000000009/storehost8.example.com", "data": "Connection to storehost8.example.com closed.\r\r\n" },
+                            { "ts": 1336094406.903, "type": "STDOUT", "task":"p0000000009/storehost8.example.com", "data": "joebob@storehost8.example.com's password: \r\n" },
+                            { "ts": 1336094407.348, "type": "STDOUT", "task":"p0000000009/storehost8.example.com", "data": "Connection to storehost8.example.com closed.\r\r\n" },
+                            { "ts": 1336094408, "type": "STDOUT", "task":"p0000000009/storehost8.example.com", "data": "" },
+                            { "ts": 1336094408.12, "type": "EXIT", "task":"p0000000009/storehost8.example.com", "data": "0" }
+
+                                              ],
+                        "storehost9.example.com" : [
+                            { "ts": 1336094410.6576, "type": "STDOUT", "task":"p0000000009/storehost9.example.com", "data": "joebob@storehost9.example.com's password: \r\n" },
+                            { "ts": 1336094410.7, "type": "STDOUT", "task":"p0000000009/storehost9.example.com", "data": "joebob@storehost9.example.com's password: \r\n" },
+                            { "ts": 1336094410.8, "type": "STDOUT", "task":"p0000000009/storehost9.example.com", "data": "Password:\r\n" },
+                            { "ts": 1336094410.938, "type": "STDOUT", "task":"p0000000009/storehost9.example.com", "data": "\r\n" },
+                            { "ts": 1336094411, "type": "STDOUT", "task":"p0000000009/storehost9.example.com", "data": "pogo-worker: loaded; command='df -h', retry=0, timeout=1200\r\n" },
+                            { "ts": 1336094412.56, "type": "STDOUT", "task":"p0000000009/storehost9.example.com", "data": "pogo-worker: running command 'df -h'\r\n" }
+                                              ]
+ },
       "p0000000008" : { "host2.example.com" : [
                             { "ts": 1336094410, "type": "STDOUT", "task":"p0000000008/host2.example.com", "data": "sallyfoo@host2.example.com's password:" },
                             { "ts": 1336094412, "type": "STDERR", "task":"p0000000008/host2.example.com", "data": "an error occurred" },
