@@ -1,0 +1,176 @@
+#!/usr/local/bin/perl -w
+use strict;
+use warnings;
+use PasswordMonkey;
+use Term::ReadKey;
+use Log::Log4perl qw(:easy);
+use PasswordMonkey::Bouncer::Wait;
+use Getopt::Std;
+use PasswordMonkey::Filler;
+
+my @params_mandatory = qw( password );
+my %params_defaults = (
+    timeout                          => 60,
+    "passwordmonkey.waiter.interval" => 2,
+);
+
+getopts "v", \my %opts;
+
+if( $opts{ v } ) {
+    Log::Log4perl->easy_init({ 
+            level => $DEBUG, layout => "%F{1}:%L %m%n" });
+}
+
+my $kv = keyval_pairs();
+
+for my $key ( keys %params_defaults ) {
+    if( !exists $kv->{ $key } ) {
+        $kv->{ $key } = $params_defaults{ $key };
+    }
+}
+
+  # check mandatory parameters
+for my $param ( @params_mandatory ) {
+    if( !exists $kv->{ $param } ) {
+        LOGDIE "Mandatory parameter $param missing";
+    }
+}
+
+my $monkey = PasswordMonkey->new(
+    timeout => $kv->{ timeout }
+);
+
+my $waiter = PasswordMonkey::Bouncer::Wait->new( seconds => 2 );
+
+for my $plugin ( filler_plugins() ) {
+
+    eval "require $plugin";
+
+    my $filler = $plugin->new(
+        password => $kv->{ password }
+    );
+
+    $filler->bouncer_add( $waiter );
+    $monkey->filler_add( $filler );
+}
+
+$monkey->spawn( @ARGV );
+$monkey->go();
+
+if( ! $monkey->is_success ) {
+    if( $monkey->timed_out ) {
+        ERROR "$0: Timed out";
+        exit 254;
+    } else {
+        ERROR "$0: Error: ", $monkey->exit_status();
+        my $exit_code = ($monkey->exit_status() >> 8);
+        ERROR "$0: Exit code $exit_code";
+        exit $exit_code;
+    }
+}
+
+INFO "$0 done.";
+
+###########################################
+sub keyval_pairs {
+###########################################
+
+    my %keyvals = ();
+
+    while( my $line = <STDIN> ) {
+        chomp $line;
+        my( $key, $value ) = split /=/, $line, 2;
+        DEBUG "Storing parameter $key=$value";
+        $keyvals{ $key } = $value;
+    }
+
+    return \%keyvals;
+}
+
+###########################################
+sub filler_plugins {
+###########################################
+
+    eval { 
+        PasswordMonkey::Filler->plugins();
+    };
+
+    if( $@ ) {
+        eval <<EOT
+package PasswordMonkey::Filler;
+use Module::Pluggable search_path => [ 'PasswordMonkey::Filler' ];
+EOT
+    }
+
+    my $fillers = PasswordMonkey::Filler->new();
+    my @plugins = $fillers->plugins();
+
+    return @plugins;
+}
+
+__END__
+
+=head1 NAME
+
+    pogo-pw - Run a command and fill in password prompts
+
+=head1 SYNOPSIS
+
+    $ pogo-pw command args
+    password=secret0
+    CTRL-D
+
+=head1 OPTIONS
+
+=over 8
+
+=item B<-v>
+
+Be verbose.
+
+=back
+
+=head1 DESCRIPTION
+
+C<pogo-pw> runs pogo commands and fills in password prompts automatically.
+It uses the PasswordMonkey CPAN module for the actual work.
+
+It expects passwords and other parameters on stdin, as C<key=value> 
+lines.
+
+To figure out which PasswordMonkey fillers to use, it dynamically finds
+installed PasswordMonkey::Filler plugins at startup in 
+the C<PasswordMonkey::Filler> install directory.
+
+=head1 AUTHOR
+
+Mike Schilli <m@perlmeister.com>
+Ian Bettinger <ibettinger@yahoo.com>
+
+Many thanks to the following folks for implementing the
+original version of Pogo: 
+
+Andrew Sloane <andy@a1k0n.net>, 
+Michael Fischer <michael+pogo@dynamine.net>,
+Nicholas Harteau <nrh@hep.cat>,
+Nick Purvis <nep@noisetu.be>,
+Robert Phan <robert.phan@gmail.com>,
+Srini Singanallur <ssingan@yahoo.com>,
+Yogesh Natarajan <yogesh_ny@yahoo.co.in>
+
+=head1 LICENSE
+
+Copyright (c) 2010-2012 Yahoo! Inc. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+imitations under the License.
+
