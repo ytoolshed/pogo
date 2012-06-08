@@ -36,12 +36,16 @@ sub new {
 ###########################################
 sub start {
 ###########################################
-    my ( $self ) = @_;
+    my ( $self, $stdin ) = @_;
+
+    $DB::single = 1;
 
     DEBUG "Starting command $self->{ command }";
 
+    $stdin = "" if !defined $stdin;
+
     $self->{ guard } = run_cmd $self->{ command },
-        "<",  "/dev/null",
+        "<",  \$stdin,
         ">",  $self->on_stdout(),
         "2>", $self->on_stderr(),
         ;

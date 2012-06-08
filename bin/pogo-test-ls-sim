@@ -2,58 +2,21 @@
 use strict;
 use warnings;
 
-  # for testing
-use FindBin qw( $Bin );
-use lib "$Bin/../lib";
-
-use Pogo::PasswordMonkey;
-use Getopt::Std;
-use Log::Log4perl qw(:easy);
-
-getopts "v", \my %opts;
-
-if( $opts{ v } ) {
-    Log::Log4perl->easy_init({ 
-            level => $DEBUG, layout => "%F{1}:%L %m%n" });
-}
-
-my $monkey = Pogo::PasswordMonkey->new();
-$monkey->startup();
-$monkey->go( @ARGV );
+print "foo\nbar\n";
 
 __END__
 
 =head1 NAME
 
-    pogo-pw - Run a command and fill in password prompts
+    pogo-test-ls-sim - Simulate running an 'ls' command (for testing)
 
 =head1 SYNOPSIS
 
-    $ pogo-pw command args
-    password=secret0
-    CTRL-D
-
-=head1 OPTIONS
-
-=over 8
-
-=item B<-v>
-
-Be verbose.
-
-=back
+    $ pogo-test-ls-sim
 
 =head1 DESCRIPTION
 
-C<pogo-pw> runs pogo commands and fills in password prompts automatically.
-It uses the PasswordMonkey CPAN module for the actual work.
-
-It expects passwords and other parameters on stdin, as C<key=value> 
-lines.
-
-To figure out which PasswordMonkey fillers to use, it dynamically finds
-installed PasswordMonkey::Filler plugins at startup in 
-the C<PasswordMonkey::Filler> install directory.
+C<pogo-test-ls-sim> is a test tool to simulate a 'ls' command.
 
 =head1 AUTHOR
 

@@ -14,6 +14,7 @@ __PACKAGE__->make_accessor( $_ ) for qw(
 id command host
 user password privkey
 stdout stderr rc
+ssh pogo_pw
 );
 
 ###########################################
@@ -26,8 +27,10 @@ sub new {
         %options,
     };
 
-    if( !defined $self->{ ssh } ) {
-        $self->{ ssh } = bin_find( "ssh" );
+    for my $cmd ( qw( ssh pogo-pw ) ) {
+        if( !defined $self->{ $cmd } ) {
+            $self->{ $cmd } = bin_find( $cmd );
+        }
     }
 
     if( !defined $self->{ id } ) {
@@ -48,8 +51,11 @@ sub remote_command_fixup {
 
     my $cmd = "$self->{ ssh } $self->{ host } " . 
               qquote( $self->{ command } );
-    
-    $self->{ command } = $cmd;
+
+    my $pogo_pw_cmd = "$self->{ pogo_pw } " .
+              qquote( $cmd );
+
+    $self->{ command } = $pogo_pw_cmd;
 }
 
 ###########################################
@@ -57,7 +63,7 @@ sub start {
 ###########################################
     my( $self ) = @_;
 
-    return $self->SUPER::start( $self->command() );
+    return $self->SUPER::start( "password=$self->{ password }\n" );
 }
 
 1;

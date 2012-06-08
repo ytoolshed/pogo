@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use Test::More;
 
-my $nof_tests = 1;
+my $nof_tests = 2;
 plan tests => $nof_tests;
 
 # use Log::Log4perl qw(:easy);
@@ -17,13 +17,17 @@ BEGIN {
 
 use Pogo::One;
 use Pogo::Job;
-use Pogo::Util::Bucketeer;
 use Pogo::Worker::Task::Command::Remote;
 
+my $scriptbin = "$Bin/../bin";
+
 my $cmd = Pogo::Worker::Task::Command::Remote->new(
-    command => "ls -l",
-    user    => "wombel",
-    host    => "this.host.does.not.exist",
+    ssh      => "$scriptbin/pogo-test-ssh-sim",
+    pogo_pw  => "$scriptbin/pogo-pw",
+    command  => "$scriptbin/pogo-test-ls-sim",
+    user     => "wombel",
+    password => "pass",
+    host     => "this.host.does.not.exist",
 );
 
 my $cv = AnyEvent->condvar();
@@ -32,7 +36,8 @@ $cmd->reg_cb( "on_finish", sub {
     my( $c, $rc ) = @_;
 
     DEBUG "rc=$rc";
-    ok $rc, "rc != 0";
+    is $rc, 0, "rc ok";
+    like $c->stdout(), qr/foo.*bar/s, "stdout";
 
     $cv->send();
 } );

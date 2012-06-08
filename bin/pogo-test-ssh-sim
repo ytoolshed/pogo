@@ -1,35 +1,57 @@
 #!/usr/local/bin/perl -w
 use strict;
 use warnings;
-
-  # for testing
-use FindBin qw( $Bin );
-use lib "$Bin/../lib";
-
-use Pogo::PasswordMonkey;
+use Term::ReadKey;
 use Getopt::Std;
 use Log::Log4perl qw(:easy);
 
 getopts "v", \my %opts;
+
+my( $host, @cmd ) = @ARGV;
 
 if( $opts{ v } ) {
     Log::Log4perl->easy_init({ 
             level => $DEBUG, layout => "%F{1}:%L %m%n" });
 }
 
-my $monkey = Pogo::PasswordMonkey->new();
-$monkey->startup();
-$monkey->go( @ARGV );
+my $user = "foo";
+my $pass = "pass";
+my $in   = 0;
+
+for( 1..3 ) {
+    ReadMode( 4 );
+    $|=1;
+    print "\n$user\@localhost's password: "; 
+    my $password = <STDIN>;
+    ReadMode( 0 );
+    
+    chomp $password;
+    print "\n";
+    
+    if( $password eq $pass ) {
+        $in = 1;
+        last;
+    }
+
+    print "Permission denied, please try again.\n";
+};
+
+if( !$in ) {
+    LOGDIE "Out of retries";
+}
+
+  # run command on test host instead
+system( @cmd);
 
 __END__
 
 =head1 NAME
 
-    pogo-pw - Run a command and fill in password prompts
+    pogo-test-ssh-sim - Simulate ssh-ing to a host and running a command
 
 =head1 SYNOPSIS
 
-    $ pogo-pw command args
+    $ pogo-test-ssh-sim host args
     password=secret0
     CTRL-D
 
@@ -45,15 +67,10 @@ Be verbose.
 
 =head1 DESCRIPTION
 
-C<pogo-pw> runs pogo commands and fills in password prompts automatically.
-It uses the PasswordMonkey CPAN module for the actual work.
+C<pogo-test-ssh-sim> is a test tool to simulate ssh connections to 
+other hosts, running commands on them and gathering output.
 
-It expects passwords and other parameters on stdin, as C<key=value> 
-lines.
-
-To figure out which PasswordMonkey fillers to use, it dynamically finds
-installed PasswordMonkey::Filler plugins at startup in 
-the C<PasswordMonkey::Filler> install directory.
+It will ask for a password, 
 
 =head1 AUTHOR
 
