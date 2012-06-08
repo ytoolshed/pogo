@@ -607,11 +607,19 @@ sub listjobs {
     DEBUG "handling listjobs request";
 
     my $format = $req->param( 'format' ) || '';
-    my $cb     = $req->param( 'cb' ) || '';
+    my $cb     = $req->param( 'cb' )     || '';
+    my $max    = $req->param( 'max' )    || 20; # (so, max can't be 0)
+    my $offset = $req->param( 'offset' ) || 0;
 
     my $data = from_json( _TEST_DATA() );
     my $jobs = $data->{ jobs };
     my $job_count = scalar @$jobs;
+
+    # calculate start and end
+    my ( $start, $end ) = get_start_end( $job_count, $max, $offset );
+
+    # take our slice
+    $jobs = [ @$jobs[ $start .. $end ] ];
 
     return psgi_response( { data   => { jobs => $jobs },
                             format => $format,
@@ -680,6 +688,8 @@ sub joblog {
 
     my $format = $req->param( 'format' ) || '';
     my $cb     = $req->param( 'cb' ) || '';
+    my $max    = $req->param( 'max' )    || 300; # (so, max can't be 0)
+    my $offset = $req->param( 'offset' ) || 0;
 
     my $jobid;
 
@@ -720,6 +730,12 @@ sub joblog {
 
     my $log_entries = scalar @$joblog;
 
+    # calculate start and end
+    my ( $start, $end ) = get_start_end( $log_entries, $max, $offset );
+
+    # take slice
+    $log_entries = [ @$joblog[ $start .. $end ] ];
+
     return psgi_response( { data   => { joblog => $joblog },
                             format => $format,
                             meta   => { count  => $log_entries },
@@ -734,7 +750,9 @@ sub jobhosts {
     DEBUG "handling jobhosts request";
 
     my $format = $req->param( 'format' ) || '';
-    my $cb     = $req->param( 'cb' ) || '';
+    my $cb     = $req->param( 'cb' )     || '';
+    my $max    = $req->param( 'max' )    || 500; # (so, max can't be 0)
+    my $offset = $req->param( 'offset' ) || 0;
 
     unless ( $req->path =~ m{/([^/]+)/hosts$}o ) {
         ERROR "Couldn't find job id in path: " . $req->path;
@@ -773,6 +791,16 @@ sub jobhosts {
 
     my $host_count = scalar keys %$hosts;
 
+    # calculate start and end
+    my ( $start, $end ) = get_start_end( $host_count, $max, $offset ); 
+
+    # TODO: comment this line noise :/
+    $hosts = {
+               map { $_ => $hosts->{ $_ }
+             } (
+                 sort { $a cmp $b } keys %$hosts
+               )[ $start .. $end ] };
+
     return psgi_response( { data   => { hosts => $hosts },
                             format => $format,
                             meta   => { count => $host_count },
@@ -787,7 +815,9 @@ sub host_output {
     DEBUG "handling host_output request";
 
     my $format = $req->param( 'format' ) || '';
-    my $cb     = $req->param( 'cb' ) || '';
+    my $cb     = $req->param( 'cb' )     || '';
+    my $max    = $req->param( 'max' )    || 500; # (so, max can't be 0)
+    my $offset = $req->param( 'offset' ) || 0;
 
     unless ( $req->path =~ m{/([^/]+)/hosts/([^/]+)$}o ) {
         ERROR "Couldn't find job id and/or hostname in path: " . $req->path;
@@ -820,6 +850,12 @@ sub host_output {
     }
 
     my $output_lines = scalar @$output;
+
+    # calculate start and end
+    my ( $start, $end ) = get_start_end( $output_lines, $max, $offset );
+
+    # take slice
+    $output = [ @$output[ $start .. $end ] ];
 
     return psgi_response( { data   => { output => $output },
                             format => $format,
@@ -1008,6 +1044,19 @@ sub psgi_response {
         $code, [ 'Content-Type' => $content_type_headers{ $format } ],
         [ $body, "\n" ]
     ];
+}
+
+sub get_start_end {
+    my ( $total, $max, $offset ) = @_;
+
+    return if ! defined $total;
+    return ( 0, -1 ) if ! defined $max; # whole thing
+    $offset = 0 if ! defined $offset;   # start at beginning
+
+    my $start = ( $offset > $total - 1 )    ? $total - 1 : $offset;
+    my $end   = ( $offset + $max > $total ) ? $total - 1 : $offset + $max - 1;
+
+    return ( $start, $end );
 }
 
 =head1 LICENSE
