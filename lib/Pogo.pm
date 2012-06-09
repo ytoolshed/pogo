@@ -35,6 +35,17 @@ It is mostly used for quick mass software deployments on server farms while
 making sure only an allowed number of nodes are upgraded in parallel to
 ensure business continuity.
 
+=head2 Project Setup
+
+Pogo is hosted on Github at 
+
+    https://github.com/ytoolshed/pogo
+
+The latest stable version can be found on the master branch. The project 
+is automatically being tested on every commit, using travis-ci's service:
+
+    http://travis-ci.org/#!/ytoolshed/pogo
+
 =head2 Architecture
 
 Pogo consists of several components, which can be all running on the same
