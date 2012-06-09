@@ -868,28 +868,6 @@ sub jobsubmit {
 ###########################################
     my ( $req ) = @_;
 
-#    my $cmd     = $req->param( 'cmd' );
-#    my $config  = $req->param( 'config' );
-#    $config     = "" if !defined $config;
-
-#    my $targets = $req->param( 'targets' );
-#    $targets    = '' if !defined $targets;
-#    my @targets = split ',', $targets;
-
-#    if ( !defined $cmd ) {
-#        ERROR "No cmd defined";
-#        return psgi_response(
-#            { code   => HTTP_BAD_REQUEST,
-#              errors  => [ 'cmd missing' ],
-#              format => $format } );
-#
-#    }
-
-
-#    DEBUG "jobsubmit: cmd is $cmd";
-#    DEBUG "jobsubmit: config is $config";
-#    DEBUG "jobsubmit: targets: '@targets'";
-
     my $format  = $req->param( 'format' );
     my $job = Pogo::Job->from_query( $req->content() );
 

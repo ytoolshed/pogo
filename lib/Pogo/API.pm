@@ -10,14 +10,19 @@ use Pogo::Defaults qw(
     $POGO_API_TEST_HOST
 );
 use Log::Log4perl qw(:easy);
+use Pogo::Util qw( make_accessor );
 use base qw(Pogo::Object::Event);
+
+__PACKAGE__->make_accessor( $_ ) for qw( 
+host port
+);
 
 ###########################################
 sub new {
 ###########################################
     my ( $class, $opts ) = @_;
 
-    # host:port to listen on
+      # host:port to listen on
     my $host = exists $opts->{host} ? $opts->{host} : $POGO_API_TEST_HOST;
     my $port = exists $opts->{port} ? $opts->{port} : $POGO_API_TEST_PORT;
 

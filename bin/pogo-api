@@ -14,12 +14,18 @@ GetOptions( $cmdline_opts,
             'host=s',
             'port|p=i', );
 
+my @l4p = ( category => "main", level => $INFO );
+
 if ( $cmdline_opts->{ verbose } ) {
-    Log::Log4perl->easy_init({ level => $DEBUG, layout => "%F{1}-%L> %m%n" });
+    @l4p = ( level => $DEBUG );
 }
+
+Log::Log4perl->easy_init({ @l4p, layout => "%F{1}-%L> %m%n" });
 
 my $api_server = Pogo::API->new( $cmdline_opts );
 $api_server->standalone();
+
+INFO "Listening on ", $api_server->host(), ":", $api_server->port();
 
   # start event loop
 AnyEvent->condvar->recv();
