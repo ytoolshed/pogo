@@ -1,224 +1,79 @@
-#!/usr/bin/env perl
+#!/usr/local/bin/perl
+use strict;
+use warnings;
 
-# Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-use 5.008;
-use common::sense;
-
-use Getopt::Long qw(:config bundling);
-use Pod::Usage qw(pod2usage);
-use YAML::XS qw(LoadFile);
+use Getopt::Std;
+use Pod::Usage;
+use Pogo::Dispatcher;
 use Log::Log4perl qw(:easy);
 
-use Pogo::Dispatcher;
-use Pogo::HTTP::Server;
+getopts("ahvV", \my %opts);
 
-our $VERSION = 4.0;
+pod2usage() if $opts{hv};
 
-sub main
-{
-  $ENV{PATH} = '/usr/local/libexec/pogo:/usr/local/bin:/bin:/sbin:/usr/bin:/usr/sbin';
-  my $POGO_ROOT = $ENV{POGO_ROOT} || '/usr/local';
-
-  # we'll load a simple default logger thinger here
-  # until we load the real conf below
-  Log::Log4perl::init(
-    \q{
-    log4perl.rootLogger             = INFO, Screen
-    log4perl.appender.Screen        = Log::Log4perl::Appender::Screen
-    log4perl.appender.Screen.stderr = 0
-    log4perl.appender.Screen.layout = Log::Log4perl::Layout::SimpleLayout
-  }
-  );
-
-  # Defaults
-  my $DEFAULT_CONFIG_FILE = "$POGO_ROOT/etc/pogo/dispatcher.conf.yaml";
-  my $opts                = {
-    log_conf        => "$POGO_ROOT/etc/pogo/dispatcher.log.conf",
-    pid_file        => "$POGO_ROOT/var/run/pogo-dispatcher.pid",
-    dispatcher_key  => "$POGO_ROOT/etc/ssl/pogo_dispatcher.key",
-    dispatcher_cert => "$POGO_ROOT/etc/ssl/pogo_dispatcher.crt",
-    worker_cert     => "$POGO_ROOT/etc/ssl/pogo_worker.crt",
-    worker_port     => 7654,
-    rpc_port        => 7655,
-    authstore_port  => 7656,
-    http_port       => 8080,
-    bind_address    => undef,
-    store           => "zookeeper",
-    peers           => [],
-  };
-
-  my $log_conf;
-  my $log_level;
-  my $cmdline_opts     = {};
-  my $config_file_opts = {};
-
-  GetOptions(
-    'h|help' => sub { pod2usage; exit -1 },
-    'f|config-file=s'    => \$cmdline_opts->{config_file},
-    'l|logger-config=s'  => \$cmdline_opts->{log_conf},
-    'P|pid-file=s'       => \$cmdline_opts->{pid_file},
-    'c|ssl-cert=s'       => \$cmdline_opts->{dispatcher_cert},
-    'k|ssl-key=s'        => \$cmdline_opts->{dispatcher_key},
-    'C|worker-cert=s'    => \$cmdline_opts->{worker_cert},
-    'A|bind-address=s'   => \$cmdline_opts->{bind_address},
-    'p|http-port=i'      => \$cmdline_opts->{http_port},
-    'r|rpc-port=i'       => \$cmdline_opts->{rpc_port},
-    'w|worker-port=i'    => \$cmdline_opts->{worker_port},
-    'a|authstore-port=i' => \$cmdline_opts->{authstore_port},
-    'peers=s@'           => \$cmdline_opts->{peers},
-    'debug'              => sub { $log_level = 'DEBUG' },
-  );
-
-  if ( my $config_file = delete $cmdline_opts->{config_file} )
-  {
-
-    # Config file was specified on command-line - fatal if doesn't exist
-    # or is non-parseable
-    eval { $config_file_opts = LoadFile($config_file); };
-    if ($@)
-    {
-      LOGDIE "problem processing '$config_file': $@";
-    }
-  }
-  elsif ( -r $DEFAULT_CONFIG_FILE )
-  {
-
-    # Config file not specified - load the default only if it exists
-    eval { $config_file_opts = LoadFile($DEFAULT_CONFIG_FILE); };
-    if ($@)
-    {
-      LOGDIE "problem processing '$config_file_opts': $@";
-    }
-  }
-
-  # merge config-file options over defaults
-  while ( my ( $k, $v ) = each %$config_file_opts )
-  {
-    $opts->{$k} = $v if defined $v;
-  }
-
-  # command-line options take precedence over all
-  while ( my ( $k, $v ) = each %$cmdline_opts )
-  {
-    $opts->{$k} = $v if defined $v;
-  }
-
-  # init logger
-  if ( defined $opts->{log_conf} && -r $opts->{log_conf} )
-  {
-    Log::Log4perl::init( $opts->{log_conf} );
-  }
-  else
-  {
-    Log::Log4perl->easy_init unless Log::Log4perl->initialized;
-  }
-  delete $opts->{log_conf};
-  if ( defined $log_level )
-  {
-    Log::Log4perl::get_logger->level($log_level);
-  }
-
-  # Perform some basic sanity checks.
-  for (qw(worker_cert dispatcher_key dispatcher_cert))
-  {
-    unless ( -r $opts->{$_} )
-    {
-      LOGDIE "Can't open $_ file " . $opts->{$_};
-    }
-  }
-
-  # Log something if we die.
-  $SIG{__DIE__} = sub {
-    die @_ if $^S;    # Don't log if die() is called in eval context; see "die" in perlfunc
-    LOGCONFESS "Process terminated: " . shift;
-    unlink $opts->{pid_file} if -e $opts->{pid_file};
-    exit 2;
-  };
-
-  # Log something and clean up if we are terminated by SIGTERM or SIGINT.
-  $SIG{INT} = sub {
-    local *__ANON__ = 'sighandler';
-    unlink $opts->{pid_file} if -e $opts->{pid_file};
-    LOGCONFESS "Process terminated by SIGTERM";
-    exit 0;
-  };
-
-  $SIG{TERM} = sub {
-    local *__ANON__ = 'sighandler';
-    FATAL "Process terminated by SIGTERM";
-    unlink $opts->{pid_file} if -e $opts->{pid_file};
-    exit 0;
-  };
-
-  open( my $fd, '>', $opts->{pid_file} )
-    or LOGDIE "couldn't open pid file '$opts->{pid_file}': $!\n";
-  print $fd $$;
-  close $fd or LOGDIE "problem with $opts->{pid_file}: $!\n";
-
-  # here we go
-  Pogo::HTTP::Server->run(%$opts);
-  Pogo::Dispatcher->run(%$opts);
-
-  # This should never be reached.
-  return 0;
+if($opts{V}) {
+    my $version = $Pogo::Dispatcher::VERSION;
+    die "$0 $version\n";
 }
 
-exit main();
+if($opts{v}) {
+    Log::Log4perl->easy_init({ level => $DEBUG, layout => "%F{1}-%L> %m%n" });
+}
 
-1;
+my $dispatcher = Pogo::Dispatcher->new();
+$dispatcher->start();
 
-=pod
+  # API standalone server just for testing
+my $api_server;
+
+if( $opts{ a } ) {
+    use Pogo::API;
+    $api_server = Pogo::API->new();
+    $api_server->standalone();
+}
+
+  # start event loop
+AnyEvent->condvar->recv();
+
+__END__
 
 =head1 NAME
 
-  pogo-dispatcher - parallel task execution server
-
-=head1 SYNOPSIS
-
-pogo-dispatcher [ -f configfile ]
+pogo-dispatcher - Pogo Dispatcher Daemon
 
 =head1 DESCRIPTION
 
-B<pogo-dispatcher> starts the dispatcher process in the foreground
+See Pogo::Dispatcher.
 
-=head1 OPTIONS
+=head1 LICENSE
 
-B<-f> file
+Copyright (c) 2010-2012 Yahoo! Inc. All rights reserved.
 
-=over 2
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-read configuration from C<file> rather than the default of C</usr/local/etc/pogo/dispatcher.conf>
+http://www.apache.org/licenses/LICENSE-2.0
 
-=back
-
-=head1 SEE ALSO
-
-L<Pogo::Dispatcher>
-
-=head1 COPYRIGHT
-
-Apache 2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+imitations under the License.
 
 =head1 AUTHORS
 
-  Andrew Sloane <andy@a1k0n.net>
-  Michael Fischer <michael+pogo@dynamine.net>
-  Mike Schilli <m@perlmeister.com>
-  Nicholas Harteau <nrh@hep.cat>
-  Nick Purvis <nep@noisetu.be>
-  Robert Phan <robert.phan@gmail.com>
+Mike Schilli <m@perlmeister.com>
+Ian Bettinger <ibettinger@yahoo.com>
 
-=cut
+Many thanks to the following folks for implementing the
+original version of Pogo: 
+
+Andrew Sloane <andy@a1k0n.net>, 
+Michael Fischer <michael+pogo@dynamine.net>,
+Nicholas Harteau <nrh@hep.cat>,
+Nick Purvis <nep@noisetu.be>,
+Robert Phan <robert.phan@gmail.com>,
+Srini Singanallur <ssingan@yahoo.com>,
+Yogesh Natarajan <yogesh_ny@yahoo.co.in>
+

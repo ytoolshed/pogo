@@ -1,0 +1,6 @@
+#!/usr/bin/env perl
+  # Available at http://perlmeister.com/scripts
+use ModDevUtils;
+use Test::Harness;
+
+ModDevUtils::release() or exit 0;

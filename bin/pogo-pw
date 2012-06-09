@@ -1,81 +1,89 @@
-#!/usr/bin/expect --
+#!/usr/bin/env perl
+use strict;
+use warnings;
 
-# Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+  # for testing
+use FindBin qw( $Bin );
+use lib "$Bin/../lib";
 
-## main ()
+use Pogo::PasswordMonkey;
+use Getopt::Std;
+use Log::Log4perl qw(:easy);
 
-set cpasswd ""
-set cresetpasswd ""
-set cresetpasswd2 ""
-set cpassp ""
+getopts "v", \my %opts;
 
-fconfigure stdin -blocking 1
-set timeout [gets stdin]
-set cpasswd [gets stdin]
-set cpassp [gets stdin]
-fconfigure stdin -blocking 0
-
-eval spawn -noecho $argv
-
-expect {
-  "Sorry, try again." {
-    exit 255
-  }
-  "Mismatch; try again, EOF to quit." {
-    exit 255
-  }
-  "New password:" {
-    exit 255
-  }
-  "Retype new password:" {
-    exit 255
-  }
-  "Permission denied, please try again." {
-    exit 255
-  }
-  "assword:" {
-    send_user " (supplied by pogo-pw)\n"
-    set passwd [exec perl -n -e "print unpack(q{u},\$_)" << "$cpasswd"]
-    log_user 0
-    send -- "$passwd\r"
-    set passwd $cpasswd
-    log_user 1
-    exp_continue
-  }
-  -re "(Enter passphrase for .+:|Bad passphrase, try again:)" {
-    if {$expect_out(1,string) == "Bad passphrase, try again:"} {
-      exit 255
-    }
-    send_user " (supplied by pogo-pw)\n"
-    set passp [exec perl -n -e "print unpack(q{u},\$_)" << "$cpassp"]
-    log_user 0
-    send -- "$passp\r"
-    set passp $cpassp
-    log_user 1
-    exp_continue
-  }
-  -re {key fingerprint is [a-zA-Z0-9:]+\.[\r\n]+Are you sure you want to continue connecting \(yes/no\)\?} {
-    send -- "yes\r"
-    exp_continue
-  }
-  eof {
-    set status [lindex [wait] 3]
-    exit $status
-  }
-  timeout {
-    puts stderr "Timeout reached: Process shut down after $timeout seconds of inactivity."
-    exit 254
-  }
+if( $opts{ v } ) {
+    Log::Log4perl->easy_init({ 
+            level => $DEBUG, layout => "%F{1}:%L %m%n" });
 }
+
+my $monkey = Pogo::PasswordMonkey->new();
+$monkey->startup();
+$monkey->go( @ARGV );
+
+__END__
+
+=head1 NAME
+
+    pogo-pw - Run a command and fill in password prompts
+
+=head1 SYNOPSIS
+
+    $ pogo-pw command args
+    password=secret0
+    CTRL-D
+
+=head1 OPTIONS
+
+=over 8
+
+=item B<-v>
+
+Be verbose.
+
+=back
+
+=head1 DESCRIPTION
+
+C<pogo-pw> runs pogo commands and fills in password prompts automatically.
+It uses the PasswordMonkey CPAN module for the actual work.
+
+It expects passwords and other parameters on stdin, as C<key=value> 
+lines.
+
+To figure out which PasswordMonkey fillers to use, it dynamically finds
+installed PasswordMonkey::Filler plugins at startup in 
+the C<PasswordMonkey::Filler> install directory.
+
+=head1 AUTHOR
+
+Mike Schilli <m@perlmeister.com>
+Ian Bettinger <ibettinger@yahoo.com>
+
+Many thanks to the following folks for implementing the
+original version of Pogo: 
+
+Andrew Sloane <andy@a1k0n.net>, 
+Michael Fischer <michael+pogo@dynamine.net>,
+Nicholas Harteau <nrh@hep.cat>,
+Nick Purvis <nep@noisetu.be>,
+Robert Phan <robert.phan@gmail.com>,
+Srini Singanallur <ssingan@yahoo.com>,
+Yogesh Natarajan <yogesh_ny@yahoo.co.in>
+
+=head1 LICENSE
+
+Copyright (c) 2010-2012 Yahoo! Inc. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+imitations under the License.
+

@@ -1,368 +1,397 @@
+###########################################
 package Pogo::Worker::Connection;
-
-# Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-use 5.008;
-use common::sense;
-
-use AnyEvent;
-use AnyEvent::Handle;
-use IPC::Open3;
-use JSON::XS qw(encode_json);
+###########################################
+use strict;
+use warnings;
 use Log::Log4perl qw(:easy);
-use Pogo::Worker;
-use POSIX qw(WEXITSTATUS SIGTERM);
-use Time::HiRes qw(time);
-use IO::File;
-use Scalar::Util qw(refaddr);
-use File::Path;
+use AnyEvent;
+use AnyEvent::Strict;
+use AnyEvent::Socket;
+use AnyEvent::Handle;
+use Data::Dumper;
+use JSON qw(to_json from_json);
+use Pogo::Defaults qw(
+    $POGO_DISPATCHER_WORKERCONN_HOST
+    $POGO_DISPATCHER_WORKERCONN_PORT
+    $POGO_WORKER_DELAY_CONNECT
+);
+use Pogo::Util::QP;
+use base "Pogo::Object::Event";
 
-sub new
-{
-  my $class = shift;
-  my $self  = {@_};
+###########################################
+sub new {
+###########################################
+    my ( $class, %options ) = @_;
 
-  return bless( $self, $class );
+    my $self = {
+        dispatcher_host => $POGO_DISPATCHER_WORKERCONN_HOST,
+        dispatcher_port => $POGO_DISPATCHER_WORKERCONN_PORT,
+        delay_connect   => $POGO_WORKER_DELAY_CONNECT,
+        channels        => {
+            0 => "control",
+            1 => "worker_to_dispatcher",
+            2 => "dispatcher_to_worker",
+        },
+        qp_retries           => 1,
+        qp_timeout           => 10,
+        dispatcher_listening => 0,
+        auto_reconnect       => 1,
+
+        # reference back to the worker
+        worker => undef,
+
+        ssl         => undef,
+        worker_cert => undef,
+        worker_key  => undef,
+        ca_cert     => undef,
+    };
+
+    # actual values overwrite defaults
+    for my $key ( keys %$self ) {
+        $self->{ $key } = $options{ $key } if exists $options{ $key };
+    }
+
+    $self->{ qp } = Pogo::Util::QP->new(
+        retries => $self->{ qp_retries },
+        timeout => $self->{ qp_timeout },
+    );
+
+    bless $self, $class;
 }
 
-sub run
-{
-  my $self = shift;
+###########################################
+sub start {
+###########################################
+    my ( $self ) = @_;
 
-  $self->{dispatcher_handle} = AnyEvent::Handle->new(
-    connect => [ $self->{host}, $self->{port} ],
-    tls     => 'connect',
-    tls_ctx => {
-      key_file  => $self->{worker_key},
-      cert_file => $self->{worker_cert},
-      ca_file   => $self->{dispatcher_cert},
-      verify    => 1,
-      verify_cb => sub {
-        local *__ANON__ = 'dispatcher_handle:tls_ctx:verify_cb';
-        my $preverify_ok = $_[4];
-        my $cert         = $_[6];
-        DEBUG sprintf( "certificate: %s", AnyEvent::TLS::certname($cert) );
-        return $preverify_ok;
-      },
-    },
-    keepalive  => 1,
-    on_connect => sub {
-      local *__ANON__ = 'dispatcher_handle:on_connect';
-      INFO sprintf( "Connected to dispatcher at %s:%d", $self->{host}, $self->{port} );
-      Pogo::Worker->add_connection($self);
-      while ( my $msg = Pogo::Worker->dequeue_msg )
-      {
-        DEBUG sprintf( "sending queued response to %s:%d: %s",
-          $self->{host}, $self->{port}, JSON->new->utf8->allow_nonref->encode($msg) );
-        $self->send_response($msg);
-      }
-    },
-    on_starttls => sub {
-      local *__ANON__ = 'dispatcher_handle:on_starttls';
-      my $success = $_[1];
-      my $msg     = $_[2];
-      if ($success)
-      {
-        INFO sprintf( "SSL/TLS handshake completed with dispatcher at %s:%d",
-          $self->{host}, $self->{port} );
-      }
-      else
-      {
-        $self->{dispatcher_handle}->destroy;
-        ERROR sprintf( "Failed to complete SSL/TLS handshake with %s:%d: %s",
-          $self->{host}, $self->{port}, $msg );
-        $self->reconnect;
-      }
-    },
-    on_connect_error => sub {
-      local *__ANON__ = 'dispatcher_handle:on_connect_error';
-      my $msg = $_[1];
-      $self->{dispatcher_handle}->destroy;
-      ERROR sprintf( "Failed to connect to %s:%d: %s", $self->{host}, $self->{port}, $msg );
-      $self->reconnect;
-    },
-    on_error => sub {
-      local *__ANON__ = 'dispatcher_handle:on_error';
-      my $msg = $_[2];
-      $self->{dispatcher_handle}->destroy;
-      Pogo::Worker->delete_connection($self);
-      ERROR sprintf( "I/O error occurred while communicating with %s:%d: %s",
-        $self->{host}, $self->{port}, $msg );
-      $self->reconnect;
-    },
-    on_read => sub {
-      $self->{dispatcher_handle}->push_read(
-        json => sub {
-          local *__ANON__ = 'dispatcher_handle:on_read:json';
-          my $obj = $_[1];
-          if ( ref $obj ne 'ARRAY' )
-          {
-            ERROR sprintf( "Failed to receive a JSON array!  (Got: %s)", encode_json($obj) );
-            $self->{dispatcher_handle}->destroy;
-            $self->reconnect;
-            return;
-          }
-          my ( $cmd, $args ) = @$obj;
-          $self->run_command( $cmd, $args );
+    # we take commands this way, to send them to the dispatcher
+    $self->reg_cb( "worker_send_cmd", $self->_send_cmd_handler() );
+
+    $self->reg_cb(
+        "worker_dconn_error",
+        sub {
+            my ( $c, $msg ) = @_;
+
+            local $Log::Log4perl::caller_depth =
+                $Log::Log4perl::caller_depth + 1;
+
+            ERROR "$msg";
+
+            if ( $self->{ auto_reconnect } ) {
+                $self->event( "start_delayed" );
+            }
         }
-      );
+    );
+
+    # on receiving this event, (re)start the worker after a delay
+    $self->reg_cb( "start_delayed", $self->start_delayed() );
+    $self->event( "start_delayed" );
+
+    $self->{ qp }->reg_cb(
+        "next",
+        sub {
+            my ( $c, $data ) = @_;
+
+            $self->{ dispatcher_handle }->push_write( to_json( $data ) . "\n" );
+        }
+    );
+
+    $self->event_forward(
+        {   forward_from => $self->{ qp },
+            prefix       => "worker_dconn_qp_",
+        },
+        qw(idle)
+    );
+}
+
+###########################################
+sub start_delayed {
+###########################################
+    my ( $self ) = @_;
+
+    return sub {
+        my $delay_connect = $self->{ delay_connect }->();
+
+        DEBUG "Connecting to dispatcher ",
+            "$self->{dispatcher_host}:$self->{dispatcher_port} ",
+            "after ${delay_connect}s delay";
+
+        my $timer;
+        $timer = AnyEvent->timer(
+            after => $delay_connect,
+            cb    => sub {
+                undef $timer;
+                $self->start_now();
+            }
+        );
+    };
+}
+
+###########################################
+sub start_now {
+###########################################
+    my ( $self ) = @_;
+
+    my $host = $self->{ dispatcher_host };
+    my $port = $self->{ dispatcher_port };
+
+    DEBUG "Connecting to dispatcher $host:$port";
+
+    tcp_connect( $host, $port, $self->_connect_handler( $host, $port ) );
+}
+
+###########################################
+sub _connect_handler {
+###########################################
+    my ( $self, $host, $port ) = @_;
+
+    return sub {
+        my ( $fh, $_host, $_port, $retry ) = @_;
+
+        if ( !defined $fh ) {
+
+            $self->event( "worker_dconn_error",
+                "Connect to $host:$port failed: $!" );
+
+            return;
+        }
+
+        $self->{ dispatcher_handle } = AnyEvent::Handle->new(
+            fh       => $fh,
+            no_delay => 1,
+            on_error => sub {
+                my ( $hdl, $fatal, $msg ) = @_;
+
+                $self->event( "worker_dconn_error",
+                    "Error on connection to $host:$port: $msg" );
+            },
+            on_eof => sub {
+                my ( $hdl ) = @_;
+
+                $self->event( "worker_dconn_error", "Dispatcher hung up" );
+            },
+            $self->ssl(),
+        );
+
+        DEBUG "dispatcher_handle: $self->{dispatcher_handle}";
+        DEBUG "Sending event worker_dconn_connected";
+        $self->event( "worker_dconn_connected", $host );
+
+        $self->{ dispatcher_handle }
+            ->push_read( line => $self->_protocol_handler() );
+    };
+}
+
+###########################################
+sub _send_cmd_handler {
+###########################################
+    my ( $self ) = @_;
+
+    return sub {
+        my ( $c, $data ) = @_;
+
+        DEBUG "Worker sending command: ", Dumper( $data );
+
+        $self->{ qp }->event( "push", { channel => 1, %$data } );
+    };
+}
+
+###########################################
+sub _protocol_handler {
+###########################################
+    my ( $self ) = @_;
+
+    DEBUG "Worker protocol handler";
+
+    # (We'll put this into a separate module (per protocol) later)
+    return sub {
+        my ( $hdl, $data ) = @_;
+
+        local *__ANON__ = 'AE:cb:_protocol_handler';
+
+        DEBUG "Worker received: $data";
+
+        eval { $data = from_json( $data ); };
+
+        if ( $@ ) {
+            ERROR "Got non-json ($@)";
+        } else {
+            my $channel = $data->{ channel };
+
+            if ( !defined $channel ) {
+                $channel = 0;    # control channel
+            }
+
+            DEBUG "Received message on channel $channel";
+
+            if ( !exists $self->{ channels }->{ $channel } ) {
+                # ignore traffic on unsupported channels
+                return;
+            }
+
+            my $method = "channel_$self->{channels}->{$channel}";
+
+            # Call the channel-specific handler
+            $self->$method( $data );
+        }
+
+        # Keep the ball rolling
+        $self->{ dispatcher_handle }
+            ->push_read( line => $self->_protocol_handler() );
+
+        1;
+        }
+}
+
+###########################################
+sub channel_control {
+###########################################
+    my ( $self, $data ) = @_;
+
+    DEBUG "Received control message: ", Dumper( $data );
+
+    if ( !$self->{ dispatcher_listening } ) {
+        $self->{ dispatcher_listening } = 1;
+
+        $self->event( "worker_dconn_listening" );
     }
-  );
+
+    $self->event( "worker_dconn_control_message", $data );
 }
 
-sub host { return shift->{host}; }
-sub port { return shift->{port}; }
+###########################################
+sub channel_worker_to_dispatcher {
+###########################################
+    my ( $self, $data ) = @_;
 
-sub run_command
-{
-  # Currently the only thing that ever comes down this pipe is a request to
-  # launch a job.  The dispatcher will send these anytime it receives an EXIT
-  # or an IPC idle.  Whenever the code enters here, the worker is always marked
-  # busy by the dispatcher.  We can idle ourselves to take more connections.
-  my ( $self, $cmd, $args ) = @_;
+    DEBUG "Received dispatcher reply";
 
-  my $task_id = join( '/', $args->{job_id}, $args->{host} );
-  DEBUG "[$task_id] Received command '$cmd'";
-  $self->{tasks}->{$task_id}->{args} = $args;
-  DEBUG sprintf '%d active tasks', scalar keys %{ $self->{tasks} };
-
-  if ( scalar keys %{ $self->{tasks} } < Pogo::Worker->num_workers )
-  {
-    DEBUG "idling...";
-    $self->send_response( ['idle'] );
-  }
-
-  # Any code executed after this point _must_ call $self->reset upon
-  # completion or the worker may never receive new job requests.
-
-  my %calls = ( "execute" => \&execute, );
-
-  if ( exists $calls{$cmd} )
-  {
-    $calls{$cmd}->( $self, $task_id );
-  }
-  else
-  {
-    INFO "[$task_id] Received invalid command '$cmd'";
-    $self->reset( $task_id, "500", "Invalid command" );
-  }
+    $self->event( "worker_dconn_ack", $data );
+    $self->{ qp }->event( "ack" );
 }
 
-sub execute
-{
-  my ( $self, $task_id ) = @_;
-  my $task = $self->{tasks}->{$task_id};
+###########################################
+sub channel_dispatcher_to_worker {
+###########################################
+    my ( $self, $data ) = @_;
 
-  for (qw(job_id command user run_as host timeout))
-  {
-    return $self->reset( $task_id, "500", "Missing required argument $_" )
-      unless defined( $task->{args}->{$_} );
-  }
+    DEBUG "Received dispatcher command: $data->{ command }";
 
-  #Check to make sure atleast one form of authentication is provided
-  if (!$task->{args}->{"client_private_key"} && !$task->{args}->{"password"}) {
-    return $self->reset( $task_id, "500", "Missing authentication parameters" )
-  }
+      # Forward event to worker's command handler
+    $self->event( "worker_dconn_cmd_recv", 
+        $data->{ task_id }, $data->{ command }, $data->{ host } );
 
+    my $ack = {
+        channel => 2,
+        type    => "reply",
+        ok      => 0,
+        task_id => $data->{ task_id },
+        msg     => "OK",
+    };
 
-  INFO "[$task_id] Executing job for " . $task->{args}->{user};
+    DEBUG "Sending ACK back to handle ",
+        $self->{ dispatcher_handle }, ": ", Dumper( $ack );
+    $self->{ dispatcher_handle }->push_write( to_json( $ack ) . "\n" );
+}
 
-  # Disable any existing SIGCHLD handlers that may be interfering
-  # with our ability to catch our subprocesses' exit status.
-  $SIG{CHLD} = sub { };
+###########################################
+sub ssl {
+###########################################
+    my ( $self ) = @_;
 
-  # Launch our helper program
-  my ( $writer, $reader ) = ( IO::Handle->new, IO::Handle->new );
-  my $pid;
-  eval {
-    $pid =
-      open3( $writer, $reader, undef, Pogo::Worker->exec_helper, '-e', Pogo::Worker->expect_wrapper,
-      '-k', Pogo::Worker->worker_key );
-  };
-  if ($@)
-  {
-    ERROR "[$task_id] Error: $@";
-    return $self->reset( $task_id, "500", $@ );
-  }
-
-  DEBUG "[$task_id] Launched " . Pogo::Worker->exec_helper . " pid $pid";
-
-  my $job_id    = $task->{args}->{job_id};
-  my $host      = $task->{args}->{host};
-  my $save_dir  = Pogo::Worker->output_dir . '/' . $job_id;
-  my $buf_count = 0;
-  my ( $output_filename, $output_url );
-  my $n = 0;
-  do
-  {
-    $output_filename = sprintf( "%s/%s/%s.%d.txt", Pogo::Worker->output_dir, $job_id, $host, $n );
-    $output_url      = sprintf( "%s%s/%s.%d.txt",  Pogo::Worker->output_uri, $job_id, $host, $n );
-    $n++;
-  } while ( -f $output_filename );
-
-  mkpath($save_dir) unless ( -d $save_dir );
-
-  # Send args
-  $writer->print( encode_json( $task->{args} ) );
-  $writer->close;
-
-  Pogo::Worker->send_response( [ 'start', $job_id, $host, $output_url ] );
-
-  my $output_file = IO::File->new( $output_filename, O_WRONLY | O_CREAT | O_APPEND, 0664 )
-    or return $self->reset( $task_id, '500', "Couldn't create file '$output_filename': $!" );
-
-  $output_file->autoflush(1);
-  DEBUG sprintf( "Writing to output file %s", $output_filename );
-
-  # Register callbacks to handle events from spawned process.
-
-  my $write_stdout = sub {
-    local *__ANON__ = 'task:on_read';
-    my $buf = delete $task->{process_handle}->{rbuf};
-    $self->write_output_entry( $output_file, { task => $task_id, type => 'STDOUT' }, $buf );
-    $buf_count += length($buf);
-    if ( Pogo::Worker->max_output && $buf_count >= Pogo::Worker->max_output )
-    {
-      DEBUG "[$task_id] Max output reached";
-
-      $self->write_output_entry(
-        $output_file,
-        { task => $task_id, type => 'STDOUT' },
-        sprintf( "== Output exceeded maximum length of %d bytes ==\n", Pogo::Worker->max_output )
-      );
-      kill SIGTERM, $pid;
-
-      # we will be called again during cleanup
-      $buf_count = 0;
+    if ( !$self->{ ssl } ) {
+        return ();
     }
-  };
 
-  my $process_exit = sub {
-    local *__ANON__ = 'task:process_exit';
-    # Catch exit code from waitpid
-    my $p = waitpid( $pid, 0 );
-    my $exit_status = WEXITSTATUS($?);
-    DEBUG "[$task_id] Process returned code $exit_status (waitpid returned $p)";
+    return (
+        tls     => "connect",
+        tls_ctx => {
+            # worker
 
-    $write_stdout->();
-    $self->write_output_entry( $output_file, { task => $task_id, type => 'EXIT' }, $exit_status );
-    $output_file->close;
-    undef $output_file;
-    delete $task->{process_handle};
-    $self->reset( $task_id, $exit_status );
-  };
+            # worker validates server's cert
+            verify  => 1,
+            ca_file => $self->{ ca_cert },
 
-  $task->{process_handle} = AnyEvent::Handle->new(
-    fh     => $reader,
-    on_eof => sub {
-      local *__ANON__ = 'task:on_eof';
-      DEBUG "[$task_id] Received EOF";
-      $process_exit->();
-    },
-    on_error => sub {
-      local *__ANON__ = 'task:on_error';
-      DEBUG "[$task_id] Received error: $!";
-      $process_exit->();
-    },
-    on_read => $write_stdout
-  );
-}
-
-sub send_response
-{
-  my ( $self, $msg ) = @_;
-  $self->{dispatcher_handle}->push_write( json => $msg );
-}
-
-sub write_output_entry
-{
-  my ( $self, $fh, $args, $data ) = @_;
-  $args->{ts} = time();
-  $fh->syswrite( encode_json( [ $args, $data ] ) );
-  $fh->syswrite("\n");
-}
-
-sub reset
-{
-  my ( $self, $task_id, $code, $msg ) = @_;
-  my $task = $self->{tasks}->{$task_id};
-  Pogo::Worker->send_response(
-    [ 'finish', $task->{args}->{job_id}, $task->{args}->{host}, $code, $msg ] );
-  delete $self->{tasks}->{$task_id};
-}
-
-sub reconnect
-{
-  my ( $self, $interval ) = @_;
-  $interval ||= rand(30);
-  INFO sprintf( "Reattempting connection to %s:%d in %.2f seconds.",
-    $self->{host}, $self->{port}, $interval );
-  my $reconnect_timer;
-  $reconnect_timer = AnyEvent->timer(
-    after => $interval,
-    cb    => sub { undef $reconnect_timer; $self->run(); }
-  );
+            # worker provides client cert to server
+            cert_file => $self->{ worker_cert },
+            key_file  => $self->{ worker_key },
+        },
+    );
 }
 
 1;
 
-=pod
+__END__
 
 =head1 NAME
 
-Pogo::Worker::Connection
+Pogo::Worker::Connection - Pogo worker/dispatcher connection abstraction
 
 =head1 SYNOPSIS
 
- use Pogo::Worker::Connection;
+    use Pogo::Worker::Connection;
+
+    my $con = Pogo::Worker::Connection->new(
+    );
+
+    $con->start();
 
 =head1 DESCRIPTION
 
-No user-serviceable parts inside.
+Maintains a connection to a single dispatcher. A worker typically maintains
+several of these objects.
 
-=head1 SEE ALSO
+=head1 METHODS
 
-L<Pogo::Dispatcher>, L<Pogo::Worker>
+=over 4
 
-=head1 COPYRIGHT AND LICENSE
+=item C<new()>
 
-Copyright (c) 2010, Yahoo! Inc. All rights reserved.
+Constructor.
+
+    my $worker = Pogo::Worker::Connection->new();
+
+=back
+
+=head1 EVENTS
+
+=over 4
+
+=item C<worker_send_cmd [$data]>
+
+Incoming: Send the given data structure to the dispatcher.
+
+=back
+
+=head1 LICENSE
+
+Copyright (c) 2010-2012 Yahoo! Inc. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
-limitations under the License.
+imitations under the License.
 
 =head1 AUTHORS
 
-  Andrew Sloane <andy@a1k0n.net>
-  Michael Fischer <michael+pogo@dynamine.net>
-  Mike Schilli <m@perlmeister.com>
-  Nicholas Harteau <nrh@hep.cat>
-  Nick Purvis <nep@noisetu.be>
-  Robert Phan <robert.phan@gmail.com>
+Mike Schilli <m@perlmeister.com>
+Ian Bettinger <ibettinger@yahoo.com>
 
-=cut
+Many thanks to the following folks for implementing the
+original version of Pogo: 
 
-__END__
+Andrew Sloane <andy@a1k0n.net>, 
+Michael Fischer <michael+pogo@dynamine.net>,
+Nicholas Harteau <nrh@hep.cat>,
+Nick Purvis <nep@noisetu.be>,
+Robert Phan <robert.phan@gmail.com>,
+Srini Singanallur <ssingan@yahoo.com>,
+Yogesh Natarajan <yogesh_ny@yahoo.co.in>
 
-# vim:syn=perl:sw=2:ts=2:sts=2:et:fdm=marker

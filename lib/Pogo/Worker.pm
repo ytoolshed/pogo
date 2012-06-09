@@ -1,266 +1,295 @@
+###########################################
 package Pogo::Worker;
-
-# Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-use 5.008;
-use common::sense;
-
-use AnyEvent::Socket;
-use AnyEvent::TLS;
-use AnyEvent;
-use Carp;
-use JSON qw(encode_json);
-use LWP::UserAgent;
+###########################################
+use strict;
+use warnings;
 use Log::Log4perl qw(:easy);
+use AnyEvent;
+use AnyEvent::Strict;
 use Pogo::Worker::Connection;
-use Scalar::Util qw(refaddr);
+use Pogo::Worker::Task::Command;
+use Pogo::Defaults qw(
+    $POGO_DISPATCHER_WORKERCONN_HOST
+    $POGO_DISPATCHER_WORKERCONN_PORT
+    $POGO_WORKER_DELAY_CONNECT
+    $POGO_WORKER_DELAY_RECONNECT
+);
 use Sys::Hostname;
+use base qw(Pogo::Object::Event);
 
-use constant DEFAULT_PORT => 9697;
+our $VERSION = "0.01";
 
-my $instance;
+###########################################
+sub new {
+###########################################
+    my ( $class, %options ) = @_;
 
-# {{{ run
+    my $self = {
+        delay_connect => $POGO_WORKER_DELAY_CONNECT,
+        dispatchers   => [
+            "$POGO_DISPATCHER_WORKERCONN_HOST:$POGO_DISPATCHER_WORKERCONN_PORT"
+        ],
+        auto_reconnect => 1,
+        tasks          => {},
+        %options,
+    };
 
-sub run
-{
-  my $class = shift;
-  $instance = bless( {@_}, $class );
+    for my $dispatcher ( @{ $self->{ dispatchers } } ) {
 
-  # Initialize response queue
-  $instance->{connections}   = {};
-  $instance->{responsequeue} = [];
-  my $port = $instance->{dispatcher_port} || DEFAULT_PORT;
+        # create a connection object for every dispatcher
+        $self->{ conns }->{ $dispatcher } =
+            Pogo::Worker::Connection->new( %$self, worker => $self );
+    }
 
-  foreach my $host ( @{ $instance->{dispatchers} } )
-  {
-    INFO sprintf( "Connecting to dispatcher at %s:%d", $host, $port );
-    Pogo::Worker::Connection->new(
-      host            => $host,
-      port            => $port,
-      worker_key      => $instance->{worker_key},
-      worker_cert     => $instance->{worker_cert},
-      dispatcher_cert => $instance->{dispatcher_cert}
-    )->run;
-  }
-
-  # Start event loop
-  AnyEvent->condvar->recv();
-
-  ERROR "Event loop terminated - this should not have happened!";
+    bless $self, $class;
 }
 
-# }}}
-# {{{ connection handling
+###########################################
+sub random_dispatcher {
+###########################################
+    my ( $self ) = @_;
 
-sub add_connection
-{
-  LOGDIE "Worker not initialized yet" unless defined $instance;
-  my $conn = $_[1];
-  $instance->{connections}->{ refaddr($conn) } = $conn;
+    # pick a random dispatcher
+    my $nof_dispatchers = scalar @{ $self->{ dispatchers } };
+    return $self->{ dispatchers }->[ rand $nof_dispatchers ];
 }
 
-sub delete_connection
-{
-  LOGDIE "Worker not initialized yet" unless defined $instance;
-  my $conn = $_[1];
-  delete $instance->{connections}->{ refaddr($conn) };
+###########################################
+sub start {
+###########################################
+    my ( $self ) = @_;
+
+    DEBUG "Worker: Starting";
+
+    # we re-emit events we get from any of the dispatcher
+    # connections, so consumers don't know/care which
+    # dispatcher they came from
+    for my $dispatcher ( @{ $self->{ dispatchers } } ) {
+        $self->event_forward(
+            { forward_from => $self->{ conns }->{ $dispatcher } },
+            qw(
+                worker_dconn_connected
+                worker_dconn_listening
+                worker_dconn_ack
+                worker_dconn_qp_idle
+                worker_dconn_cmd_recv
+                )
+        );
+    }
+
+    # launch connector components for all defined dispatchers
+    for my $dispatcher ( @{ $self->{ dispatchers } } ) {
+        $self->{ conns }->{ $dispatcher }->start();
+    }
+
+    $self->reg_cb(
+        "worker_task_request",
+        sub {
+            my ( $c, $task_id, $cmd, $host ) = @_;
+
+            my $task = $self->task_start( $task_id, $cmd, $host );
+            $self->event( "worker_task_active", $task );
+        }
+    );
+
+      # if we receive a command over the wire, forward it to
+      # the command handler
+    $self->reg_cb(
+        "worker_dconn_cmd_recv",
+        sub {
+            my ( $c, $task_id, $cmd, $host ) = @_;
+
+            $self->cmd_handler( $task_id, $cmd, $host );
+        }
+    );
+
+    $self->reg_cb(
+        "worker_task_done",
+        sub {
+            my ( $c, $task ) = @_;
+
+            $self->to_dispatcher(
+                {   command => "task_done",
+                    task_id => $task->id(),
+                    rc      => $task->rc(),
+                }
+            );
+        }
+    );
 }
 
-# }}}
-# {{{ response queue
+###########################################
+sub cmd_handler {
+###########################################
+    my ( $self, $task_id, $cmd, $host ) = @_;
 
-sub send_response
-{
-  LOGDIE "Worker not initialized yet" unless defined $instance;
-  my ( $class, $msg ) = @_;
-  my @k = keys %{ $instance->{connections} };
-  if ( !@k )
-  {
-    DEBUG sprintf( "queuing response: %s", encode_json($msg) );
-    push @{ $instance->{responsequeue} }, $msg;
-  }
-  else
-  {
+    my %commands = map { $_ => 1 } qw( test );
 
-    # send to a dispatcher
-    my $n = int( rand( scalar @k ) );
-    my $c = $instance->{connections}->{ $k[$n] };
-    $c->send_response($msg);
-  }
+    if ( exists $commands{ $cmd } ) {
+        my $method = $cmd . "_cmd";
+        no strict 'refs';
+        $self->$method( $task_id, $host );
+        return;
+    }
+
+    ERROR "Invalid command: $cmd";
+
+    my $task = Pogo::Worker::Task->new(
+        rc      => -1,
+        message => "Invalid command $cmd",
+    );
+
+    $self->event( "worker_task_done", $task );
 }
 
-sub dequeue_msg
-{
-  LOGDIE "Worker not initialized yet" unless defined $instance;
-  return unshift @{ $instance->{responsequeue} };
+###########################################
+sub test_cmd {
+###########################################
+    my ( $self, $task_id, $host ) = @_;
+
+    $self->event( "worker_task_request", $task_id, "sleep 1", $host );
 }
 
-# }}}
-# {{{ properties
+###########################################
+sub to_dispatcher {
+###########################################
+    my ( $self, $data ) = @_;
 
-sub instance
-{
-  return $instance;
+    # send a command to a random dispatcher
+    $self->{ conns }->{ $self->random_dispatcher() }
+        ->event( "worker_send_cmd", $data );
 }
 
-sub dispatcher_host
-{
-  LOGDIE "Worker not initialized yet" unless defined $instance;
-  return $instance->{dispatcher_host};
-}
+###########################################
+sub task_start {
+###########################################
+    my ( $self, $task_id, $cmd, $host ) = @_;
 
-sub dispatcher_port
-{
-  LOGDIE "Worker not initialized yet" unless defined $instance;
-  return $instance->{dispatcher_port};
-}
+    # TODO: start task timeout timer
 
-sub dispatcher_cert
-{
-  LOGDIE "Worker not initialized yet" unless defined $instance;
-  return $instance->{dispatcher_cert};
-}
+    my $task = Pogo::Worker::Task::Command->new( 
+        command => $cmd, host => $host );
+    $task->id( $task_id );
 
-sub worker_cert
-{
-  LOGDIE "Worker not initialized yet" unless defined $instance;
-  return $instance->{worker_cert};
-}
+    $task->reg_cb(
+        on_finish => sub {
+            my ( $c, $rc ) = @_;
 
-sub worker_key
-{
-  LOGDIE "Worker not initialized yet" unless defined $instance;
-  return $instance->{worker_key};
-}
+            DEBUG "Task ", $task->id(), " ended (rc=$rc)";
 
-sub exec_helper
-{
-  LOGDIE "Worker not initialized yet" unless defined $instance;
-  return $instance->{exec_helper};
-}
+            $self->event( "worker_task_done", $task );
 
-sub expect_wrapper
-{
-  LOGDIE "Worker not initialized yet" unless defined $instance;
-  return $instance->{expect_wrapper};
-}
+            # remove task from tracker hash
+            delete $self->{ tasks }->{ $task->id() };
+        },
+    );
 
-sub dist_server
-{
-  LOGDIE "Worker not initialized yet" unless defined $instance;
-  return $instance->{dist_server};
-}
+    DEBUG "Worker starting task ", $task->id(), " (cmd=$cmd host=$host)";
+    $task->start();
 
-sub ssh_options
-{
-  LOGDIE "Worker not initialized yet" unless defined $instance;
-  return @{ $instance->{ssh_options} };
-}
+    # save it in the task tracker by its unique id to keep it running
+    $self->{ tasks }->{ $task->id() } = $task;
 
-sub scp_options
-{
-  LOGDIE "Worker not initialized yet" unless defined $instance;
-  return @{ $instance->{scp_options} };
+    return $task;
 }
-
-sub output_dir
-{
-  LOGDIE "Worker not initialized yet" unless defined $instance;
-  return $instance->{static_path};
-}
-
-sub output_uri
-{
-  LOGDIE "Worker not initialized yet" unless defined $instance;
-  return $instance->{output_uri};
-}
-
-sub max_output
-{
-  LOGDIE "Worker not initialized yet" unless defined $instance;
-  return $instance->{max_output};
-}
-
-sub num_workers
-{
-  LOGDIE "Worker not initialized yet" unless defined $instance;
-  return $instance->{num_workers};
-}
-
-# }}}
 
 1;
 
-=pod
+__END__
 
 =head1 NAME
 
-  Pogo::Worker
+Pogo::Worker - Pogo Worker Daemon
 
 =head1 SYNOPSIS
 
-  use Pogo::Worker;
-  my $worker = Pogo::Worker->instance;
-  $worker->run;
+    use Pogo::Worker;
+
+    my $worker = Pogo::Worker->new(
+      dispatchers => [ "localhost:9979" ]
+      on_connect  => sub {
+          print "Connected to dispatcher $_[0]\n";
+      },
+    );
+
+    Pogo::Worker->start();
 
 =head1 DESCRIPTION
 
-LONG_DESCRIPTION
+Main code for the Pogo worker daemon. The worker executes tasks handed
+down from the dispatcher. Tasks typically consist of connecting to a 
+target host and running a command there.
 
 =head1 METHODS
 
-B<methodexample>
+=over 4
 
-=over 2
+=item C<new()>
 
-methoddescription
+=item C<start()>
+
+Tries to connect to one or more configured dispatchers, and keeps trying
+indefinitely until it succeeds. If the connection is lost, it will 
+try to reconnect. Never returns unless there's a catastrophic error.
 
 =back
 
-=head1 SEE ALSO
+It receives tasks from the dispatcher and acknowledges receiving them.
 
-L<Pogo::Dispatcher>
+For every task received, it sends back an ACK to the dispatcher.
+It then creates a child process and executes the task command.
 
-=head1 COPYRIGHT AND LICENSE
+If the task command runs longer than the task timeout value, the
+worker terminates the child.
 
-Copyright (c) 2010, Yahoo! Inc. All rights reserved.
+Upon completion of the task (or a timeout), the worker sends a
+message to the dispatcher, which sends back and ACK.
+
+=head1 EVENTS
+
+=head2 Emitted
+
+=over 4
+
+=item C<worker_task_active $task >
+
+A task has started.
+
+=item C<worker_task_done $task >
+
+A task is complete.
+
+=back
+
+=head1 LICENSE
+
+Copyright (c) 2010-2012 Yahoo! Inc. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
-limitations under the License.
+imitations under the License.
 
 =head1 AUTHORS
 
-  Andrew Sloane <andy@a1k0n.net>
-  Michael Fischer <michael+pogo@dynamine.net>
-  Mike Schilli <m@perlmeister.com>
-  Nicholas Harteau <nrh@hep.cat>
-  Nick Purvis <nep@noisetu.be>
-  Robert Phan <robert.phan@gmail.com>
+Mike Schilli <m@perlmeister.com>
+Ian Bettinger <ibettinger@yahoo.com>
 
-=cut
+Many thanks to the following folks for implementing the
+original version of Pogo: 
 
-__END__
+Andrew Sloane <andy@a1k0n.net>, 
+Michael Fischer <michael+pogo@dynamine.net>,
+Nicholas Harteau <nrh@hep.cat>,
+Nick Purvis <nep@noisetu.be>,
+Robert Phan <robert.phan@gmail.com>,
+Srini Singanallur <ssingan@yahoo.com>,
+Yogesh Natarajan <yogesh_ny@yahoo.co.in>
 
-# vim:syn=perl:sw=2:ts=2:sts=2:et:fdm=marker

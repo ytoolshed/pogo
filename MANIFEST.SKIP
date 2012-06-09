@@ -1,0 +1,8 @@
+blib
+^Makefile$
+^Makefile.old$
+.gitignore
+docs
+MANIFEST.bak
+adm/release
+.git

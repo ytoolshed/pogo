@@ -1,0 +1,4 @@
+
+* reconnect logic disp/worker
+* check linebreaks with JSON (duplex protocol)
+* resilient to JSON errors (eval)

@@ -1,188 +1,150 @@
+###########################################
 package Pogo::API;
-
-# Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
+###########################################
 use strict;
 use warnings;
-
-use Apache2::Const;
-use CGI;
-use JSON;
+use Plack::App::URLMap;
+use Pogo::Plack::Handler::AnyEvent::HTTPD;
+use Pogo::Defaults qw(
+    $POGO_API_TEST_PORT
+    $POGO_API_TEST_HOST
+);
 use Log::Log4perl qw(:easy);
-use YAML::XS qw();
+use base qw(Pogo::Object::Event);
 
-use Pogo::API::V3;
+###########################################
+sub new {
+###########################################
+    my ( $class, $opts ) = @_;
 
-our $VERSION = '0.0.2';
+    # host:port to listen on
+    my $host = exists $opts->{host} ? $opts->{host} : $POGO_API_TEST_HOST;
+    my $port = exists $opts->{port} ? $opts->{port} : $POGO_API_TEST_PORT;
 
-sub handler
-{
-  my $r  = shift;
-  my $c  = CGI->new();
-  my $js = JSON->new();
+    my $self = {
+        host             => $host,
+        port             => $port,
+        netloc           => "[no netloc]",
+        protocol_version => "v1",
+    };
 
-  my ( undef, @path ) = split '/', $r->path_info;    # throw away leading null
-  my $thing = shift @path;
+    bless $self, $class;
 
-  my $version = 'V3';                                # first public release
-
-  if ( $thing && $thing =~ m/^v\d+$/i )
-  {
-    $version = uc($thing);
-  }
-
-  # before we create our instance, see if we have an alternate config dir
-  $Pogo::Common::CONFIGDIR = $r->dir_config( 'POGO_CONFIG_DIR' )
-    if $r->dir_config( 'POGO_CONFIG_DIR' );
-
-  my $class = 'Pogo::API::' . $version;
-  my $api   = $class->instance;
-
-  if ( !$c->param('format') )
-  {
-    $r->content_type('text/javascript');
-  }
-  elsif ( $c->param('format') eq 'yaml' )
-  {
-    $r->content_type('text/plain');
-  }
-  else
-  {
-    $r->content_type('text/javascript');
-  }
-
-
-  # non-RPC requests
-  if ( !$c->param('r') )
-  {
-    my $method = shift @path;
-    if ( $method && $api->can( 'api_' . $method ) )
-    {
-      $method = 'api_' . $method;
-      my $response = $api->$method( $c->Vars );
-      $response->set_format( $c->param('format') );
-      print $response->content;
-      return $Apache2::Const::HTTP_OK;
-    }
-    else
-    {
-      $r->content_type('text/html');
-      print $c->start_html( -title => 'Pogo Status' );
-      my $pong = $api->rpc( 'ping', 'pong' );
-      $pong->set_format('yaml');
-      print '<pre>';
-      print $pong->content;
-      print '</pre>';
-
-      return $pong->is_success ? $Apache2::Const::HTTP_OK : $Apache2::Const::SERVER_ERROR;
-    }
-    return throw_error( $c, 'Unknown request' );
-  }
-
-  # heavy-lifting - now we're RPC
-  my $req;
-  eval { $req = $js->decode( $c->param('r') ) };
-
-  if ($@)
-  {
-    return throw_error( $c, $@ );
-  }
-
-  if ( $c->param('c') && $c->param('v') )
-  {
-    return throw_error( $c, "c/v mutually exclusive" );
-  }
-
-  # so now we try to use api_foo in the versioned API::Vx module
-  # are we really just re-implementing AUTOLOAD here?
-  # perhaps rpc should be AUTOLOAD'd and API.pm should just
-  # pass through requests.
-
-  my $response;
-  eval { $response = $api->rpc(@$req) };
-  if ($@)
-  {
-    return throw_error( $c, $@ );
-  }
-
-  $response->set_format( $c->param('format') );
-  $response->set_callback( $c->param('c') )
-    if $c->param('c');
-  $response->set_pushvar( $c->param('v') )
-    if $c->param('v');
-
-  print $response->content;
-  return $Apache2::Const::HTTP_OK;
+    return $self;
 }
 
-sub throw_error
-{
-  my ( $c, $errmsg ) = @_;
-  ERROR $errmsg;
-  my $error = Pogo::Engine::Response->new;
+###########################################
+sub base_url {
+###########################################
+    my ( $self ) = @_;
 
-  $error->set_format( $c->param('format') );
-  $error->set_error($errmsg);
-
-  print $error->content;
-  return $Apache2::Const::HTTP_OK;
+    return "$self->{ netloc }/$self->{ protocol_version }";
 }
 
-1;
+###########################################
+sub standalone {
+###########################################
+    my ( $self ) = @_;
 
-=pod
+    DEBUG "Starting standalone API server on ",
+        "$self->{host}:$self->{port}";
+
+    $self->{ api_server } = Plack::Handler::AnyEvent::HTTPD->new(
+        host => $self->{host},
+        port => $self->{port},
+    );
+
+    $self->{ netloc } = "http://$self->{host}:$self->{port}";
+
+    $self->{ api_server }->register_service( Pogo::API->app() );
+
+    DEBUG "Standalone server ready";
+    $self->event( "api_server_up", $self->{host}, $self->{port} );
+}
+
+###########################################
+sub app {
+###########################################
+    my ( $class ) = @_;
+
+    my $app = Plack::App::URLMap->new();
+
+    # map URLs to modules, like /status => API/Status.pm etc.
+    for my $api ( qw( status v1 ) ) {
+
+        my $module = __PACKAGE__;
+        $module .= "::" . ucfirst( $api );
+
+        eval "require $module";
+        if ( $@ ) {
+            die "Failed to load module $module ($@)";
+        }
+
+        DEBUG "Mounting /$api to module $module";
+
+        $app->mount( "/$api" => $module->app() );
+    }
+
+    return $app;
+}
+
+my $app = __PACKAGE__->app();
+
+__END__
 
 =head1 NAME
 
-  CLASSNAME - SHORT DESCRIPTION
+Pogo::Dispatcher::API - Pogo API PSGI interface
 
 =head1 SYNOPSIS
 
-CODE GOES HERE
+    use Pogo::API;
+    my $app = Pogo::API->app();
 
 =head1 DESCRIPTION
 
-LONG_DESCRIPTION
+App handler for Pogo's main Web API. Can be used either by a standalone 
+server (by calling
 
-=head1 METHODS
+    $ plackup lib/Pogo/API.pm
 
-B<methodexample>
+directly or in the test suite) or in apache with C<Plack::Handler::Apache1>.
+The apache configuration looks like this:
 
-=over 2
+    <Location />
+     SetHandler perl-script
+     PerlHandler Plack::Handler::Apache1
+     PerlSetVar psgi_app /path/to/app.psgi
+    </Location>
 
-methoddescription
+=head1 LICENSE
 
-=back
+Copyright (c) 2010-2012 Yahoo! Inc. All rights reserved.
 
-=head1 SEE ALSO
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-L<Pogo::Dispatcher>
+http://www.apache.org/licenses/LICENSE-2.0
 
-=head1 COPYRIGHT
-
-Apache 2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+imitations under the License.
 
 =head1 AUTHORS
 
-  Andrew Sloane <andy@a1k0n.net>
-  Michael Fischer <michael+pogo@dynamine.net>
-  Mike Schilli <m@perlmeister.com>
-  Nicholas Harteau <nrh@hep.cat>
-  Nick Purvis <nep@noisetu.be>
-  Robert Phan <robert.phan@gmail.com>
+Mike Schilli <m@perlmeister.com>
+Ian Bettinger <ibettinger@yahoo.com>
 
-=cut
+Many thanks to the following folks for implementing the
+original version of Pogo: 
 
-# vim:syn=perl:sw=2:ts=2:sts=2:et:fdm=marker
+Andrew Sloane <andy@a1k0n.net>, 
+Michael Fischer <michael+pogo@dynamine.net>,
+Nicholas Harteau <nrh@hep.cat>,
+Nick Purvis <nep@noisetu.be>,
+Robert Phan <robert.phan@gmail.com>,
+Srini Singanallur <ssingan@yahoo.com>,
+Yogesh Natarajan <yogesh_ny@yahoo.co.in>

@@ -1,0 +1,3 @@
+These certificates are for testing only. Their private keys are exposed
+as well, so DO NOT USE them in production, because they won't provide any
+security.

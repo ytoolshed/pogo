@@ -1,0 +1,387 @@
+=head1 Pogo Design Guidelines
+
+This week, I took a look at the current code base, both OSS pogo and YPogo, and
+thought about how we can better structure OSS Pogo to arrive at a more robust
+code base than what we have now.
+
+I think the high-level architecture as a whole (dispatcher/zookeeper/workers)
+is solid, but what we need to easier understand/debug the internal workings of
+OSS Pogo is to break up the unstructured code into reusable components that are
+unit-testable. We also need a better feedback mechanism between the worker
+and the dispatcher, be able to kill dangling worker tasks and resilience
+against dispatcher restarts.
+
+Also, we need to stick to a programming paradign. The AnyEvent framework
+Pogo uses has a good reputation with some leading Perl folks, it's just
+that Pogo isn't using it in a easily readable manner.
+
+So, my goal is to split up Pogo functionality into easily testable 
+AnyEvent components. Components are classes and are all defined and
+used in the same way. Take the class for the new worker's task executor,
+for example:
+
+    package use Pogo::Worker::Task::Command;
+    use AnyEvent;
+    use base qw(Object::Event);
+
+    my $cmd = Pogo::Worker::Task::Command->new(
+      cmd  => [ 'ls', '-l' ],
+    };
+
+    $cmd->reg_cb(
+      on_stdout => sub {
+        my($c, $stdout) = @_;
+      },
+      on_stderr => sub {
+        my($c, $stderr) = @_;
+      }
+      on_eof => sub {
+        my($c) = @_;
+      }
+    );
+          
+    $cmd->run();
+
+After constructing the object with parameters, the reg_cb() method
+(coming via Object::Event) is used to register callback on significant
+events. The component has a run() method which starts it.
+
+In the case of the worker task executor, the callbacks are for the events
+on_stdout (process writes to stdout), on_stdout (process writes to stderr),
+and on_eof (process ended). Every callback gets as its first argument
+a reference to the object itself and optional parameters, for example
+the stdout string in case of the on_stdout event.
+
+Internally, if the component wants to trigger an event, it uses
+
+    $self->event (on_stdout => $string);
+
+which jumps to the on_stdout callback registered before.
+
+Events differ from component class to 
+component class, but it's important to stick to a general format to 
+make it easy for new people to come on board and start coding.
+
+If you want to unit-test the component, you just wrap
+
+    my $cv = AnyEvent->condvar;
+
+    ...
+
+    $cv->recv;
+
+around the code and use $cv->send from somewhere within a callback
+(e.g. "eof") to terminate the implicitly started event loop. Check
+the AnyEvent::Intro page for details.
+
+It takes some time to get the hang of it, but it's a good framework, 
+I think.
+
+=head1 Pogo Class Design
+
+Here's the components I've mapped out so far, some already 
+checked into github (but I've hardly written any code yet):
+
+Pogo::Worker - Main worker daemon
+
+Pogo::Worker::Connection - Connection/Reconnection Logic with Dispatcher,
+supports both regular sockets (testing) and SSL sockets (production).
+Tries to connect to one or more configured dispatchers, and reconnects
+if it gets severed.
+Maintains a send queue with message to be sent to the dispatcher (e.g.
+about finished tasks). The dispatcher needs to *ACK* every message, 
+if it doesn't, the component will keep it in its message queue and
+retry later.
+
+Pogo::Worker::Task - Gets events for and executes worker tasks like: 
+running commands, querying status, killing job tasks currently 
+running/hanging on the worker. Updates the task logfiles with output
+from the task. Also (in a directory near the logfiles), stores the pids
+of the launched tasks, so if a worker dies, the restarted process can
+clean up lingering pids.
+
+Pogo::Worker::Task::Command - Run local command (not used directly, 
+just a virtual base class). Uses Pogo::Worker::Task's log/pid handler 
+via inheritance. 
+
+Pogo::Worker::Task::Command::Remote - Run command on target host,
+just tacks on ssh magic onto base class's executor.
+
+Pogo::Dispatcher - Main dispatcher daemon
+
+Pogo::Dispatcher::Connection - Dispatcher connection handler
+
+Pogo::Dispatcher::ConstraintsEngine - Calculates constraints
+Pogo::Dispatcher::ConstraintsEngine::Concurrent - No constraints
+Pogo::Dispatcher::ConstraintsEngine::Yahoo - Calculates rolesdb constraints
+Pogo::Dispatcher::ConstraintsEngine::Flatfile - For OSS constraints defs
+
+Pogo::Dispatcher::Job - create/run jobs
+
+Pogo::Datastore::ZooKeeper - Dispatcher communication mechanism
+
+Pogo::Datastore::VDS - Vespa engine to store finished jobs data
+
+Pogo::Web::API - yapache mod_perl API (should no longer talk to ZK directly,
+but talk to the dispatcher).
+
+Pogo::Web::UI - Pogo web UI (talks to API)
+
+Pogo::Util::Crypto - Password encryption/decryption
+
+=head1 Development Tools
+
+To make it easier to create new modules (or scripts), I've checked in
+adm/pogo-tmpl which you can use like
+
+    ..../adm/pogo-tmpl Frobnicator.pm
+
+or 
+
+   ..../adm/pogo-tmpl pogo-frobnicate
+
+and which will create the newly requested files from pogo-compliant 
+templates.
+
+=head1 Development Guidelines
+
+* Every component needs to have a unit test associated with it in the 
+  test suite. This makes it easy to add new functionality without introducing
+  regressions.
+
+* Add documentation to the component, as outlined in the template generated
+  by pogo-tmpl
+
+=head1 Design Details
+
+=head2 Dispatcher/Worker Protocol
+
+The new protocol is asynchronous and full-duplex, meaning that although the
+worker initiates a TCP connection, both dispatcher and worker can initiate a
+command requiring a response from the other party.
+
+To distinguish the different directions and therefore required protocol
+behavior, each message defines a channel it is transmitted over (somewhat
+inspired by http://tools.ietf.org/html/rfc3117):
+
+Channels
+
+    * Channel missing: Fall back to legacy protocol
+    * Channel 0: Channel Negotiation (currently unused)
+    * Channel 1: Worker->Dispatcher communciation
+    * Channel 2: Dispatcher->Worker communication
+
+Channel 1 (Worker->Dispatcher)
+
+    * Report task start
+          o Worker: msgid "start" jobid (started job)
+          o Dispatcher: "ack" msgid
+    * Report task finished
+          o Worker: msgid "finish" jobid status (finished job)
+          o Dispatcher: "ack" msgid
+    * Report idleness
+          o Worker: msgid "idle" 
+          o Dispatcher: "ack" msgid
+
+Channel 2 (Dispatcher->Worker)
+
+    * Submit Task:
+          o Dispatcher: msgid "task" jobdata
+          o Worker: 
+                + success: "ack" msgid
+                + busy: "busy" msgid (dispatcher will pause this worker)
+                + no answer: (dispatcher will pause this worker)
+    * Query Task status:
+          o Dispatcher: msgid "taskstatus" host
+          o Worker:msgid "taskstatus" host
+                + still running: msgid "running"
+                + unknown: msgid "unknown"
+    * Query Worker status:
+          o Dispatcher: msgid "status"
+          o Worker:
+                + msgid "{status: ok, tasks: xx}"
+                + msgid "{status: busy, tasks: xx }"
+    * Kill Task:
+          o Dispatcher: msgid "taskkill" host
+    *
+          o Worker:
+                + still running: msgid "ack"
+                + unknown: msgid "unknown"
+    * Kill All Tasks:
+          o Dispatcher: msgid "taskkillall"
+          o Worker: msgid "ack"
+
+=head2 Legacy Protocol
+
+    * Initial handshake (worker/lib/Pogo/Worker/Connection.pm)
+          o Worker: sleep(rand5); connect to random dispatcher
+            If connection fails, retries in sleep(rand 30)
+          o Dispatcher: (nothing)
+    * Request by Dispatcher (server/lib/Pogo/Dispatcher/WorkerConnection.pm)
+          o Dispatcher: [ execute, { job_id ... command ... } ]
+          o Worker:
+            * acknowledges job and
+                + accepts more: { idle }
+                + wants no more: (nothing)
+            * starts task { start }
+            * finishes task { finish }
+
+=head3 Drawbacks of legacy protocol
+
+     * Unreliable. Protocol assumes that a message has been
+       received if the connection is up. Fails in cases where
+       connection is up but component overloaded and can't respond
+       or process the request. This leads to inconsistent views of
+       a task between worker and dispatcher if the worker doesn't
+       respond because it's too busy to take the task. Or in case a
+       worker reports a finished task to the dispatcher who's too
+       busy to process the report.
+
+     * Limited in functionality and can't be extended to full duplex.
+
+=head2 Variables and Default Values
+
+    use Pogo::Defaults qw(
+      $POGO_DISPATCHER_WORKERCONN_HOST
+      $POGO_DISPATCHER_WORKERCONN_PORT
+    );
+
+    ###########################################
+    sub new {
+    ###########################################
+        my($class, %options) = @_;
+    
+        my $self = {
+            host => $POGO_DISPATCHER_WORKERCONN_HOST,
+            port => $POGO_DISPATCHER_WORKERCONN_PORT,
+            %options,
+        };
+    
+        bless $self, $class;
+    }
+
+Also note the syntax in 
+
+        my($class, %options) = @_;
+    
+        my $self = {
+            # ... default settings ...
+            %options,
+
+which takes option settings as method parameters, and overrides the 
+defaults in "default settings" if they're present.
+
+=head2 Test Suite
+
+Testing event-based components is slightly different from testing
+linear program flows. In Pogo, there's a helper library in
+
+    t/lib/PogoOne.pm
+
+defining a single component starting both dispatcher and worker which
+lets you subscribe to events bubbling up from these two components.
+Check the PogoOne docs on what events have been implemented thus far.
+
+To find PogoOne, add
+
+    use FindBin qw($Bin);
+    use lib "$Bin/../lib";
+    use lib "$Bin/lib";
+
+to the top of the test suite. Then comes the tests:
+
+    use PogoOne;
+    use Test::More;
+
+    my $pogo = PogoOne->new();
+
+    $pogo->reg_cb( worker_connect  => sub {
+        my( $c, $worker ) = @_;
+    
+        ok( 1, "worker connected" );
+    });
+
+    plan tests => 1;
+
+    $pogo->start();
+
+This test suite subscribes to the "worker_connect" event, bubbling up
+from the worker and being refired by PogoOne for any test suite.
+
+For more tests, just register more callbacks and run one or more
+tests within them:
+
+    $pogo->reg_cb( dispatcher_prepare  => sub {
+        my( $c, $host, $port ) = @_;
+    
+        is( 7654, $port, "dispatcher listening to port 7654" );
+    });
+
+IMPORTANT: Note that the C<start> method at the end starts an 
+I<infinite> event loop, which only terminates if all planned tests have
+run. This is accomplished by dark magic within PogoOne, which polls the
+test harness every second if all planned tests have been executed and
+calls $pogo->quit() if that's the case. 
+
+If you run into a hanging test suite, it's probably because you've planned
+for more tests that were actually run thus far.
+
+If you need more information on what's going on, turn on debugging via
+
+   Log::Log4perl->easy_init({ level => $DEBUG, 
+                              layout => "%F{1}-%L: %m%n" });
+
+and both the Pogo components and the test suite helpers will start
+talking.
+    
+=head3 Keep track of test cases
+
+With many test cases being executed within callbacks in non-predictable
+order, it's sometimes hard to track down which of dozens of test cases
+have been executed and which ones the test suite is still waiting for.
+
+For example, if you have 
+
+    plan tests => 3;
+
+    $pogo->reg_cb( event1 => sub {
+        ok 1;
+    });
+
+    $pogo->reg_cb( event1 => sub {
+        ok 1;
+    });
+
+then the test suite will wait around forever and with many callbacks
+it's not easy to figure out which ones have been executed. To help
+keeping track, include C<use PogoTest> and 
+add test case numbers in the test comments:
+
+
+    use PogoTest;
+    use PogoOne;
+
+    my $pogo = PogoOne->new();
+
+    plan tests => 3;
+
+    $pogo->reg_cb( event1 => sub {
+        ok 1, "some test #2';
+    });
+
+    $pogo->reg_cb( event1 => sub {
+        ok 1;
+        ok 1, "another test #1';
+    });
+
+Numbers don't need to be in a particular order, it's just important that
+they run from 1 to the total number of tests. In the case above, where
+the test suite plans three tests but only two are executed, if you call the
+test suite in verbose mode like
+
+    perl t/001Basic.t -v
+
+the output will indicate which one is missing:
+
+    lib/PogoOne.pm-83: Is it done yet (2/3)?
+    lib/PogoOne.pm-88: Tests remaining: 2

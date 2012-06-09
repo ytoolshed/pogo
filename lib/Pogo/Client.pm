@@ -1,76 +1,88 @@
 package Pogo::Client;
 
-# Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-use 5.008;
 use common::sense;
 
-use Exporter 'import';
 use JSON qw(encode_json);
+use LWP::UserAgent;
+use HTTP::Request::Common qw(GET POST);
 use Log::Log4perl qw(:easy);
-use HTTP::Request::Common qw(POST);
+use Pogo::Job;
 
-use Pogo::Common;
-use Pogo::Engine::Response;
+our $VERSION = '0.0.1';
 
-our $AUTOLOAD;
+sub new {
+    my ( $class, $url ) = @_;
 
-sub new
-{
-  my ( $class, $url ) = @_;
-  my $self = { api => $url };
-  DEBUG "api = $url";
-  bless $self, $class;
-  return $self;
+    LOGDIE 'no API URL specified'
+        unless defined $url;
+
+    my $self = {
+        api => $url,
+        ua  => LWP::UserAgent->new(
+            timeout => 65,
+            agent   => "Pogo/$VERSION",
+            )
+
+    };
+
+    DEBUG "api = $url";
+    bless $self, $class;
+    return $self;
 }
 
-sub ua
-{
-  return $Pogo::Common::USERAGENT;
+sub ping {
+    my ( $self ) = @_;
+
+    # GET /v1/ping
+    my $uri = $self->{ api } . '/v1/ping';
+    return $self->{ ua }->request( GET $uri );
 }
 
-# why are we overriding this again?
-sub DESTROY { }
+sub listjobs {
+    my ( $self, $args ) = @_;
 
-sub AUTOLOAD
-{
-  my ( $self, @stuff ) = @_;
+    # TODO: validate arguments
 
-  $AUTOLOAD =~ /(\w+)$/ or die "cannot parse '$AUTOLOAD'\n";
-  my $method = $1;
+    my $uri = URI->new();
+    $uri->query_form( $args );
 
-  my $rpc = encode_json( [ $method, @stuff ] );
-  my $post = POST $self->{api}, [ r => $rpc ];
+    # GET /v1/jobs
+    my $uri = $self->{ api } . '/v1/jobs' . ( defined $uri->query() ? "?".$uri->query() : ''  );
+    return $self->{ ua }->request( GET $uri );
+}
 
-  DEBUG $self->{api} . " request: $rpc";
+sub get_job {
+    my ( $self, $jobid ) = @_;
 
-  my $r = $self->ua->request($post);
-  if ( $r->is_error )
-  {
-    my $resp = Pogo::Engine::Response->new( $r->decoded_content );
-    ERROR "fatal error in request '$method': " . $r->status_line . "\n";
-    return $resp;
-  }
+    LOGDIE 'no jobid specified'
+        unless $jobid;
 
-  DEBUG "response: " . $r->decoded_content;
-  my $resp = Pogo::Engine::Response->new( $r->decoded_content );
+    # GET /v1/jobs/:jobid
+    my $uri = $self->{ api } . "/v1/jobs/$jobid";
+    return $self->{ ua }->request( GET $uri );
+}
 
-  die "error from pogo server in request '$method': " . $resp->status_msg . "\n"
-    unless $resp->is_success;
+sub submit_job {
+    my ( $self, $args ) = @_;
 
-  return $resp;
+    # TODO validate arguments
+
+
+    # POST /v1/jobs
+    my $uri = $self->{ api } . '/v1/jobs';
+    return $self->{ ua }->request( POST $uri, $args );
+}
+
+sub check_arguments {
+    my ( $args, $checks ) = @_;
+
+    foreach my $arg ( keys %$args ) {
+        LOGDIE "invalid argument '$arg'"
+            unless $checks->{ $arg };
+
+        LOGDIE "bad value '$args->{ $arg }' for argument '$arg'"
+            unless $checks->{ $arg }->( $args->{ $arg } );
+    }
 }
 
 1;
@@ -79,23 +91,27 @@ sub AUTOLOAD
 
 =head1 NAME
 
-  CLASSNAME - SHORT DESCRIPTION
+Pogo::Client - Module for interacting with Pogo.
 
 =head1 SYNOPSIS
 
-CODE GOES HERE
+    my $uri = 'http://pogoapi.example.com:4080';
+    my $client = Pogo::Client->new( $uri );
+
+    $client->ping()
+        or die "couldn't ping pogo service at $uri";
 
 =head1 DESCRIPTION
 
-LONG_DESCRIPTION
+Long description...
 
 =head1 METHODS
 
-B<methodexample>
+B<new>
 
 =over 2
 
-methoddescription
+Create a new Pogo client. Accepts a single argument, the URL of the Pogo API.
 
 =back
 

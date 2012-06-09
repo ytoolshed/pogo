@@ -1,215 +1,65 @@
-#!/usr/bin/env perl
+#!/usr/local/bin/perl
+use strict;
+use warnings;
 
-# Copyright (c) 2010-2011 Yahoo! Inc. All rights reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-use 5.008;
-use common::sense;
-
-use Getopt::Long qw(:config bundling);
-use Pod::Usage qw(pod2usage);
-use Sys::Hostname qw(hostname);
-use YAML::XS qw(LoadFile);
+use Getopt::Std;
+use Pod::Usage;
+use Pogo::Worker;
 use Log::Log4perl qw(:easy);
 
-use Pogo::Worker;
-use Pogo::HTTP::Server;
+getopts("hv", \my %opts);
 
-our $VERSION = '4.0';
-
-sub main
-{
-  $ENV{PATH} = '/usr/local/libexec/pogo:/usr/local/bin:/bin:/sbin:/usr/bin:/usr/sbin';
-  my $POGO_ROOT = $ENV{POGO_ROOT} || '/usr/local';
-
-  # Defaults
-  my $DEFAULT_CONFIG_FILE = "$POGO_ROOT/etc/pogo/worker.conf.yaml";
-  my $opts                = {
-    num_workers     => 100,
-    exec_helper     => "$POGO_ROOT/libexec/pogo/pogo-pw",
-    log_conf        => "$POGO_ROOT/etc/pogo/worker.log.conf",
-    pid_file        => "$POGO_ROOT/var/run/pogo-worker.pid",
-    worker_cert     => "$POGO_ROOT/etc/ssl/pogo_worker.crt",
-    worker_key      => "$POGO_ROOT/etc/ssl/pogo_worker.key",
-    dispatcher_cert => "$POGO_ROOT/etc/ssl/pogo_dispatcher.crt",
-    output_uri      => 'http://' . hostname() . '/static/',
-  };
-
-  my $log_conf;
-  my $log_level;
-  my $cmdline_opts     = {};
-  my $config_file_opts = {};
-
-  GetOptions(
-    'h|help' => sub { pod2usage; exit -1 },
-    'f|config-file=s'     => \$cmdline_opts->{config_file},
-    'd|data-dir=s'        => \$cmdline_opts->{data_dir},
-    'e|exec-helper=s'     => \$cmdline_opts->{exec_helper},
-    'l|logger-config=s'   => \$cmdline_opts->{log_conf},
-    'p|dispatcher-port=i' => \$cmdline_opts->{dispatcher_port},
-    'P|pid-file=s'        => \$cmdline_opts->{pid_file},
-    'c|ssl-cert=s'        => \$cmdline_opts->{worker_cert},
-    'k|ssl-key=s'         => \$cmdline_opts->{worker_key},
-    'C|dispatcher-cert=s' => \$cmdline_opts->{dispatcher_cert},
-    'U|output-uri=s'      => \$cmdline_opts->{output_uri},
-    'n|workers=i'         => \$cmdline_opts->{num_workers},
-    's|dispatchers=s@'    => sub { push @{ $cmdline_opts->{dispatchers} }, split /,/, $_[1] },
-    'debug' => sub { $log_level = 'DEBUG' },
-  );
-
-  if ( my $config_file = delete $cmdline_opts->{config_file} )
-  {
-
-    # Config file was specified on command-line - fatal if doesn't exist
-    # or is non-parseable
-    $config_file_opts = LoadFile($config_file);
-  }
-  elsif ( -r $DEFAULT_CONFIG_FILE )
-  {
-
-    # Config file not specified - load the default only if it exists
-    $config_file_opts = LoadFile($DEFAULT_CONFIG_FILE);
-  }
-
-  # merge config-file options over defaults
-  while ( my ( $k, $v ) = each %$config_file_opts )
-  {
-    $opts->{$k} = $v if defined $v;
-  }
-
-  # command-line options take precedence over all
-  while ( my ( $k, $v ) = each %$cmdline_opts )
-  {
-    $opts->{$k} = $v if defined $v;
-  }
-
-  # init logger
-  if ( defined $opts->{log_conf} && -r $opts->{log_conf} )
-  {
-    Log::Log4perl::init( $opts->{log_conf} );
-  }
-  else
-  {
-    Log::Log4perl->easy_init unless Log::Log4perl->initialized;
-  }
-  delete $opts->{log_conf};
-  if ( defined $log_level )
-  {
-    Log::Log4perl::get_logger->level($log_level);
-  }
-
-  # Perform some basic sanity checks.
-  unless ( @{ $opts->{dispatchers} } )
-  {
-    LOGDIE "No dispatchers specified in configuration file or command line";
-  }
-
-  for (qw(worker_cert worker_key dispatcher_cert))
-  {
-    unless ( -r $opts->{$_} )
-    {
-      LOGDIE "Can't open $_ file " . $opts->{$_};
-    }
-  }
-  unless ( -x $opts->{exec_helper} )
-  {
-    LOGDIE $opts->{exec_helper} . " is not executable";
-  }
-
-  # Log something if we die.
-  $SIG{__DIE__} = sub {
-
-    # Don't log if die() is called in eval context; see "die" in perlfunc
-    die @_ if $^S;
-    unlink $opts->{pid_file} if -e $opts->{pid_file};
-    LOGCONFESS "Process terminated: " . shift;
-  };
-
-  # Log something and clean up if we are terminated by SIGTERM or SIGINT.
-  $SIG{INT} = $SIG{TERM} = sub {
-    local *__ANON__ = 'sighandler';
-    my $name = shift;
-    FATAL "Process terminated by SIG$name";
-    unlink $opts->{pid_file} if -e $opts->{pid_file};
-    exit 0;
-  };
-
-  open( my $fd, '>', $opts->{pid_file} )
-    or LOGDIE "couldn't open pid file: $!\n";
-  print $fd $$;
-  close $fd or LOGDIE "problem with $opts->{pidfile}: $!\n";
-
-  # Enter worker main loop.
-  Pogo::HTTP::Server->run(%$opts);
-  Pogo::Worker->run(%$opts);
-
-  # This should never be reached.
-  return 0;
+if($opts{v}) {
+    Log::Log4perl->easy_init({ level => $DEBUG, layout => "%F{1}-%L %m%n" });
 }
 
-exit main();
+pod2usage() if $opts{h};
 
-1;
+my $pw = Pogo::Worker->new();
+$pw->start();
 
-=pod
+  # start event loop
+AnyEvent->condvar->recv();
+
+__END__
 
 =head1 NAME
 
-  pogo-worker - Pogo worker daemon
-
-=head1 SYNOPSIS
-
-  pogo-worker -f FILE
-
-  pogo-worker [options]
+pogo-worker - Pogo Worker Daemon
 
 =head1 DESCRIPTION
 
-B<pogo-worker> is the Pogo worker daemon.  It accepts tasks from the Pogo
-dispatcher and executes them on the target hosts via ssh(1).
+See Pogo::Worker.
 
-=head1 SEE ALSO
+=head1 LICENSE
 
-L<Pogo::Worker>
-
-=head1 COPYRIGHT AND LICENSE
-
-Copyright (c) 2010, Yahoo! Inc. All rights reserved.
+Copyright (c) 2010-2012 Yahoo! Inc. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
-limitations under the License.
+imitations under the License.
 
 =head1 AUTHORS
 
-  Andrew Sloane <andy@a1k0n.net>
-  Michael Fischer <michael+pogo@dynamine.net>
-  Mike Schilli <m@perlmeister.com>
-  Nicholas Harteau <nrh@hep.cat>
-  Nick Purvis <nep@noisetu.be>
-  Robert Phan <robert.phan@gmail.com>
+Mike Schilli <m@perlmeister.com>
+Ian Bettinger <ibettinger@yahoo.com>
 
-=cut
+Many thanks to the following folks for implementing the
+original version of Pogo: 
 
-__END__
+Andrew Sloane <andy@a1k0n.net>, 
+Michael Fischer <michael+pogo@dynamine.net>,
+Nicholas Harteau <nrh@hep.cat>,
+Nick Purvis <nep@noisetu.be>,
+Robert Phan <robert.phan@gmail.com>,
+Srini Singanallur <ssingan@yahoo.com>,
+Yogesh Natarajan <yogesh_ny@yahoo.co.in>
 
-# vim:syn=perl:sw=2:ts=2:sts=2:et:fdm=marker

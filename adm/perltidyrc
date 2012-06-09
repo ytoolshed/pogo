@@ -1,0 +1,11 @@
+# perltidy options for Pogo
+
+-l=80  # line width
+-i=4   # 2 cols indent
+-ci=4  # 2 cols continuation indent
+-ce    # cuddled else
+-vt=2  # vertical tightness
+-nbbc  # no blank lines before whole-line comments
+-pt=0  # horizontal space around parentheses
+-sbt=0 # horizontal space around square brackets
+-bt=0  # horizontal space around curly braces

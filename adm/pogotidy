@@ -1,0 +1,52 @@
+#!/usr/local/bin/perl -w
+###########################################
+# pogotidy -- tidy up the entire project
+# Mike Schilli, 2012 (m@perlmeister.com)
+###########################################
+use strict;
+use Sysadm::Install qw(:all);
+use Perl::Tidy;
+use File::Find;
+use File::Compare;
+use Log::Log4perl qw(:easy);
+
+Log::Log4perl->easy_init($DEBUG);
+
+my $perltidyrc = File::Spec->rel2abs( "adm/perltidyrc" ) ;
+my $lib        = File::Spec->rel2abs( "lib" );
+
+find sub {
+
+    my $source      = $_;
+    my $abs_source  = File::Spec->rel2abs( $source );
+    my $name        = $File::Find::name;
+    my $destination = $source . ".tdy";
+
+    return if ! -f $source;
+    return if $source !~ /\.pm$/;
+
+    DEBUG "pogotidy: $name";
+
+      # syntax check
+    my $rc = system "$^X -I$lib -c $abs_source";
+
+    LOGDIE "Syntax check failed on $source" if $rc != 0;
+
+    Perl::Tidy::perltidy(
+        source            => $source,
+        destination       => $destination,
+        perltidyrc        => $perltidyrc,
+    );
+
+    if( compare( $source, $destination ) == 0) {
+        # no change
+        unlink $destination;
+        return;
+    }
+
+    DEBUG "Fixed up $name";
+    mv $destination, $source;
+
+}, "lib";
+
+# perltidy -pro=adm/perltidyrc lib/Pogo/Dispatcher.pm

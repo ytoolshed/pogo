@@ -1,0 +1,49 @@
+Certificate:
+    Data:
+        Version: 1 (0x0)
+        Serial Number: 1 (0x1)
+        Signature Algorithm: md5WithRSAEncryption
+        Issuer: C=US, ST=California, L=San Francisco, O=Sloppy CA Inc. - We approve Anything without checking!, OU=IT, CN=somewhere.com/emailAddress=a@b.com
+        Validity
+            Not Before: Mar  1 17:58:25 2012 GMT
+            Not After : Mar  1 17:58:25 2013 GMT
+        Subject: C=US, ST=California, O=Noname Inc., OU=IT, CN=dispatcher-x.pogo.nonexist.com
+        Subject Public Key Info:
+            Public Key Algorithm: rsaEncryption
+            RSA Public Key: (1024 bit)
+                Modulus (1024 bit):
+                    00:d1:69:57:cc:c2:00:94:71:3a:be:26:87:2a:b3:
+                    5a:7b:eb:c2:13:52:41:e8:86:2a:2e:9f:6a:2d:73:
+                    fc:84:1b:2a:ab:b7:1a:1f:ac:2e:cc:18:04:b5:fa:
+                    81:d1:fb:66:5d:c9:61:33:7f:5c:91:79:7f:61:f2:
+                    7f:4a:d6:8a:2c:09:69:1f:b5:c2:bc:ad:d2:91:f8:
+                    1b:af:ff:3d:26:0b:79:e8:3b:90:33:0d:c8:6d:53:
+                    4d:27:d5:da:fe:2e:4c:72:80:e4:21:54:70:ff:0b:
+                    9d:65:a5:20:28:51:7f:ec:5c:96:94:c5:c4:96:f5:
+                    03:2f:b0:4f:5d:3b:33:96:75
+                Exponent: 65537 (0x10001)
+    Signature Algorithm: md5WithRSAEncryption
+        88:6a:d2:b0:93:82:4a:54:5d:dd:45:80:7a:ce:57:b8:3d:f4:
+        b1:4c:35:8f:af:a5:ac:d2:66:33:2c:9c:23:da:29:00:01:c9:
+        03:7e:35:b4:44:79:cb:cb:4c:d1:2b:b7:fb:4c:8d:ac:33:4b:
+        b9:4c:b1:a5:ca:45:6f:2e:d6:40:e5:97:07:c0:bf:17:79:88:
+        b1:c4:0f:c3:8f:4d:41:0d:e1:8b:b2:e6:10:cf:70:c3:8e:8e:
+        7d:67:87:c5:5b:ae:c1:ef:7f:8a:31:72:8e:94:5c:ab:4c:99:
+        46:7c:34:b4:1f:18:f7:0e:11:7a:a8:69:73:a0:6c:38:b3:18:
+        ee:7c
+-----BEGIN CERTIFICATE-----
+MIICljCCAf8CAQEwDQYJKoZIhvcNAQEEBQAwgbgxCzAJBgNVBAYTAlVTMRMwEQYD
+VQQIEwpDYWxpZm9ybmlhMRYwFAYDVQQHEw1TYW4gRnJhbmNpc2NvMT8wPQYDVQQK
+FDZTbG9wcHkgQ0EgSW5jLiAtIFdlIGFwcHJvdmUgQW55dGhpbmcgd2l0aG91dCBj
+aGVja2luZyExCzAJBgNVBAsTAklUMRYwFAYDVQQDEw1zb21ld2hlcmUuY29tMRYw
+FAYJKoZIhvcNAQkBFgdhQGIuY29tMB4XDTEyMDMwMTE3NTgyNVoXDTEzMDMwMTE3
+NTgyNVowbjELMAkGA1UEBhMCVVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFDASBgNV
+BAoTC05vbmFtZSBJbmMuMQswCQYDVQQLEwJJVDEnMCUGA1UEAxMeZGlzcGF0Y2hl
+ci14LnBvZ28ubm9uZXhpc3QuY29tMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKB
+gQDRaVfMwgCUcTq+Jocqs1p768ITUkHohioun2otc/yEGyqrtxofrC7MGAS1+oHR
++2ZdyWEzf1yReX9h8n9K1oosCWkftcK8rdKR+Buv/z0mC3noO5AzDchtU00n1dr+
+LkxygOQhVHD/C51lpSAoUX/sXJaUxcSW9QMvsE9dOzOWdQIDAQABMA0GCSqGSIb3
+DQEBBAUAA4GBAIhq0rCTgkpUXd1FgHrOV7g99LFMNY+vpazSZjMsnCPaKQAByQN+
+NbREecvLTNErt/tMjawzS7lMsaXKRW8u1kDllwfAvxd5iLHED8OPTUEN4Yuy5hDP
+cMOOjn1nh8VbrsHvf4oxco6UXKtMmUZ8NLQfGPcOEXqoaXOgbDizGO58
+-----END CERTIFICATE-----
