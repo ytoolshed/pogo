@@ -85,9 +85,9 @@ sub start {
     $self->reg_cb(
         "worker_task_request",
         sub {
-            my ( $c, $task_id, $cmd, $host ) = @_;
+            my ( $c, $task ) = @_;
 
-            my $task = $self->task_start( $task_id, $cmd, $host );
+            $self->task_start( $task );
             $self->event( "worker_task_active", $task );
         }
     );
@@ -97,9 +97,9 @@ sub start {
     $self->reg_cb(
         "worker_dconn_cmd_recv",
         sub {
-            my ( $c, $task_id, $cmd, $host ) = @_;
+            my ( $c, $task_id, $task_name, $task_data ) = @_;
 
-            $self->cmd_handler( $task_id, $cmd, $host );
+            $self->task_handler( $task_id, $task_name, $task_data );
         }
     );
 
@@ -119,35 +119,55 @@ sub start {
 }
 
 ###########################################
-sub cmd_handler {
+sub task_handler {
 ###########################################
-    my ( $self, $task_id, $cmd, $host ) = @_;
+    my ( $self, $task_id, $task_name, $task_data ) = @_;
 
-    my %commands = map { $_ => 1 } qw( test );
+    my %ok_tasks = map { $_ => 1 } qw( test remote );
 
-    if ( exists $commands{ $cmd } ) {
-        my $method = $cmd . "_cmd";
+    if ( exists $ok_tasks{ $task_name } ) {
+        my $method = $task_name . "_task";
         no strict 'refs';
-        $self->$method( $task_id, $host );
+        $self->$method( $task_id, $task_data );
         return;
     }
 
-    ERROR "Invalid command: $cmd";
+    ERROR "Invalid task name: $task_name";
 
     my $task = Pogo::Worker::Task->new(
         rc      => -1,
-        message => "Invalid command $cmd",
+        message => "Invalid task name $task_name",
     );
 
     $self->event( "worker_task_done", $task );
 }
 
 ###########################################
-sub test_cmd {
+sub ssh_task {
 ###########################################
-    my ( $self, $task_id, $host ) = @_;
+    my ( $self, $task_id, $task_data ) = @_;
 
-    $self->event( "worker_task_request", $task_id, "sleep 1", $host );
+    my $task = Pogo::Worker::Task::Command::Remote->new(
+        map { $_ => $task_data->{ $_ } }
+          qw( ssh pogo_pw command user password host ),
+        id       => $task_id,
+    );
+
+    $self->event( "worker_task_request", $task );
+}
+
+###########################################
+sub test_task {
+###########################################
+    my ( $self, $task_id, $task_data ) = @_;
+
+    my $task = Pogo::Worker::Task::Command->new(
+        command => "sleep 1",
+        id      => $task_id,
+        host    => $task_data,
+    );
+
+    $self->event( "worker_task_request", $task );
 }
 
 ###########################################
@@ -163,13 +183,9 @@ sub to_dispatcher {
 ###########################################
 sub task_start {
 ###########################################
-    my ( $self, $task_id, $cmd, $host ) = @_;
+    my ( $self, $task ) = @_;
 
     # TODO: start task timeout timer
-
-    my $task = Pogo::Worker::Task::Command->new( 
-        command => $cmd, host => $host );
-    $task->id( $task_id );
 
     $task->reg_cb(
         on_finish => sub {
@@ -184,7 +200,7 @@ sub task_start {
         },
     );
 
-    DEBUG "Worker starting task ", $task->id(), " (cmd=$cmd host=$host)";
+    DEBUG "Worker starting task ", $task->id(), " (", $task->as_string(), ")";
     $task->start();
 
     # save it in the task tracker by its unique id to keep it running

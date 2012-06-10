@@ -38,8 +38,6 @@ sub start {
 ###########################################
     my ( $self, $stdin ) = @_;
 
-    $DB::single = 1;
-
     DEBUG "Starting command $self->{ command }";
 
     $stdin = "" if !defined $stdin;
