@@ -191,6 +191,27 @@ Pogo::Job holds parameters for a job, including the target hosts, the
 command, and the configuration. See C<Pogo::API::V1> for a description
 of all parameters and their corresponding accessors (section C<POST /v1/jobs>).
 
+Mandatory parameters are
+
+=over 4
+
+=item C<task_name>
+
+Defines what kind of task a worker is supposed to run. In classic Pogo,
+this is always a C<ssh> call to a remote host and running a command there.
+In OSS Pogo, this can be anything. The C<task_handler()> method
+in C<Pogo::Worker> defines a mapping between the C<task_name> used here
+and the C<Pogo::Worker::Task> subclass to implement the desired behavior.
+(Using C<Pogo::Worker::Task::Command::Remote> for classic C<ssh> tasks).
+
+=item C<range>
+
+The range of targets to execute the task on. Pogo is running
+one task (defined in C<task_name> on many targets in a defined order
+(defined in C<range>).
+
+=back
+
 =head1 LICENSE
 
 Copyright (c) 2010-2012 Yahoo! Inc. All rights reserved.
