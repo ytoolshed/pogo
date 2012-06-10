@@ -49,7 +49,7 @@ sub remote_command_fixup {
 ###########################################
     my( $self ) = @_;
 
-    my $cmd = "$self->{ ssh } $self->{ host } " . 
+    my $cmd = "$self->{ ssh } $self->{ user }\@$self->{ host } " . 
               qquote( $self->{ command } );
 
     my $pogo_pw_cmd = "$self->{ pogo_pw } " .
