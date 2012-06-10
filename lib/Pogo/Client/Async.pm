@@ -33,15 +33,15 @@ sub job_submit {
     my ( $self, $params ) = @_;
 
     required_params_check( $params, 
-        [ qw( command range config ) ] );
+        [ qw( task_name range config ) ] );
 
     use URI;
     my $uri = URI->new( "$self->{ api_base_url }/jobs" );
 
     my $job = Pogo::Job->new( 
-        command => $params->{ command },
-        range   => $params->{ range },
-        config  => $params->{ config },
+        task_name => $params->{ task_name },
+        range     => $params->{ range },
+        config    => $params->{ config },
     );
 
     my $req     = POST $uri, [ %{ $job->as_hash() } ];

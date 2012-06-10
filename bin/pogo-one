@@ -21,7 +21,8 @@ use Pogo::Job;
 my $pogo = Pogo::One->new();
 
 my $job = Pogo::Job->new(
-    command  => "test",
+    task     => "ssh",
+    command  => "test 1",
     range    => [ qw(host1 host2) ],
     config   => <<'EOT',
 tag:

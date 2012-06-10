@@ -16,11 +16,11 @@ my $pogo;
 $pogo = PogoFake->new();
 
 $pogo->reg_cb( worker_dconn_cmd_recv  => sub {
-    my( $c, $task_id, $cmd ) = @_;
+    my( $c, $task_id, $data ) = @_;
 
     DEBUG "Worker received command";
 
-    is( $cmd, "command-by-dispatcher", 
+    is( $data->{ command }, "command-by-dispatcher", 
         "received dispatcher command #1" );
 });
 
@@ -28,8 +28,6 @@ $pogo->reg_cb( dispatcher_wconn_cmd_recv  => sub {
     my( $c, $data ) = @_;
 
     DEBUG "Dispatcher received command";
-
-    $DB::single = 1;
 
     return if $data->{ command } ne "command-by-worker";
 
@@ -71,7 +69,10 @@ $pogo->reg_cb( worker_dconn_qp_idle => sub {
 $pogo->reg_cb( dispatcher_wconn_worker_connect => sub {
       
     DEBUG "Connection up, dispatcher sending command to worker";
-    $pogo->{ dispatcher }->to_worker( { command => "command-by-dispatcher",
+    $pogo->{ dispatcher }->to_worker( { task_data => {
+                                         task_name => "blech",
+                                         command   => "command-by-dispatcher",
+                                        },
                                         task_id => "123" } );
 });
 

@@ -891,7 +891,7 @@ sub job_post_to_dispatcher {
     my $cp          = Pogo::Dispatcher::ControlPort->new();
     my $cp_base_url = $cp->base_url();
 
-    DEBUG "Submitting job to $cp_base_url (cmd=", $job->command(), ")";
+    DEBUG "Submitting job to $cp_base_url (task=", $job->task_name(), ")";
 
     my $http_req = POST "$cp_base_url/jobsubmit", [ %{ $job->as_hash() } ];
 

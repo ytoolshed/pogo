@@ -97,9 +97,9 @@ sub start {
     $self->reg_cb(
         "worker_dconn_cmd_recv",
         sub {
-            my ( $c, $task_id, $task_name, $task_data ) = @_;
+            my ( $c, $task_id, $task_data, $host ) = @_;
 
-            $self->task_handler( $task_id, $task_name, $task_data );
+            $self->task_handler( $task_id, $task_data, $host );
         }
     );
 
@@ -121,14 +121,16 @@ sub start {
 ###########################################
 sub task_handler {
 ###########################################
-    my ( $self, $task_id, $task_name, $task_data ) = @_;
+    my ( $self, $task_id, $task_data, $host ) = @_;
 
     my %ok_tasks = map { $_ => 1 } qw( test remote );
+
+    my $task_name = $task_data->{ task_name };
 
     if ( exists $ok_tasks{ $task_name } ) {
         my $method = $task_name . "_task";
         no strict 'refs';
-        $self->$method( $task_id, $task_data );
+        $self->$method( $task_id, $task_data, $host );
         return;
     }
 
@@ -145,11 +147,12 @@ sub task_handler {
 ###########################################
 sub ssh_task {
 ###########################################
-    my ( $self, $task_id, $task_data ) = @_;
+    my ( $self, $task_id, $task_data, $host ) = @_;
 
     my $task = Pogo::Worker::Task::Command::Remote->new(
         map { $_ => $task_data->{ $_ } }
-          qw( ssh pogo_pw command user password host ),
+          qw( ssh pogo_pw command user password ),
+        host     => $host,
         id       => $task_id,
     );
 
@@ -159,12 +162,12 @@ sub ssh_task {
 ###########################################
 sub test_task {
 ###########################################
-    my ( $self, $task_id, $task_data ) = @_;
+    my ( $self, $task_id, $task_data, $host ) = @_;
 
     my $task = Pogo::Worker::Task::Command->new(
         command => "sleep 1",
         id      => $task_id,
-        host    => $task_data,
+        host    => $host,
     );
 
     $self->event( "worker_task_request", $task );

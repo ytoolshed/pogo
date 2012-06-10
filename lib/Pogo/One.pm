@@ -80,15 +80,15 @@ sub start {
 
     $self->{ dispatcher }->start();
 
-     # api server
-   $self->{ api_server }->reg_cb( api_server_up  => sub {
+      # api server
+    $self->{ api_server }->reg_cb( api_server_up  => sub {
        my( $c ) = @_;
        DEBUG "api ready";
 
        $self->event( "pogo_one_ready" );
-   });
+    });
 
-   $self->{ api_server }->standalone();
+    $self->{ api_server }->standalone();
 }
 
 ###########################################
@@ -115,10 +115,8 @@ sub job_submit {
             return;
         }
 
-        $DB::single = 1;
-
         if( $data->{ meta }->{ rc } eq "ok" ) {
-            DEBUG "Command $job->{ command } for hosts ",
+            DEBUG "Submitted $job->{ task_name } for hosts ",
                 $job->field_as_string( "range" ), " submitted to Web API";
             DEBUG "Response: $data->{ response }->{ message }";
         } else {

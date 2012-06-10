@@ -36,8 +36,12 @@ $pogo->reg_cb( dispatcher_wconn_worker_connect  => sub {
     ok( 1, "worker $workers_connected connected" );
 
     if( $workers_connected == 2 ) {
-        $pogo->{ dispatcher }->to_worker( { command => "command-by-dispatcher",
-           task_id => 123 } );
+        $pogo->{ dispatcher }->to_worker( { 
+                task_data => {
+                    task_name => "test",
+                    command => "command-by-dispatcher",
+                },
+                task_id => 123 } );
     }
 });
 

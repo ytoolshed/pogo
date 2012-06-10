@@ -59,35 +59,35 @@ sub start {
     $cp->start();
     $self->{ cp } = $cp;           # guard it or it'll vanish
 
-    # if a job comes in ...
+      # if a task for a worker comes in ...
     $self->reg_cb(
-        "dispatcher_task_received",
+        "dispatcher_worker_task_received",
         sub {
-            my ( $c, $slot_task, $cmd, $scheduler ) = @_;
+            my ( $c, $slot_task, $worker_task_data, $scheduler ) = @_;
 
             # Assign it a dispatcher task ID
             my $id = $self->next_task_id();
 
             my $task = {
-                slot_task => $slot_task,
-                host      => $slot_task->{ host },
-                command   => $cmd,
-                task_id   => $id,
-                scheduler => $scheduler,
+                slot_task        => $slot_task,
+                host             => $slot_task->{ host },
+                worker_task_data => $worker_task_data,
+                task_id          => $id,
+                scheduler        => $scheduler,
             };
 
             $self->{ tasks_in_progress }->{ $id } = $task;
 
             # ... send it to a worker
-            DEBUG "Sending cmd $task->{ host }:$cmd to a worker";
+            DEBUG "Sending cmd for $task->{ host } to a worker";
 
-            my $worker_task_data = {
+            my $to_worker = {
                 host      => $slot_task->{ host },
-                command   => $cmd,
+                task_data => $worker_task_data,
                 task_id   => $id,
             };
 
-            $self->to_worker( $worker_task_data );
+            $self->to_worker( $to_worker );
         }
     );
 

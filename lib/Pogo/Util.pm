@@ -33,7 +33,7 @@ sub required_params_check {
     for my $param ( @$params ) {
         if( !exists $hash->{ $param } or
             !defined $hash->{ $param } ) {
-            LOGCROAK "Mandatory parameter $param missing";
+            LOGCARP "Mandatory parameter $param missing";
         }
     }
 

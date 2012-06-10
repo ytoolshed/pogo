@@ -82,17 +82,15 @@ sub jobsubmit {
     my $scheduler = Pogo::Scheduler::Classic->new();
     $scheduler->config_load( \ $job->config() );
 
-    my $command = $job->command();
-
     $scheduler->reg_cb( "task_run", sub {
-        my( $c, $task ) = @_;
+        my( $c, $scheduler_task ) = @_;
 
-        my $host = $task->{ host };
+        my $host = $scheduler_task->{ host };
 
-        INFO "Running Task. Target: $host Command: $command";
+        INFO "Running Task. Target: $host";
 
-        $dispatcher->event( "dispatcher_task_received", 
-            $task, $command, $scheduler );
+        $dispatcher->event( "dispatcher_worker_task_received", 
+            $scheduler_task, $job->worker_task_data() , $scheduler );
     } );
 
     DEBUG "Schedule complete: ", $scheduler->as_ascii();

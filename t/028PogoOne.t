@@ -24,9 +24,9 @@ my $main = AnyEvent->condvar();
 my $pogo = Pogo::One->new();
 
 my $job = Pogo::Job->new(
-    command  => "test",
-    range    => [ qw(host1 host2) ],
-    config   => <<'EOT',
+    task_name => "test",
+    range     => [ qw(host1 host2) ],
+    config    => <<'EOT',
 tag:
 sequence:
   - host3

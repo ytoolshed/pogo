@@ -48,9 +48,9 @@ $client->reg_cb( "client_job_submit_fail", sub {
 } );
 
 my $job = Pogo::Job->new(
-    command  => "test",
-    range    => [ qw(host1 host2) ],
-    config   => <<'EOT',
+    task_name => "test",
+    range     => [ qw(host1 host2) ],
+    config    => <<'EOT',
 tag:
 sequence:
   - host3

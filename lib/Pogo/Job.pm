@@ -7,18 +7,21 @@ use Log::Log4perl qw(:easy);
 use AnyEvent;
 use AnyEvent::Strict;
 use Pogo::Util qw( make_accessor );
+use JSON qw( to_json );
 use URI;
 
 my @MANDATORY_FIELDS = qw(
-command
+task_name
 range
 );
 
 my @SCALAR_FIELDS = qw(
+task_name
+task_data
+command
 error
 config
 namespace
-command
 user
 password
 client_private_key
@@ -153,6 +156,19 @@ sub as_string {
     }
 
     return $string;
+}
+
+###########################################
+sub worker_task_data {
+###########################################
+    my( $self ) = @_;
+
+    return {
+        task_name => $self->{ task_name },
+        task_data => {
+            command => $self->{ command },
+        }
+    };
 }
 
 1;

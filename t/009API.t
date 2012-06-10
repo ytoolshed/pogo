@@ -57,11 +57,11 @@ sub run_tests {
 ####################################
     ok 1, "all components required for test are up #1";
 
-    my $cmdline = "test";
+    my $task_name = "test";
 
-    $pogo->reg_cb( dispatcher_task_received => sub {
-        my( $c, $host, $cmd ) = @_;
-        is $cmd, $cmdline, "dispatcher job received event #3";
+    $pogo->reg_cb( dispatcher_worker_task_received => sub {
+        my( $c, $host, $data ) = @_;
+        is $data->{ task_name }, $task_name, "dispatcher job received event #3";
     });
 
     $pogo->reg_cb( worker_task_active => sub {
@@ -83,7 +83,9 @@ sub run_tests {
     use URI;
     my $uri = URI->new( "$base_url/jobs" );
 
-    my $job     = Pogo::Job->new( command => $cmdline, 
+    my $job     = Pogo::Job->new( 
+        task_name => "test",
+        command => $task_name, 
         range => [ "host1" ], config => <<'EOT' );
 tag:
 sequence:
