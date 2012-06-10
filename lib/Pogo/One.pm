@@ -16,8 +16,13 @@ use Pogo::Worker;
 use Pogo::API;
 use AnyEvent::HTTP;
 use Data::Dumper;
+use Pogo::Util qw( make_accessor required_params_check );
 use URI;
 use base qw(Pogo::Object::Event);
+
+__PACKAGE__->make_accessor( $_ ) for qw( 
+api_server
+);
 
 ###########################################
 sub new {
@@ -27,6 +32,8 @@ sub new {
     my $self = {
         %opts,
     };
+
+    $self->{ api_server } = Pogo::API->new();
 
     bless $self, $class;
 }
@@ -74,7 +81,6 @@ sub start {
     $self->{ dispatcher }->start();
 
      # api server
-   $self->{ api_server } = Pogo::API->new();
    $self->{ api_server }->reg_cb( api_server_up  => sub {
        my( $c ) = @_;
        DEBUG "api ready";

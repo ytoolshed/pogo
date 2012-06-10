@@ -10,6 +10,7 @@ use AnyEvent::Socket;
 use AnyEvent::Handle;
 use AnyEvent::HTTP;
 use HTTP::Request::Common;
+use JSON qw( from_json to_json );
 use Pogo::Util qw( make_accessor required_params_check );
 use base "Pogo::Object::Event";
 

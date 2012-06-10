@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use Test::More;
 
-my $nof_tests = 3;
+my $nof_tests = 4;
 plan tests => $nof_tests;
 
 BEGIN {
@@ -13,7 +13,10 @@ BEGIN {
 }
 
 use Pogo::One;
+use Pogo::Client::Async;
 use Pogo::Job;
+use Pogo::Util::Bucketeer;
+use Data::Dumper;
 use Pogo::Util::Bucketeer;
 
 # use Log::Log4perl qw(:easy);
@@ -23,15 +26,26 @@ my $main = AnyEvent->condvar();
 
 my $pogo = Pogo::One->new();
 
-$pogo->reg_cb( "pogo_one_ready", sub {
-    DEBUG "Pogo one is ready.";
-    $main->send();
+my $client = Pogo::Client::Async->new(
+    api_base_url => $pogo->api_server()->base_url(),
+);
+
+my $bck = Pogo::Util::Bucketeer->new(
+    buckets => [
+  [ qw( host2 ) ],
+  [ qw( host1 ) ],
+] );
+
+$client->reg_cb( "client_job_submit_ok", sub {
+    my( $c, $resp, $job ) = @_;
+    INFO "Job submitted.";
 } );
 
-$pogo->start();
-$main->recv();
-
-__END__
+$client->reg_cb( "client_job_submit_fail", sub {
+    my( $c, $resp, $job ) = @_;
+    ERROR "Job submission failed: ", Dumper( $resp );
+    $main->send();
+} );
 
 my $job = Pogo::Job->new(
     command  => "test",
@@ -45,38 +59,31 @@ sequence:
 EOT
 );
 
-$pogo->reg_cb( "pogo_one_job_submitted", sub {
-    my( $c, $job ) = @_;
+$pogo->reg_cb( "pogo_one_ready", sub {
+    DEBUG "Pogo one is ready.";
 
-    ok 1, "job submitted #1";
-} );
-
-my $bck = Pogo::Util::Bucketeer->new(
-    buckets => [
-  [ qw( host2 ) ],
-  [ qw( host1 ) ],
-] );
-
-$pogo->reg_cb( "worker_task_active", sub {
-        my( $c, $task ) = @_;
-
-        DEBUG "Worker running task ", $task->as_string();
+    $client->job_submit( $job->as_hash() );
 } );
 
 my $seq = 0;
 
-$pogo->reg_cb( "worker_task_done", sub {
-        my( $c, $task) = @_;
+$pogo->reg_cb( worker_task_done => sub {
+    my( $c, $task ) = @_;
 
-        DEBUG "Worker done with task ", $task->id();
-        $seq++;
-        my $host = $task->host();
-        ok $bck->item( $host ), "host $host in seq #$seq";
+    DEBUG "Worker done with task ", $task->id();
+    $seq++;
 
-        if( $seq == 2 ) {
-            $main->send();
-        }
-} );
+    my $task_string = $task->as_string();
+    my $host = $task->host();
+
+    ok $bck->item( $host ), "host $host in seq #$seq";
+
+    if( $seq == 2 ) {
+        $main->send();
+    }
+
+    is $task->rc(), 0, "worker command succeeded ($host)";
+});
 
 $pogo->start();
 $main->recv();

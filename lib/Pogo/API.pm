@@ -29,9 +29,13 @@ sub new {
     my $self = {
         host             => $host,
         port             => $port,
-        netloc           => "[no netloc]",
+        netloc           => undef,
         protocol_version => "v1",
     };
+
+    if( !defined $self->{ netloc } ) {
+        $self->{ netloc } = "http://$self->{host}:$self->{port}";
+    }
 
     bless $self, $class;
 
@@ -58,8 +62,6 @@ sub standalone {
         host => $self->{host},
         port => $self->{port},
     );
-
-    $self->{ netloc } = "http://$self->{host}:$self->{port}";
 
     $self->{ api_server }->register_service( Pogo::API->app() );
 
