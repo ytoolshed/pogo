@@ -80,6 +80,13 @@ sub start {
         DEBUG "dispatcher_task_done: $task_id";
     });
 
+    $self->event_forward(
+            { forward_from => $self->{ dispatcher } }, qw(
+                scheduler_job_done
+                dispatcher_task_done
+            )
+    );
+
     $self->{ dispatcher }->start();
 
       # api server

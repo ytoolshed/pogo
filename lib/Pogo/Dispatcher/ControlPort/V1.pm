@@ -82,6 +82,11 @@ sub jobsubmit {
     my $scheduler = Pogo::Scheduler::Classic->new();
     $scheduler->config_load( \ $job->config() );
 
+    $dispatcher->event_forward(
+        { forward_from => $scheduler }, qw(
+          scheduler_job_done )
+    );
+
     $scheduler->reg_cb( "task_run", sub {
         my( $c, $scheduler_task ) = @_;
 

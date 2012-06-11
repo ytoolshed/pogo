@@ -77,7 +77,8 @@ sub kick {
 
         DEBUG "No more slots, thread $self done";
         $self->is_done( 1 );
-        $self->event( "thread_done" );
+        DEBUG "Thread ", $self->id(), " sends thread_done event";
+        $self->event( "thread_done", $self );
         return 0;
     }
 

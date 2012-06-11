@@ -241,6 +241,7 @@ in a module, and provide its file path via 'version_from' (or
 'all_from' if you prefer) in Makefile.PL.
 EOT
 
+	$DB::single = 1;
 	if ( $self->tests ) {
 		my @tests = split ' ', $self->tests;
 		my %seen;

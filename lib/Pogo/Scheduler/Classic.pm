@@ -26,14 +26,6 @@ sub new {
 
     bless $self, $class;
 
-    $self->reg_cb(
-        "task_finished",
-        sub {
-            my ( $c, @params ) = @_;
-            $self->task_finished( @params );
-        }
-    );
-
     return $self;
 }
 
@@ -227,6 +219,31 @@ sub thread_setup {
 
                 my $thread = Pogo::Scheduler::Thread->new();
 
+                $thread->reg_cb( "thread_done", sub {
+                    my( $c, $thread ) = @_;
+
+                    DEBUG "Received thread_done of thread ", $thread->id();
+
+                    if( exists $self->{ thread_by_id }->{ $thread->id() } ) {
+                        delete $self->{ thread_by_id }->{ $thread->id() };
+                    } else {
+                        ERROR "Received thread_done of unknown thread ",
+                          "( ", $thread->id(), ")";
+                    }
+
+                    my $nof_active_threads = 
+                        scalar keys %{ $self->{ thread_by_id } };
+
+                    DEBUG "$nof_active_threads threads are still active";
+
+                    if( $nof_active_threads == 0 ) {
+                        # No more active threads, job is done.
+                        DEBUG "No more active threads, sending ",
+                          "scheduler_job_done";
+                        $self->event( "scheduler_job_done" );
+                    }
+                } );
+
                 $self->event_forward( { forward_from => $thread },
                     qw( waiting ) );
 
@@ -259,7 +276,7 @@ sub thread_setup {
                     "]";
 
                 push @{ $self->{ threads } }, $thread;
-                }
+            }
         }
     );
 
@@ -450,15 +467,6 @@ sub task_run {
     my ( $self, $task ) = @_;
 
     $self->event( "task_run", $task );
-}
-
-###########################################
-sub task_finished {
-###########################################
-    my ( $self, $task ) = @_;
-
-    # when all is done
-    $self->event( "job_done" );
 }
 
 ###########################################

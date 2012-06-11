@@ -21,10 +21,10 @@ use Pogo::Job;
 my $pogo = Pogo::One->new();
 
 my $job = Pogo::Job->new(
-    task     => "ssh",
-    command  => "test 1",
-    range    => [ qw(host1 host2) ],
-    config   => <<'EOT',
+    task_name => "ssh",
+    command   => "date",
+    range     => [ qw(host1 host2) ],
+    config    => <<'EOT',
 tag:
 sequence:
   - host3
@@ -35,7 +35,16 @@ EOT
 
 my $main = AnyEvent->condvar();
 
-$pogo->reg_cb( "job_done", sub {
+$pogo->reg_cb( "worker_task_done", sub {
+    my( $c, $task ) = @_;
+
+    my $stdout = $task->stdout;
+    chomp $stdout;
+
+    print "Task done: host=", $task->host(), " stdout=$stdout\n";
+});
+
+$pogo->reg_cb( "scheduler_job_done", sub {
     my( $c, $job ) = @_;
 
     # We've accomplished our only job, we're done. Exit.
