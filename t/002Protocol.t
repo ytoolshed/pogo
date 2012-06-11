@@ -73,6 +73,7 @@ $pogo->reg_cb( dispatcher_wconn_worker_connect => sub {
                                          task_name => "blech",
                                          command   => "command-by-dispatcher",
                                         },
+                                        host => "wonkhost",
                                         task_id => "123" } );
 });
 

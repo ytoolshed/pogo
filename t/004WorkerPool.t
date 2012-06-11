@@ -37,6 +37,7 @@ $pogo->reg_cb( dispatcher_wconn_worker_connect  => sub {
 
     if( $workers_connected == 2 ) {
         $pogo->{ dispatcher }->to_worker( { 
+                host => "wonkhost",
                 task_data => {
                     task_name => "test",
                     command => "command-by-dispatcher",

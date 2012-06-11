@@ -30,6 +30,7 @@ sub new {
     my( $class, %opts ) = @_;
 
     my $self = {
+        ssh => undef,
         %opts,
     };
 
@@ -44,12 +45,13 @@ sub start {
     my( $self ) = @_;
 
     $self->{ worker } = Pogo::Worker->new(
+        ssh            => $self->{ ssh },
         delay_connect  => sub { 0 },
         dispatchers    => [ 
           "$POGO_DISPATCHER_WORKERCONN_HOST:$POGO_DISPATCHER_WORKERCONN_PORT" ],
     );
     $self->{ worker }->set_exception_cb ( sub { 
-            LOGDIE "Worker died.";
+            LOGDIE "Worker died: $@";
     } );
 
     $self->event_forward(
@@ -60,7 +62,7 @@ sub start {
 
     $self->{ dispatcher } = Pogo::Dispatcher->new( );
     $self->{ dispatcher }->set_exception_cb ( sub { 
-            LOGDIE "Dispatcher died.";
+            LOGDIE "Dispatcher died: $@";
     } );
 
       # wait until dispatcher is up to start the worker

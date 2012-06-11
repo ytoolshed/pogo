@@ -150,8 +150,6 @@ sub channel_worker_to_dispatcher {
 ###########################################
     my ( $self, $data ) = @_;
 
-    $DB::single = 1;
-
     DEBUG "Received worker command: $data->{ command }";
 
     $self->event( "dispatcher_wconn_cmd_recv", $data );

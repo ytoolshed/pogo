@@ -8,6 +8,7 @@ use AnyEvent;
 use AnyEvent::Strict;
 use Pogo::Worker::Connection;
 use Pogo::Worker::Task::Command;
+use Pogo::Worker::Task::Command::Remote;
 use Pogo::Defaults qw(
     $POGO_DISPATCHER_WORKERCONN_HOST
     $POGO_DISPATCHER_WORKERCONN_PORT
@@ -123,7 +124,10 @@ sub task_handler {
 ###########################################
     my ( $self, $task_id, $task_data, $host ) = @_;
 
-    my %ok_tasks = map { $_ => 1 } qw( test remote );
+    DEBUG "task_handler received task $task_data->{ task_name } ",
+      "for host $host";
+
+    my %ok_tasks = map { $_ => 1 } qw( test ssh );
 
     my $task_name = $task_data->{ task_name };
 
@@ -149,12 +153,18 @@ sub ssh_task {
 ###########################################
     my ( $self, $task_id, $task_data, $host ) = @_;
 
+    DEBUG "Received ssh task for host $host";
+
     my $task = Pogo::Worker::Task::Command::Remote->new(
-        map { $_ => $task_data->{ $_ } }
-          qw( ssh pogo_pw command user password ),
+        map({ $_ => $task_data->{ task_data }->{ $_ } }
+          qw( ssh pogo_pw command user password )),
         host     => $host,
         id       => $task_id,
     );
+
+    if( $self->{ ssh } ) {
+        $task->ssh( $self->{ ssh } );
+    }
 
     $self->event( "worker_task_request", $task );
 }

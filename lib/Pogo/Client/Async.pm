@@ -33,7 +33,7 @@ sub job_submit {
     my ( $self, $params ) = @_;
 
     required_params_check( $params, 
-        [ qw( task_name range config ) ] );
+        [ qw( task_name range config command ) ] );
 
     use URI;
     my $uri = URI->new( "$self->{ api_base_url }/jobs" );
@@ -42,6 +42,7 @@ sub job_submit {
         task_name => $params->{ task_name },
         range     => $params->{ range },
         config    => $params->{ config },
+        command   => $params->{ command },
     );
 
     my $req     = POST $uri, [ %{ $job->as_hash() } ];

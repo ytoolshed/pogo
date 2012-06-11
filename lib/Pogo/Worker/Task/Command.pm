@@ -38,7 +38,7 @@ sub start {
 ###########################################
     my ( $self, $stdin ) = @_;
 
-    DEBUG "Starting command $self->{ command }";
+    DEBUG "Starting command '$self->{ command }'";
 
     $stdin = "" if !defined $stdin;
 

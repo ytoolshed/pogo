@@ -9,6 +9,7 @@ use AnyEvent::Strict;
 use Sysadm::Install qw(:all);
 use Pogo::Util qw( make_accessor required_params_check id_gen );
 use base qw(Pogo::Worker::Task::Command);
+use FindBin qw($Bin);
 
 __PACKAGE__->make_accessor( $_ ) for qw( 
 id command host
@@ -23,23 +24,24 @@ sub new {
     my ( $class, %options ) = @_;
 
     my $self = {
-        required_params_check( \%options, [ qw( command host user) ] ),
+        required_params_check( \%options, [ qw( command host ) ] ),
         %options,
     };
 
-    for my $cmd ( qw( ssh pogo-pw ) ) {
+    $self->{ password } = "" if !defined $self->{ password };
+
+    bless $self, $class;
+
+    for my $cmd ( qw( ssh pogo_pw ) ) {
         if( !defined $self->{ $cmd } ) {
-            $self->{ $cmd } = bin_find( $cmd );
+            ( my $real_cmd = $cmd ) =~ s/_/-/g;
+            $self->{ $cmd } = $self->local_bin_find( $real_cmd );
         }
     }
 
     if( !defined $self->{ id } ) {
         $self->{ id } = id_gen( "generic-task-command" );
     }
-
-    bless $self, $class;
-
-    $self->remote_command_fixup();
 
     return $self;
 }
@@ -49,7 +51,12 @@ sub remote_command_fixup {
 ###########################################
     my( $self ) = @_;
 
-    my $cmd = "$self->{ ssh } $self->{ user }\@$self->{ host } " . 
+    my $user_prefix = "";
+    if( defined $self->user() ) {
+        $user_prefix = $self->user() . '@';
+    }
+
+    my $cmd = $self->ssh() . " $user_prefix$self->{ host } " . 
               qquote( $self->{ command } );
 
     my $pogo_pw_cmd = "$self->{ pogo_pw } " .
@@ -63,7 +70,26 @@ sub start {
 ###########################################
     my( $self ) = @_;
 
+    $self->remote_command_fixup();
     return $self->SUPER::start( "password=$self->{ password }\n" );
+}
+
+###########################################
+sub local_bin_find {
+###########################################
+    my( $self, $cmd ) = @_;
+
+    my $path = bin_find( $cmd );
+
+    if( !defined $path ) {
+        $path = "$Bin/../bin/$cmd";
+    }
+
+    if( !defined $path ) {
+        LOGDIE "Cannot bin_find command $cmd";
+    }
+
+    return $path;
 }
 
 1;

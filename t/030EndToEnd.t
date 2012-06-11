@@ -24,7 +24,9 @@ use Pogo::Util::Bucketeer;
 
 my $main = AnyEvent->condvar();
 
-my $pogo = Pogo::One->new();
+my $pogo = Pogo::One->new(
+    ssh => "$Bin/../bin/pogo-test-ssh-sim",
+);
 
 my $client = Pogo::Client::Async->new(
     api_base_url => $pogo->api_server()->base_url(),
@@ -48,8 +50,9 @@ $client->reg_cb( "client_job_submit_fail", sub {
 } );
 
 my $job = Pogo::Job->new(
-    task_name => "test",
+    task_name => "ssh",
     range     => [ qw(host1 host2) ],
+    command   => "date",
     config    => <<'EOT',
 tag:
 sequence:
