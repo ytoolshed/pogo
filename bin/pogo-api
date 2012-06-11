@@ -22,7 +22,7 @@ if ( $cmdline_opts->{ verbose } ) {
 
 Log::Log4perl->easy_init({ @l4p, layout => "%F{1}-%L> %m%n" });
 
-my $api_server = Pogo::API->new( $cmdline_opts );
+my $api_server = Pogo::API->new( { host => "0.0.0.0", %$cmdline_opts } );
 $api_server->standalone();
 
 INFO "Listening on ", $api_server->host(), ":", $api_server->port();
