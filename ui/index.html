@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Pogo</title>
+    <link type="text/css" rel="stylesheet" href="http://yui.yahooapis.com/combo?3.5.1/build/cssfonts/fonts-min.css&amp;3.5.1/build/cssreset/reset-min.css&amp;3.5.1/build/cssgrids/grids-min.css" charset="utf-8">
+    <link type="text/css" rel="stylesheet" href="http://lsmith.github.com/yui3-gallery/build/gallery-paginator-dev-preview/assets/skins/sam/gallery-paginator-dev-preview.css" charset="utf-8">
+    <link type="text/css" rel="stylesheet" href="/pogo/assets/oss-tools.css" charset="utf-8">
+    <link type="text/css" rel="stylesheet" href="/pogo/assets/pogo.css" charset="utf-8">
+  </head>
+  <body class="yui3-skin-sam oss">
+    <div id="application-container">
+      <header>
+        <div id="oss-tools-header">
+          <div class="oss-tools-content">
+            <a href="/pogo/" title="Pogo">Pogo</a>
+          
+            <div class="y-branding">this is<div class="y-logo"></div></div>
+          </div>
+        </div>
+      </header>
+
+
+      <div id="application-content">
+
+      </div>
+    </div>
+    
+    <!-- Change the footer to be for "os-tools" -->
+    <footer>
+      <div id="oss-footer">
+        <div class="oss-content">
+          <div class="oss-info">
+            <div class="tools-credits">
+              <p>Yahoo! Pogo UI <strong><a class="version-docs" href="https://github.com/ytoolshed/pogo/tree/ng">Version 5.0</a></strong></p>
+              <p>Copyright &copy; 2012 Yahoo! Inc. All rights reserved.</p>
+            </div>
+            <div class="tools-contact">
+              Questions/Comments? See our <a href="https://github.com/ytoolshed/pogo/issues">Issues Page</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </footer>
+
+    <!-- JS -->
+    <script type="text/javascript" src="http://yui.yahooapis.com/combo?3.5.1/build/yui/yui-min.js"></script>
+    <script type="text/javascript" src="/pogo/js/build/pogo-loader/pogo-loader-min.js"></script>
+    <script type="text/javascript">
+/*globals YUI */
+YUI({gallery: 'gallery-2012.04.26-15-49'}).use('pogo-app', function (Y) {
+    var app;
+    app = new Y.Pogo.App();
+    app.render().dispatch();
+});
+    </script>
+  </body>
+</html>

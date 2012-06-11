@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>pogo-formatters tests</title>
+<script type="text/javascript" src="http://yui.yahooapis.com/3.3.0/build/yui/yui-min.js"></script>
+<script type="text/javascript" src="../../../tests/instrumented/pogo-loader/pogo-loader.js"></script>
+</head>
+<body class="yui3-skin-sam">
+<h1>pogo-formatters Tests</h1>
+<script type="text/javascript">
+
+YUI_config.groups.pogo.base = '../../../tests/instrumented/'; // serve instrumented modules
+
+YUI().use("test", "console", "pogo-formatters", function(Y) {
+  
+    window.Y = Y; // keep this for the yui selenium driver
+
+    var c = new Y.Console().render();
+
+    var testCase = new Y.Test.Case({
+        name: "pogo-formatters tests",
+
+        test_dates: function() {
+          
+            var o = new Y.pogo-formatters();
+            
+            Y.Assert.areEqual( true, o.someFunc() );
+
+        }
+    });
+    
+    Y.Test.Runner.add(testCase);
+    Y.Test.Runner.run();
+});
+</script>
+</body>
+</html>

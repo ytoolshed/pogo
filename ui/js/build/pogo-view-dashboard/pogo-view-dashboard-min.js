@@ -1,0 +1,1 @@
+YUI.add("pogo-view-dashboard",function(a){a.namespace("Pogo.View").Dashboard=new a.Base.create("pogo-view-dashboard",a.Pogo.View.MultiDatatable,[]);},"@VERSION@",{requires:["base","pogo-view-multidatatable"]});

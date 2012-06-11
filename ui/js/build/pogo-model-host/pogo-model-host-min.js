@@ -1,0 +1,1 @@
+YUI.add("pogo-model-host",function(a){a.namespace("Pogo.Model").Host=a.Base.create("pogo-model-host",a.Model,[],{},{ATTRS:{host:{value:""},state:{value:""},rc:{value:""},start_time:{value:""},finish_time:{value:""},duration:{value:""},jobid:{value:""},job_start:{value:0},job_finish:{value:0},job_duration:{value:0}}});},"@VERSION@",{requires:["base","model"]});

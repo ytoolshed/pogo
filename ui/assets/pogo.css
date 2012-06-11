@@ -1,0 +1,47 @@
+.oss.yui3-skin-sam .pogo-datatablegroup .yui3-tabview-list {
+  text-align: right;
+  padding-right: 2%;
+}
+.yui3-datatable-col-command {
+  font-family: "Lucida Console", monospace;
+  font-size: 90%;
+}
+
+.metadata code {
+  font-family: "Lucida Console", monospace;
+  font-size: 90%;
+  overflow: auto;
+  margin: 0 auto;
+  padding: 5px;
+  width: 90%;
+  border: 1px solid #ddd;
+  background-color: #fefefe;
+}
+
+.metadata span {
+  word-break: break-all;
+  word-wrap: break-word;
+}
+
+.metadata .yui3-g {
+  margin-top: 15px;
+}
+
+.yui3-datatable-col-duration1 span {
+  display: inline-block;
+  text-indent: -9000px;
+}
+.yui3-datatable-col-duration1 span.duration {
+  background-color: green;
+}
+
+.yui3-paginator {
+  margin-top: 10px;
+  text-align: center;
+}
+
+iframe {
+  width: 100%;
+  height: 500px;
+}
+

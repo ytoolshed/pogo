@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="pogo" default="local">
+    <description>pogo Build File</description>
+    <exec executable="node" failonerror="true">
+        <arg value="meta_join.ssjs"/>
+    </exec>
+    <property file="build.properties" />
+    
+    <import file="../default.xml"/>
+    
+</project>
