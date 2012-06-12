@@ -166,6 +166,10 @@ sub ssh_task {
         $task->ssh( $self->{ ssh } );
     }
 
+    if( $self->{ pogo_pw } ) {
+        $task->pogo_pw( $self->{ pogo_pw } );
+    }
+
     $self->event( "worker_task_request", $task );
 }
 

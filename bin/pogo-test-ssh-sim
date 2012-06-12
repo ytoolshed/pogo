@@ -21,7 +21,7 @@ my $in   = 0;
 for( 1..3 ) {
     ReadMode( 4 );
     $|=1;
-    print "\n$user\@localhost's password: "; 
+    print "\n$user\@foohost's password: "; 
     my $password = <STDIN>;
     ReadMode( 0 );
     

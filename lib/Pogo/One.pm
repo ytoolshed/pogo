@@ -30,7 +30,8 @@ sub new {
     my( $class, %opts ) = @_;
 
     my $self = {
-        ssh => undef,
+        ssh     => undef,
+        pogo_pw => undef,
         %opts,
     };
 
@@ -46,6 +47,7 @@ sub start {
 
     $self->{ worker } = Pogo::Worker->new(
         ssh            => $self->{ ssh },
+        pogo_pw        => $self->{ pogo_pw },
         delay_connect  => sub { 0 },
         dispatchers    => [ 
           "$POGO_DISPATCHER_WORKERCONN_HOST:$POGO_DISPATCHER_WORKERCONN_PORT" ],
