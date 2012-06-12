@@ -28,6 +28,12 @@ for( 1..3 ) {
     chomp $password;
     print "\n";
     
+    if( 1 ) {
+          # for now, just accept any password
+        $in = 1;
+        last;
+    }
+
     if( $password eq $pass ) {
         $in = 1;
         last;
