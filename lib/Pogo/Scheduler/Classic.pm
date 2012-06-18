@@ -108,7 +108,7 @@ sub config_load {
 
                 push @{ $self->{ slot_hosts }->{ $slot } }, $host;
                 push @{ $self->{ host_slots }->{ $host } }, "$slot";
-                }
+            }
         }
     );
 
@@ -713,10 +713,10 @@ try to load a Plugin with the tag's name.
 For example, with
 
     constraint:
-      $_MyRules[my_db_server]: 
+      $MyRules my_db_server: 
           max_parallel: 2
 
-and no tag C<_MyRules> defined anywhere in the configuration file, the
+and no tag C<MyRules> defined anywhere in the configuration file, the
 scheduler will look for C<MyRules.pm> in
 
     lib/Pogo/Scheduler/Config/Plugin
