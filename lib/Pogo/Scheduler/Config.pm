@@ -8,7 +8,7 @@ use AnyEvent;
 use AnyEvent::Strict;
 use Pogo::Scheduler::Constraint;
 use Data::Dumper;
-use YAML::XS qw( Load LoadFile );
+use YAML qw( Load LoadFile );
 use base qw(Pogo::Object::Event);
 
 use Pogo::Util qw( make_accessor id_gen struct_traverse );

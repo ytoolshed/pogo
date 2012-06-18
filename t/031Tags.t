@@ -20,11 +20,11 @@ use Pogo::Scheduler::Config;
 my $cfg = Pogo::Scheduler::Config->new();
 
 $cfg->load( <<'EOT' );
-      tag:
-         $colo.usa
-           - host1
-         $colo.mexico
-           - host2
+tag:
+  $colo.usa:
+    - host1
+  $colo.mexico:
+    - host2
 EOT
 
 ok 1, "done";
