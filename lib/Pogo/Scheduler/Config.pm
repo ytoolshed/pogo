@@ -109,8 +109,6 @@ sub parse {
         {   leaf => sub {
                 my ( $node, $path ) = @_;
 
-                $DB::single = 1;
-
                 my $dot_path = join '.', @$path;
 
                 my $tag = $self->tag_add( $dot_path );
@@ -128,6 +126,14 @@ sub parse {
             }
         }
     );
+}
+
+###########################################
+sub tags {
+###########################################
+    my ( $self ) = @_;
+
+    return [ keys %{ $self->{ tags } } ];
 }
 
 ###########################################

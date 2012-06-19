@@ -28,8 +28,6 @@ tag:
     - host2
 EOT
 
-$DB::single = 1;
-
 my $members = $cfg->members( "colo" );           # host1, host2
 
 is scalar @$members, 2, "member ok";

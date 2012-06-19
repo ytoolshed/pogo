@@ -9,6 +9,7 @@ use Pogo::Util qw( array_intersection struct_traverse );
 use Pogo::Scheduler::Thread;
 use Pogo::Scheduler::Slot;
 use Pogo::Scheduler::Task;
+use Pogo::Scheduler::Config;
 use String::Glob::Permute qw( string_glob_permute );
 use base qw( Pogo::Scheduler );
 
@@ -97,20 +98,20 @@ sub config_load {
     # Traverse the configuration's "tag" structure and map hosts
     # to slots (host slots constitute of the full path to the leaf nodes
     # in the "tag" configuration).
-    Pogo::Util::struct_traverse(
-        $self->{ config }->{ tag },
-        {   leaf => sub {
-                my ( $node, $path ) = @_;
-
-                my $host = $node;
-                my $slot = join '.', @$path;
-                $slot =~ s/^\$//;
-
-                push @{ $self->{ hosts_in_slot }->{ $slot } }, $host;
-                push @{ $self->{ slots_per_host }->{ $host } }, "$slot";
-            }
-        }
+    $DB::single = 1;
+    my $cfg = Pogo::Scheduler::Config->new(
+        cfg => $self->{ config },
     );
+    $cfg->parse();
+    for my $slot ( @{ $cfg->tags() } ) {
+        my $hosts = $cfg->members( $slot );
+
+        push @{ $self->{ hosts_in_slot }->{ $slot } }, @$hosts;
+
+        for my $member ( @$hosts ) {
+            push @{ $self->{ slots_per_host }->{ $member } }, $slot;
+        }
+    }
 
     $self->constraint_setup();
     $self->slot_setup();
