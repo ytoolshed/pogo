@@ -106,8 +106,8 @@ sub config_load {
                 my $slot = join '.', @$path;
                 $slot =~ s/^\$//;
 
-                push @{ $self->{ slot_hosts }->{ $slot } }, $host;
-                push @{ $self->{ host_slots }->{ $host } }, "$slot";
+                push @{ $self->{ hosts_in_slot }->{ $slot } }, $host;
+                push @{ $self->{ slots_per_host }->{ $host } }, "$slot";
             }
         }
     );
@@ -136,8 +136,9 @@ sub constraint_setup {
                 $self->{ constraints_by_slot }->{ $slot_name } =
                     Pogo::Scheduler::Constraint->new( $field => $value );
 
-                for my $host ( keys %{ $self->{ host_slots } } ) {
-                    for my $slot_name ( @{ $self->{ host_slots }->{ $host } } )
+                for my $host ( keys %{ $self->{ slots_per_host } } ) {
+                    for my $slot_name ( 
+                        @{ $self->{ slots_per_host }->{ $host } } )
                     {
                         next
                             if !
@@ -174,12 +175,12 @@ sub slot_setup {
                 push @parts, $part;
             }
 
-            my $found = $self->{ slot_hosts }->{ shift @parts };
+            my $found = $self->{ hosts_in_slot }->{ shift @parts };
             @hosts = @$found if defined $found;
 
             for my $part ( @parts ) {
                 @hosts = array_intersection( \@hosts, 
-                           $self->{ slot_hosts }->{ $part } );
+                           $self->{ hosts_in_slot }->{ $part } );
             }
 
         } else {
