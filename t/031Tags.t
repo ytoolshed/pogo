@@ -13,7 +13,8 @@ BEGIN {
 }
 
 use Log::Log4perl qw(:easy);
-Log::Log4perl->easy_init( { level => $DEBUG, category => 'main' } );
+# Log::Log4perl->easy_init( { level => $DEBUG, category => 'main' } );
+# Log::Log4perl->easy_init( $DEBUG );
 
 use Pogo::Scheduler::Config;
 
@@ -29,5 +30,14 @@ EOT
 
 ok 1, "done";
 
-#my @all = $cfg->members( "colo" );           # host1, host2
-#my @mexico = $cfg->members( "colo.mexico" ); # host2
+__END__
+my @members = $cfg->members( "colo" );           # host1, host2
+
+is scalar @members, 2, "member ok";
+is $members[0], "host1", "member ok";
+is $members[1], "host2", "member ok";
+
+my @mexico = $cfg->members( "colo.mexico" ); # host2
+
+is scalar @mexico, 1, "child ok";
+is $mexico[0], "host2", "child ok";

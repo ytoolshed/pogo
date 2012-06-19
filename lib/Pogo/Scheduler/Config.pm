@@ -54,14 +54,32 @@ sub parse {
     my ( $self ) = @_;
 
     Pogo::Util::struct_traverse(
-        $self->{ config }->{ tag },
+        $self->{ cfg }->{ tag },
         {   leaf => sub {
                 my ( $node, $path ) = @_;
 
-                DEBUG "node=$node path=$path";
+                $path =~ s/^\$//;
+                my @parts = split /\./, $path;
+
+                for my $part ( @parts ) {
+                }
+
+                DEBUG "node=$node path=", Dumper( $path );
             }
         }
     );
+}
+
+###########################################
+sub members {
+###########################################
+    my ( $self, $tag ) = @_;
+
+    if( !exists $self->{ tags }->{ $tag } ) {
+        return ();
+    }
+
+    return $self->{ tags }->{ $tag }->members();
 }
 
 ###########################################
