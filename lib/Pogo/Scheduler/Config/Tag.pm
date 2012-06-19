@@ -51,10 +51,10 @@ sub members {
     push @members, @{ $self->{ members } };
 
     for my $child ( @{ $self->{ children } } ) {
-        push @members, $child->members();
+        push @members, @{ $child->members() };
     }
 
-    return @members;
+    return \@members;
 }
 
 ###########################################

@@ -8,6 +8,7 @@ use AnyEvent;
 use AnyEvent::Strict;
 use Pogo::Scheduler::Constraint;
 use Pogo::Scheduler::Config::Tag;
+use Pogo::Scheduler::Config::TagExternal;
 use Module::Pluggable;
 use Data::Dumper;
 use YAML qw( Load LoadFile );
@@ -28,6 +29,9 @@ sub new {
         tags => {},
         %options,
     };
+
+    $self->{ external_tag_resolver } = 
+        Pogo::Scheduler::Config::TagExternal->new();
 
     bless $self, $class;
 }
@@ -129,13 +133,20 @@ sub parse {
 ###########################################
 sub members {
 ###########################################
-    my ( $self, $tag ) = @_;
+    my ( $self, $tag, $cb ) = @_;
 
     if( !exists $self->{ tags }->{ $tag } ) {
+          # tag doesn't exist. Could this be a external tag reference?
+        my( $plugin_short, @params ) = split ' ', $tag;
+        if( @params ) {
+            return $self->{ external_tag_resolver }->members( 
+                $plugin_short, @params, ($cb ? $cb : ()) );
+        }
+
         return ();
     }
 
-    return $self->{ tags }->{ $tag }->members();
+    return $self->{ tags }->{ $tag }->members( $tag, ($cb ? $cb : ()) );
 }
 
 ###########################################
@@ -190,9 +201,10 @@ Load a scheduler configuration from a YAML string.
 
 Load a YAML scheduler configuration from a YAML file.
 
-=item C< members( $tag ) >
+=item C< members( $tag, [ $cb ] ) >
 
-Return all members of the tag.
+Return all members of the tag. Optionally, use the provided callback
+instead of returning the results.
 
 =back
 
@@ -201,11 +213,13 @@ Return all members of the tag.
 If C<members()> cannot resolve a tag, it tries to find a plugin in order
 the members of the tag.
 
-members( "Role(devtools.infra-ops)" );
+For a tag to be interpreted as external, it needs to be written in the format
 
-=> my $plugin = Pogo::Scheduler::Config::Plugins::Role->new();
-   $plugin->targets( "devtools.infra-ops" );
-     => rolesdb API members( "devtools.infra-ops" );
+    "MyPlugin param-1 param-2 ..."
+
+This will look for a plugin named C<MyPlugin.pm> in the
+C<Pogo::Scheduler::Config::TagExternal::Plugin> directory, 
+instantiate it and call its C<members()> method with the specified parameters.
 
 =head1 LICENSE
 
