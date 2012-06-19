@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use Test::More;
 
-my $nof_tests = 1;
+my $nof_tests = 5;
 plan tests => $nof_tests;
 
 BEGIN {
@@ -14,7 +14,7 @@ BEGIN {
 
 use Log::Log4perl qw(:easy);
 # Log::Log4perl->easy_init( { level => $DEBUG, category => 'main' } );
-# Log::Log4perl->easy_init( $DEBUG );
+ Log::Log4perl->easy_init( $DEBUG );
 
 use Pogo::Scheduler::Config;
 
@@ -22,15 +22,14 @@ my $cfg = Pogo::Scheduler::Config->new();
 
 $cfg->load( <<'EOT' );
 tag:
-  $colo.usa:
+  colo.usa:
     - host1
-  $colo.mexico:
+  colo.mexico:
     - host2
 EOT
 
-ok 1, "done";
+$DB::single = 1;
 
-__END__
 my @members = $cfg->members( "colo" );           # host1, host2
 
 is scalar @members, 2, "member ok";

@@ -7,6 +7,7 @@ use Log::Log4perl qw(:easy);
 use AnyEvent;
 use AnyEvent::Strict;
 use Pogo::Scheduler::Constraint;
+use Pogo::Scheduler::Config::Tag;
 use Data::Dumper;
 use YAML qw( Load LoadFile );
 use base qw(Pogo::Object::Event);
@@ -49,22 +50,76 @@ sub load_file {
 }
 
 ###########################################
+sub tag_add {
+###########################################
+    my ( $self, $path ) = @_;
+
+    if( !exists $self->{ tags }->{ $path } ) {
+        $self->{ tags }->{ $path } = 
+          Pogo::Scheduler::Config::Tag->new(
+            name => $path );
+    }
+
+    return $self->{ tags }->{ $path };
+}
+
+###########################################
+sub dot_path_climb {
+###########################################
+    my ( $self, $path, $cb ) = @_;
+
+    # on "foo.bar.baz", call the callback on "foo.bar", and "foo".
+
+    my @parts = split /\./, $path;
+
+    pop @parts;
+
+    while( @parts ) {
+        $cb->( $self, join( ".", @parts ) );
+        pop @parts;
+    }
+}
+
+###########################################
 sub parse {
 ###########################################
     my ( $self ) = @_;
+
+    # Turn
+    # 
+    # foo: 
+    #   bar:
+    #     - host1
+    # baz:
+    #     - host2
+    # 
+    # into
+    # 
+    # foo->host1,host2
+    # foo.bar->host1
+    # foo.baz->host1
 
     Pogo::Util::struct_traverse(
         $self->{ cfg }->{ tag },
         {   leaf => sub {
                 my ( $node, $path ) = @_;
 
-                $path =~ s/^\$//;
-                my @parts = split /\./, $path;
+                $DB::single = 1;
 
-                for my $part ( @parts ) {
-                }
+                my $dot_path = join '.', @$path;
 
-                DEBUG "node=$node path=", Dumper( $path );
+                my $tag = $self->tag_add( $dot_path );
+
+                $tag->member_add( $node );
+
+                my $child = $tag;
+
+                $self->dot_path_climb( $dot_path, sub {
+                    my( $c, $path ) = @_;
+
+                    my $tag = $self->tag_add( $path );
+                    $tag->child_add( $child );
+                } );
             }
         }
     );
