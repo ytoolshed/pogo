@@ -8,6 +8,7 @@ use AnyEvent;
 use AnyEvent::Strict;
 use Pogo::Scheduler::Constraint;
 use Pogo::Scheduler::Config::Tag;
+use Module::Pluggable;
 use Data::Dumper;
 use YAML qw( Load LoadFile );
 use base qw(Pogo::Object::Event);
@@ -168,9 +169,9 @@ Pogo::Scheduler::Config - Pogo scheduler configuration handling
     my $cfg = Pogo::Scheduler::Config->new();
     $cfg->load( <<'EOT' );
       tag:
-         $colo.usa
+         colo.usa
            - host1
-         $colo.mexico
+         colo.mexico
            - host2
     EOT
 
@@ -193,13 +194,18 @@ Load a YAML scheduler configuration from a YAML file.
 
 Return all members of the tag.
 
+=back
+
+=head2 External Tag Resolvers
+
+If C<members()> cannot resolve a tag, it tries to find a plugin in order
+the members of the tag.
+
 members( "Role(devtools.infra-ops)" );
 
 => my $plugin = Pogo::Scheduler::Config::Plugins::Role->new();
    $plugin->targets( "devtools.infra-ops" );
      => rolesdb API members( "devtools.infra-ops" );
-
-=back
 
 =head1 LICENSE
 
