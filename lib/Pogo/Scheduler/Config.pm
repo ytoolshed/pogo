@@ -8,7 +8,7 @@ use AnyEvent;
 use AnyEvent::Strict;
 use Pogo::Scheduler::Constraint;
 use Pogo::Scheduler::Config::Tag;
-use Pogo::Scheduler::Config::TagExternal;
+use Pogo::Plugin;
 use Module::Pluggable;
 use Data::Dumper;
 use YAML qw( Load LoadFile );
@@ -31,7 +31,7 @@ sub new {
     };
 
     $self->{ external_tag_resolver } = 
-        Pogo::Scheduler::Config::TagExternal->new();
+        Pogo::Plugin->load('TagExternal', { required_methods => [ 'members' ] } );
 
     bless $self, $class;
 }
@@ -224,7 +224,7 @@ For a tag to be interpreted as external, it needs to be written in the format
     "MyPlugin param-1 param-2 ..."
 
 This will look for a plugin named C<MyPlugin.pm> in the
-C<Pogo::Scheduler::Config::TagExternal::Plugin> directory, 
+C<Pogo::Plugin::TagExternal> directory, 
 instantiate it and call its C<members()> method with the specified parameters.
 
 =head1 LICENSE

@@ -16,8 +16,9 @@ use Log::Log4perl qw(:easy);
 # Log::Log4perl->easy_init( { level => $DEBUG, category => 'main' } );
  Log::Log4perl->easy_init( $DEBUG );
 
-use Pogo::Scheduler::Config::TagExternal;
-my $tagex = Pogo::Scheduler::Config::TagExternal->new();
+use Pogo::Plugin;
+my $tagex = Pogo::Plugin->load('TagExternal',{ 
+        required_methods => [ 'members' ] } );
 
 my $members = $tagex->members( "Example", "bonkgroup" );
 

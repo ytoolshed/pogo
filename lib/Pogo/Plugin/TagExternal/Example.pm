@@ -1,5 +1,5 @@
 ###########################################
-package Pogo::Scheduler::Config::TagExternal::Plugin::Example;
+package Pogo::Plugin::TagExternal::Example;
 ###########################################
 use strict;
 use warnings;
@@ -40,6 +40,14 @@ sub members {
 
       # 'blocking' call, return results
     return \@members;
+}
+
+###########################################
+sub priority {
+###########################################
+    my ( $self ) = @_;
+
+    return 10;
 }
 
 1;
