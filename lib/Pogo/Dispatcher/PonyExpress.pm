@@ -5,9 +5,10 @@ use strict;
 use warnings;
 use Log::Log4perl qw(:easy);
 use AnyEvent;
+use AnyEvent::HTTP;
 use AnyEvent::Strict;
+use HTTP::Request::Common;
 use Pogo::Defaults qw(
-    $POGO_DISPATCHER_CONTROLPORT_HOST
     $POGO_DISPATCHER_CONTROLPORT_PORT
 );
 use base qw(Pogo::Object::Event);
@@ -18,30 +19,34 @@ sub new {
     my ( $class, %options ) = @_;
 
     my $self = {
-        peers => [ ],
-        port  => $POGO_DISPATCHER_CONTROLPORT_PORT,
+        retries => 3,
+        timeout => 10,
+        peers   => [ ],
+        port    => $POGO_DISPATCHER_CONTROLPORT_PORT,
         %options,
     };
 
+    for my $peer ( @{ $self->{ peers } } ) {
+
+        my $qp = Pogo::Util::QP->new(
+            retries => $self->{ retries },
+            timeout => $self->{ timeout },
+        );
+
+        $self->{ queues }->{ $peer } = $qp;
+
+        $qp->reg_cb( "next", sub {
+            my( $c, $data ) = @_;
+
+            my( $peer, $message ) = @$data;
+
+            $self->send_to_peer( $peer, $message, sub {
+                $qp->event( "ack" );
+            } );
+        });
+    }
+
     bless $self, $class;
-}
-
-###########################################
-sub start {
-###########################################
-    my ( $self ) = @_;
-
-    DEBUG "Starting pony express for ", scalar @{ $self->{ peers } },
-        " peer dispatchers.";
-
-    $self->reg_cb(
-        "dispatcher_pony_express_send",
-        sub {
-            my( $c, $message ) = @_;
-
-            $self->send( $message );
-        }
-    );
 }
 
 ###########################################
@@ -49,7 +54,46 @@ sub send {
 ###########################################
     my( $self, $message ) = @_;
 
-    $self->event( "dispatcher_pony_express_send", $message );
+    for my $peer ( @{ $self->{ peers } } )  {
+        $self->{ queues }->{ $peer }->event( "push", [ $peer, $message ] );
+    }
+}
+
+###########################################
+sub send_to_peer {
+###########################################
+    my ( $self, $peer, $data, $success_cb ) = @_;
+
+    my $host = $peer;
+    my $port = $POGO_DISPATCHER_CONTROLPORT_PORT;
+
+    if( $peer =~ /(.*?):(.*)/ ) {
+        $host = $1;
+        $port = $2;
+    }
+
+    my $cp = Pogo::Dispatcher::ControlPort->new(
+        host => $peer,
+        port => $port,
+    );
+
+    my $cp_base_url = $cp->base_url();
+
+    my $http_req = POST "$cp_base_url/message", [ data => $data ];
+
+    DEBUG "Posting message to CP of dispatcher $peer";
+
+    http_post $http_req->url(), $http_req->content(),
+        headers => $http_req->headers(),
+        sub {
+            my ( $data, $hdr ) = @_;
+
+            DEBUG "CP of peer $peer returned $hdr->{ Status } on data";
+
+            if( $hdr->{ Status } eq "200" ) {
+                $success_cb->();
+            }
+        };
 }
 
 1;
@@ -86,7 +130,7 @@ ports of all peer dispatchers, retrying if necessary.
 
 =over 4
 
-=item C<new( peers => $peers )>
+=item C<new( peers => $peers, retries => $retries, timeout => $timeout )>
 
 Constructor. The C<peers> parameter holds a reference to an array with
 the IP addresses of all peer dispatchers.

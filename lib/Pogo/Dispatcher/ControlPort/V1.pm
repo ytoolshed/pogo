@@ -26,7 +26,7 @@ sub app {
         my $path = $env->{ PATH_INFO };
         ( my $command = $path ) =~ s#^/##;
 
-        my %commands = map { $_ => 1 } qw( jobinfo jobsubmit );
+        my %commands = map { $_ => 1 } qw( jobinfo jobsubmit message );
 
         if ( exists $commands{ $command } ) {
             no strict 'refs';
@@ -106,6 +106,26 @@ sub jobsubmit {
     return http_response_json(
         {   rc      => "ok",
             message => "dispatcher CP: job received",
+        }
+    );
+}
+
+###########################################
+sub message {
+###########################################
+    my ( $env, $dispatcher ) = @_;
+
+    my $req = Plack::Request->new( $env );
+
+    DEBUG "Dispatcher received CP message";
+
+    my $data = $req->param( "data" );
+
+    $dispatcher->event( "dispatcher_controlport_message_received", $data );
+
+    return http_response_json(
+        {   rc      => "ok",
+            message => "dispatcher CP: message received",
         }
     );
 }

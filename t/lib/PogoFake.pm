@@ -76,6 +76,7 @@ sub start {
         dispatcher_wconn_cmd_recv
         dispatcher_wconn_ack
         dispatcher_controlport_up
+        dispatcher_controlport_message_received
         dispatcher_worker_task_received
         dispatcher_task_done
     ) );
