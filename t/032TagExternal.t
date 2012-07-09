@@ -20,6 +20,6 @@ use Pogo::Plugin;
 my $tagex = Pogo::Plugin->load('TagExternal',{ 
         required_methods => [ 'members' ] } );
 
-my $members = $tagex->members( "Example", "bonkgroup" );
+my $members = $tagex->members( "bonkgroup" );
 
 is $members->[0], "foo", "example plugin";

@@ -56,14 +56,14 @@ __END__
 
 =head1 NAME
 
-Pogo::Scheduler::Config::TagExternal::Plugin::Example - Test plugin
+Pogo::Plugin::TagExternal::Example - Test plugin
 
 =head1 SYNOPSIS
 
-    use Pogo::Scheduler::Config::TagExternal;
-    my $tagex = Pogo::Scheduler::Config::TagExternal->new();
+    use Pogo::Plugin;
+    my $tagex = Pogo::Plugin->load('TagExternal', { required_methods => [ 'members' ] } );
 
-    my $members = $tagex->members( "Example", "bonkgroup" );
+    my $members = $tagex->members( "bonkgroup" );
 
 =head1 DESCRIPTION
 
