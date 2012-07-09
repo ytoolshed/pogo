@@ -6,7 +6,7 @@ use Pogo::API;
 use Pogo::Dispatcher;
 use Pogo::Dispatcher::PonyExpress;
 
-my $nof_tests = 1;
+my $nof_tests = 2;
 plan tests => $nof_tests;
 
 BEGIN {
@@ -22,10 +22,19 @@ my $cv = AnyEvent->condvar();
 
 my $dispatcher = Pogo::Dispatcher->new();
 
-$dispatcher->reg_cb( "dispatcher_controlport_password_update_received", sub {
+$dispatcher->reg_cb( "dispatcher_password_update_received", sub {
     my( $c, $jobid ) = @_;
 
     is $jobid, "z12345", "password update received";
+} );
+
+$dispatcher->reg_cb( "dispatcher_password_update_done", sub {
+    my( $c, $jobid ) = @_;
+
+    my $p = $dispatcher->{ password_cache }->get( "z12345" );
+
+    is $p->{ foo }, "bar", "password saved";
+
     $cv->send();
 } );
 

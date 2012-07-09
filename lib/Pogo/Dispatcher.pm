@@ -172,12 +172,15 @@ sub password_update {
     }
 
     $self->event(
-        "dispatcher_controlport_password_update_received", $data->{ jobid } );
+        "dispatcher_password_update_received", $data->{ jobid } );
 
     $self->{ password_cache }->set( 
         $data->{ jobid },
         $data->{ passwords },
     );
+
+    $self->event(
+        "dispatcher_password_update_done", $data->{ jobid } );
 
     DEBUG "Password cache updated for job data->{ jobid } with ",
        scalar keys %{ $data->{ passwords } }, " passwords." ;
