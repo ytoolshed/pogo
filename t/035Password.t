@@ -22,15 +22,14 @@ my $cv = AnyEvent->condvar();
 
 my $dispatcher = Pogo::Dispatcher->new();
 
-$dispatcher->reg_cb( "dispatcher_controlport_message_received", sub {
-    my( $c, $data ) = @_;
+$dispatcher->reg_cb( "dispatcher_controlport_password_update_received", sub {
+    my( $c, $jobid ) = @_;
 
-    is $data->[0], "hello", "message received";
+    is $jobid, "z12345", "password update received";
     $cv->send();
 } );
 
 $dispatcher->start();
-
 
 my $api_server = Pogo::API->new();
 $api_server->standalone();
@@ -39,7 +38,9 @@ my $pe = Pogo::Dispatcher::PonyExpress->new(
     peers => [ "0.0.0.0" ],
 );
 
-$pe->send( ["hello"] );
+$pe->send( { method    => "password", 
+             jobid     => "z12345", 
+             passwords => { foo => "bar" } } );
 
   # start event loop
 $cv->recv();

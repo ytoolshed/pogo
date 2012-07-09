@@ -5,6 +5,7 @@ use strict;
 use warnings;
 use Log::Log4perl qw(:easy);
 use AnyEvent;
+use JSON qw( to_json );
 use AnyEvent::HTTP;
 use AnyEvent::Strict;
 use HTTP::Request::Common;
@@ -78,8 +79,14 @@ sub send_to_peer {
     );
 
     my $cp_base_url = $cp->base_url();
+    
+    my $method = "message";
 
-    my $http_req = POST "$cp_base_url/message", [ data => $data ];
+    if( ref $data eq "HASH" and exists $data->{ method } ) {
+        $method = delete $data->{ method };
+    }
+
+    my $http_req = POST "$cp_base_url/$method", [ data => to_json( $data ) ];
 
     DEBUG "Posting message to CP of dispatcher $peer";
 

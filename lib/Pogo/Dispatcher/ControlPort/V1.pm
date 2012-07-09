@@ -6,8 +6,10 @@ use warnings;
 use Log::Log4perl qw(:easy);
 use AnyEvent;
 use AnyEvent::Strict;
-use JSON qw( to_json );
-use Pogo::Util qw( http_response_json );
+use JSON qw( to_json from_json );
+use Pogo::Util qw( http_response_json json_decode required_params_check
+  http_response_json_nok http_response_json_ok jobid_valid
+);
 use HTTP::Status qw( :constants );
 use Plack::Request;
 use Data::Dumper;
@@ -26,7 +28,8 @@ sub app {
         my $path = $env->{ PATH_INFO };
         ( my $command = $path ) =~ s#^/##;
 
-        my %commands = map { $_ => 1 } qw( jobinfo jobsubmit message );
+        my %commands = map { $_ => 1 } qw( jobinfo jobsubmit message 
+                                           password );
 
         if ( exists $commands{ $command } ) {
             no strict 'refs';
@@ -119,7 +122,8 @@ sub message {
 
     DEBUG "Dispatcher received CP message";
 
-    my $data = $req->param( "data" );
+    my $json = $req->param( "data" );
+    my $data = json_decode( $json );
 
     $dispatcher->event( "dispatcher_controlport_message_received", $data );
 
@@ -128,6 +132,39 @@ sub message {
             message => "dispatcher CP: message received",
         }
     );
+}
+
+###########################################
+sub password {
+###########################################
+    my ( $env, $dispatcher ) = @_;
+
+    # we received a password cache update request
+    $DB::single = 1;
+
+    my $req = Plack::Request->new( $env );
+
+    DEBUG "Dispatcher received CP password update";
+
+    my $json = $req->param( "data" );
+    my $data = json_decode( $json );
+
+    my @required_params = qw( passwords jobid );
+
+    if( !required_params_check( $data, \@required_params, 1 ) ) {
+        return http_response_json_nok( "Required params are @required_params" );
+    }
+
+    my $rc = $dispatcher->password_update( {
+        jobid     => $data->{ jobid },
+        passwords => $data->{ passwords },
+    } );
+
+    if( $rc ) {
+        return http_response_json_ok( "passwords update ok" );
+    }
+
+    return http_response_json_nok( "passwords update failed" );
 }
 
 1;

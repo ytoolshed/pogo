@@ -14,7 +14,7 @@ BEGIN {
 
 use Log::Log4perl qw(:easy);
 # Log::Log4perl->easy_init( { level => $DEBUG, category => 'main' } );
- Log::Log4perl->easy_init( $DEBUG );
+# Log::Log4perl->easy_init( $DEBUG );
 
 use Pogo::Scheduler::Config;
 

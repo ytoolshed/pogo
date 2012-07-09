@@ -4,11 +4,14 @@ package Pogo::Util;
 use strict;
 use warnings;
 use Log::Log4perl qw(:easy);
-use JSON qw( to_json );
+use JSON qw( to_json from_json );
 
 require Exporter;
 our @EXPORT_OK = qw( http_response_json make_accessor struct_traverse
-    array_intersection id_gen struct_locate required_params_check );
+    array_intersection id_gen struct_locate required_params_check 
+    json_decode http_response_json_ok http_response_json_nok
+    jobid_valid
+);
 our @ISA = qw( Exporter );
 
 ###########################################
@@ -25,15 +28,51 @@ sub http_response_json {
     ];
 }
 
+###########################################
+sub http_response_json_nok {
+###########################################
+    my ( $message ) = @_;
+
+    return http_response_json(
+        {   rc      => "nok",
+            message => $message,
+        }
+    );
+}
+
+###########################################
+sub http_response_json_ok {
+###########################################
+    my ( $message ) = @_;
+
+    return http_response_json(
+        {   rc      => "ok",
+            message => $message,
+        }
+    );
+}
+
 ##################################################
 sub required_params_check {
 ##################################################
-    my ( $hash, $params ) = @_;
+    my ( $hash, $params, $continue ) = @_;
+
+    if( !defined $params and $continue ) {
+        return 0;
+    }
 
     for my $param ( @$params ) {
         if( !exists $hash->{ $param } or
             !defined $hash->{ $param } ) {
-            LOGCARP "Mandatory parameter $param missing";
+
+            my $msg = "Mandatory parameter $param missing";
+
+            if( $continue ) {
+                LOGCARP $msg;
+            } else {
+                ERROR $msg;
+                return 0;
+            }
         }
     }
 
@@ -185,6 +224,37 @@ sub id_gen {
     $LAST_ID{ $prefix } = 0 if !exists $LAST_ID{ $prefix };
 
     return sprintf "$prefix-%09d", $LAST_ID{ $prefix }++;
+}
+
+###########################################
+sub json_decode {
+###########################################
+    my( $json ) = @_;
+
+    my $data = undef;
+
+    eval {
+        $data = from_json( $json );
+    };
+
+    if( $@ ) {
+        ERROR "Received invalid JSON";
+        return $data;
+    }
+
+    return $data;
+}
+
+###########################################
+sub jobid_valid {
+###########################################
+    my ( $jobid ) = @_;
+
+    if( length( $jobid ) > 5 ) {
+        return 1;
+    }
+
+    return 0;
 }
 
 1;

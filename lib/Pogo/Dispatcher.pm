@@ -6,9 +6,10 @@ use warnings;
 use Log::Log4perl qw(:easy);
 use AnyEvent;
 use AnyEvent::Strict;
-use Pogo::Dispatcher;
 use Pogo::Dispatcher::ControlPort;
 use Pogo::Dispatcher::Wconn::Pool;
+use Pogo::Util qw( jobid_valid );
+use Pogo::Util::Cache;
 use base qw(Pogo::Object::Event);
 use Pogo::Defaults qw(
     $POGO_DISPATCHER_WORKERCONN_HOST
@@ -23,9 +24,14 @@ sub new {
     my ( $class, %options ) = @_;
 
     my $self = {
-        next_task_id => 1,
+        next_task_id          => 1,
+        password_cache_expire => 300,
         %options,
     };
+
+    $self->{ password_cache } = Pogo::Util::Cache->new(
+        expire => $self->{ password_cache_expire },
+    );
 
     bless $self, $class;
 
@@ -148,6 +154,35 @@ sub to_worker {
     my ( $self, $data ) = @_;
 
     $self->{ wconn_pool }->event( "dispatcher_wconn_send_cmd", $data );
+}
+
+###########################################
+sub password_update {
+###########################################
+    my ( $self, $data ) = @_;
+
+    if( ref $data->{ passwords } ne "HASH" ) {
+        ERROR "'passwords' needs to be a hash";
+        return 0;
+    }
+
+    if( !jobid_valid( $data->{ jobid } ) ) {
+        ERROR "invalid job id: $data->{ jobid }";
+        return 0;
+    }
+
+    $self->event(
+        "dispatcher_controlport_password_update_received", $data->{ jobid } );
+
+    $self->{ password_cache }->set( 
+        $data->{ jobid },
+        $data->{ passwords },
+    );
+
+    DEBUG "Password cache updated for job data->{ jobid } with ",
+       scalar keys %{ $data->{ passwords } }, " passwords." ;
+
+    return 1;
 }
 
 1;
