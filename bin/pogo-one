@@ -1,11 +1,12 @@
-#!/usr/local/bin/perl
+# !/usr/local/bin/perl
 use strict;
 use warnings;
 
 use Getopt::Std;
 use Pod::Usage;
+use Pogo::Client::Auth qw( password_get );
 
-getopts("hv", \my %opts);
+getopts("hvp", \my %opts);
 
 pod2usage() if $opts{h};
 
@@ -18,9 +19,18 @@ if( $opts{ v } ) {
 use Pogo::One;
 use Pogo::Job;
 
+my @password = ();
+
+if( $opts{ p } ) {
+    @password = ( password => password_get( ) );
+}
+
 my $pogo = Pogo::One->new();
 
+$DB::single = 1;
+
 my $job = Pogo::Job->new(
+    @password,
     task_name => "ssh",
     command   => "date",
     range     => [ qw(host1 host2) ],
