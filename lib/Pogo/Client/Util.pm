@@ -4,12 +4,12 @@ package Pogo::Client::Util;
 use strict;
 use warnings;
 require Exporter;
-our @EXPORT_OK = qw( password_encrypt );
+our @EXPORT_OK = qw( password_encrypt password_decrypt );
 our @ISA = qw( Exporter );
-use Log::Log4perl qw(:easy);
+use Log::Log4perl qw( :easy );
 use Crypt::OpenSSL::RSA;
 use Crypt::OpenSSL::X509;
-use MIME::Base64 qw(encode_base64);
+use MIME::Base64 qw( encode_base64 decode_base64 );
 use File::Temp qw( tempfile );
 use Sysadm::Install qw( :all );
 
@@ -37,6 +37,22 @@ sub password_encrypt {
 
   return encode_base64( $rsa_pub->encrypt( $password ) );
 }
+
+###########################################
+sub password_decrypt {
+###########################################
+  my( $worker_key, $garbled ) = @_;
+
+  if( ! ref $worker_key ) {
+      my $content = slurp $worker_key;
+      $worker_key = \$content;
+  }
+
+  my $rsa_priv = Crypt::OpenSSL::RSA->new_private_key( $$worker_key );
+
+  return $rsa_priv->decrypt( decode_base64( $garbled ) );
+}
+
 
 1;
 
