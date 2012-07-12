@@ -23,7 +23,6 @@ sub new {
         retries => 3,
         timeout => 10,
         peers   => [ ],
-        port    => $POGO_DISPATCHER_CONTROLPORT_PORT,
         %options,
     };
 
@@ -65,16 +64,13 @@ sub send_to_peer {
 ###########################################
     my ( $self, $peer, $data, $success_cb ) = @_;
 
-    my $host = $peer;
-    my $port = $POGO_DISPATCHER_CONTROLPORT_PORT;
+    $DB::single = 1;
 
-    if( $peer =~ /(.*?):(.*)/ ) {
-        $host = $1;
-        $port = $2;
-    }
+    my( $host, $port ) = split /:/, $peer;
+    $port ||= $POGO_DISPATCHER_CONTROLPORT_PORT;
 
     my $cp = Pogo::Dispatcher::ControlPort->new(
-        host => $peer,
+        host => $host,
         port => $port,
     );
 

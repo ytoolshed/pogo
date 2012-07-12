@@ -5,6 +5,10 @@ use Test::More;
 use Pogo::API;
 use Pogo::Dispatcher;
 use Pogo::Dispatcher::PonyExpress;
+use Pogo::Defaults qw(
+    @POGO_DISPATCHER_TEST_CONTROLPORT_NETLOCS
+    @POGO_DISPATCHER_TEST_WORKERCONN_NETLOCS
+);
 
 my $nof_tests = 2;
 plan tests => $nof_tests;
@@ -20,31 +24,49 @@ use Log::Log4perl qw(:easy);
 
 my $cv = AnyEvent->condvar();
 
-my $dispatcher = Pogo::Dispatcher->new();
+my @dispatchers = ();
 
-$dispatcher->reg_cb( "dispatcher_password_update_received", sub {
-    my( $c, $jobid ) = @_;
+my @dispatcher_cps = @POGO_DISPATCHER_TEST_CONTROLPORT_NETLOCS;
+my @dispatcher_wcs = @POGO_DISPATCHER_TEST_WORKERCONN_NETLOCS;
 
-    is $jobid, "z12345", "password update received";
-} );
+for ( 1 .. 1 ) { # for testing just one for now
 
-$dispatcher->reg_cb( "dispatcher_password_update_done", sub {
-    my( $c, $jobid ) = @_;
+    my( $cp_host, $cp_port ) = split /:/, shift @dispatcher_cps;
+    my( $wc_host, $wc_port ) = split /:/, shift @dispatcher_wcs;
 
-    my $p = $dispatcher->{ password_cache }->get( "z12345" );
+    my $dispatcher = Pogo::Dispatcher->new(
+        controlport_host => $cp_host,
+        controlport_port => $cp_port,
+        workerconn_host  => $wc_host,
+        workerconn_port  => $wc_port,
+    );
 
-    is $p->{ foo }, "bar", "password saved";
+    push @dispatchers, $dispatcher;
 
-    $cv->send();
-} );
+    $dispatcher->reg_cb( "dispatcher_password_update_received", sub {
+        my( $c, $jobid ) = @_;
+    
+        is $jobid, "z12345", "password update received";
+    } );
 
-$dispatcher->start();
+    $dispatcher->reg_cb( "dispatcher_password_update_done", sub {
+        my( $c, $jobid ) = @_;
+    
+        my $p = $dispatcher->{ password_cache }->get( "z12345" );
+    
+        is $p->{ foo }, "bar", "password saved";
+    
+        $cv->send();
+    } );
+
+    $dispatcher->start();
+}
 
 my $api_server = Pogo::API->new();
 $api_server->standalone();
 
 my $pe = Pogo::Dispatcher::PonyExpress->new(
-    peers => [ "0.0.0.0" ],
+    peers => [ @POGO_DISPATCHER_TEST_CONTROLPORT_NETLOCS ],
 );
 
 $pe->send( { method    => "password", 

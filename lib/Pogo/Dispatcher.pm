@@ -14,6 +14,8 @@ use base qw(Pogo::Object::Event);
 use Pogo::Defaults qw(
     $POGO_DISPATCHER_WORKERCONN_HOST
     $POGO_DISPATCHER_WORKERCONN_PORT
+    $POGO_DISPATCHER_CONTROLPORT_HOST
+    $POGO_DISPATCHER_CONTROLPORT_PORT
 );
 
 our $VERSION = "0.01";
@@ -26,8 +28,17 @@ sub new {
     my $self = {
         next_task_id          => 1,
         password_cache_expire => 300,
+        controlport_host      => undef,
+        controlport_port      => undef,
+        workerconn_host       => undef,
+        workerconn_port       => undef,
         %options,
     };
+
+    $self->{ controlport_host } ||= $POGO_DISPATCHER_CONTROLPORT_HOST;
+    $self->{ controlport_port } ||= $POGO_DISPATCHER_CONTROLPORT_PORT;
+    $self->{ workerconn_host }  ||= $POGO_DISPATCHER_WORKERCONN_HOST;
+    $self->{ workerconn_port }  ||= $POGO_DISPATCHER_WORKERCONN_PORT;
 
     $self->{ password_cache } = Pogo::Util::Cache->new(
         expire => $self->{ password_cache_expire },
@@ -44,7 +55,12 @@ sub start {
     my ( $self ) = @_;
 
     # Handle a pool of workers, as they connect
-    my $w = Pogo::Dispatcher::Wconn::Pool->new( %$self );
+    my $w = Pogo::Dispatcher::Wconn::Pool->new( 
+        host => $self->{ workerconn_host },
+        port => $self->{ workerconn_port },
+        map { $_ => $self->{ $_ } }
+            qw( ssl dispatcher_cert dispatcher_key ca_cert ),
+    );
 
     $self->event_forward(
         { forward_from => $w }, qw(
@@ -57,7 +73,11 @@ sub start {
     $self->{ wconn_pool } = $w;    # guard it or it'll vanish
 
     # Listen to requests from the ControlPort
-    my $cp = Pogo::Dispatcher::ControlPort->new( dispatcher => $self );
+    my $cp = Pogo::Dispatcher::ControlPort->new( 
+        dispatcher => $self, 
+        host       => $self->{ controlport_host },
+        port       => $self->{ controlport_port },
+    );
     $self->event_forward(
         { forward_from => $cp }, qw(
             dispatcher_controlport_up )
