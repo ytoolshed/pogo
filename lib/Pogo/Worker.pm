@@ -155,7 +155,6 @@ sub ssh_task {
 ###########################################
     my ( $self, $task_id, $task_in, $host ) = @_;
 
-    $DB::single = 1;
     DEBUG "Received ssh task for host $host";
 
     if( defined $task_in->{ task_data }->{ password } ) {

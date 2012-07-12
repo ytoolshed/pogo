@@ -46,6 +46,8 @@ sub new {
         });
     }
 
+    DEBUG "Pony express started with peers @{ $self->{ peers } }";
+
     bless $self, $class;
 }
 
@@ -64,8 +66,6 @@ sub send_to_peer {
 ###########################################
     my ( $self, $peer, $data, $success_cb ) = @_;
 
-    $DB::single = 1;
-
     my( $host, $port ) = split /:/, $peer;
     $port ||= $POGO_DISPATCHER_CONTROLPORT_PORT;
 
@@ -79,12 +79,12 @@ sub send_to_peer {
     my $method = "message";
 
     if( ref $data eq "HASH" and exists $data->{ method } ) {
-        $method = delete $data->{ method };
+        $method = $data->{ method };
     }
 
     my $http_req = POST "$cp_base_url/$method", [ data => to_json( $data ) ];
 
-    DEBUG "Posting message to CP of dispatcher $peer";
+    DEBUG "Posting message to CP of dispatcher $peer/$method";
 
     http_post $http_req->url(), $http_req->content(),
         headers => $http_req->headers(),

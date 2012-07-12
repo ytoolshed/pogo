@@ -17,6 +17,8 @@ use Pogo::Defaults qw(
 );
 use base qw(Pogo::Object::Event);
 
+our $APPS_LOADED = {};
+
 ###########################################
 sub new {
 ###########################################
@@ -56,7 +58,7 @@ sub start {
         }
     );
 
-    $httpd->register_service( $self->app() );
+    $httpd->register_service( $self->app( ) );
 
     $self->{ httpd } = $httpd;    # guard
 
@@ -76,7 +78,12 @@ sub app {
 
     no strict 'refs';
     my $app_pkg = __PACKAGE__ . "::PSGI";
-    eval "require $app_pkg";
+
+    if( ! exists $APPS_LOADED->{ $app_pkg } ) {
+        eval "require $app_pkg";
+        $APPS_LOADED->{ $app_pkg } = 1;
+    }
+
     return $app_pkg->app( $self->{ dispatcher } );
 }
 

@@ -10,7 +10,7 @@ use Pogo::Defaults qw(
     @POGO_DISPATCHER_TEST_WORKERCONN_NETLOCS
 );
 
-my $nof_tests = 2;
+my $nof_tests = 4;
 plan tests => $nof_tests;
 
 BEGIN {
@@ -29,7 +29,9 @@ my @dispatchers = ();
 my @dispatcher_cps = @POGO_DISPATCHER_TEST_CONTROLPORT_NETLOCS;
 my @dispatcher_wcs = @POGO_DISPATCHER_TEST_WORKERCONN_NETLOCS;
 
-for ( 1 .. 1 ) { # for testing just one for now
+my $pw_updates_expected = 2;
+
+for ( 1 .. scalar @POGO_DISPATCHER_TEST_CONTROLPORT_NETLOCS ) {
 
     my( $cp_host, $cp_port ) = split /:/, shift @dispatcher_cps;
     my( $wc_host, $wc_port ) = split /:/, shift @dispatcher_wcs;
@@ -56,7 +58,9 @@ for ( 1 .. 1 ) { # for testing just one for now
     
         is $p->{ foo }, "bar", "password saved";
     
-        $cv->send();
+        if( --$pw_updates_expected == 0 ) {
+            $cv->send();
+        }
     } );
 
     $dispatcher->start();
