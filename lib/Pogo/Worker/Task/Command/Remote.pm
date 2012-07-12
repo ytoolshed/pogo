@@ -70,6 +70,8 @@ sub start {
 ###########################################
     my( $self ) = @_;
 
+    $DB::single = 1;
+
     $self->remote_command_fixup();
     return $self->SUPER::start( "password=$self->{ password }\n" );
 }

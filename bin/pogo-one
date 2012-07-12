@@ -6,7 +6,8 @@ use Getopt::Std;
 use Pod::Usage;
 use Pogo::Client::Auth qw( password_get );
 use Pogo::Client::Util qw( password_encrypt );
-use Pogo::One::Util qw( worker_cert );
+  # use this hard-coded fake/test key because we're not distributed and in-memory
+use Pogo::One::Util qw( worker_cert worker_private_key );
 
 getopts("hvp", \my %opts);
 
@@ -24,15 +25,17 @@ use Pogo::Job;
 my @password = ();
 
 if( $opts{ p } ) {
-    my $password = password_get( );
-
     my $cert = worker_cert();
 
+    my $password = password_get( );
+      # client immediately encrypts the password with the worker's public key
     $password = password_encrypt( \$cert, $password );
     @password = ( password => $password );
 }
 
-my $pogo = Pogo::One->new();
+my $pogo = Pogo::One->new(
+    worker_key => worker_private_key(),
+);
 
 my $job = Pogo::Job->new(
     @password,

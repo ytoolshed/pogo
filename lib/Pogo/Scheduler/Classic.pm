@@ -98,7 +98,6 @@ sub config_load {
     # Traverse the configuration's "tag" structure and map hosts
     # to slots (host slots constitute of the full path to the leaf nodes
     # in the "tag" configuration).
-    $DB::single = 1;
     my $cfg = Pogo::Scheduler::Config->new(
         cfg => $self->{ config },
     );

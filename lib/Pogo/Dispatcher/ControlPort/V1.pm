@@ -140,8 +140,6 @@ sub password {
     my ( $env, $dispatcher ) = @_;
 
     # we received a password cache update request
-    $DB::single = 1;
-
     my $req = Plack::Request->new( $env );
 
     DEBUG "Dispatcher received CP password update";

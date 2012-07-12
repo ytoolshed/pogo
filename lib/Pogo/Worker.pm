@@ -9,6 +9,7 @@ use AnyEvent::Strict;
 use Pogo::Worker::Connection;
 use Pogo::Worker::Task::Command;
 use Pogo::Worker::Task::Command::Remote;
+use Pogo::Client::Util qw( password_decrypt );
 use Pogo::Defaults qw(
     $POGO_DISPATCHER_WORKERCONN_HOST
     $POGO_DISPATCHER_WORKERCONN_PORT
@@ -30,6 +31,7 @@ sub new {
         dispatchers   => [
             "$POGO_DISPATCHER_WORKERCONN_HOST:$POGO_DISPATCHER_WORKERCONN_PORT"
         ],
+        worker_key     => undef,
         auto_reconnect => 1,
         tasks          => {},
         %options,
@@ -151,12 +153,22 @@ sub task_handler {
 ###########################################
 sub ssh_task {
 ###########################################
-    my ( $self, $task_id, $task_data, $host ) = @_;
+    my ( $self, $task_id, $task_in, $host ) = @_;
 
+    $DB::single = 1;
     DEBUG "Received ssh task for host $host";
 
+    if( defined $task_in->{ task_data }->{ password } ) {
+        if( !defined $self->{ worker_key } ) {
+            LOGDIE "Worker key not defined";
+        }
+        $task_in->{ task_data }->{ password } =
+            password_decrypt( \$self->{ worker_key }, 
+                $task_in->{ task_data }->{ password } );
+    }
+
     my $task = Pogo::Worker::Task::Command::Remote->new(
-        map({ $_ => $task_data->{ task_data }->{ $_ } }
+        map({ $_ => $task_in->{ task_data }->{ $_ } }
           qw( ssh pogo_pw command user password )),
         host     => $host,
         id       => $task_id,

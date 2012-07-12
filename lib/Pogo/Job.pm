@@ -166,7 +166,8 @@ sub worker_task_data {
     return {
         task_name => $self->{ task_name },
         task_data => {
-            command => $self->{ command },
+            command  => $self->{ command },
+            password => $self->{ password },
         }
     };
 }

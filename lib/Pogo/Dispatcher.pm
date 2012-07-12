@@ -70,7 +70,7 @@ sub start {
         "dispatcher_worker_task_received",
         sub {
             my ( $c, $slot_task, $worker_task_data, $scheduler ) = @_;
-
+             
             # Assign it a dispatcher task ID
             my $id = $self->next_task_id();
 
