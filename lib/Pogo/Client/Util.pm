@@ -24,7 +24,7 @@ sub password_encrypt {
       ref $worker_crt eq "SCALAR" ) {
 
       my( $fh, $tempfile ) = tempfile( UNLINK => 1 );
-      blurt $worker_crt, $tempfile;
+      blurt $$worker_crt, $tempfile;
       $worker_crt = $tempfile;
   }
 
