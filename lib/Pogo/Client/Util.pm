@@ -10,6 +10,8 @@ use Log::Log4perl qw(:easy);
 use Crypt::OpenSSL::RSA;
 use Crypt::OpenSSL::X509;
 use MIME::Base64 qw(encode_base64);
+use File::Temp qw( tempfile );
+use Sysadm::Install qw( :all );
 
 ###########################################
 sub password_encrypt {
@@ -17,6 +19,14 @@ sub password_encrypt {
   my( $worker_crt, $password ) = @_;
 
   Crypt::OpenSSL::RSA->import_random_seed();
+
+  if( ref $worker_crt and
+      ref $worker_crt eq "SCALAR" ) {
+
+      my( $fh, $tempfile ) = tempfile( UNLINK => 1 );
+      blurt $worker_crt, $tempfile;
+      $worker_crt = $tempfile;
+  }
 
   if( !-f $worker_crt ) {
       die "Worker cert not found: No such file $worker_crt";
