@@ -86,7 +86,60 @@ __END__
 
 pogo-one - All-In-One Pogo
 
+=head1 SYNOPSIS
+
+    $ cat one.conf
+    tag:
+      # no tags
+    sequence:
+      - host3
+      - host2
+      - host1
+    
+      # specify two hosts 1 and 2, but config says to run them in 
+      # reverse order
+    $ pogo-one --password --hosts host1,host2 \
+        --config one.conf --command 'date'
+    Password: ****
+    host2: Running target
+    host2: Success
+    host1: Running target
+    host1: Success
+
 =head1 DESCRIPTION
+
+C<pogo-one> is a simple utility that loads all the usually distributed
+Pogo components into one single process and runs it from the command line.
+In this way, you can test Pogo functions like constraints and sequences without
+having to set up the different components of an entire production system.
+It is mainly used for testing, but also helps with small deployment jobs.
+
+=head2 PASSWORDS
+
+By default, C<pogo-one> assumes that you have access to the target boxes
+without having to type your password or your ssh keyring's passphrase.
+To have C<pogo-one> collect the password and use it to sign in on the 
+target, use the C<--password> options
+
+    $ pogo-one --password ...
+    Password: ****
+    ...
+
+=head2 OPTIONS
+
+=over 4
+
+=item C<--config file>
+
+Location of configuration file that defineds Pogo tags, sequences, and
+constraints.
+
+=item C<--password>
+
+If specified, c<pogo-one> will collect the user's target password at
+a command line prompt, and use it to log into the target machines.
+
+=back
 
 =head1 LICENSE
 
