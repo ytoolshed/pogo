@@ -139,6 +139,15 @@ constraints.
 If specified, c<pogo-one> will collect the user's target password at
 a command line prompt, and use it to log into the target machines.
 
+=item C<--hosts>
+
+All hosts to run the command on. Order and parallelism is determined by 
+the configuration file.
+
+=item C<--commands>
+
+The command to run on all hosts.
+
 =back
 
 =head1 LICENSE

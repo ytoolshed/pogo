@@ -1,7 +1,3 @@
-######################################################################
-    Pogo 5.00
-######################################################################
-
 NAME
     Pogo - Run commands on many hosts in a controlled manner
 
@@ -12,6 +8,17 @@ DESCRIPTION
     It is mostly used for quick mass software deployments on server farms
     while making sure only an allowed number of nodes are upgraded in
     parallel to ensure business continuity.
+
+  Project Setup
+    Pogo is hosted on Github at
+
+        https://github.com/ytoolshed/pogo
+
+    The latest stable version can be found on the master branch. The project
+    is automatically being tested on every commit, using travis-ci's
+    service:
+
+        http://travis-ci.org/#!/ytoolshed/pogo
 
   Architecture
     Pogo consists of several components, which can be all running on the
@@ -43,6 +50,62 @@ DESCRIPTION
     really an authorized worker, or is the dispatcher it's connecting to
     really an authorized dispatcher?), Pogo uses SSL server and client
     certs. See Pogo::Security for details.
+
+NAME
+    pogo-one - All-In-One Pogo
+
+SYNOPSIS
+        $ cat one.conf
+        tag:
+          # no tags
+        sequence:
+          - host3
+          - host2
+          - host1
+    
+          # specify two hosts 1 and 2, but config says to run them in 
+          # reverse order
+        $ pogo-one --password --hosts host1,host2 \
+            --config one.conf --command 'date'
+        Password: ****
+        host2: Running target
+        host2: Success
+        host1: Running target
+        host1: Success
+
+DESCRIPTION
+    "pogo-one" is a simple utility that loads all the usually distributed
+    Pogo components into one single process and runs it from the command
+    line. In this way, you can test Pogo functions like constraints and
+    sequences without having to set up the different components of an entire
+    production system. It is mainly used for testing, but also helps with
+    small deployment jobs.
+
+  PASSWORDS
+    By default, "pogo-one" assumes that you have access to the target boxes
+    without having to type your password or your ssh keyring's passphrase.
+    To have "pogo-one" collect the password and use it to sign in on the
+    target, use the "--password" options
+
+        $ pogo-one --password ...
+        Password: ****
+        ...
+
+  OPTIONS
+    "--config file"
+        Location of configuration file that defineds Pogo tags, sequences,
+        and constraints.
+
+    "--password"
+        If specified, c<pogo-one> will collect the user's target password at
+        a command line prompt, and use it to log into the target machines.
+
+    "--hosts"
+        All hosts to run the command on. Order and parallelism is determined
+        by the configuration file.
+
+    "--commands"
+        The command to run on all hosts.
 
 LICENSE
     Copyright (c) 2010-2012 Yahoo! Inc. All rights reserved.

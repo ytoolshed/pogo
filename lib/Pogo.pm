@@ -86,6 +86,8 @@ an authorized worker, or is the dispatcher it's connecting to really an
 authorized dispatcher?), Pogo uses SSL server and client certs. 
 See L<Pogo::Security> for details.
 
+=other bin/pogo-one
+
 =head1 LICENSE
 
 Copyright (c) 2010-2012 Yahoo! Inc. All rights reserved.
