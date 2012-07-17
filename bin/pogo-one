@@ -1,21 +1,46 @@
-# !/usr/local/bin/perl
+#!/usr/bin/env perl
 use strict;
 use warnings;
 
-use Getopt::Std;
+use Getopt::Long;
 use Pod::Usage;
+use Pogo::Util qw( required_params_check );
 use Pogo::Client::Auth qw( password_get );
 use Pogo::Client::Util qw( password_encrypt );
   # use this hard-coded fake/test key because we're not distributed and in-memory
 use Pogo::One::Util qw( worker_cert worker_private_key );
-
-getopts("hvp", \my %opts);
-
-pod2usage() if $opts{h};
-
 use Log::Log4perl qw(:easy);
 
-if( $opts{ v } ) {
+my $cmdline_opts = {};
+
+GetOptions( $cmdline_opts,
+            'verbose',
+            'run-command=s',
+            'config=s',
+            'targets=s',
+            'help',
+            'password',
+);
+
+pod2usage() if $cmdline_opts->{ help };
+
+required_params_check( $cmdline_opts, [qw( 
+    run-command
+    targets
+)]);
+
+if( ! exists $cmdline_opts->{ config } ) {
+    # 'empty' conf file if none is specified
+    $cmdline_opts->{ config } = <<EOT;
+tag:
+sequence:
+  - host3
+  - host2
+  - host1
+EOT
+}
+
+if( $cmdline_opts->{ verbose } ) {
     Log::Log4perl->easy_init( { level => $DEBUG, layout => "%F{1}:%L> %m%n" } );
 }
 
@@ -24,7 +49,7 @@ use Pogo::Job;
 
 my @password = ();
 
-if( $opts{ p } ) {
+if( $cmdline_opts->{ p } ) {
     my $cert = worker_cert();
 
     my $password = password_get( );
@@ -37,18 +62,16 @@ my $pogo = Pogo::One->new(
     worker_key => worker_private_key(),
 );
 
-my $job = Pogo::Job->new(
+my @params = (
     @password,
     task_name => "ssh",
-    command   => "date",
-    range     => [ qw(host1 host2) ],
-    config    => <<'EOT',
-tag:
-sequence:
-  - host3
-  - host2
-  - host1
-EOT
+    command   => $cmdline_opts->{ 'run-command' },
+    range     => [ split /,/, $cmdline_opts->{ targets } ],
+    config    => $cmdline_opts->{ 'config' },
+);
+
+my $job = Pogo::Job->new(
+    @params
 );
 
 my $main = AnyEvent->condvar();
@@ -98,8 +121,8 @@ pogo-one - All-In-One Pogo
     
       # specify two hosts 1 and 2, but config says to run them in 
       # reverse order
-    $ pogo-one --password --hosts host1,host2 \
-        --config one.conf --command 'date'
+    $ pogo-one --password --targets host1,host2 \
+        --config one.conf --run-command 'date'
     Password: ****
     host2: Running target
     host2: Success
@@ -139,12 +162,12 @@ constraints.
 If specified, c<pogo-one> will collect the user's target password at
 a command line prompt, and use it to log into the target machines.
 
-=item C<--hosts>
+=item C<--targets>
 
 All hosts to run the command on. Order and parallelism is determined by 
 the configuration file.
 
-=item C<--commands>
+=item C<--run-command>
 
 The command to run on all hosts.
 
