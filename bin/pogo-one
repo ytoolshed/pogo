@@ -19,7 +19,7 @@ GetOptions( $cmdline_opts,
             'config=s',
             'targets=s',
             'help',
-            'password',
+            'password|p',
 );
 
 pod2usage() if $cmdline_opts->{ help };
@@ -34,9 +34,6 @@ if( ! exists $cmdline_opts->{ config } ) {
     $cmdline_opts->{ config } = <<EOT;
 tag:
 sequence:
-  - host3
-  - host2
-  - host1
 EOT
 }
 
@@ -49,7 +46,7 @@ use Pogo::Job;
 
 my @password = ();
 
-if( $cmdline_opts->{ p } ) {
+if( $cmdline_opts->{ password } ) {
     my $cert = worker_cert();
 
     my $password = password_get( );
