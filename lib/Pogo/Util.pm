@@ -68,10 +68,10 @@ sub required_params_check {
             my $msg = "Mandatory parameter $param missing";
 
             if( $continue ) {
-                LOGCARP $msg;
-            } else {
                 ERROR $msg;
                 return 0;
+            } else {
+                LOGCROAK $msg;
             }
         }
     }

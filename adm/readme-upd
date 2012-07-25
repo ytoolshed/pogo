@@ -1,0 +1,19 @@
+#!/usr/local/bin/perl -w
+use strict;
+use Sysadm::Install qw(:all);
+
+my $readme_pod   = "README.pod";
+my $readme       = "README";
+
+my $main_pod     = slurp "lib/Pogo.pm";
+my $pogo_one_pod = slurp "bin/pogo-one";
+
+$main_pod =~ s/=other.*//s;
+$main_pod =~ s/.*?(?==head)//s;
+
+$pogo_one_pod =~ s/.*?(?==head)//s;
+
+my $total_pod = $main_pod . $pogo_one_pod;
+
+blurt $total_pod, $readme_pod;
+tap "pod2text", $readme_pod, $readme;

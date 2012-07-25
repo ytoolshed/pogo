@@ -22,6 +22,7 @@ sub new {
         thread_by_id => {},
         threads      => [],
         config       => {},
+        unconstrained_thread_name => "unconstrained",
         %options,
     };
 
@@ -198,7 +199,8 @@ sub slot_setup {
     }
 
     # what's left over is unconstrained
-    $self->{ hosts_by_slot }->{ unconstrained } = [ keys %{ $all_hosts } ];
+    $self->{ hosts_by_slot }->{ $self->{ unconstrained_thread_name } } = 
+        [ keys %{ $all_hosts } ];
 
     for my $slot ( keys %{ $self->{ hosts_by_slot } } ) {
         DEBUG "Slot $slot: [",
@@ -207,9 +209,36 @@ sub slot_setup {
 }
 
 ###########################################
+sub unconstrained_hosts_schedule {
+###########################################
+    my ( $self, $hosts ) = @_;
+
+    DEBUG "Adding leftover hosts to unconstrained thread/slot: @$hosts";
+
+    my $thread = 
+      $self->{ thread_by_id }->{ $self->{ unconstrained_thread_name } };
+
+    for my $host ( @$hosts ) {
+
+        my $slots = $thread->slots();
+        my $slot = $slots->[0];
+
+        my $task = Pogo::Scheduler::Task->new(
+                        id     => $host,
+                        slot   => $slot,
+                        thread => $thread,
+                        host   => $host,
+                    );
+        $slot->task_add( $task );
+    }
+}
+
+###########################################
 sub thread_setup {
 ###########################################
     my ( $self ) = @_;
+
+    DEBUG "thread_setup";
 
     $self->{ threads } = [];
 
@@ -223,26 +252,7 @@ sub thread_setup {
                 $thread->reg_cb( "thread_done", sub {
                     my( $c, $thread ) = @_;
 
-                    DEBUG "Received thread_done of thread ", $thread->id();
-
-                    if( exists $self->{ thread_by_id }->{ $thread->id() } ) {
-                        delete $self->{ thread_by_id }->{ $thread->id() };
-                    } else {
-                        ERROR "Received thread_done of unknown thread ",
-                          "( ", $thread->id(), ")";
-                    }
-
-                    my $nof_active_threads = 
-                        scalar keys %{ $self->{ thread_by_id } };
-
-                    DEBUG "$nof_active_threads threads are still active";
-
-                    if( $nof_active_threads == 0 ) {
-                        # No more active threads, job is done.
-                        DEBUG "No more active threads, sending ",
-                          "scheduler_job_done";
-                        $self->event( "scheduler_job_done" );
-                    }
+                    $self->thread_done( $thread );
                 } );
 
                 $self->event_forward( { forward_from => $thread },
@@ -281,14 +291,55 @@ sub thread_setup {
         }
     );
 
-    my $slot = Pogo::Scheduler::Slot->new( id => "unconstrained", );
+    $DB::single = 1;
 
-    my $thread = Pogo::Scheduler::Thread->new();
-    $self->event_forward( { forward_from => $thread }, qw( waiting ) );
+    my $slot = Pogo::Scheduler::Slot->new( 
+        id => $self->{ unconstrained_thread_name }
+    );
+    my $thread = Pogo::Scheduler::Thread->new(
+        id => $self->{ unconstrained_thread_name }
+    );
+    $self->{ thread_by_id }->{ $self->{ unconstrained_thread_name } } = $thread;
+
+    $thread->reg_cb( "thread_done", sub {
+        my( $c, $thread ) = @_;
+
+        $self->thread_done( $thread );
+    } );
+
+    $self->event_forward( { forward_from => $thread }, 
+        qw( waiting ) );
 
     $thread->slot_add( $slot );
 
     push @{ $self->{ threads } }, $thread;
+}
+
+###########################################
+sub thread_done {
+###########################################
+    my( $self, $thread ) = @_;
+
+    DEBUG "Received thread_done of thread ", $thread->id();
+
+    if( exists $self->{ thread_by_id }->{ $thread->id() } ) {
+        delete $self->{ thread_by_id }->{ $thread->id() };
+    } else {
+        ERROR "Received thread_done of unknown thread ",
+        "( ", $thread->id(), ")";
+    }
+
+    my $nof_active_threads = 
+    scalar keys %{ $self->{ thread_by_id } };
+
+    DEBUG "$nof_active_threads threads are still active";
+
+    if( $nof_active_threads == 0 ) {
+        # No more active threads, job is done.
+        DEBUG "No more active threads, sending ",
+        "scheduler_job_done";
+        $self->event( "scheduler_job_done" );
+    }
 }
 
 ###########################################
@@ -329,6 +380,8 @@ sub schedule {
         }
     );
 
+    my $hosts_todo = { map { $_ => 1 } @$hosts };
+
     my %host_lookup = map { $_ => 1 } @$hosts;    # for faster lookups
 
     for my $thread ( @{ $self->{ threads } } ) {
@@ -365,13 +418,19 @@ sub schedule {
                         host   => $host,
                         @constraints
                     );
+                    delete $hosts_todo->{ $host };
 
                     $slot->task_add( $task );
                 }
             }
         }
+    }
 
-        # start thread in parallel with other threads
+    $self->unconstrained_hosts_schedule( [ keys %$hosts_todo ] );
+
+      # now start all threads
+    for my $thread ( @{ $self->{ threads } } ) {
+          # start thread in parallel with other threads
         $thread->start();
     }
 }

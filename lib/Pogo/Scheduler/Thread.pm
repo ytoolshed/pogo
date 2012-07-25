@@ -124,6 +124,8 @@ sub slot_next {
 ###########################################
     my ( $self ) = @_;
 
+    DEBUG "slot_next";
+
     if ( !$self->slots_left() ) {
         $self->{ active_slot } = undef;
         $self->event( "thread_done", $self );
