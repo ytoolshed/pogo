@@ -1,4 +1,4 @@
 language: perl
-install: cpanm install || true && cat ~/.cpanm/build.log
+install: cpanm --installdeps --notest . || true && cat ~/.cpanm/build.log
 perl:
   - "5.12"
