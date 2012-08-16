@@ -10,6 +10,7 @@ use Pogo::Object::Event;
 use AnyEvent;
 use AnyEvent::Util qw( run_cmd );
 use File::Temp qw( tempfile );
+use POSIX qw( mkfifo O_NONBLOCK O_RDONLY O_WRONLY );
 
 ###########################################
 sub new {
@@ -17,6 +18,8 @@ sub new {
     my($class, %options) = @_;
 
     my $self = {
+        fifo_path       => "/tmp/fifo",
+        fifo_perms      => 0600,
         ssh_agent       => "ssh-agent",
         ssh_add         => "ssh-add",
         tempdir         => undef,
@@ -90,18 +93,13 @@ sub key_add {
 ###########################################
     my( $self, $key ) = @_;
 
-      #TODO change to fifo
-    my ($fh, $filename) = tempfile( );
-
-    print $fh $key;
-    close $fh;
-
-    DEBUG "Adding key";
+    DEBUG "Adding key to fifo";
+    $self->fifo_setup( $key );
 
     $ENV{ SSH_AUTH_SOCK } = $self->{ socket };
-    my $cmd = run_cmd [ $self->{ ssh_add }, $filename ];
+    my $cmd = run_cmd [ $self->{ ssh_add }, $self->{ fifo_path } ];
     $cmd->recv();
-    DEBUG "Key added";
+    DEBUG "Key added to fifo";
 }
 
 ###########################################
@@ -110,6 +108,88 @@ sub socket {
     my( $self ) = @_;
 
     return $self->{ socket };
+}
+
+###########################################
+sub fifo_setup {
+###########################################
+    my( $self, $key ) = @_;
+
+    {
+      no warnings;
+      require "sys/ioctl.ph";
+    }
+
+    my @dir = ();
+    @dir = ( DIR => $self->{ tempdir } ) if defined $self->{ tempdir };
+
+    my ($fh, $filename) = tempfile( @dir );
+    unlink $filename or LOGDIE "$!";
+
+    mkfifo $filename, $self->{ fifo_perms } or 
+        die "mkfifo failed: $!";
+
+    $self->{ fifo_path } = $filename;
+
+    DEBUG "Opening pipe for reading";
+
+    sysopen my $fdr, $filename, O_NONBLOCK|O_RDONLY or
+        die "Opening pipe $filename for reading failed: $!";
+
+    DEBUG "Opening pipe for writing";
+
+    sysopen my $fdw, $filename, O_NONBLOCK|O_WRONLY or
+        die "Opening pipe $filename for writing failed: $!";
+
+    $self->{ fifo_w_fd } = $fdw;
+    $self->{ fifo_r_fd } = $fdr;
+    $self->{ fifo_path } = $filename;
+
+    syswrite $fdw, $key;
+
+    DEBUG "Bytes left: ", fifo_bytecount( $fdr ), "\n";
+
+    $self->{ fifo_refresher } = AnyEvent->timer(
+        after    => 1, 
+        interval => 1,
+        cb => sub {
+            my $bytes_left = fifo_bytecount( $fdr );
+            DEBUG "Timer: Bytes left in pipe: $bytes_left";
+    
+            if( $bytes_left == 0 ) {
+                DEBUG "Refilling buffer";
+                syswrite $fdw, $key;
+                DEBUG "Buffer refilled";
+                $bytes_left = fifo_bytecount( $fdr );
+                DEBUG "After refill: Bytes left in pipe: $bytes_left";
+            }
+        }
+    );
+}
+
+###########################################
+sub fifo_cleanup {
+###########################################
+    my( $self ) = @_;
+
+      # stop refreshing the pipe
+    $self->{ fifo_refresher } = undef;
+
+    close $self->{ fifo_w_fh };
+    close $self->{ fifo_r_fh };
+
+    unlink $self->{ fifo_path };
+}
+
+###########################################
+sub fifo_bytecount {
+###########################################
+    my( $fd ) = @_;
+
+    my $size = pack("L", 0);
+    ioctl( $fd, FIONREAD(), $size)
+    || die "Couldn't call ioctl: $!";
+    $size = unpack("L", $size);
 }
 
 ###########################################
