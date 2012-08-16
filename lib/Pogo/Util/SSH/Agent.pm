@@ -17,9 +17,10 @@ sub new {
     my($class, %options) = @_;
 
     my $self = {
-        ssh_agent => "ssh-agent",
-        ssh_add   => "ssh-add",
-        tempdir   => undef,
+        ssh_agent       => "ssh-agent",
+        ssh_add         => "ssh-add",
+        tempdir         => undef,
+        ssh_add_timeout => 10,
         %options,
     };
 
@@ -29,7 +30,7 @@ sub new {
 ###########################################
 sub start {
 ###########################################
-    my( $self ) = @_;
+    my( $self, $cb ) = @_;
 
     my @dir = ();
     @dir = ( DIR => $self->{ tempdir } ) if defined $self->{ tempdir };
@@ -39,6 +40,10 @@ sub start {
     $self->{ socket } = $filename;
 
     DEBUG "Starting $self->{ ssh_agent }";
+
+    # $ ssh-agent -d
+    # SSH_AUTH_SOCK=/tmp/ssh-pFEHe26945/agent.26945; export SSH_AUTH_SOCK;
+    # echo Agent pid 26945;
 
     my $cmd = run_cmd [ $self->{ ssh_agent }, "-d", "-a", $filename ],
         "<",  "/dev/null",
@@ -56,20 +61,28 @@ sub start {
 
         # Wait and poll until socket exists
     my $cv = AnyEvent->condvar();
-    my $timer = AnyEvent->timer( after    => 0, 
-                                 interval => 1,
-                                 cb       => sub {
-                                     DEBUG "Polling for socket $filename";
-                                     if( -e $filename ) {
-                                         $cv->send();
-                                     }
-                                 } );
-    $cv->recv();
-    DEBUG "Socket $filename exists";
+    my $ssh_add_starttime = time();
 
-    # $ ssh-agent -d
-    # SSH_AUTH_SOCK=/tmp/ssh-pFEHe26945/agent.26945; export SSH_AUTH_SOCK;
-    # echo Agent pid 26945;
+    my $timer; $timer = AnyEvent->timer( 
+        after    => 0, 
+        interval => 1,
+        cb       => sub {
+            if( -e $filename ) {
+                $cv->send( 1 );
+            }
+            if( time() - $ssh_add_starttime >
+                $self->{ ssh_add_timeout } ) {
+                DEBUG "Tired of waiting for ssh-add";
+                $cv->send( 0 );
+                undef $timer;
+            }
+        } 
+    );
+
+    if( $cv->recv() ) {
+        DEBUG "Socket $filename exists";
+        $cb->( $filename, $self->{ pid } );
+    }
 }
 
 ###########################################
@@ -77,6 +90,18 @@ sub key_add {
 ###########################################
     my( $self, $key ) = @_;
 
+      #TODO change to fifo
+    my ($fh, $filename) = tempfile( );
+
+    print $fh $key;
+    close $fh;
+
+    DEBUG "Adding key";
+
+    $ENV{ SSH_AUTH_SOCK } = $self->{ socket };
+    my $cmd = run_cmd [ $self->{ ssh_add }, $filename ];
+    $cmd->recv();
+    DEBUG "Key added";
 }
 
 ###########################################

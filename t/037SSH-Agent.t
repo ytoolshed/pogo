@@ -2,6 +2,7 @@
 use strict;
 use warnings;
 use Test::More;
+use Sysadm::Install qw( slurp );
 
 my $nof_tests = 4;
 plan tests => $nof_tests;
@@ -23,6 +24,7 @@ $agent->start( sub {
     my( $auth_sock, $agent_pid ) = @_;
 
     DEBUG "auth_sock is $auth_sock";
+    $agent->key_add( slurp( "$Bin/keys/nopp" ) );
     # ...
 } );
 
