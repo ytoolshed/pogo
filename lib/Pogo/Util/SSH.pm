@@ -6,6 +6,7 @@ use warnings;
 use Log::Log4perl qw(:easy);
 use AnyEvent;
 use AnyEvent::Strict;
+use Pogo::Object::AnyEvent;
 
 ###########################################
 sub new {
@@ -17,6 +18,13 @@ sub new {
     };
 
     bless $self, $class;
+}
+
+###########################################
+sub run {
+###########################################
+    my( $self, $cmd, $cb ) = @_;
+
 }
 
 1;
