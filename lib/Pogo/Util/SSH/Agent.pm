@@ -6,8 +6,10 @@ use warnings;
 use Log::Log4perl qw(:easy);
 use AnyEvent;
 use AnyEvent::Strict;
-use Pogo::Object::AnyEvent;
+use Pogo::Object::Event;
 use AnyEvent;
+use AnyEvent::Util qw( run_cmd );
+use File::Temp qw( tempfile );
 
 ###########################################
 sub new {
@@ -15,6 +17,9 @@ sub new {
     my($class, %options) = @_;
 
     my $self = {
+        ssh_agent => "ssh-agent",
+        ssh_add   => "ssh-add",
+        tempdir   => undef,
         %options,
     };
 
@@ -26,7 +31,45 @@ sub start {
 ###########################################
     my( $self ) = @_;
 
-    # SSH_AUTH_SOCK=$SSH_AUTH_SOCK ; echo SSH_AGENT_PID=$SSH_AGENT_PID ; ';
+    my @dir = ();
+    @dir = ( DIR => $self->{ tempdir } ) if defined $self->{ tempdir };
+
+    my ($fh, $filename) = tempfile( @dir );
+    unlink $filename or LOGDIE "$!";
+    $self->{ socket } = $filename;
+
+    DEBUG "Starting $self->{ ssh_agent }";
+
+    my $cmd = run_cmd [ $self->{ ssh_agent }, "-d", "-a", $filename ],
+        "<",  "/dev/null",
+        ">",  "/dev/null",
+        "2>", "/dev/null",
+        '$$', \$self->{ pid },
+        ;
+
+    $cmd->cb( sub {
+        my( $c ) = @_;
+
+        $c->recv() and 
+            LOGDIE "$self->{ ssh_agent } failed ($!)";
+    } );
+
+        # Wait and poll until socket exists
+    my $cv = AnyEvent->condvar();
+    my $timer = AnyEvent->timer( after    => 0, 
+                                 interval => 1,
+                                 cb       => sub {
+                                     DEBUG "Polling for socket $filename";
+                                     if( -e $filename ) {
+                                         $cv->send();
+                                     }
+                                 } );
+    $cv->recv();
+    DEBUG "Socket $filename exists";
+
+    # $ ssh-agent -d
+    # SSH_AUTH_SOCK=/tmp/ssh-pFEHe26945/agent.26945; export SSH_AUTH_SOCK;
+    # echo Agent pid 26945;
 }
 
 ###########################################
@@ -34,6 +77,36 @@ sub key_add {
 ###########################################
     my( $self, $key ) = @_;
 
+}
+
+###########################################
+sub socket {
+###########################################
+    my( $self ) = @_;
+
+    return $self->{ socket };
+}
+
+###########################################
+sub shutdown {
+###########################################
+    my( $self ) = @_;
+
+    kill 2, $self->{ pid } or 
+        die "Can't kill pid $self->{ pid } ($!)";
+
+    if( -e $self->{ socket } ) {
+        unlink $self->{ socket } or
+            die "Can't unlink $self->{ socket } ($!)";
+    }
+}
+
+###########################################
+sub DESTROY {
+###########################################
+    my( $self ) = @_;
+
+    $self->shutdown();
 }
 
 1;
