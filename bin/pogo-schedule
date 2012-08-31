@@ -19,11 +19,53 @@ __END__
 
 =head1 NAME
 
-pogo-xxx - Pogo XXX script
+pogo-schedule - Print out the schedule for a job
+
+=head1 SYNOPSIS
+
+    $ cat t/cfgs/triple.cfg
+    # sample configuration file
+    
+    tag:
+      colo:
+        one:
+          - host1
+          - host2
+          - host3
+        two:
+          - host4
+          - host5
+          - host6
+        three:
+          - host7
+          - host8
+          - host9
+    sequence:
+      foo:
+        - $colo.one
+        - $colo.two
+      bar:
+        - $colo.three
+    
+    $ perl -Ilib bin/pogo-schedule t/cfgs/triple.cfg
+    .--------------------------------------------------------------.
+    |                           Schedule                           |
+    +------------------+---------------------+---------------------+
+    | Thread           | slot-1              | slot-2              |
+    +------------------+---------------------+---------------------+
+    | thread-000000000 | [foo.$colo.one]     | [foo.$colo.two]     |
+    |                  | host3, host2, host1 | host6, host5, host4 |
+    | thread-000000001 | [bar.$colo.three]   |                     |
+    |                  | host9, host8, host7 |                     |
+    | unconstrained    | [unconstrained]     |                     |
+    '------------------+---------------------+---------------------'
 
 =head1 DESCRIPTION
 
-Does this and that.
+This utility pretty-prints a schedule for a job, as it would be executed
+based on a Pogo configuration file. It uses the actual Pogo scheduler 
+in Pogo::Scheduler::Classic and asks it for an execution plan just as 
+if we submitted a Pogo job for all hosts present in the configuration.
 
 =head1 LICENSE
 

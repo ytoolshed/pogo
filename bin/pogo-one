@@ -31,7 +31,7 @@ required_params_check( $cmdline_opts, [qw(
 
 if( ! exists $cmdline_opts->{ config } ) {
     # 'empty' conf file if none is specified
-    $cmdline_opts->{ config } = <<EOT;
+    $cmdline_opts->{ config } = \ <<EOT;
 tag:
 sequence:
 EOT
@@ -108,7 +108,7 @@ pogo-one - All-In-One Pogo
 
 =head1 SYNOPSIS
 
-    $ cat one.conf
+    $ cat t/cfgs/one.cfg
     tag:
       # no tags
     sequence:
@@ -118,8 +118,8 @@ pogo-one - All-In-One Pogo
     
       # specify two hosts 1 and 2, but config says to run them in 
       # reverse order
-    $ pogo-one --password --targets host1,host2 \
-        --config one.conf --run-command 'date'
+    $ perl -Ilib bin/pogo-one --password --targets host1,host2 \
+        --config t/cfgs/one.cfg --run-command 'date'
     Password: ****
     host2: Running target
     host2: Success

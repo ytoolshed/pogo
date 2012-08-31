@@ -291,8 +291,6 @@ sub thread_setup {
         }
     );
 
-    $DB::single = 1;
-
     my $slot = Pogo::Scheduler::Slot->new( 
         id => $self->{ unconstrained_thread_name }
     );

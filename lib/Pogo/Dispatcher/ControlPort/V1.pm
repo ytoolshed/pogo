@@ -83,7 +83,18 @@ sub jobsubmit {
     }
 
     my $scheduler = Pogo::Scheduler::Classic->new();
-    $scheduler->config_load( \ $job->config() );
+
+    my $config = $job->config();
+
+      # if we get yaml data instead of a filename, make it a 
+      # reference so that the job object knows it's yaml data
+    my $config_to_load = $config;
+
+    if( $config =~ /\n/ ) {
+        $config_to_load = \$config;
+    }
+
+    $scheduler->config_load( $config_to_load );
 
     $dispatcher->event_forward(
         { forward_from => $scheduler }, qw(

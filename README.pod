@@ -68,7 +68,7 @@ pogo-one - All-In-One Pogo
 
 =head1 SYNOPSIS
 
-    $ cat one.conf
+    $ cat t/cfgs/one.cfg
     tag:
       # no tags
     sequence:
@@ -78,8 +78,8 @@ pogo-one - All-In-One Pogo
     
       # specify two hosts 1 and 2, but config says to run them in 
       # reverse order
-    $ pogo-one --password --hosts host1,host2 \
-        --config one.conf --command 'date'
+    $ perl -Ilib bin/pogo-one --password --targets host1,host2 \
+        --config t/cfgs/one.cfg --run-command 'date'
     Password: ****
     host2: Running target
     host2: Success
@@ -119,16 +119,66 @@ constraints.
 If specified, c<pogo-one> will collect the user's target password at
 a command line prompt, and use it to log into the target machines.
 
-=item C<--hosts>
+=item C<--targets>
 
 All hosts to run the command on. Order and parallelism is determined by 
 the configuration file.
 
-=item C<--commands>
+=item C<--run-command>
 
 The command to run on all hosts.
 
 =back
+
+=head1 NAME
+
+pogo-schedule - Print out the schedule for a job
+
+=head1 SYNOPSIS
+
+    $ cat t/cfgs/triple.cfg
+    # sample configuration file
+    
+    tag:
+      colo:
+        one:
+          - host1
+          - host2
+          - host3
+        two:
+          - host4
+          - host5
+          - host6
+        three:
+          - host7
+          - host8
+          - host9
+    sequence:
+      foo:
+        - $colo.one
+        - $colo.two
+      bar:
+        - $colo.three
+    
+    $ perl -Ilib bin/pogo-schedule t/cfgs/triple.cfg
+    .--------------------------------------------------------------.
+    |                           Schedule                           |
+    +------------------+---------------------+---------------------+
+    | Thread           | slot-1              | slot-2              |
+    +------------------+---------------------+---------------------+
+    | thread-000000000 | [foo.$colo.one]     | [foo.$colo.two]     |
+    |                  | host3, host2, host1 | host6, host5, host4 |
+    | thread-000000001 | [bar.$colo.three]   |                     |
+    |                  | host9, host8, host7 |                     |
+    | unconstrained    | [unconstrained]     |                     |
+    '------------------+---------------------+---------------------'
+
+=head1 DESCRIPTION
+
+This utility pretty-prints a schedule for a job, as it would be executed
+based on a Pogo configuration file. It uses the actual Pogo scheduler 
+in Pogo::Scheduler::Classic and asks it for an execution plan just as 
+if we submitted a Pogo job for all hosts present in the configuration.
 
 =head1 LICENSE
 

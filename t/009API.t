@@ -86,7 +86,8 @@ sub run_tests {
     my $job     = Pogo::Job->new( 
         task_name => "test",
         command => $task_name, 
-        range => [ "host1" ], config => <<'EOT' );
+        range => [ "host1" ], 
+        config => <<'EOT' );
 tag:
 sequence:
   - host3
